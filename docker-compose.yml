@@ -1,3 +1,4 @@
+name: inspoter
 services:
   db:
     image: postgres:16
