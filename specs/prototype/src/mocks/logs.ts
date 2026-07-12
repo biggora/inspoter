@@ -61,7 +61,7 @@ export const mockLogs: LogEntry[] = [
     level: 'info',
     source: 'web-prod-02',
     service: 'systemd',
-    message: 'Started Docker container inspot-dashboard-v2 (image: inspot/dashboard:v2.7.0)',
+    message: 'Started Docker container inspoter-v2 (image: inspot/dashboard:v2.7.0)',
     details: 'Container ID: a3f8c21d9e04 | Image: inspot/dashboard:v2.7.0 | SHA256: def89ab... | Ports: 0.0.0.0:3000->3000/tcp | Restart policy: unless-stopped',
   },
   {

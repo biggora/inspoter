@@ -1,4 +1,4 @@
-# Product Requirements Document — inspot-dashboard
+# Product Requirements Document — inspoter
 
 **Version:** v2.1 (doc-review wording fixes on v2)
 **Status:** Draft for review
@@ -12,10 +12,10 @@
 ## 1. Product Overview
 
 ### What we are building
-`inspot-dashboard` is a specialized, self-hosted **personal operations dashboard** — comparable to Dashy/Homarr for the bookmarking part, but extended with operational sections for managing domains, VPS servers, mail, messages, logs, and alerts. It is a single deployable Next.js application backed by PostgreSQL.
+`inspoter` is a specialized, self-hosted **personal operations dashboard** — comparable to Dashy/Homarr for the bookmarking part, but extended with operational sections for managing domains, VPS servers, mail, messages, logs, and alerts. It is a single deployable Next.js application backed by PostgreSQL.
 
 ### What problem it solves
-A self-hosted operator (homelab / small-team / indie infrastructure owner) currently spreads day-to-day operations across many disconnected tools: bookmark managers, registrar/DNS control panels (Cloudflare, Hetzner, GoDaddy), a VPS provider console (Hetzner), mailboxes, chat systems, and log/alert viewers. There is no single pane of glass. inspot-dashboard consolidates these into one self-hosted control panel, and adds a **unified webhook ingest API** so third-party systems can push mail, messages, logs, and alerts into the dashboard.
+A self-hosted operator (homelab / small-team / indie infrastructure owner) currently spreads day-to-day operations across many disconnected tools: bookmark managers, registrar/DNS control panels (Cloudflare, Hetzner, GoDaddy), a VPS provider console (Hetzner), mailboxes, chat systems, and log/alert viewers. There is no single pane of glass. inspoter consolidates these into one self-hosted control panel, and adds a **unified webhook ingest API** so third-party systems can push mail, messages, logs, and alerts into the dashboard.
 
 ### Expected outcome
 A working self-hosted dashboard where the operator can:

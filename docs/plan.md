@@ -1,4 +1,4 @@
-# Execution Plan — inspot-dashboard (vertical slices)
+# Execution Plan — inspoter (vertical slices)
 
 **Version:** 1.3
 **Status:** Revised after ordinary doc-review (post-CONSENSUS; v1.2 → v1.3, Findings 1–3)
@@ -31,7 +31,7 @@
 
 ## 1. Task Summary
 
-Deliver `inspot-dashboard` — a self-hosted, single-operator operations dashboard (Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, Prisma + PostgreSQL) — as a sequence of vertical slices. Each slice is one demonstrable end-to-end user path proven by acceptance tests written before implementation. Slice 1 is the tracer bullet: it pierces every layer (env config → Prisma → service → API/server action → middleware/auth → shell UI → Bookmarks UI → tests) on the lowest-risk section (Bookmarks has zero external-provider dependency, PRD §7 Alternative B). Later slices add the provider-backed sections (Domains, Servers) and the webhook-ingest-backed sections (Logs, Alerts, Mail, Messages) plus webhook token management.
+Deliver `inspoter` — a self-hosted, single-operator operations dashboard (Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, Prisma + PostgreSQL) — as a sequence of vertical slices. Each slice is one demonstrable end-to-end user path proven by acceptance tests written before implementation. Slice 1 is the tracer bullet: it pierces every layer (env config → Prisma → service → API/server action → middleware/auth → shell UI → Bookmarks UI → tests) on the lowest-risk section (Bookmarks has zero external-provider dependency, PRD §7 Alternative B). Later slices add the provider-backed sections (Domains, Servers) and the webhook-ingest-backed sections (Logs, Alerts, Mail, Messages) plus webhook token management.
 
 **Why this order:** proving the full fixed stack end-to-end once, on the section with no third-party credential dependency, retires integration risk before any provider or webhook code is written (PRD §7 Decision; architecture §7). The two later tracks — provider track (Domains, Servers) and webhook-ingest track (Logs, Alerts, Mail, Messages) — are independent; the webhook backbone is built once (Slice 4) and proven on the simplest payload (Logs) before its more complex consumers, satisfying the constraint that webhook ingest precede its Mail/Messages/Logs/Alerts consumers (architecture §7.2).
 

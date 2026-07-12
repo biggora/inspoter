@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { login, OPERATOR_USERNAME, OPERATOR_PASSWORD } from "./utils/auth";
 
 // AC-AUTH-001..005, M-3 (design.md §3.1, §1.1; plan.md §5.2). Mode B:
-// src/app/login/**, src/middleware.ts, and src/app/(dashboard)/** are
+// src/app/login/**, src/proxy.ts, and src/app/(dashboard)/** are
 // implemented — these exercise the real login/logout/redirect flow end to
 // end in a real browser against the real app + Postgres.
 

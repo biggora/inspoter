@@ -1,4 +1,4 @@
-# Progress Ledger — inspot-dashboard
+# Progress Ledger — inspoter
 
 **Goal:** Разработать документацию (PRD, архитектура, дизайн, план) и реализовать панель управления (Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts + webhook API). Этот запуск: docs + каркас + tracer bullet (оболочка + Bookmarks).
 

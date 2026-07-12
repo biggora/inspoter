@@ -1,4 +1,4 @@
-# Test Plan & Traceability Matrix — inspot-dashboard Slice 1
+# Test Plan & Traceability Matrix — inspoter Slice 1
 
 **Owner:** tester
 **Status:** Mode B (green) — full suite passing after backend-dev/frontend-dev implementation, per plan.md §5.2/§10 (T-1 two-mode tester protocol). Re-verified 2026-07-12 after backend code-review fixes (§4c) — still fully green.

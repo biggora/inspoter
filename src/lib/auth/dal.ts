@@ -4,7 +4,7 @@ import type { Operator } from "@/generated/prisma/client";
 import { getValidSession, readSessionCookie } from "@/lib/auth/session";
 
 // Auth Data Access Layer (architecture.md §5.3, ADR-012) — the authoritative
-// auth gate (as opposed to middleware.ts's optimistic cookie-presence check).
+// auth gate (as opposed to proxy.ts's optimistic cookie-presence check).
 // Validates the `session` cookie against the DB (exists + not expired) and
 // returns the associated Operator, or redirects to /login. Called by
 // `(dashboard)/layout.tsx` and every non-webhook API route handler

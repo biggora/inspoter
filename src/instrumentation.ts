@@ -7,8 +7,8 @@
 // clear message instead of surfacing as a generic login failure later.
 //
 // Guarded to the Node.js runtime only — env.ts's schema (DATABASE_URL,
-// auth vars, etc.) is server-only config; the Edge runtime (middleware.ts)
-// never needs it.
+// auth vars, etc.) is server-only config that only the Node.js server
+// runtime needs.
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {

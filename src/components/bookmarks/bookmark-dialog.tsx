@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,12 @@ export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: Boo
 
   const isEdit = state?.mode === "edit";
 
-  useEffect(() => {
+  // Reset the form when the dialog target changes, using React's "adjust state
+  // while rendering on prop change" pattern instead of an effect
+  // (react.dev/reference/react/useState).
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
     if (state?.mode === "edit") {
       const bookmark = state.bookmark;
       setName(bookmark.name);
@@ -74,7 +79,7 @@ export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: Boo
       setCategory(state.categoryId);
     }
     setErrors({});
-  }, [state]);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

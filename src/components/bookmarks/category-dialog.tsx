@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -37,14 +37,15 @@ export function CategoryDialog({ state, onOpenChange, onSaved }: CategoryDialogP
 
   const isEdit = state?.mode === "edit";
 
-  useEffect(() => {
-    if (state?.mode === "edit") {
-      setName(state.category.name);
-    } else {
-      setName("");
-    }
+  // Reset the form when the dialog target changes (open/create/rename-of-another
+  // category), using React's "adjust state while rendering on prop change"
+  // pattern instead of an effect (react.dev/reference/react/useState).
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    setName(state?.mode === "edit" ? state.category.name : "");
     setError(null);
-  }, [state]);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

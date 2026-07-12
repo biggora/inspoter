@@ -1,4 +1,4 @@
-# inspot-dashboard — multi-stage Docker build (NFR-DEPLOY-001, ADR-002:
+# inspoter — multi-stage Docker build (NFR-DEPLOY-001, ADR-002:
 # scrypt hashing uses Node's built-in `crypto`, so no native build toolchain
 # is required in any stage).
 

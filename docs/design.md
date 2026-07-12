@@ -1,4 +1,4 @@
-# UI/UX Design Specification — inspot-dashboard
+# UI/UX Design Specification — inspoter
 
 **Version:** v1.1
 **Status:** Revised for review (doc-review findings addressed)

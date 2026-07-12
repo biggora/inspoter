@@ -1,4 +1,4 @@
-# Architecture Blueprint — inspot-dashboard
+# Architecture Blueprint — inspoter
 
 **Version:** 1.1
 **Status:** Draft for doc-review (v1.1 addresses doc-review findings F1–F7)
@@ -17,7 +17,7 @@ This document is the authoritative design reference. Every component traces to a
 
 ## 1. System Overview
 
-`inspot-dashboard` is a **single deployable Next.js 15 (App Router) application** backed by PostgreSQL via Prisma. It is a single-instance, self-hosted control panel (HC-2, NFR-DEPLOY-001) with seven sections plus a unified webhook ingest API.
+`inspoter` is a **single deployable Next.js 15 (App Router) application** backed by PostgreSQL via Prisma. It is a single-instance, self-hosted control panel (HC-2, NFR-DEPLOY-001) with seven sections plus a unified webhook ingest API.
 
 The system is intentionally a **modular monolith**, not a set of services. Justification (Simplicity First, HC-2): the deployment target is one Docker host serving one operator or a small team. Microservices, message queues, and Redis would add operational surface with no requirement to justify them. In-process constructs (in-memory rate limiter, synchronous webhook ingest) are correct precisely *because* there is exactly one application process.
 

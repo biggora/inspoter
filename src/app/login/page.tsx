@@ -1,9 +1,9 @@
 import { LoginForm } from "./login-form";
 
 // AC-AUTH-002/003 UI (design.md §3.1). Server Component: reads the `next`
-// redirect-target query param (middleware.ts sets it; design.md §1.2 deep
+// redirect-target query param (proxy.ts sets it; design.md §1.2 deep
 // -link preservation) and hands it to the client-side form. No auth check
-// here — /login is the one dashboard-adjacent route middleware always
+// here — /login is the one dashboard-adjacent route proxy always
 // allows unauthenticated (AC-AUTH-001 exception).
 export default async function LoginPage({
   searchParams,
