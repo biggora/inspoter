@@ -1,0 +1,170 @@
+/* ==========================================================================
+   Inspot — Color tokens
+   Stored as raw oklch triples (L C H) and consumed as oklch(var(--token)).
+   This mirrors the production Tailwind config: colors are 50→950 ramps and
+   every ramp supports an <alpha-value>, e.g. oklch(var(--primary-500) / 0.5).
+   ========================================================================== */
+
+:root {
+  /* --- Background: warm near-neutral greys (hue ~80). App canvas + surfaces. */
+  --background-50: 0.985 0.002 95; /* @kind color */
+  --background-100: 0.97 0.004 90; /* @kind color */
+  --background-200: 0.94 0.006 88; /* @kind color */
+  --background-300: 0.90 0.008 85; /* @kind color */
+  --background-400: 0.84 0.01 82; /* @kind color */
+  --background-500: 0.78 0.012 80; /* @kind color */
+  --background-600: 0.65 0.014 78; /* @kind color */
+  --background-700: 0.50 0.016 76; /* @kind color */
+  --background-800: 0.35 0.012 75; /* @kind color */
+  --background-900: 0.22 0.01 74; /* @kind color */
+  --background-950: 0.14 0.008 72; /* @kind color */
+
+  /* --- Foreground: cool blue-grey ink (hue 260). Text + icons. */
+  --foreground-50: 0.92 0.003 260; /* @kind color */
+  --foreground-100: 0.84 0.004 260; /* @kind color */
+  --foreground-200: 0.74 0.005 260; /* @kind color */
+  --foreground-300: 0.62 0.006 260; /* @kind color */
+  --foreground-400: 0.50 0.007 260; /* @kind color */
+  --foreground-500: 0.40 0.008 260; /* @kind color */
+  --foreground-600: 0.32 0.009 260; /* @kind color */
+  --foreground-700: 0.25 0.01 260; /* @kind color */
+  --foreground-800: 0.18 0.011 260; /* @kind color */
+  --foreground-900: 0.13 0.012 260; /* @kind color */
+  --foreground-950: 0.09 0.01 260; /* @kind color */
+
+  /* --- Primary: warm terracotta red (hue 30). Brand action + destructive-lean. */
+  --primary-50: 0.96 0.03 30; /* @kind color */
+  --primary-100: 0.91 0.06 30; /* @kind color */
+  --primary-200: 0.85 0.09 30; /* @kind color */
+  --primary-300: 0.77 0.12 30; /* @kind color */
+  --primary-400: 0.68 0.16 30; /* @kind color */
+  --primary-500: 0.58 0.19 30; /* @kind color */
+  --primary-600: 0.50 0.17 30; /* @kind color */
+  --primary-700: 0.42 0.14 30; /* @kind color */
+  --primary-800: 0.34 0.11 30; /* @kind color */
+  --primary-900: 0.26 0.08 30; /* @kind color */
+  --primary-950: 0.18 0.05 30; /* @kind color */
+
+  /* --- Accent: teal (hue 175). Positive / healthy / "online" states. */
+  --accent-50: 0.95 0.03 175; /* @kind color */
+  --accent-100: 0.88 0.06 175; /* @kind color */
+  --accent-200: 0.80 0.09 175; /* @kind color */
+  --accent-300: 0.70 0.12 175; /* @kind color */
+  --accent-400: 0.60 0.14 175; /* @kind color */
+  --accent-500: 0.50 0.14 175; /* @kind color */
+  --accent-600: 0.43 0.12 175; /* @kind color */
+  --accent-700: 0.36 0.10 175; /* @kind color */
+  --accent-800: 0.29 0.08 175; /* @kind color */
+  --accent-900: 0.22 0.06 175; /* @kind color */
+  --accent-950: 0.15 0.04 175; /* @kind color */
+
+  /* --- Secondary: muted olive / sand (hue 85). Neutral tints, idle chips. */
+  --secondary-50: 0.96 0.015 85; /* @kind color */
+  --secondary-100: 0.90 0.02 85; /* @kind color */
+  --secondary-200: 0.82 0.025 85; /* @kind color */
+  --secondary-300: 0.72 0.03 85; /* @kind color */
+  --secondary-400: 0.62 0.035 85; /* @kind color */
+  --secondary-500: 0.52 0.04 85; /* @kind color */
+  --secondary-600: 0.44 0.035 85; /* @kind color */
+  --secondary-700: 0.36 0.03 85; /* @kind color */
+  --secondary-800: 0.28 0.025 85; /* @kind color */
+  --secondary-900: 0.20 0.02 85; /* @kind color */
+  --secondary-950: 0.13 0.015 85; /* @kind color */
+
+  /* --- Semantic status hues (amber warning, red danger) reused from Tailwind. */
+  --amber-500: 0.77 0.16 70; /* @kind color */
+  --amber-600: 0.66 0.16 62; /* @kind color */
+  --amber-700: 0.55 0.14 58; /* @kind color */
+  --red-500: 0.58 0.22 27; /* @kind color */
+  --red-600: 0.51 0.21 27; /* @kind color */
+  --red-700: 0.44 0.18 27; /* @kind color */
+
+  /* ---------- Semantic aliases (prefer these in product code) ---------- */
+  --surface-app: oklch(var(--background-50));       /* page canvas */
+  --surface-card: oklch(var(--background-50));       /* card fill (same as canvas, defined by border) */
+  --surface-sunken: oklch(var(--background-100));    /* input / hover fill */
+  --surface-hover: oklch(var(--background-100));
+  --border-subtle: oklch(var(--background-100));     /* row dividers */
+  --border-default: oklch(var(--background-200));    /* card + control borders */
+  --border-strong: oklch(var(--background-300));     /* hovered borders, inputs */
+
+  --text-primary: oklch(var(--foreground-950));      /* headings */
+  --text-body: oklch(var(--foreground-900));         /* default body */
+  --text-secondary: oklch(var(--foreground-600));    /* labels */
+  --text-muted: oklch(var(--foreground-400));        /* meta, captions */
+  --text-on-accent: oklch(var(--background-50));      /* text on filled buttons */
+
+  --action-primary: oklch(var(--primary-500));
+  --action-primary-hover: oklch(var(--primary-600));
+  --focus-ring: oklch(var(--primary-400));
+
+  --status-ok: oklch(var(--accent-500));
+  --status-warn: oklch(var(--amber-500));
+  --status-danger: oklch(var(--primary-500));
+  --status-idle: oklch(var(--secondary-400));
+}
+
+/* --------------------------------------------------------------------------
+   Dark theme — activated by `.dark` on any ancestor (matches production).
+   -------------------------------------------------------------------------- */
+.dark {
+  --background-50: 0.12 0.007 80; /* @kind color */
+  --background-100: 0.16 0.008 78; /* @kind color */
+  --background-200: 0.20 0.009 76; /* @kind color */
+  --background-300: 0.26 0.010 75; /* @kind color */
+  --background-400: 0.32 0.011 74; /* @kind color */
+  --background-500: 0.40 0.012 73; /* @kind color */
+  --background-600: 0.50 0.011 72; /* @kind color */
+  --background-700: 0.62 0.010 72; /* @kind color */
+  --background-800: 0.74 0.008 72; /* @kind color */
+  --background-900: 0.84 0.006 72; /* @kind color */
+  --background-950: 0.92 0.004 75; /* @kind color */
+
+  --foreground-50: 0.10 0.008 260; /* @kind color */
+  --foreground-100: 0.14 0.010 260; /* @kind color */
+  --foreground-200: 0.20 0.010 260; /* @kind color */
+  --foreground-300: 0.28 0.009 260; /* @kind color */
+  --foreground-400: 0.38 0.008 260; /* @kind color */
+  --foreground-500: 0.48 0.007 260; /* @kind color */
+  --foreground-600: 0.58 0.006 260; /* @kind color */
+  --foreground-700: 0.68 0.005 260; /* @kind color */
+  --foreground-800: 0.78 0.004 260; /* @kind color */
+  --foreground-900: 0.88 0.003 260; /* @kind color */
+  --foreground-950: 0.95 0.002 260; /* @kind color */
+
+  --primary-50: 0.14 0.04 35; /* @kind color */
+  --primary-100: 0.18 0.06 33; /* @kind color */
+  --primary-200: 0.24 0.09 32; /* @kind color */
+  --primary-300: 0.32 0.12 30; /* @kind color */
+  --primary-400: 0.42 0.15 30; /* @kind color */
+  --primary-500: 0.54 0.20 30; /* @kind color */
+  --primary-600: 0.62 0.18 30; /* @kind color */
+  --primary-700: 0.72 0.14 30; /* @kind color */
+  --primary-800: 0.80 0.10 30; /* @kind color */
+  --primary-900: 0.88 0.07 30; /* @kind color */
+  --primary-950: 0.94 0.04 30; /* @kind color */
+
+  --accent-50: 0.12 0.04 175; /* @kind color */
+  --accent-100: 0.18 0.06 175; /* @kind color */
+  --accent-200: 0.24 0.08 175; /* @kind color */
+  --accent-300: 0.32 0.10 175; /* @kind color */
+  --accent-400: 0.42 0.12 175; /* @kind color */
+  --accent-500: 0.54 0.15 175; /* @kind color */
+  --accent-600: 0.64 0.13 175; /* @kind color */
+  --accent-700: 0.74 0.11 175; /* @kind color */
+  --accent-800: 0.82 0.08 175; /* @kind color */
+  --accent-900: 0.90 0.05 175; /* @kind color */
+  --accent-950: 0.95 0.03 175; /* @kind color */
+
+  --secondary-50: 0.12 0.012 85; /* @kind color */
+  --secondary-100: 0.18 0.018 85; /* @kind color */
+  --secondary-200: 0.24 0.022 85; /* @kind color */
+  --secondary-300: 0.32 0.026 85; /* @kind color */
+  --secondary-400: 0.42 0.030 85; /* @kind color */
+  --secondary-500: 0.52 0.035 85; /* @kind color */
+  --secondary-600: 0.62 0.032 85; /* @kind color */
+  --secondary-700: 0.72 0.028 85; /* @kind color */
+  --secondary-800: 0.82 0.022 85; /* @kind color */
+  --secondary-900: 0.90 0.016 85; /* @kind color */
+  --secondary-950: 0.96 0.012 85; /* @kind color */
+}

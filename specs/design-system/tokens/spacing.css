@@ -1,0 +1,45 @@
+/* ==========================================================================
+   Inspot — Spacing, radii, sizing tokens
+   The product runs on a 4px base grid. Controls are compact: 8px/10px vertical
+   padding on inputs & buttons, 16–20px card padding.
+   ========================================================================== */
+
+:root {
+  /* Spacing scale (4px base) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border radii — everything is soft; nothing sharp. */
+  --radius-sm: 4px;    /* tiny badges, code chips */
+  --radius-md: 6px;    /* icon tiles, menu items */
+  --radius-lg: 8px;    /* buttons, inputs, nav items — the default */
+  --radius-xl: 12px;   /* cards, panels, modals */
+  --radius-2xl: 16px;  /* empty-state icon wells */
+  --radius-full: 9999px; /* pills, switches, avatars, status dots */
+
+  /* Control heights */
+  --control-sm: 30px;  /* small buttons / filter chips */
+  --control-md: 38px;  /* inputs, default buttons */
+  --control-lg: 42px;  /* primary CTA */
+
+  /* Layout constants (from AppLayout) */
+  --sidebar-width: 256px;      /* 16rem — expanded */
+  --sidebar-width-collapsed: 64px; /* 4rem — rail */
+  --topbar-height: 56px;       /* 3.5rem */
+
+  /* Icon sizing */
+  --icon-tile-sm: 28px;   /* w-7 h-7 */
+  --icon-tile-md: 32px;   /* w-8 h-8 — most common */
+  --icon-tile-lg: 36px;   /* w-9 h-9 — server card header */
+}

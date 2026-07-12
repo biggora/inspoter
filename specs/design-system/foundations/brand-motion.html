@@ -1,0 +1,26 @@
+<!-- @dsCard group="Brand" viewport="700x150" name="Motion" subtitle="Quick ease-out, no bounce. fade / scale / slide / shimmer." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;font-family:var(--font-body);background:oklch(var(--background-50));display:flex;gap:16px;align-items:center;}
+  .card{flex:1;border:1px solid oklch(var(--background-200));border-radius:var(--radius-lg);padding:14px;text-align:center;}
+  .t{font-size:12px;font-weight:600;color:oklch(var(--foreground-800));}
+  .n{font-family:var(--font-mono);font-size:10px;color:oklch(var(--foreground-400));margin-top:6px;}
+  .box{width:100%;height:20px;border-radius:var(--radius-md);margin-top:10px;}
+  @keyframes fin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @keyframes sin{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .fade .box{background:oklch(var(--accent-300));animation:fin 1.6s ease-out infinite alternate;}
+  .scale .box{background:oklch(var(--primary-300));animation:sin 1.6s ease-out infinite alternate;}
+  .shim .box{background:linear-gradient(90deg,oklch(var(--background-200) / .6) 25%,oklch(var(--background-100) / .5) 50%,oklch(var(--background-200) / .6) 75%);background-size:200% 100%;animation:sh 1.5s infinite;}
+</style>
+</head>
+<body>
+  <div class="card fade"><span class="t">fadeIn</span><div class="n">4px rise · 250ms</div><div class="box"></div></div>
+  <div class="card scale"><span class="t">scaleIn</span><div class="n">0.95→1 · menus/modals</div><div class="box"></div></div>
+  <div class="card shim"><span class="t">shimmer</span><div class="n">skeleton loading</div><div class="box"></div></div>
+</body>
+</html>

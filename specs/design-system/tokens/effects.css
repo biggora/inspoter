@@ -1,0 +1,49 @@
+/* ==========================================================================
+   Inspot — Effects: shadows, borders, motion
+   Inspot is a flat, border-defined UI. Elevation is used sparingly — only
+   floating layers (menus, modals, toasts) get a shadow. Surfaces are
+   separated by 1px borders, never drop shadows.
+   ========================================================================== */
+
+:root {
+  /* Shadows — reserved for floating layers only */
+  --shadow-none: none;
+  --shadow-menu: 0 4px 12px -2px oklch(var(--foreground-950) / 0.12), 0 2px 4px -2px oklch(var(--foreground-950) / 0.08);
+  --shadow-modal: 0 12px 32px -8px oklch(var(--foreground-950) / 0.18), 0 4px 8px -4px oklch(var(--foreground-950) / 0.10);
+
+  /* Borders */
+  --border-width: 1px; /* @kind spacing */
+
+  /* Focus ring (inputs, keyboard nav) */
+  --ring-width: 2px; /* @kind spacing */
+  --ring-color: oklch(var(--primary-400)); /* @kind color */
+
+  /* Motion — quick, ease-out, no bounce. Matches production keyframes. */
+  --duration-fast: 150ms; /* @kind other */
+  --duration-base: 200ms; /* @kind other */
+  --duration-slow: 250ms; /* @kind other */
+  --duration-chart: 500ms; /* @kind other */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+
+  /* Overlay scrim behind modals */
+  --overlay-scrim: oklch(0 0 0 / 0.30); /* @kind color */
+}
+
+/* ---- Named entrance animations (lifted from production index.css) ---- */
+@keyframes inspot-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes inspot-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes inspot-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes inspot-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

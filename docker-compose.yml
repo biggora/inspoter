@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inspot
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/inspot?schema=public
+      LIST_PAGE_SIZE: 50
+      WEBHOOK_RATE_LIMIT: 120
+      WEBHOOK_RATE_WINDOW_MS: 60000
+      WEBHOOK_MAX_BODY_BYTES: 65536
+      OPERATOR_USERNAME: ${OPERATOR_USERNAME:-}
+      OPERATOR_PASSWORD_HASH: ${OPERATOR_PASSWORD_HASH:-}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:

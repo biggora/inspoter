@@ -1,0 +1,91 @@
+<!-- @dsCard group="Components" viewport="700x380" name="Data display" subtitle="Badge · IconTile · ProgressBar · StatCard · Card · EmptyState" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css">
+<style>
+  body{margin:0;padding:22px;font-family:var(--font-body);background:oklch(var(--background-50));color:oklch(var(--foreground-900));}
+  .grid{display:flex;flex-direction:column;gap:20px;max-width:660px;}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:oklch(var(--foreground-400));margin-bottom:8px;}
+  a{color:oklch(var(--primary-600));text-decoration:none;font-size:12px;} a:hover{color:oklch(var(--primary-700));}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Badge, IconTile, ProgressBar, StatCard, Card, EmptyState, Button } = window.InspotDesignSystem_abeb6a;
+function Demo(){
+  return (
+    <div className="grid">
+      <div>
+        <div className="sec">Badges</div>
+        <div className="row">
+          <Badge tone="accent" dot>Онлайн</Badge>
+          <Badge tone="amber" dot>Деградация</Badge>
+          <Badge tone="red" dot pulse>Офлайн</Badge>
+          <Badge tone="secondary" dot>Остановлен</Badge>
+          <Badge tone="red" size="sm" icon="ri-error-warning-line">ERROR</Badge>
+          <Badge tone="accent" size="sm" icon="ri-information-line">INFO</Badge>
+        </div>
+      </div>
+      <div>
+        <div className="sec">Icon tiles</div>
+        <div className="row">
+          <IconTile icon="ri-server-line" tone="accent" />
+          <IconTile icon="ri-global-line" tone="primary" />
+          <IconTile icon="ri-hard-drive-3-line" tone="secondary" size="lg" />
+          <IconTile icon="ri-alert-line" tone="amber" />
+          <IconTile icon="ri-close-circle-line" tone="red" />
+        </div>
+      </div>
+      <div>
+        <div className="sec">Stat cards</div>
+        <div className="row" style={{alignItems:'stretch'}}>
+          <div style={{width:180}}>
+            <StatCard icon="ri-server-line" label="Серверы" value={4} sub={6} subtitle="в сети" tone="accent">
+              <span style={{fontSize:11,color:'oklch(var(--accent-600))'}}>● 4 online · 2 off</span>
+            </StatCard>
+          </div>
+          <div style={{width:180}}>
+            <StatCard icon="ri-cpu-line" label="CPU (сред.)" value="42%" tone="primary">
+              <ProgressBar value={42} tone="primary" />
+            </StatCard>
+          </div>
+          <div style={{width:180}}>
+            <StatCard icon="ri-alert-line" label="Оповещения" value={3} subtitle="не подтверждены" tone="amber" />
+          </div>
+        </div>
+      </div>
+      <div className="row" style={{alignItems:'stretch'}}>
+        <div style={{flex:1,minWidth:260}}>
+          <div className="sec">Card (widget)</div>
+          <Card title="Диск" icon={<IconTile icon="ri-database-2-line" tone="secondary" size="sm" />} action={<a href="#">Детали →</a>}>
+            <div style={{display:'flex',flexDirection:'column',gap:10,fontSize:13}}>
+              <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'oklch(var(--foreground-500))'}}>db-primary</span><span>68%</span></div>
+              <ProgressBar value={68} auto />
+              <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'oklch(var(--foreground-500))'}}>cache-node</span><span>88%</span></div>
+              <ProgressBar value={88} auto />
+            </div>
+          </Card>
+        </div>
+        <div style={{flex:1,minWidth:240}}>
+          <div className="sec">Empty state</div>
+          <Card padding="none">
+            <EmptyState icon="ri-check-line" tone="accent" title="Нет оповещений" description="Все системы работают штатно." />
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

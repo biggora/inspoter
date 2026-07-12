@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+//
+// Schema authored verbatim from docs/architecture.md v1.1 §2.3 (Decision P-1:
+// full 13-entity schema in one Slice-0 migration). Do not add per-slice
+// incremental models here — see architecture.md §2.3 / plan.md §4.1.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Auth (FR-AUTH-001) ---
+model Operator {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String // scrypt hash; never returned (NFR-SEC-002)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id         String   @id // opaque random token (the cookie value)
+  operatorId String
+  operator   Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// --- Bookmarks (FR-BM-001..003, Slice 1) ---
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  position  Int        @default(0)
+  bookmarks Bookmark[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade) // AC-BM-004 cascade
+  name        String
+  url         String
+  icon        String? // reference value (A-2 / OQ-8): emoji | icon-name | URL
+  description String?
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([categoryId]) // grouped display AC-BM-012
+}
+
+// --- Messages (FR-MSG-001..002) ---
+model MessageCategory {
+  id        String    @id @default(cuid())
+  name      String
+  channels  Channel[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Channel {
+  id                String          @id @default(cuid())
+  messageCategoryId String
+  messageCategory   MessageCategory @relation(fields: [messageCategoryId], references: [id], onDelete: Cascade) // AC-MSG-003
+  name              String
+  messages          Message[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([messageCategoryId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  content   String
+  author    String? // source label from webhook payload
+  createdAt DateTime @default(now())
+
+  @@index([channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
+}
+
+// --- Mail (FR-MAIL-001..002) ---
+model MailItem {
+  id         String   @id @default(cuid())
+  sender     String
+  subject    String
+  body       String
+  receivedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
+  @@index([sender]) // equality filter (AC-MAIL-003, NFR-PERF-002)
+}
+
+// --- Logs (FR-LOG-001..002) ---
+model LogEntry {
+  id        String   @id @default(cuid())
+  level     String // e.g. info|warn|error (validated by zod, stored as string)
+  source    String
+  message   String
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([timestamp, id]) // sort + keyset pagination (AC-LOG-003/004)
+  @@index([level]) // equality filter (AC-LOG-002)
+  @@index([source]) // equality filter (AC-LOG-002)
+}
+
+// --- Alerts (FR-ALR-001..003) ---
+model AlertCategory {
+  id        String   @id @default(cuid())
+  name      String
+  alerts    Alert[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Alert {
+  id              String         @id @default(cuid())
+  alertCategoryId String?
+  alertCategory   AlertCategory? @relation(fields: [alertCategoryId], references: [id], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
+  severity        String
+  source          String
+  message         String
+  timestamp       DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+
+  @@index([timestamp, id]) // sort + keyset pagination (AC-ALR-005/006)
+  @@index([alertCategoryId]) // filter by category (AC-ALR-004)
+  @@index([severity]) // filter by severity (AC-ALR-004)
+}
+
+// --- Webhook (FR-WH-001..002) ---
+model WebhookToken {
+  id              String           @id @default(cuid())
+  name            String
+  tokenHash       String           @unique // sha256 of secret; raw secret shown once (AC-WH-008), never stored
+  tokenPrefix     String // first chars, for UI identification only
+  createdAt       DateTime         @default(now())
+  revokedAt       DateTime? // AC-WH-009 revoke -> 401
+  lastUsedAt      DateTime?
+  idempotencyKeys IdempotencyKey[]
+}
+
+model IdempotencyKey {
+  id         String       @id @default(cuid())
+  tokenId    String
+  token      WebhookToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  key        String // client-supplied Idempotency-Key
+  targetType String // mail | message | log | alert
+  targetId   String // id of the created entry, returned on replay
+  createdAt  DateTime     @default(now())
+
+  @@unique([tokenId, key]) // AC-WH-004 per-token scoping; DB uniqueness = race-safe dedup
+}

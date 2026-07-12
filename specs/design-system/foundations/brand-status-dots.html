@@ -1,0 +1,22 @@
+<!-- @dsCard group="Brand" viewport="700x140" name="Status dots" subtitle="State carried by colored circles, never emoji. Live states pulse." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:22px;font-family:var(--font-body);background:oklch(var(--background-50));display:flex;gap:28px;align-items:center;}
+  .g{display:flex;align-items:center;gap:8px;font-size:13px;color:oklch(var(--foreground-700));}
+  .dot{width:8px;height:8px;border-radius:9999px;}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+  .pulse{animation:p 1.4s ease-in-out infinite;}
+</style>
+</head>
+<body>
+  <div class="g"><span class="dot" style="background:oklch(var(--accent-500))"></span>Онлайн</div>
+  <div class="g"><span class="dot pulse" style="background:oklch(var(--amber-500))"></span>Деградация</div>
+  <div class="g"><span class="dot pulse" style="background:oklch(var(--red-500))"></span>Офлайн</div>
+  <div class="g"><span class="dot" style="background:oklch(var(--secondary-400))"></span>Остановлен</div>
+  <div class="g"><span class="dot pulse" style="background:oklch(var(--primary-400))"></span>Starting…</div>
+</body>
+</html>

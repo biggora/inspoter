@@ -1,0 +1,24 @@
+<!-- @dsCard group="Spacing" viewport="700x140" name="Spacing scale" subtitle="4px base grid. Compact controls, 16–20px card padding." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:18px 20px;font-family:var(--font-body);background:oklch(var(--background-50));display:flex;gap:16px;align-items:flex-end;}
+  .g{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .bar{background:oklch(var(--primary-400));border-radius:2px;width:100%;}
+  .n{font-family:var(--font-mono);font-size:10px;color:oklch(var(--foreground-400));}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:6px;width:40px;}
+</style>
+</head>
+<body>
+  <div id="s" style="display:flex;gap:14px;align-items:flex-end;"></div>
+  <script>
+    const t=[['1',4],['2',8],['3',12],['4',16],['5',20],['6',24],['8',32],['10',40],['12',48]];
+    document.getElementById('s').innerHTML=t.map(([n,px])=>
+      '<div class="cell"><div class="bar" style="height:'+px+'px"></div><span class="n">'+px+'</span><span class="n" style="color:oklch(var(--foreground-300))">'+n+'</span></div>'
+    ).join('');
+  <\/script>
+</body>
+</html>

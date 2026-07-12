@@ -1,0 +1,6 @@
+/* ==========================================================================
+   Inspot — Webfonts
+   All three families are Google Fonts (production loads them via <link>).
+   Importing here declares them to the design-system compiler's font index.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Colors" viewport="700x160" name="Semantic status" subtitle="How the ramps map to meaning: teal=ok, amber=warn, terracotta=danger, sand=idle." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:16px;font-family:var(--font-body);background:oklch(var(--background-50));}
+  .row{display:flex;gap:10px;}
+  .cell{flex:1;border:1px solid oklch(var(--background-200));border-radius:var(--radius-lg);padding:12px;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;font-size:12px;font-weight:500;}
+  .dot{width:6px;height:6px;border-radius:9999px;}
+  .lab{font-size:11px;color:oklch(var(--foreground-400));margin-top:10px;font-family:var(--font-mono);}
+  .t{font-size:11px;color:oklch(var(--foreground-500));margin-top:4px;}
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="cell">
+      <span class="pill" style="background:oklch(var(--accent-100));color:oklch(var(--accent-700))"><span class="dot" style="background:oklch(var(--accent-500))"></span>Онлайн</span>
+      <div class="lab">accent-100 / 700 · dot 500</div>
+      <div class="t">OK · healthy · online</div>
+    </div>
+    <div class="cell">
+      <span class="pill" style="background:oklch(var(--amber-500) / .18);color:oklch(var(--amber-700))"><span class="dot" style="background:oklch(var(--amber-500))"></span>Деградация</span>
+      <div class="lab">amber-500/.18 / 700</div>
+      <div class="t">Warning · degraded</div>
+    </div>
+    <div class="cell">
+      <span class="pill" style="background:oklch(var(--red-500) / .16);color:oklch(var(--red-700))"><span class="dot" style="background:oklch(var(--red-500))"></span>Офлайн</span>
+      <div class="lab">red-500/.16 / 700</div>
+      <div class="t">Danger · error · offline</div>
+    </div>
+    <div class="cell">
+      <span class="pill" style="background:oklch(var(--secondary-100));color:oklch(var(--secondary-700))"><span class="dot" style="background:oklch(var(--secondary-400))"></span>Остановлен</span>
+      <div class="lab">secondary-100 / 700</div>
+      <div class="t">Idle · stopped · neutral</div>
+    </div>
+  </div>
+</body>
+</html>

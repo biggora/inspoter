@@ -1,0 +1,23 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Tints in use" subtitle="The dominant device: a -100 fill under a -600/700 icon or label." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:16px;font-family:var(--font-body);background:oklch(var(--background-50));display:flex;gap:14px;align-items:center;}
+  .tile{width:40px;height:40px;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .g{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .n{font-size:10px;color:oklch(var(--foreground-400));font-family:var(--font-mono);}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css">
+</head>
+<body>
+  <div class="g"><div class="tile" style="background:oklch(var(--primary-100));color:oklch(var(--primary-600))"><i class="ri-server-line"></i></div><span class="n">primary</span></div>
+  <div class="g"><div class="tile" style="background:oklch(var(--accent-100));color:oklch(var(--accent-600))"><i class="ri-global-line"></i></div><span class="n">accent</span></div>
+  <div class="g"><div class="tile" style="background:oklch(var(--secondary-100));color:oklch(var(--secondary-600))"><i class="ri-hard-drive-3-line"></i></div><span class="n">secondary</span></div>
+  <div class="g"><div class="tile" style="background:oklch(var(--amber-500) / .18);color:oklch(var(--amber-700))"><i class="ri-alert-line"></i></div><span class="n">amber</span></div>
+  <div class="g"><div class="tile" style="background:oklch(var(--red-500) / .16);color:oklch(var(--red-600))"><i class="ri-close-circle-line"></i></div><span class="n">red</span></div>
+  <div class="g"><div class="tile" style="background:oklch(var(--background-100));color:oklch(var(--foreground-500))"><i class="ri-settings-4-line"></i></div><span class="n">neutral</span></div>
+</body>
+</html>
