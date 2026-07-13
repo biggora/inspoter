@@ -26,7 +26,11 @@ interface BookmarkCardProps {
 // -interactive markup while keeping "click anywhere on the card" behavior
 // and a real, natively-focusable link with the bookmark's name as its
 // accessible name).
-export function BookmarkCard({ bookmark, onEdit, onDelete }: BookmarkCardProps) {
+export function BookmarkCard({
+  bookmark,
+  onEdit,
+  onDelete,
+}: BookmarkCardProps) {
   return (
     <div className="group/card relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-(--border-active) hover:bg-(--bg-hover)">
       <a

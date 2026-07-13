@@ -1,10 +1,10 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Remix Icon class, e.g. "ri-moon-line". Required. */
   icon: string;
   /** @default "md" */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   /** Add a 1px resting border (menu-trigger look). @default false */
   bordered?: boolean;
 }

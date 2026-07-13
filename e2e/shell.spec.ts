@@ -21,7 +21,9 @@ test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
   await login(page);
   const nav = page.getByRole("navigation");
   for (const section of SECTIONS) {
-    await expect(nav.getByRole("link", { name: section, exact: true })).toBeVisible();
+    await expect(
+      nav.getByRole("link", { name: section, exact: true }),
+    ).toBeVisible();
   }
 });
 
@@ -30,14 +32,21 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
 }) => {
   await login(page);
   await page.evaluate(() => {
-    (window as unknown as { __modeANoReloadMarker?: boolean }).__modeANoReloadMarker = true;
+    (
+      window as unknown as { __modeANoReloadMarker?: boolean }
+    ).__modeANoReloadMarker = true;
   });
 
-  await page.getByRole("navigation").getByRole("link", { name: "Domains", exact: true }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Domains", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/domains/);
 
   const markerSurvived = await page.evaluate(
-    () => (window as unknown as { __modeANoReloadMarker?: boolean }).__modeANoReloadMarker === true,
+    () =>
+      (window as unknown as { __modeANoReloadMarker?: boolean })
+        .__modeANoReloadMarker === true,
   );
   expect(markerSurvived).toBe(true);
 });
@@ -53,11 +62,18 @@ const PLACEHOLDER_SECTIONS: Array<[path: string, label: string]> = [
 
 test.describe("AC-SHELL-003: not-yet-implemented sections show a coming-soon placeholder", () => {
   for (const [path, label] of PLACEHOLDER_SECTIONS) {
-    test(`${label} renders a placeholder, not an error or blank screen`, async ({ page }) => {
+    test(`${label} renders a placeholder, not an error or blank screen`, async ({
+      page,
+    }) => {
       await login(page);
       const response = await page.goto(`/${path}`);
-      expect(response?.status(), `${path} should resolve (not 404/500)`).toBeLessThan(400);
-      await expect(page.getByText(new RegExp(`${label}\\s*(—|-)\\s*coming soon`, "i"))).toBeVisible();
+      expect(
+        response?.status(),
+        `${path} should resolve (not 404/500)`,
+      ).toBeLessThan(400);
+      await expect(
+        page.getByText(new RegExp(`${label}\\s*(—|-)\\s*coming soon`, "i")),
+      ).toBeVisible();
     });
   }
 });

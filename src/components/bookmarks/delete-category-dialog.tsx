@@ -54,7 +54,9 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete &ldquo;{category?.name}&rdquo;?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Delete &ldquo;{category?.name}&rdquo;?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {count > 0
               ? `This category contains ${count} bookmark${count === 1 ? "" : "s"}. Deleting it will also delete all bookmarks inside it. This cannot be undone.`
@@ -63,7 +65,11 @@ export function DeleteCategoryDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={handleConfirm} disabled={submitting}>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={submitting}
+          >
             {submitting ? "Deleting…" : "Delete category"}
           </AlertDialogAction>
         </AlertDialogFooter>

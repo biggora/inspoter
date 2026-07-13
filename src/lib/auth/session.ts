@@ -30,7 +30,9 @@ function isMissingRequestScopeError(error: unknown): boolean {
 export async function createSession(operatorId: string): Promise<Session> {
   const id = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  const session = await db.session.create({ data: { id, operatorId, expiresAt } });
+  const session = await db.session.create({
+    data: { id, operatorId, expiresAt },
+  });
 
   try {
     const cookieStore = await cookies();
@@ -58,7 +60,9 @@ export async function readSessionCookie(): Promise<string | undefined> {
   return cookieStore.get(SESSION_COOKIE_NAME)?.value;
 }
 
-export async function getValidSession(sessionId: string): Promise<Session | null> {
+export async function getValidSession(
+  sessionId: string,
+): Promise<Session | null> {
   const session = await db.session.findUnique({ where: { id: sessionId } });
   if (!session || session.expiresAt.getTime() <= Date.now()) return null;
   return session;
@@ -76,4 +80,14 @@ export async function clearSessionCookie(): Promise<void> {
     if (!isMissingRequestScopeError(error)) throw error;
     // See createSession(): no-op outside a Next.js request scope.
   }
+}
+
+export async function switchWorkspace(
+  sessionId: string,
+  workspaceId: string,
+): Promise<void> {
+  await db.session.update({
+    where: { id: sessionId },
+    data: { activeWorkspaceId: workspaceId },
+  });
 }

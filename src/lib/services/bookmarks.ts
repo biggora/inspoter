@@ -1,15 +1,6 @@
 import { db } from "@/lib/db";
 import type { Bookmark, Category } from "@/generated/prisma/client";
 
-// Bookmarks service (architecture.md §6, ADR-012) — the only service module
-// the Bookmarks server component and the /api/{categories,bookmarks} route
-// handlers are allowed to call (routes never touch Prisma directly).
-// Real bodies (plan.md §5.3 Step 8): `list()` reads grouped
-// categories+bookmarks (AC-BM-012); category delete cascades to its
-// bookmarks at the DB level (schema `onDelete: Cascade`, AC-BM-004).
-
-/** A category grouped with its bookmarks, as returned by `list()` for the
- * Bookmarks server component's grouped display (AC-BM-012). */
 export type CategoryWithBookmarks = Category & { bookmarks: Bookmark[] };
 
 export interface CreateCategoryInput {
@@ -36,31 +27,44 @@ export interface UpdateBookmarkInput {
   categoryId?: string;
 }
 
-export async function list(): Promise<CategoryWithBookmarks[]> {
+export async function list(
+  workspaceId: string,
+): Promise<CategoryWithBookmarks[]> {
   return db.category.findMany({
+    where: { workspaceId },
     orderBy: { position: "asc" },
     include: { bookmarks: { orderBy: { position: "asc" } } },
   });
 }
 
-export async function createCategory(input: CreateCategoryInput): Promise<Category> {
-  return db.category.create({ data: { name: input.name } });
+export async function createCategory(
+  workspaceId: string,
+  input: CreateCategoryInput,
+): Promise<Category> {
+  return db.category.create({ data: { name: input.name, workspaceId } });
 }
 
 export async function renameCategory(
   id: string,
+  workspaceId: string,
   input: RenameCategoryInput,
 ): Promise<Category> {
-  return db.category.update({ where: { id }, data: { name: input.name } });
+  return db.category.update({
+    where: { id, workspaceId },
+    data: { name: input.name },
+  });
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  // Cascade to bookmarks is enforced at the DB level (schema.prisma
-  // Bookmark.category onDelete: Cascade) — no orphans remain (AC-BM-004).
-  await db.category.delete({ where: { id } });
+export async function deleteCategory(
+  id: string,
+  workspaceId: string,
+): Promise<void> {
+  await db.category.delete({ where: { id, workspaceId } });
 }
 
-export async function createBookmark(input: CreateBookmarkInput): Promise<Bookmark> {
+export async function createBookmark(
+  input: CreateBookmarkInput,
+): Promise<Bookmark> {
   return db.bookmark.create({
     data: {
       name: input.name,
@@ -82,8 +86,12 @@ export async function updateBookmark(
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.icon !== undefined ? { icon: input.icon } : {}),
-      ...(input.description !== undefined ? { description: input.description } : {}),
-      ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description }
+        : {}),
+      ...(input.categoryId !== undefined
+        ? { categoryId: input.categoryId }
+        : {}),
     },
   });
 }

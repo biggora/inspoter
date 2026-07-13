@@ -26,7 +26,9 @@ export async function login(
   // (success, AC-AUTH-002) or the error banner appearing (rejection,
   // AC-AUTH-003) — before returning, so every caller sees a stable state.
   await Promise.race([
-    page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 10_000 }),
+    page.waitForURL((url) => !url.pathname.startsWith("/login"), {
+      timeout: 10_000,
+    }),
     page
       .getByText(/invalid username or password/i)
       .waitFor({ state: "visible", timeout: 10_000 }),

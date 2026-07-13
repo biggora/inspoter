@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-modal-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;
@@ -23,9 +23,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-modal-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-modal-css';
+    if (document.getElementById("insp-modal-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-modal-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -35,23 +35,40 @@ function useCSS() {
  * Modal — centered dialog with scrim, header (title + close), body and an
  * optional footer action row. Closes on scrim click and Escape.
  */
-export function Modal({ open, onClose, title, size = 'md', footer, children }) {
+export function Modal({ open, onClose, title, size = "md", footer, children }) {
   useCSS();
   React.useEffect(() => {
     if (!open) return;
-    const h = (e) => { if (e.key === 'Escape') onClose && onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
+    const h = (e) => {
+      if (e.key === "Escape") onClose && onClose();
+    };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
   }, [open, onClose]);
 
   if (!open) return null;
   return (
     <div className="insp-modal-overlay">
-      <div className="insp-modal-scrim" onClick={onClose} aria-hidden="true"></div>
-      <div className={`insp-modal insp-modal--${size}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className="insp-modal-scrim"
+        onClick={onClose}
+        aria-hidden="true"
+      ></div>
+      <div
+        className={`insp-modal insp-modal--${size}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="insp-modal__head">
           <span className="insp-modal__title">{title}</span>
-          <button className="insp-modal__close" onClick={onClose} aria-label="Закрыть"><i className="ri-close-line"></i></button>
+          <button
+            className="insp-modal__close"
+            onClick={onClose}
+            aria-label="Закрыть"
+          >
+            <i className="ri-close-line"></i>
+          </button>
         </div>
         <div className="insp-modal__body">{children}</div>
         {footer && <div className="insp-modal__foot">{footer}</div>}

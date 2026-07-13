@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
-const LOGOUT_FLAG_KEY = 'inspot_logged_out';
+const LOGOUT_FLAG_KEY = "inspot_logged_out";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, isLoading, error, login, clearError } = useAuth();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [logoutNotice, setLogoutNotice] = useState(false);
 
@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(LOGOUT_FLAG_KEY) === '1') {
+      if (localStorage.getItem(LOGOUT_FLAG_KEY) === "1") {
         localStorage.removeItem(LOGOUT_FLAG_KEY);
         setLogoutNotice(true);
       }
@@ -29,8 +29,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const next = searchParams.get('next');
-      navigate(next || '/bookmarks', { replace: true });
+      const next = searchParams.get("next");
+      navigate(next || "/bookmarks", { replace: true });
     }
   }, [isAuthenticated, navigate, searchParams]);
 
@@ -52,7 +52,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background-50 px-4">
       <div className="w-full max-w-sm animate-scale-in">
         <div className="text-center mb-8">
-          <h1 className="font-heading text-2xl font-bold text-foreground-900">Inspot</h1>
+          <h1 className="font-heading text-2xl font-bold text-foreground-900">
+            Inspot
+          </h1>
           <p className="mt-1 text-sm text-foreground-500">Панель управления</p>
         </div>
 
@@ -78,7 +80,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-foreground-700 mb-1.5">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-foreground-700 mb-1.5"
+            >
               Имя пользователя
             </label>
             <input
@@ -98,13 +103,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground-700 mb-1.5">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-foreground-700 mb-1.5"
+            >
               Пароль
             </label>
             <div className="relative">
               <input
                 id="password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => {
@@ -120,9 +128,11 @@ export default function LoginPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer disabled:opacity-50"
-                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
               >
-                <i className={`${showPassword ? 'ri-eye-off-line' : 'ri-eye-line'} text-base`}></i>
+                <i
+                  className={`${showPassword ? "ri-eye-off-line" : "ri-eye-line"} text-base`}
+                ></i>
               </button>
             </div>
           </div>
@@ -138,7 +148,7 @@ export default function LoginPage() {
                 Вход...
               </span>
             ) : (
-              'Войти'
+              "Войти"
             )}
           </button>
         </form>

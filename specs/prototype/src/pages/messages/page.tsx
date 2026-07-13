@@ -1,12 +1,18 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { mockCategories, getChannelMessages, getChannelById, getCategoryByChannelId, teamMembers } from '@/mocks/messages';
-import type { Category, Channel, Message } from '@/mocks/messages';
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  mockCategories,
+  getChannelMessages,
+  getChannelById,
+  getCategoryByChannelId,
+  teamMembers,
+} from "@/mocks/messages";
+import type { Category, Channel, Message } from "@/mocks/messages";
 
-type PageState = 'loading' | 'error' | 'ready';
+type PageState = "loading" | "error" | "ready";
 
 interface NotificationState {
   message: string;
-  variant: 'success' | 'error';
+  variant: "success" | "error";
 }
 
 function formatMessageTime(iso: string): string {
@@ -17,20 +23,20 @@ function formatMessageTime(iso: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Только что';
+  if (diffMins < 1) return "Только что";
   if (diffMins < 60) return `${diffMins} мин. назад`;
   if (diffHours < 24) return `${diffHours} ч. назад`;
   if (diffDays < 7) return `${diffDays} дн. назад`;
 
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
 function formatMessageFull(iso: string): string {
-  return new Date(iso).toLocaleString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Date(iso).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -46,17 +52,27 @@ function formatDateSeparator(iso: string): string {
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
 
-  if (diffDays === 0) return 'Сегодня';
-  if (diffDays === 1) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (diffDays === 0) return "Сегодня";
+  if (diffDays === 1) return "Вчера";
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default function MessagesPage() {
-  const [pageState, setPageState] = useState<PageState>('loading');
+  const [pageState, setPageState] = useState<PageState>("loading");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [notification, setNotification] = useState<NotificationState | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
+    null,
+  );
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [notification, setNotification] = useState<NotificationState | null>(
+    null,
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -69,19 +85,24 @@ export default function MessagesPage() {
 
   // Load data
   const loadData = useCallback(() => {
-    setPageState('loading');
+    setPageState("loading");
     setTimeout(() => {
       const shouldFail = false;
       if (shouldFail) {
-        setPageState('error');
+        setPageState("error");
       } else {
-        setCategories(mockCategories.map((c) => ({
-          ...c,
-          channels: c.channels.map((ch) => ({ ...ch })),
-        })));
-        setPageState('ready');
+        setCategories(
+          mockCategories.map((c) => ({
+            ...c,
+            channels: c.channels.map((ch) => ({ ...ch })),
+          })),
+        );
+        setPageState("ready");
         // Auto-select first channel
-        if (mockCategories.length > 0 && mockCategories[0].channels.length > 0) {
+        if (
+          mockCategories.length > 0 &&
+          mockCategories[0].channels.length > 0
+        ) {
           setSelectedChannelId(mockCategories[0].channels[0].id);
         }
       }
@@ -95,7 +116,7 @@ export default function MessagesPage() {
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [selectedChannelId]);
 
@@ -119,54 +140,63 @@ export default function MessagesPage() {
       prev.map((cat) => ({
         ...cat,
         channels: cat.channels.map((ch) =>
-          ch.id === channelId ? { ...ch, unreadCount: 0 } : ch
+          ch.id === channelId ? { ...ch, unreadCount: 0 } : ch,
         ),
-      }))
+      })),
     );
   }, []);
 
   // Current data
   const selectedChannel = useMemo(
     () => (selectedChannelId ? getChannelById(selectedChannelId) : undefined),
-    [selectedChannelId]
+    [selectedChannelId],
   );
 
   const selectedCategory = useMemo(
-    () => (selectedChannelId ? getCategoryByChannelId(selectedChannelId) : undefined),
-    [selectedChannelId]
+    () =>
+      selectedChannelId ? getCategoryByChannelId(selectedChannelId) : undefined,
+    [selectedChannelId],
   );
 
   const channelMessages = useMemo(
     () => (selectedChannelId ? getChannelMessages(selectedChannelId) : []),
-    [selectedChannelId]
+    [selectedChannelId],
   );
 
   const totalUnread = useMemo(
-    () => categories.reduce((sum, cat) => sum + cat.channels.reduce((s, ch) => s + ch.unreadCount, 0), 0),
-    [categories]
+    () =>
+      categories.reduce(
+        (sum, cat) =>
+          sum + cat.channels.reduce((s, ch) => s + ch.unreadCount, 0),
+        0,
+      ),
+    [categories],
   );
 
   // Handle message input
-  const [messageInput, setMessageInput] = useState('');
+  const [messageInput, setMessageInput] = useState("");
   const handleSendMessage = useCallback(() => {
     const trimmed = messageInput.trim();
     if (!trimmed || !selectedChannelId) return;
-    setNotification({ message: 'Демо-режим: сообщения только для чтения', variant: 'error' });
-    setMessageInput('');
+    setNotification({
+      message: "Демо-режим: сообщения только для чтения",
+      variant: "error",
+    });
+    setMessageInput("");
   }, [messageInput, selectedChannelId]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSendMessage();
       }
     },
-    [handleSendMessage]
+    [handleSendMessage],
   );
 
   // Loading skeletons
-  if (pageState === 'loading') {
+  if (pageState === "loading") {
     return (
       <div className="flex h-[calc(100vh-3.5rem)]">
         {/* Sidebar skeleton */}
@@ -221,14 +251,16 @@ export default function MessagesPage() {
   }
 
   // Error state
-  if (pageState === 'error') {
+  if (pageState === "error") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
         <div className="text-center max-w-sm animate-scale-in">
           <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
             <i className="ri-message-3-line text-2xl text-primary-600"></i>
           </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">Не удалось загрузить сообщения</h3>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Не удалось загрузить сообщения
+          </h3>
           <p className="text-sm text-foreground-500 mb-6">
             Проверьте подключение к серверу сообщений и попробуйте снова.
           </p>
@@ -251,16 +283,18 @@ export default function MessagesPage() {
       {notification && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
-            notification.variant === 'success'
-              ? 'bg-accent-100/80 text-accent-800'
-              : 'bg-primary-100/70 text-primary-800'
+            notification.variant === "success"
+              ? "bg-accent-100/80 text-accent-800"
+              : "bg-primary-100/70 text-primary-800"
           }`}
           role="status"
           aria-live="polite"
         >
           <i
             className={`${
-              notification.variant === 'success' ? 'ri-check-line' : 'ri-error-warning-line'
+              notification.variant === "success"
+                ? "ri-check-line"
+                : "ri-error-warning-line"
             } w-5 h-5 flex items-center justify-center`}
           ></i>
           {notification.message}
@@ -272,7 +306,9 @@ export default function MessagesPage() {
         {/* Channels header */}
         <div className="px-4 py-3 border-b border-background-100">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-sm font-semibold text-foreground-900">Каналы</h3>
+            <h3 className="font-heading text-sm font-semibold text-foreground-900">
+              Каналы
+            </h3>
             {totalUnread > 0 && (
               <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-[10px] font-bold text-background-50">
                 {totalUnread}
@@ -296,10 +332,12 @@ export default function MessagesPage() {
                 >
                   <i
                     className={`ri-arrow-down-s-line w-3.5 h-3.5 flex items-center justify-center transition-transform ${
-                      isCollapsed ? '-rotate-90' : ''
+                      isCollapsed ? "-rotate-90" : ""
                     }`}
                   ></i>
-                  <span className="uppercase tracking-wide text-[11px]">{cat.name}</span>
+                  <span className="uppercase tracking-wide text-[11px]">
+                    {cat.name}
+                  </span>
                   {isCollapsed && hasUnread && (
                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500"></span>
                   )}
@@ -313,12 +351,14 @@ export default function MessagesPage() {
                       onClick={() => selectChannel(ch.id)}
                       className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer group ${
                         selectedChannelId === ch.id
-                          ? 'bg-primary-100/70 text-primary-700'
-                          : 'text-foreground-600 hover:bg-background-100 hover:text-foreground-900'
+                          ? "bg-primary-100/70 text-primary-700"
+                          : "text-foreground-600 hover:bg-background-100 hover:text-foreground-900"
                       }`}
                       title={ch.description}
                     >
-                      <span className="text-base font-medium text-foreground-400 shrink-0">#</span>
+                      <span className="text-base font-medium text-foreground-400 shrink-0">
+                        #
+                      </span>
                       <span className="truncate">{ch.name}</span>
                       {ch.unreadCount > 0 && (
                         <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary-500 text-[10px] font-bold text-background-50">
@@ -339,7 +379,9 @@ export default function MessagesPage() {
               <span className="text-xs font-semibold text-accent-700">A</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground-900 truncate">admin</p>
+              <p className="text-sm font-medium text-foreground-900 truncate">
+                admin
+              </p>
               <p className="text-[11px] text-foreground-400 truncate">В сети</p>
             </div>
           </div>
@@ -352,13 +394,17 @@ export default function MessagesPage() {
           <>
             {/* Channel header */}
             <div className="px-5 py-3 border-b border-background-100 flex items-center gap-3 shrink-0">
-              <span className="text-lg font-semibold text-foreground-400">#</span>
+              <span className="text-lg font-semibold text-foreground-400">
+                #
+              </span>
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm font-semibold text-foreground-900 truncate">
                   {selectedChannel.name}
                 </h3>
                 {selectedChannel.description && (
-                  <p className="text-[11px] text-foreground-400 truncate">{selectedChannel.description}</p>
+                  <p className="text-[11px] text-foreground-400 truncate">
+                    {selectedChannel.description}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -383,16 +429,21 @@ export default function MessagesPage() {
                       Нет сообщений
                     </h4>
                     <p className="text-xs text-foreground-500">
-                      В канале <strong>#{selectedChannel.name}</strong> пока нет сообщений. Напишите первое!
+                      В канале <strong>#{selectedChannel.name}</strong> пока нет
+                      сообщений. Напишите первое!
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-0.5">
                   {channelMessages.map((msg, idx) => {
-                    const showDateSep = shouldShowDateSeparator(channelMessages, idx);
+                    const showDateSep = shouldShowDateSeparator(
+                      channelMessages,
+                      idx,
+                    );
                     const initials = msg.authorInitials;
-                    const memberColor = teamMembers[initials]?.color || 'oklch(0.55 0.12 100)';
+                    const memberColor =
+                      teamMembers[initials]?.color || "oklch(0.55 0.12 100)";
 
                     return (
                       <div key={msg.id}>
@@ -436,40 +487,73 @@ export default function MessagesPage() {
                                 __html: msg.content
                                   .replace(
                                     /\*\*(.+?)\*\*/g,
-                                    '<strong class="font-semibold text-foreground-950">$1</strong>'
+                                    '<strong class="font-semibold text-foreground-950">$1</strong>',
                                   )
                                   .replace(
                                     /`([^`]+)`/g,
-                                    '<code class="px-1 py-0.5 rounded bg-background-100 text-[13px] text-primary-700 font-mono">$1</code>'
+                                    '<code class="px-1 py-0.5 rounded bg-background-100 text-[13px] text-primary-700 font-mono">$1</code>',
                                   )
                                   .replace(
                                     /## (.+)/g,
-                                    '<span class="text-base font-heading font-semibold text-foreground-950 block mt-1 mb-0.5">$1</span>'
+                                    '<span class="text-base font-heading font-semibold text-foreground-950 block mt-1 mb-0.5">$1</span>',
                                   )
                                   .replace(
                                     /### (.+)/g,
-                                    '<span class="text-sm font-heading font-semibold text-foreground-900 block mt-1 mb-0.5">$1</span>'
+                                    '<span class="text-sm font-heading font-semibold text-foreground-900 block mt-1 mb-0.5">$1</span>',
                                   )
                                   .replace(
                                     /\|(.+)\|/g,
-                                    '<span class="text-accent-700">|$1|</span>'
+                                    '<span class="text-accent-700">|$1|</span>',
                                   )
                                   .replace(
                                     /(https?:\/\/\S+)/g,
-                                    '<a href="$1" class="text-accent-600 hover:text-accent-700 underline underline-offset-2 transition-colors" rel="nofollow">$1</a>'
+                                    '<a href="$1" class="text-accent-600 hover:text-accent-700 underline underline-offset-2 transition-colors" rel="nofollow">$1</a>',
                                   )
-                                  .replace(/❌/g, '<span class="text-red-500">❌</span>')
-                                  .replace(/✅/g, '<span class="text-green-500">✅</span>')
-                                  .replace(/⚠️/g, '<span class="text-amber-500">⚠️</span>')
-                                  .replace(/🔴/g, '<span class="text-red-500">🔴</span>')
-                                  .replace(/🟢/g, '<span class="text-green-500">🟢</span>')
-                                  .replace(/🔍/g, '<span class="text-foreground-600">🔍</span>')
-                                  .replace(/🔐/g, '<span class="text-amber-600">🔐</span>')
-                                  .replace(/🔓/g, '<span class="text-red-500">🔓</span>')
-                                  .replace(/🛡/g, '<span class="text-accent-600">🛡</span>')
-                                  .replace(/📊/g, '<span class="text-foreground-600">📊</span>')
-                                  .replace(/📈/g, '<span class="text-green-500">📈</span>')
-                                  .replace(/\n/g, '<br/>'),
+                                  .replace(
+                                    /❌/g,
+                                    '<span class="text-red-500">❌</span>',
+                                  )
+                                  .replace(
+                                    /✅/g,
+                                    '<span class="text-green-500">✅</span>',
+                                  )
+                                  .replace(
+                                    /⚠️/g,
+                                    '<span class="text-amber-500">⚠️</span>',
+                                  )
+                                  .replace(
+                                    /🔴/g,
+                                    '<span class="text-red-500">🔴</span>',
+                                  )
+                                  .replace(
+                                    /🟢/g,
+                                    '<span class="text-green-500">🟢</span>',
+                                  )
+                                  .replace(
+                                    /🔍/g,
+                                    '<span class="text-foreground-600">🔍</span>',
+                                  )
+                                  .replace(
+                                    /🔐/g,
+                                    '<span class="text-amber-600">🔐</span>',
+                                  )
+                                  .replace(
+                                    /🔓/g,
+                                    '<span class="text-red-500">🔓</span>',
+                                  )
+                                  .replace(
+                                    /🛡/g,
+                                    '<span class="text-accent-600">🛡</span>',
+                                  )
+                                  .replace(
+                                    /📊/g,
+                                    '<span class="text-foreground-600">📊</span>',
+                                  )
+                                  .replace(
+                                    /📈/g,
+                                    '<span class="text-green-500">📈</span>',
+                                  )
+                                  .replace(/\n/g, "<br/>"),
                               }}
                             />
                           </div>

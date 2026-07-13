@@ -5,10 +5,16 @@ One-liner: Centered dialog with scrim, header, body, and optional footer actions
   open={open}
   onClose={close}
   title="Остановить сервер"
-  footer={<>
-    <Button variant="ghost" onClick={close}>Отмена</Button>
-    <Button variant="primary" onClick={confirm}>Подтвердить</Button>
-  </>}
+  footer={
+    <>
+      <Button variant="ghost" onClick={close}>
+        Отмена
+      </Button>
+      <Button variant="primary" onClick={confirm}>
+        Подтвердить
+      </Button>
+    </>
+  }
 >
   Сервер «web-prod-01» будет остановлен. Сервисы станут недоступны.
 </Modal>

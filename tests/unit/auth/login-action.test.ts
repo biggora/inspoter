@@ -16,7 +16,9 @@ const password = "Test1234!";
 const createdOperatorIds: string[] = [];
 
 afterAll(async () => {
-  await db.session.deleteMany({ where: { operatorId: { in: createdOperatorIds } } });
+  await db.session.deleteMany({
+    where: { operatorId: { in: createdOperatorIds } },
+  });
   await db.operator.deleteMany({ where: { id: { in: createdOperatorIds } } });
 });
 

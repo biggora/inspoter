@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-toast{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);
@@ -13,25 +13,39 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-toast-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-toast-css';
+    if (document.getElementById("insp-toast-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-toast-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
 }
 
-const ICON = { success: 'ri-check-line', error: 'ri-error-warning-line', info: 'ri-information-line' };
+const ICON = {
+  success: "ri-check-line",
+  error: "ri-error-warning-line",
+  info: "ri-information-line",
+};
 
 /**
  * Toast — the transient notification that slides in top-right. Tinted, no
  * shadow. `fixed` positions it; drop it unset to place inside your own anchor.
  */
-export function Toast({ variant = 'success', icon, fixed = true, children, className = '' }) {
+export function Toast({
+  variant = "success",
+  icon,
+  fixed = true,
+  children,
+  className = "",
+}) {
   useCSS();
   const i = icon || ICON[variant];
   return (
-    <div className={`${fixed ? 'insp-toast-fixed' : ''} ${className}`} role="status" aria-live="polite">
+    <div
+      className={`${fixed ? "insp-toast-fixed" : ""} ${className}`}
+      role="status"
+      aria-live="polite"
+    >
       <div className={`insp-toast insp-toast--${variant}`}>
         <i className={`${i} insp-toast__i`}></i>
         <span>{children}</span>

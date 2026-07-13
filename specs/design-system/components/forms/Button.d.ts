@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * Inspot action button. Terracotta `primary` for the single main action per view,
@@ -8,9 +8,9 @@ import * as React from 'react';
  */
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style. @default "primary" */
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: "primary" | "secondary" | "ghost" | "danger";
   /** Control height. @default "md" */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   /** Remix Icon class shown before the label, e.g. "ri-add-line". */
   icon?: string;
   /** Remix Icon class shown after the label, e.g. "ri-arrow-right-line". */

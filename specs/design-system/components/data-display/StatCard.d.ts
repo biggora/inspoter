@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * Dashboard KPI tile.
@@ -17,7 +17,7 @@ export interface StatCardProps {
   /** Small caption under the number. */
   subtitle?: string;
   /** Icon-tile + accent tone. @default "primary" */
-  tone?: 'primary' | 'accent' | 'secondary' | 'amber' | 'red';
+  tone?: "primary" | "accent" | "secondary" | "amber" | "red";
   /** Makes the tile a button (dashboards navigate on click). */
   onClick?: () => void;
   /** Extra content slot below the number (dot legends, <ProgressBar/>). */

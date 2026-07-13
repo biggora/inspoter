@@ -10,10 +10,10 @@ export interface Email {
 
 export const mockEmails: Email[] = [
   {
-    id: 'mail-01',
-    from: 'alerts@monitoring.inspot.app',
-    fromName: 'Inspot Monitoring',
-    subject: '[CRITICAL] web-prod-01 CPU usage exceeded 95% threshold',
+    id: "mail-01",
+    from: "alerts@monitoring.inspot.app",
+    fromName: "Inspot Monitoring",
+    subject: "[CRITICAL] web-prod-01 CPU usage exceeded 95% threshold",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #dc2626;">🚨 Critical Alert — CPU Threshold Exceeded</h3>
       <p><strong>Server:</strong> web-prod-01 (49.12.34.56)</p>
@@ -31,14 +31,14 @@ export const mockEmails: Email[] = [
       </ul>
       <p style="color: #888; font-size: 0.85em;">This is an automated alert from Inspot Monitoring. Reply to this email to acknowledge.</p>
     </div>`,
-    receivedAt: '2026-07-12T09:34:00Z',
+    receivedAt: "2026-07-12T09:34:00Z",
     isRead: false,
   },
   {
-    id: 'mail-02',
-    from: 'noreply@hetzner.com',
-    fromName: 'Hetzner Cloud',
-    subject: 'Invoice #INV-2026-07 for July 2026 is now available',
+    id: "mail-02",
+    from: "noreply@hetzner.com",
+    fromName: "Hetzner Cloud",
+    subject: "Invoice #INV-2026-07 for July 2026 is now available",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>Your Hetzner Invoice is Ready</h3>
       <p>Dear customer,</p>
@@ -51,14 +51,14 @@ export const mockEmails: Email[] = [
       <p>The invoice will be charged automatically on the due date.</p>
       <p style="color: #888; font-size: 0.85em;">Hetzner Cloud — Invoice Department</p>
     </div>`,
-    receivedAt: '2026-07-12T08:15:00Z',
+    receivedAt: "2026-07-12T08:15:00Z",
     isRead: true,
   },
   {
-    id: 'mail-03',
-    from: 'security@cloudflare.com',
-    fromName: 'Cloudflare Security',
-    subject: 'DDoS attack mitigated for inspot.app — 2.4M requests blocked',
+    id: "mail-03",
+    from: "security@cloudflare.com",
+    fromName: "Cloudflare Security",
+    subject: "DDoS attack mitigated for inspot.app — 2.4M requests blocked",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>🛡 DDoS Attack Mitigated</h3>
       <p>A Layer 7 DDoS attack targeting <strong>inspot.app</strong> was automatically detected and mitigated by Cloudflare.</p>
@@ -71,14 +71,15 @@ export const mockEmails: Email[] = [
       <p>No origin server was impacted. All traffic was filtered at the edge.</p>
       <p><a href="#" style="color: #f48220;">View detailed attack report →</a></p>
     </div>`,
-    receivedAt: '2026-07-12T07:45:00Z',
+    receivedAt: "2026-07-12T07:45:00Z",
     isRead: false,
   },
   {
-    id: 'mail-04',
-    from: 'support@github.com',
-    fromName: 'GitHub',
-    subject: '[inspot/dashboard] Secret scanning alert — AWS key detected in commit a3f8c21',
+    id: "mail-04",
+    from: "support@github.com",
+    fromName: "GitHub",
+    subject:
+      "[inspot/dashboard] Secret scanning alert — AWS key detected in commit a3f8c21",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #dc2626;">⚠ Secret Scanning Alert</h3>
       <p>GitHub Secret Scanning detected an <strong>AWS Access Key</strong> in repository <strong>inspot/dashboard</strong>.</p>
@@ -89,14 +90,14 @@ export const mockEmails: Email[] = [
       <p>The secret has been <strong>automatically revoked</strong> and a new key has been generated. Please rotate the key in your deployment pipeline immediately.</p>
       <p style="color: #888; font-size: 0.85em;">GitHub Security Team</p>
     </div>`,
-    receivedAt: '2026-07-12T05:02:00Z',
+    receivedAt: "2026-07-12T05:02:00Z",
     isRead: true,
   },
   {
-    id: 'mail-05',
-    from: 'domains@godaddy.com',
-    fromName: 'GoDaddy Domains',
-    subject: 'Reminder: brand-site.com expires in 45 days — renew now',
+    id: "mail-05",
+    from: "domains@godaddy.com",
+    fromName: "GoDaddy Domains",
+    subject: "Reminder: brand-site.com expires in 45 days — renew now",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>Domain Expiration Reminder</h3>
       <p>Your domain <strong>brand-site.com</strong> will expire in <strong>45 days</strong> on <strong>September 25, 2026</strong>.</p>
@@ -108,14 +109,14 @@ export const mockEmails: Email[] = [
       </table>
       <p style="color: #888; font-size: 0.85em;">GoDaddy Domain Services</p>
     </div>`,
-    receivedAt: '2026-07-11T18:30:00Z',
+    receivedAt: "2026-07-11T18:30:00Z",
     isRead: true,
   },
   {
-    id: 'mail-06',
-    from: 'info@certify.letsencrypt.org',
+    id: "mail-06",
+    from: "info@certify.letsencrypt.org",
     fromName: "Let's Encrypt",
-    subject: 'Certificate renewal completed for 5 domains',
+    subject: "Certificate renewal completed for 5 domains",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>✅ SSL Certificate Renewal Successful</h3>
       <p>Certificates for the following domains were successfully renewed and deployed:</p>
@@ -128,14 +129,14 @@ export const mockEmails: Email[] = [
       </ul>
       <p>All renewals completed without errors. No manual intervention needed.</p>
     </div>`,
-    receivedAt: '2026-07-11T14:22:00Z',
+    receivedAt: "2026-07-11T14:22:00Z",
     isRead: true,
   },
   {
-    id: 'mail-07',
-    from: 'alerts@monitoring.inspot.app',
-    fromName: 'Inspot Monitoring',
-    subject: '[RESOLVED] web-prod-01 CPU usage returned to normal (23%)',
+    id: "mail-07",
+    from: "alerts@monitoring.inspot.app",
+    fromName: "Inspot Monitoring",
+    subject: "[RESOLVED] web-prod-01 CPU usage returned to normal (23%)",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #16a34a;">✅ Alert Resolved — CPU Usage Normalized</h3>
       <p>The previously reported high CPU usage on <strong>web-prod-01</strong> has returned to normal levels.</p>
@@ -145,14 +146,14 @@ export const mockEmails: Email[] = [
       <p><strong>Root cause:</strong> A background image processing job spawned too many worker processes. The job has been rate-limited.</p>
       <p style="color: #888; font-size: 0.85em;">Inspot Monitoring — Alert resolved automatically.</p>
     </div>`,
-    receivedAt: '2026-07-11T12:15:00Z',
+    receivedAt: "2026-07-11T12:15:00Z",
     isRead: true,
   },
   {
-    id: 'mail-08',
-    from: 'noreply@hetzner.com',
-    fromName: 'Hetzner Cloud',
-    subject: 'Scheduled maintenance — Nuremberg DC July 15, 02:00–04:00 UTC',
+    id: "mail-08",
+    from: "noreply@hetzner.com",
+    fromName: "Hetzner Cloud",
+    subject: "Scheduled maintenance — Nuremberg DC July 15, 02:00–04:00 UTC",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>🔧 Scheduled Maintenance Notice</h3>
       <p>We will be performing scheduled maintenance on our <strong>Nuremberg data center</strong>.</p>
@@ -165,14 +166,15 @@ export const mockEmails: Email[] = [
       <p>We do not anticipate any downtime, as redundant power feeds are in place. However, we recommend verifying backups before the window.</p>
       <p style="color: #888; font-size: 0.85em;">Hetzner Cloud Operations</p>
     </div>`,
-    receivedAt: '2026-07-11T10:00:00Z',
+    receivedAt: "2026-07-11T10:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-09',
-    from: 'support@cloudflare.com',
-    fromName: 'Cloudflare Support',
-    subject: 'Weekly traffic summary for inspot.app — 14.8M requests, 99.97% cached',
+    id: "mail-09",
+    from: "support@cloudflare.com",
+    fromName: "Cloudflare Support",
+    subject:
+      "Weekly traffic summary for inspot.app — 14.8M requests, 99.97% cached",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>📊 Weekly Traffic Report — inspot.app</h3>
       <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
@@ -184,14 +186,15 @@ export const mockEmails: Email[] = [
       </table>
       <p>Your site is performing well with near-perfect cache hit rate. No configuration changes recommended.</p>
     </div>`,
-    receivedAt: '2026-07-11T08:00:00Z',
+    receivedAt: "2026-07-11T08:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-10',
-    from: 'info@docker.com',
-    fromName: 'Docker Hub',
-    subject: 'Image scan results: inspot/api — 0 critical, 2 medium vulnerabilities',
+    id: "mail-10",
+    from: "info@docker.com",
+    fromName: "Docker Hub",
+    subject:
+      "Image scan results: inspot/api — 0 critical, 2 medium vulnerabilities",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>🔍 Docker Image Vulnerability Scan</h3>
       <p>Scan completed for <strong>inspot/api:latest</strong> (SHA: def89ab...)</p>
@@ -204,14 +207,14 @@ export const mockEmails: Email[] = [
       <p><strong>Medium vulnerabilities:</strong> CVE-2026-28391 (libssl), CVE-2026-28400 (libcrypto). Patches available in base image update.</p>
       <p style="color: #888; font-size: 0.85em;">Docker Security Scanning</p>
     </div>`,
-    receivedAt: '2026-07-10T22:45:00Z',
+    receivedAt: "2026-07-10T22:45:00Z",
     isRead: false,
   },
   {
-    id: 'mail-11',
-    from: 'billing@hetzner.com',
-    fromName: 'Hetzner Billing',
-    subject: 'Payment confirmation — €247.53 charged to Visa •••• 4242',
+    id: "mail-11",
+    from: "billing@hetzner.com",
+    fromName: "Hetzner Billing",
+    subject: "Payment confirmation — €247.53 charged to Visa •••• 4242",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>Payment Confirmed</h3>
       <p>Your payment of <strong>€247.53</strong> for invoice <strong>#INV-2026-06</strong> has been processed successfully.</p>
@@ -222,14 +225,14 @@ export const mockEmails: Email[] = [
       </table>
       <p style="color: #888; font-size: 0.85em;">Hetzner Billing Department</p>
     </div>`,
-    receivedAt: '2026-07-10T16:20:00Z',
+    receivedAt: "2026-07-10T16:20:00Z",
     isRead: true,
   },
   {
-    id: 'mail-12',
-    from: 'noreply@google.com',
-    fromName: 'Google Search Console',
-    subject: 'New indexing issues detected on inspot.app — 3 pages excluded',
+    id: "mail-12",
+    from: "noreply@google.com",
+    fromName: "Google Search Console",
+    subject: "New indexing issues detected on inspot.app — 3 pages excluded",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>⚠ Index Coverage Issues</h3>
       <p>Google detected <strong>3 pages</strong> on <strong>inspot.app</strong> that could not be indexed.</p>
@@ -241,14 +244,14 @@ export const mockEmails: Email[] = [
       </ul>
       <p>Review these pages in Search Console to determine if action is needed.</p>
     </div>`,
-    receivedAt: '2026-07-10T11:30:00Z',
+    receivedAt: "2026-07-10T11:30:00Z",
     isRead: false,
   },
   {
-    id: 'mail-13',
-    from: 'team@linear.app',
-    fromName: 'Linear',
-    subject: 'Sprint review: 19 tasks completed this week — 94% velocity',
+    id: "mail-13",
+    from: "team@linear.app",
+    fromName: "Linear",
+    subject: "Sprint review: 19 tasks completed this week — 94% velocity",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>📈 Sprint #14 Review</h3>
       <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
@@ -259,14 +262,14 @@ export const mockEmails: Email[] = [
       </table>
       <p>Great sprint! The only carry-over is the DNS bulk-edit feature which needs backend API changes first.</p>
     </div>`,
-    receivedAt: '2026-07-09T20:00:00Z',
+    receivedAt: "2026-07-09T20:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-14',
-    from: 'alerts@monitoring.inspot.app',
-    fromName: 'Inspot Monitoring',
-    subject: '[WARNING] db-replica replication lag — 45 seconds behind primary',
+    id: "mail-14",
+    from: "alerts@monitoring.inspot.app",
+    fromName: "Inspot Monitoring",
+    subject: "[WARNING] db-replica replication lag — 45 seconds behind primary",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #ca8a04;">⚠ Warning — Replication Lag Detected</h3>
       <p><strong>Server:</strong> db-replica (78.46.12.56)</p>
@@ -276,14 +279,14 @@ export const mockEmails: Email[] = [
       <p>Replication lag has exceeded the warning threshold. This may impact read consistency for applications using the replica.</p>
       <p><strong>Check:</strong> <code>SHOW SLAVE STATUS</code> on db-replica for details.</p>
     </div>`,
-    receivedAt: '2026-07-09T15:40:00Z',
+    receivedAt: "2026-07-09T15:40:00Z",
     isRead: true,
   },
   {
-    id: 'mail-15',
-    from: 'noreply@statuspage.io',
-    fromName: 'Statuspage',
-    subject: 'Incident resolved: API gateway latency spike (32 min downtime)',
+    id: "mail-15",
+    from: "noreply@statuspage.io",
+    fromName: "Statuspage",
+    subject: "Incident resolved: API gateway latency spike (32 min downtime)",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>Incident Report — API Gateway Latency</h3>
       <p><strong>Incident:</strong> Elevated latency on api-gateway.net</p>
@@ -292,14 +295,14 @@ export const mockEmails: Email[] = [
       <p><strong>Root cause:</strong> Memory pressure on cache-node caused connection pool exhaustion. Cache node was restarted and connection limits were adjusted.</p>
       <p><strong>Preventive action:</strong> Added memory-based auto-scaling trigger for cache tier.</p>
     </div>`,
-    receivedAt: '2026-07-09T15:00:00Z',
+    receivedAt: "2026-07-09T15:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-16',
-    from: 'support@cloudflare.com',
-    fromName: 'Cloudflare',
-    subject: 'WAF rule update — new managed ruleset deployed for inspot.app',
+    id: "mail-16",
+    from: "support@cloudflare.com",
+    fromName: "Cloudflare",
+    subject: "WAF rule update — new managed ruleset deployed for inspot.app",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>🛡 WAF Ruleset Updated</h3>
       <p>A new managed WAF ruleset has been deployed for <strong>inspot.app</strong>.</p>
@@ -307,14 +310,14 @@ export const mockEmails: Email[] = [
       <p><strong>Mode:</strong> Block</p>
       <p>All rules are active and set to block mode. No false positives detected in the past 24 hours.</p>
     </div>`,
-    receivedAt: '2026-07-09T09:00:00Z',
+    receivedAt: "2026-07-09T09:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-17',
-    from: 'no-reply@aws.amazon.com',
-    fromName: 'AWS Notifications',
-    subject: 'Root account — MFA device added from IP 185.220.x.x (Germany)',
+    id: "mail-17",
+    from: "no-reply@aws.amazon.com",
+    fromName: "AWS Notifications",
+    subject: "Root account — MFA device added from IP 185.220.x.x (Germany)",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>🔐 Security Notification — MFA Device Added</h3>
       <p>A new MFA device was added to the AWS root account.</p>
@@ -323,14 +326,15 @@ export const mockEmails: Email[] = [
       <p><strong>Device type:</strong> Virtual MFA (Authenticator app)</p>
       <p>If this was you, no action is required. If you did not authorize this, <strong>secure your account immediately</strong>.</p>
     </div>`,
-    receivedAt: '2026-07-09T08:20:00Z',
+    receivedAt: "2026-07-09T08:20:00Z",
     isRead: true,
   },
   {
-    id: 'mail-18',
-    from: 'info@certify.letsencrypt.org',
+    id: "mail-18",
+    from: "info@certify.letsencrypt.org",
     fromName: "Let's Encrypt",
-    subject: 'Certificate expiration warning: cdn-delivery.net expires in 7 days',
+    subject:
+      "Certificate expiration warning: cdn-delivery.net expires in 7 days",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #ca8a04;">⚠ Certificate Expiration Warning</h3>
       <p>The SSL/TLS certificate for <strong>cdn-delivery.net</strong> will expire in <strong>7 days</strong>.</p>
@@ -338,14 +342,15 @@ export const mockEmails: Email[] = [
       <p><strong>Error:</strong> DNS-01 challenge timed out for _acme-challenge.cdn-delivery.net</p>
       <p style="color: #888; font-size: 0.85em;">Let's Encrypt — Automated Certificate Management</p>
     </div>`,
-    receivedAt: '2026-07-08T19:30:00Z',
+    receivedAt: "2026-07-08T19:30:00Z",
     isRead: false,
   },
   {
-    id: 'mail-19',
-    from: 'noreply@github.com',
-    fromName: 'GitHub',
-    subject: 'Dependabot alert: 4 vulnerable dependencies found in inspot/dashboard',
+    id: "mail-19",
+    from: "noreply@github.com",
+    fromName: "GitHub",
+    subject:
+      "Dependabot alert: 4 vulnerable dependencies found in inspot/dashboard",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>⚠ Dependabot Security Alerts</h3>
       <p>Dependabot found <strong>4 vulnerable dependencies</strong> in <strong>inspot/dashboard</strong>.</p>
@@ -357,27 +362,27 @@ export const mockEmails: Email[] = [
       </table>
       <p>Dependabot will open automated PRs with the fixes.</p>
     </div>`,
-    receivedAt: '2026-07-08T14:00:00Z',
+    receivedAt: "2026-07-08T14:00:00Z",
     isRead: false,
   },
   {
-    id: 'mail-20',
-    from: 'alerts@monitoring.inspot.app',
-    fromName: 'Inspot Monitoring',
-    subject: '[RESOLVED] db-replica replication lag caught up — 0s behind',
+    id: "mail-20",
+    from: "alerts@monitoring.inspot.app",
+    fromName: "Inspot Monitoring",
+    subject: "[RESOLVED] db-replica replication lag caught up — 0s behind",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #16a34a;">✅ Replication Lag Resolved</h3>
       <p>Replication on <strong>db-replica</strong> has caught up. Current lag: <strong>0 seconds</strong>.</p>
       <p>The issue was caused by a large batch DELETE operation on the primary. The operation completed and the replica has re-synchronized.</p>
     </div>`,
-    receivedAt: '2026-07-08T10:15:00Z',
+    receivedAt: "2026-07-08T10:15:00Z",
     isRead: true,
   },
   {
-    id: 'mail-21',
-    from: 'noreply@google.com',
-    fromName: 'Google Analytics',
-    subject: 'Monthly report: inspot.app — 1.2M visitors, +23% MoM',
+    id: "mail-21",
+    from: "noreply@google.com",
+    fromName: "Google Analytics",
+    subject: "Monthly report: inspot.app — 1.2M visitors, +23% MoM",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>📊 Monthly Analytics — June 2026</h3>
       <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
@@ -389,14 +394,14 @@ export const mockEmails: Email[] = [
       </table>
       <p>Strong growth across all metrics. The new onboarding flow reduced bounce rate significantly.</p>
     </div>`,
-    receivedAt: '2026-07-07T18:00:00Z',
+    receivedAt: "2026-07-07T18:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-22',
-    from: 'info@cronitor.io',
-    fromName: 'Cronitor',
-    subject: 'Job failure: nightly-backup (db-primary) — exit code 1',
+    id: "mail-22",
+    from: "info@cronitor.io",
+    fromName: "Cronitor",
+    subject: "Job failure: nightly-backup (db-primary) — exit code 1",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #dc2626;">❌ Cron Job Failure</h3>
       <p><strong>Job:</strong> nightly-backup</p>
@@ -407,14 +412,14 @@ export const mockEmails: Email[] = [
       <hr style="border: none; border-top: 1px solid #e5e5e5;" />
       <p>The backup job failed because the database connection pool was exhausted. Increase <code>max_connections</code> or schedule the backup during lower-traffic hours.</p>
     </div>`,
-    receivedAt: '2026-07-08T02:05:00Z',
+    receivedAt: "2026-07-08T02:05:00Z",
     isRead: false,
   },
   {
-    id: 'mail-23',
-    from: 'billing@cloudflare.com',
-    fromName: 'Cloudflare Billing',
-    subject: 'Invoice for June 2026 — Pro Plan $25.00 + Argo $5.00',
+    id: "mail-23",
+    from: "billing@cloudflare.com",
+    fromName: "Cloudflare Billing",
+    subject: "Invoice for June 2026 — Pro Plan $25.00 + Argo $5.00",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>Cloudflare Invoice — June 2026</h3>
       <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
@@ -424,14 +429,14 @@ export const mockEmails: Email[] = [
       </table>
       <p>Paid automatically via Visa •••• 4242 on July 1, 2026.</p>
     </div>`,
-    receivedAt: '2026-07-07T12:00:00Z',
+    receivedAt: "2026-07-07T12:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-24',
-    from: 'welcome@slack.com',
-    fromName: 'Slack',
-    subject: 'devops-team workspace — 5 new members joined this week',
+    id: "mail-24",
+    from: "welcome@slack.com",
+    fromName: "Slack",
+    subject: "devops-team workspace — 5 new members joined this week",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3>👋 New Team Members</h3>
       <p>Five people joined the <strong>devops-team</strong> workspace this week:</p>
@@ -444,14 +449,15 @@ export const mockEmails: Email[] = [
       </ul>
       <p>Total workspace members: <strong>28</strong></p>
     </div>`,
-    receivedAt: '2026-07-06T16:00:00Z',
+    receivedAt: "2026-07-06T16:00:00Z",
     isRead: true,
   },
   {
-    id: 'mail-25',
-    from: 'security@haveibeenpwned.com',
-    fromName: 'Have I Been Pwned',
-    subject: 'Domain search: 2 email addresses from inspot.app found in breaches',
+    id: "mail-25",
+    from: "security@haveibeenpwned.com",
+    fromName: "Have I Been Pwned",
+    subject:
+      "Domain search: 2 email addresses from inspot.app found in breaches",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #dc2626;">🔓 Breach Alert — Domain Search</h3>
       <p>Two email addresses from your domain <strong>inspot.app</strong> were found in known data breaches:</p>
@@ -461,20 +467,20 @@ export const mockEmails: Email[] = [
       </ul>
       <p>Please ensure these accounts use strong, unique passwords and have MFA enabled.</p>
     </div>`,
-    receivedAt: '2026-07-05T22:00:00Z',
+    receivedAt: "2026-07-05T22:00:00Z",
     isRead: false,
   },
   {
-    id: 'mail-26',
-    from: 'noreply@letsencrypt.org',
+    id: "mail-26",
+    from: "noreply@letsencrypt.org",
     fromName: "Let's Encrypt",
-    subject: 'Certificate auto-renewal succeeded for cdn-delivery.net',
+    subject: "Certificate auto-renewal succeeded for cdn-delivery.net",
     bodyHtml: `<div style="font-family: system-ui, sans-serif; color: #333; line-height: 1.6;">
       <h3 style="color: #16a34a;">✅ Certificate Renewed</h3>
       <p>The SSL/TLS certificate for <strong>cdn-delivery.net</strong> has been successfully renewed after manual intervention.</p>
       <p>The DNS-01 challenge was resolved and the new certificate is valid until October 7, 2026.</p>
     </div>`,
-    receivedAt: '2026-07-05T15:00:00Z',
+    receivedAt: "2026-07-05T15:00:00Z",
     isRead: true,
   },
 ];

@@ -1,10 +1,10 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface EmptyStateProps {
   /** Remix Icon class shown in the 64px well. */
   icon: string;
   /** Well tint: secondary (empty) · primary (error) · accent (all-clear). @default "secondary" */
-  tone?: 'primary' | 'secondary' | 'accent';
+  tone?: "primary" | "secondary" | "accent";
   title?: string;
   description?: string;
   /** Optional action node (usually a <Button>). */

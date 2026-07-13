@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
@@ -29,9 +29,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-btn-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-btn-css';
+    if (document.getElementById("insp-btn-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-btn-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -43,30 +43,35 @@ function useCSS() {
  * sizes: sm · md · lg
  */
 export function Button({
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   icon,
   iconRight,
   block = false,
   loading = false,
   disabled = false,
   children,
-  className = '',
+  className = "",
   ...rest
 }) {
   useCSS();
   const cls = [
-    'insp-btn',
+    "insp-btn",
     `insp-btn--${variant}`,
     `insp-btn--${size}`,
-    block ? 'insp-btn--block' : '',
+    block ? "insp-btn--block" : "",
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button className={cls} disabled={disabled || loading} {...rest}>
       {loading ? (
-        <i className="ri-loader-4-line insp-btn__i" style={{ animation: 'spin 0.7s linear infinite' }}></i>
+        <i
+          className="ri-loader-4-line insp-btn__i"
+          style={{ animation: "spin 0.7s linear infinite" }}
+        ></i>
       ) : (
         icon && <i className={`${icon} insp-btn__i`}></i>
       )}

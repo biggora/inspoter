@@ -47,7 +47,33 @@ async function main() {
   try {
     const existing = await client.query('SELECT id FROM "Operator" LIMIT 1');
     if (existing.rowCount && existing.rowCount > 0) {
-      console.log("Seed: an Operator already exists — no-op.");
+      const operatorId = existing.rows[0].id;
+      const wsExisting = await client.query(
+        'SELECT id FROM "Workspace" LIMIT 1',
+      );
+      if (!wsExisting.rowCount || wsExisting.rowCount === 0) {
+        // Create workspace for existing operator
+        const workspaceId = randomUUID();
+        const opRow = await client.query(
+          'SELECT username FROM "Operator" WHERE id = $1',
+          [operatorId],
+        );
+        const slug = opRow.rows[0].username
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-");
+        await client.query(
+          'INSERT INTO "Workspace" (id, name, slug, "createdAt", "updatedAt") VALUES ($1, $2, $3, now(), now())',
+          [workspaceId, `${opRow.rows[0].username}'s workspace`, slug],
+        );
+        const membershipId = randomUUID();
+        await client.query(
+          'INSERT INTO "WorkspaceMember" (id, "workspaceId", "operatorId", role, "joinedAt") VALUES ($1, $2, $3, $4, now())',
+          [membershipId, workspaceId, operatorId, "owner"],
+        );
+        console.log(`Seed: created default workspace for existing operator.`);
+      } else {
+        console.log("Seed: an Operator already exists — no-op.");
+      }
       return;
     }
 
@@ -76,6 +102,24 @@ async function main() {
       [id, username, passwordHash],
     );
     console.log(`Seed: provisioned operator "${username}".`);
+
+    // Create default workspace for the operator
+    const workspaceId = randomUUID();
+    const slug = username.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    await client.query(
+      'INSERT INTO "Workspace" (id, name, slug, "createdAt", "updatedAt") VALUES ($1, $2, $3, now(), now())',
+      [workspaceId, `${username}'s workspace`, slug],
+    );
+
+    // Create membership
+    const membershipId = randomUUID();
+    await client.query(
+      'INSERT INTO "WorkspaceMember" (id, "workspaceId", "operatorId", role, "joinedAt") VALUES ($1, $2, $3, $4, now())',
+      [membershipId, workspaceId, id, "owner"],
+    );
+    console.log(
+      `Seed: created default workspace "${slug}" for operator "${username}".`,
+    );
   } finally {
     await client.end();
   }

@@ -48,12 +48,20 @@ export function DeleteBookmarkDialog({
     <AlertDialog open={bookmark !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete &ldquo;{bookmark?.name}&rdquo;?</AlertDialogTitle>
-          <AlertDialogDescription>This bookmark will be permanently removed.</AlertDialogDescription>
+          <AlertDialogTitle>
+            Delete &ldquo;{bookmark?.name}&rdquo;?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This bookmark will be permanently removed.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={handleConfirm} disabled={submitting}>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={submitting}
+          >
             {submitting ? "Deleting…" : "Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>

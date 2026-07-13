@@ -14,6 +14,7 @@ warm-grey canvas, terracotta as the single brand action color, teal = "healthy",
 no illustrations.
 
 Key files:
+
 - `styles.css` — global entry; `@import`s all tokens & fonts. Link this one file.
 - `tokens/` — oklch color ramps (light + `.dark`), typography, spacing, effects/motion.
 - `components/` — `forms/`, `data-display/`, `feedback/` React primitives. Each has a `.d.ts`

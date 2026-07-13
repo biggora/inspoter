@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * The surface primitive — border-defined, 12px radius, flat (no shadow).
@@ -17,7 +17,7 @@ export interface CardProps {
   /** Makes the whole card a button. */
   onClick?: () => void;
   /** Body inset when no `title`. @default "md" (20px) */
-  padding?: 'none' | 'sm' | 'md';
+  padding?: "none" | "sm" | "md";
   children?: React.ReactNode;
   className?: string;
 }

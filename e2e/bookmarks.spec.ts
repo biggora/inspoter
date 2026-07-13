@@ -41,7 +41,9 @@ async function createBookmark(
   categoryName: string,
   fields: { name: string; url: string },
 ) {
-  await categorySection(page, categoryName).getByRole("button", { name: /add bookmark/i }).click();
+  await categorySection(page, categoryName)
+    .getByRole("button", { name: /add bookmark/i })
+    .click();
   await page.getByLabel(/^name$/i).fill(fields.name);
   await page.getByLabel(/^url$/i).fill(fields.url);
   await page.getByRole("button", { name: /^create$/i }).click();
@@ -51,14 +53,18 @@ test("AC-BM-014: empty state prompts to create the first category (no error)", a
   page,
 }) => {
   await expect(page.getByText(/no bookmarks yet/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /create category/i })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /create category/i }),
+  ).toBeVisible();
 });
 
 test("AC-BM-001: creating a category persists it and it appears without a full reload", async ({
   page,
 }) => {
   await createCategory(page, "Infrastructure");
-  await expect(page.getByRole("heading", { name: "Infrastructure" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Infrastructure" }),
+  ).toBeVisible();
 });
 
 test("AC-BM-005: submitting an empty category name shows a validation error and creates nothing", async ({
@@ -69,7 +75,9 @@ test("AC-BM-005: submitting an empty category name shows a validation error and 
   await expect(page.getByText(/category name is required/i)).toBeVisible();
 });
 
-test("AC-BM-002: renaming a category persists and displays the new name", async ({ page }) => {
+test("AC-BM-002: renaming a category persists and displays the new name", async ({
+  page,
+}) => {
   await createCategory(page, "Old Name");
   await categorySection(page, "Old Name")
     .getByRole("button", { name: /more options/i })
@@ -85,8 +93,13 @@ test("AC-BM-006: creating a bookmark shows it in its category without a full rel
   page,
 }) => {
   await createCategory(page, "Dev Tools");
-  await createBookmark(page, "Dev Tools", { name: "Grafana", url: "https://grafana.example.com" });
-  await expect(categorySection(page, "Dev Tools").getByText("Grafana")).toBeVisible();
+  await createBookmark(page, "Dev Tools", {
+    name: "Grafana",
+    url: "https://grafana.example.com",
+  });
+  await expect(
+    categorySection(page, "Dev Tools").getByText("Grafana"),
+  ).toBeVisible();
 });
 
 test("AC-BM-007: bookmark create without name/url shows a validation error, nothing created", async ({
@@ -101,7 +114,9 @@ test("AC-BM-007: bookmark create without name/url shows a validation error, noth
   await expect(page.getByText(/url is required/i)).toBeVisible();
 });
 
-test("AC-BM-008: an invalid (non-http/https) URL shows a validation error", async ({ page }) => {
+test("AC-BM-008: an invalid (non-http/https) URL shows a validation error", async ({
+  page,
+}) => {
   await createCategory(page, "URL Validation Cat");
   await categorySection(page, "URL Validation Cat")
     .getByRole("button", { name: /add bookmark/i })
@@ -112,10 +127,15 @@ test("AC-BM-008: an invalid (non-http/https) URL shows a validation error", asyn
   await expect(page.getByText(/enter a valid http/i)).toBeVisible();
 });
 
-test("AC-BM-009: editing a bookmark persists name/url/category changes", async ({ page }) => {
+test("AC-BM-009: editing a bookmark persists name/url/category changes", async ({
+  page,
+}) => {
   await createCategory(page, "Source Cat");
   await createCategory(page, "Target Cat");
-  await createBookmark(page, "Source Cat", { name: "GitHub", url: "https://github.com" });
+  await createBookmark(page, "Source Cat", {
+    name: "GitHub",
+    url: "https://github.com",
+  });
 
   await categorySection(page, "Source Cat")
     .getByText("GitHub")
@@ -127,7 +147,9 @@ test("AC-BM-009: editing a bookmark persists name/url/category changes", async (
   await page.getByLabel(/^category$/i).selectOption({ label: "Target Cat" });
   await page.getByRole("button", { name: /save changes/i }).click();
 
-  await expect(categorySection(page, "Target Cat").getByText("GitHub (work)")).toBeVisible();
+  await expect(
+    categorySection(page, "Target Cat").getByText("GitHub (work)"),
+  ).toBeVisible();
 });
 
 test("AC-BM-010: deleting a bookmark removes it from the list without a full reload", async ({
@@ -159,24 +181,43 @@ test("AC-BM-011: a bookmark without an icon shows a deterministic fallback, neve
     url: "https://example.com",
   });
 
-  const card = categorySection(page, "Icon Fallback Cat").getByText("No Icon Bookmark").locator("..");
+  const card = categorySection(page, "Icon Fallback Cat")
+    .getByText("No Icon Bookmark")
+    .locator("..");
   await expect(card.locator("img[alt]:not([src])")).toHaveCount(0);
   await expect(card.getByText(/^N$/)).toBeVisible();
 });
 
-test("AC-BM-012: bookmarks are displayed grouped under their category", async ({ page }) => {
+test("AC-BM-012: bookmarks are displayed grouped under their category", async ({
+  page,
+}) => {
   await createCategory(page, "Grouped Cat A");
-  await createBookmark(page, "Grouped Cat A", { name: "Bookmark A", url: "https://a.example.com" });
+  await createBookmark(page, "Grouped Cat A", {
+    name: "Bookmark A",
+    url: "https://a.example.com",
+  });
   await createCategory(page, "Grouped Cat B");
-  await createBookmark(page, "Grouped Cat B", { name: "Bookmark B", url: "https://b.example.com" });
+  await createBookmark(page, "Grouped Cat B", {
+    name: "Bookmark B",
+    url: "https://b.example.com",
+  });
 
-  await expect(categorySection(page, "Grouped Cat A").getByText("Bookmark A")).toBeVisible();
-  await expect(categorySection(page, "Grouped Cat B").getByText("Bookmark B")).toBeVisible();
+  await expect(
+    categorySection(page, "Grouped Cat A").getByText("Bookmark A"),
+  ).toBeVisible();
+  await expect(
+    categorySection(page, "Grouped Cat B").getByText("Bookmark B"),
+  ).toBeVisible();
   // Cross-check the negative: A's bookmark must not leak into B's section.
-  await expect(categorySection(page, "Grouped Cat B").getByText("Bookmark A")).toHaveCount(0);
+  await expect(
+    categorySection(page, "Grouped Cat B").getByText("Bookmark A"),
+  ).toHaveCount(0);
 });
 
-test("AC-BM-013: activating a bookmark opens its URL in a new tab", async ({ page, context }) => {
+test("AC-BM-013: activating a bookmark opens its URL in a new tab", async ({
+  page,
+  context,
+}) => {
   await createCategory(page, "New Tab Cat");
   await createBookmark(page, "New Tab Cat", {
     name: "Open Me",
@@ -185,7 +226,9 @@ test("AC-BM-013: activating a bookmark opens its URL in a new tab", async ({ pag
 
   const [popup] = await Promise.all([
     context.waitForEvent("page"),
-    categorySection(page, "New Tab Cat").getByRole("link", { name: /open me/i }).click(),
+    categorySection(page, "New Tab Cat")
+      .getByRole("link", { name: /open me/i })
+      .click(),
   ]);
   await popup.waitForLoadState();
   expect(popup.url()).toContain("example.com/open-me");
@@ -216,6 +259,8 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
 
   await page.getByRole("button", { name: /delete category/i }).click();
 
-  await expect(page.getByRole("heading", { name: "Cascade Cat" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Cascade Cat" })).toHaveCount(
+    0,
+  );
   await expect(page.getByText("Cascade Bookmark")).toHaveCount(0);
 });

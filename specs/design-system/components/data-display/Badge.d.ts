@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * Status pill used for server/domain/log states.
@@ -7,9 +7,9 @@ import * as React from 'react';
  */
 export interface BadgeProps {
   /** Semantic tone. @default "neutral" */
-  tone?: 'accent' | 'amber' | 'red' | 'primary' | 'secondary' | 'neutral';
+  tone?: "accent" | "amber" | "red" | "primary" | "secondary" | "neutral";
   /** @default "md" */
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   /** Show a leading status dot. @default false */
   dot?: boolean;
   /** Pulse the dot (transitional / live states). @default false */

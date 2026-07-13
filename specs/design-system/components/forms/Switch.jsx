@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-switch{position:relative;display:inline-flex;align-items:center;flex-shrink:0;
@@ -18,9 +18,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-switch-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-switch-css';
+    if (document.getElementById("insp-switch-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-switch-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -31,24 +31,35 @@ function useCSS() {
  * Pass `label`/`description` to render the full settings row; omit them for a
  * bare switch.
  */
-export function Switch({ checked = false, onChange, disabled = false, label, description, className = '', ...rest }) {
+export function Switch({
+  checked = false,
+  onChange,
+  disabled = false,
+  label,
+  description,
+  className = "",
+  ...rest
+}) {
   useCSS();
   const toggle = (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label={typeof label === 'string' ? label : undefined}
+      aria-label={typeof label === "string" ? label : undefined}
       disabled={disabled}
       onClick={() => onChange && onChange(!checked)}
-      className={`insp-switch ${checked ? 'insp-switch--on' : ''}`}
+      className={`insp-switch ${checked ? "insp-switch--on" : ""}`}
       {...rest}
     >
       <span className="insp-switch__knob"></span>
     </button>
   );
 
-  if (!label && !description) return React.cloneElement(toggle, { className: `insp-switch ${checked ? 'insp-switch--on' : ''} ${className}` });
+  if (!label && !description)
+    return React.cloneElement(toggle, {
+      className: `insp-switch ${checked ? "insp-switch--on" : ""} ${className}`,
+    });
 
   return (
     <div className={`insp-switch-row ${className}`}>

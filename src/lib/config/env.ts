@@ -26,7 +26,8 @@ const envSchema = z
     OPERATOR_PASSWORD: z.string().min(1).optional(),
   })
   .refine(
-    (data) => Boolean(data.OPERATOR_PASSWORD_HASH) || Boolean(data.OPERATOR_PASSWORD),
+    (data) =>
+      Boolean(data.OPERATOR_PASSWORD_HASH) || Boolean(data.OPERATOR_PASSWORD),
     {
       message:
         "Exactly one of OPERATOR_PASSWORD_HASH or OPERATOR_PASSWORD is required",

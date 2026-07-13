@@ -1,10 +1,10 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface DropdownProps {
   /** The clickable trigger node (IconButton, Button, avatar…). */
   trigger: React.ReactNode;
   /** Menu edge alignment. @default "left" */
-  align?: 'left' | 'right';
+  align?: "left" | "right";
   /** DropdownItem / DropdownSep / DropdownLabel children. */
   children?: React.ReactNode;
   className?: string;
@@ -28,4 +28,6 @@ export interface DropdownItemProps extends React.ButtonHTMLAttributes<HTMLButton
 export function Dropdown(props: DropdownProps): React.JSX.Element;
 export function DropdownItem(props: DropdownItemProps): React.JSX.Element;
 export function DropdownSep(): React.JSX.Element;
-export function DropdownLabel(props: { children?: React.ReactNode }): React.JSX.Element;
+export function DropdownLabel(props: {
+  children?: React.ReactNode;
+}): React.JSX.Element;

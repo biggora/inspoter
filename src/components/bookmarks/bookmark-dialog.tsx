@@ -20,8 +20,7 @@ import { ApiError, bookmarksApi } from "./api";
 import { isValidHttpUrl } from "./validation";
 
 export type BookmarkDialogState =
-  | { mode: "create"; categoryId: string }
-  | { mode: "edit"; bookmark: Bookmark };
+  { mode: "create"; categoryId: string } | { mode: "edit"; bookmark: Bookmark };
 
 interface BookmarkDialogProps {
   state: BookmarkDialogState | null;
@@ -39,7 +38,12 @@ interface FieldErrors {
 // <select> rather than the shadcn Select primitive — a deliberate deviation
 // (see delivery report) so the field exposes standard <select>/<option>
 // semantics.
-export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: BookmarkDialogProps) {
+export function BookmarkDialog({
+  state,
+  categories,
+  onOpenChange,
+  onSaved,
+}: BookmarkDialogProps) {
   const nameId = useId();
   const urlId = useId();
   const iconId = useId();
@@ -112,11 +116,17 @@ export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: Boo
       }
       onSaved();
     } catch (err) {
-      if (err instanceof ApiError && err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+      if (
+        err instanceof ApiError &&
+        err.fieldErrors &&
+        Object.keys(err.fieldErrors).length > 0
+      ) {
         setErrors({ name: err.fieldErrors.name, url: err.fieldErrors.url });
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't save bookmark. Try again.",
+          err instanceof ApiError
+            ? err.message
+            : "Couldn't save bookmark. Try again.",
         );
       }
     } finally {
@@ -130,7 +140,11 @@ export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: Boo
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit bookmark" : "New bookmark"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={nameId}>Name</Label>
             <Input
@@ -205,7 +219,9 @@ export function BookmarkDialog({ state, categories, onOpenChange, onSaved }: Boo
           </div>
 
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" type="button" />}>Cancel</DialogClose>
+            <DialogClose render={<Button variant="outline" type="button" />}>
+              Cancel
+            </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit
                 ? submitting

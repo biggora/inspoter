@@ -8,10 +8,11 @@
 **Consumed by:** planner, ui-ux-designer, implementors, tester
 
 **Changelog:**
+
 - **v1.1 (2026-07-12):** Doc-review fixes. F1 — AQ-1 resolved per progress.md line 43 (both `OPERATOR_PASSWORD_HASH` and `OPERATOR_PASSWORD` supported); §5.2 env validation + §9 updated. F2 — auth DAL named as a sanctioned Prisma caller (§1.1, ADR-012). F3 — ADR-004 read-through latency trade-off stated. F4 — `Message` index gains `id` tiebreaker. F5 — `validation/dns.ts` added to tree. F6 — `DnsRecordInput`/`DnsRecordPatch` DTOs defined (§4.1). F7 — AQ-4 marked resolved-with-configurable-default.
 - **v1.0 (2026-07-12):** Initial blueprint.
 
-This document is the authoritative design reference. Every component traces to an FR/AC/NFR or a decision D-ID from the PRD. The technology stack is fixed by HC-1 / NFR-STACK-001 / D-6 and is **not** re-litigated here — this blueprint decides only *how* to arrange that fixed stack.
+This document is the authoritative design reference. Every component traces to an FR/AC/NFR or a decision D-ID from the PRD. The technology stack is fixed by HC-1 / NFR-STACK-001 / D-6 and is **not** re-litigated here — this blueprint decides only _how_ to arrange that fixed stack.
 
 ---
 
@@ -19,7 +20,7 @@ This document is the authoritative design reference. Every component traces to a
 
 `inspoter` is a **single deployable Next.js 15 (App Router) application** backed by PostgreSQL via Prisma. It is a single-instance, self-hosted control panel (HC-2, NFR-DEPLOY-001) with seven sections plus a unified webhook ingest API.
 
-The system is intentionally a **modular monolith**, not a set of services. Justification (Simplicity First, HC-2): the deployment target is one Docker host serving one operator or a small team. Microservices, message queues, and Redis would add operational surface with no requirement to justify them. In-process constructs (in-memory rate limiter, synchronous webhook ingest) are correct precisely *because* there is exactly one application process.
+The system is intentionally a **modular monolith**, not a set of services. Justification (Simplicity First, HC-2): the deployment target is one Docker host serving one operator or a small team. Microservices, message queues, and Redis would add operational surface with no requirement to justify them. In-process constructs (in-memory rate limiter, synchronous webhook ingest) are correct precisely _because_ there is exactly one application process.
 
 ### 1.1 Architectural layers
 
@@ -90,16 +91,16 @@ flowchart TD
 
 ### 1.3 Requirement-to-layer traceability (summary; full map in §11)
 
-| Concern | PRD source | Where it lives |
-|---|---|---|
-| Shell + nav | FR-SHELL-001 | `app/(dashboard)/layout.tsx`, `components/shell` |
-| Auth | FR-AUTH-001, NFR-SEC-001 | `middleware.ts`, `lib/auth`, `login/` |
-| Bookmarks CRUD | FR-BM-001..003 | `app/(dashboard)/bookmarks`, `lib/services/bookmarks` |
-| Domains / DNS (proxy) | FR-DOM-001..002 | `lib/providers/dns`, `app/(dashboard)/domains` |
-| Servers | FR-SRV-001..002 | `lib/providers/servers`, `app/(dashboard)/servers` |
-| Mail / Msg / Log / Alert view | FR-MAIL/MSG/LOG/ALR | `lib/services/*`, matching pages |
-| Webhook ingest | FR-WH-001..002 | `app/api/webhooks/[type]`, `lib/webhooks` |
-| Provider abstraction | FR-PROV-001 | `lib/providers` |
+| Concern                       | PRD source               | Where it lives                                        |
+| ----------------------------- | ------------------------ | ----------------------------------------------------- |
+| Shell + nav                   | FR-SHELL-001             | `app/(dashboard)/layout.tsx`, `components/shell`      |
+| Auth                          | FR-AUTH-001, NFR-SEC-001 | `middleware.ts`, `lib/auth`, `login/`                 |
+| Bookmarks CRUD                | FR-BM-001..003           | `app/(dashboard)/bookmarks`, `lib/services/bookmarks` |
+| Domains / DNS (proxy)         | FR-DOM-001..002          | `lib/providers/dns`, `app/(dashboard)/domains`        |
+| Servers                       | FR-SRV-001..002          | `lib/providers/servers`, `app/(dashboard)/servers`    |
+| Mail / Msg / Log / Alert view | FR-MAIL/MSG/LOG/ALR      | `lib/services/*`, matching pages                      |
+| Webhook ingest                | FR-WH-001..002           | `app/api/webhooks/[type]`, `lib/webhooks`             |
+| Provider abstraction          | FR-PROV-001              | `lib/providers`                                       |
 
 ---
 
@@ -348,7 +349,7 @@ Order rationale: cheap/abuse-blocking checks first (size → parse → auth → 
 
 **Decision (ADR-006): in-process fixed-window counter, keyed by `tokenId`.** A `Map<tokenId, {count, windowStart}>` in module scope. Over-limit → **429** with `Retry-After`. Config via env `WEBHOOK_RATE_LIMIT` (default 120/min per token, per progress.md line 43) and `WEBHOOK_RATE_WINDOW_MS`.
 
-Justification & explicit limits: the deployment is single-instance single-process (HC-2, NFR-DEPLOY-001), so one in-memory counter *is* the global counter — no Redis needed (Simplicity First). Documented limitations, accepted per R-4: (1) counters reset on process restart; (2) not shared across replicas — but horizontal scaling is out of scope. If multi-instance is ever adopted, swap this one module for a shared store; nothing else changes.
+Justification & explicit limits: the deployment is single-instance single-process (HC-2, NFR-DEPLOY-001), so one in-memory counter _is_ the global counter — no Redis needed (Simplicity First). Documented limitations, accepted per R-4: (1) counters reset on process restart; (2) not shared across replicas — but horizontal scaling is out of scope. If multi-instance is ever adopted, swap this one module for a shared store; nothing else changes.
 
 ### 3.6 Body-size & parse limits (AC-WH-011)
 
@@ -359,19 +360,25 @@ Justification & explicit limits: the deployment is single-instance single-proces
 All webhook errors share one shape:
 
 ```json
-{ "error": { "code": "VALIDATION_FAILED", "message": "human summary", "details": [ { "path": "subject", "issue": "required" } ] } }
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "human summary",
+    "details": [{ "path": "subject", "issue": "required" }]
+  }
+}
 ```
 
 `code` is a stable enum (`UNAUTHORIZED`, `RATE_LIMITED`, `UNSUPPORTED_TYPE`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `UNPARSEABLE`, `CHANNEL_NOT_FOUND`). `details` is the Zod issue list. HTTP status carries the primary signal; `code` disambiguates for machines.
 
 ### 3.8 Per-type payload contracts (Zod, `src/lib/validation/webhooks.ts`)
 
-| type | required fields | optional | on success | notable AC |
-|---|---|---|---|---|
-| `log` | level, source, message | timestamp | 201 + id (AC-LOG-005) | |
-| `alert` | category, severity, source, message | timestamp | 201 + id (AC-ALR-007) | category resolved/created by name → `AlertCategory` |
-| `mail` | sender, subject, body | receivedAt | 201 + id (AC-MAIL-006) | |
-| `message` | channelId, content | author | 201 + id (AC-MSG-005) | **channel must exist → else 400 `CHANNEL_NOT_FOUND`** (AC-MSG-006, D-10; no auto-create) |
+| type      | required fields                     | optional   | on success             | notable AC                                                                               |
+| --------- | ----------------------------------- | ---------- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| `log`     | level, source, message              | timestamp  | 201 + id (AC-LOG-005)  |                                                                                          |
+| `alert`   | category, severity, source, message | timestamp  | 201 + id (AC-ALR-007)  | category resolved/created by name → `AlertCategory`                                      |
+| `mail`    | sender, subject, body               | receivedAt | 201 + id (AC-MAIL-006) |                                                                                          |
+| `message` | channelId, content                  | author     | 201 + id (AC-MSG-005)  | **channel must exist → else 400 `CHANNEL_NOT_FOUND`** (AC-MSG-006, D-10; no auto-create) |
 
 AC-MSG-008 (auto-create) is inactive (OQ-6) and not implemented.
 
@@ -390,31 +397,45 @@ All operations return a discriminated `ProviderResult<T>` so callers never see t
 ```ts
 type ProviderResult<T> =
   | { ok: true; data: T }
-  | { ok: false; kind: 'error'; message: string }       // provider errored/unreachable (N-1, N-2)
-  | { ok: false; kind: 'unsupported'; operation: string }; // AC-PROV-003
+  | { ok: false; kind: "error"; message: string } // provider errored/unreachable (N-1, N-2)
+  | { ok: false; kind: "unsupported"; operation: string }; // AC-PROV-003
 ```
 
 ```ts
 interface DnsProvider {
-  readonly id: 'cloudflare' | 'hetzner' | 'godaddy';
-  readonly mode: 'real' | 'mock';
-  listDomains(): Promise<ProviderResult<Domain[]>>;                       // AC-DOM-001
-  listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>>;    // AC-DOM-004
-  createRecord(domainId: string, input: DnsRecordInput): Promise<ProviderResult<DnsRecord>>; // AC-DOM-005
-  updateRecord(domainId: string, recordId: string, input: DnsRecordPatch): Promise<ProviderResult<DnsRecord>>; // AC-DOM-006
-  deleteRecord(domainId: string, recordId: string): Promise<ProviderResult<void>>; // AC-DOM-007
+  readonly id: "cloudflare" | "hetzner" | "godaddy";
+  readonly mode: "real" | "mock";
+  listDomains(): Promise<ProviderResult<Domain[]>>; // AC-DOM-001
+  listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>>; // AC-DOM-004
+  createRecord(
+    domainId: string,
+    input: DnsRecordInput,
+  ): Promise<ProviderResult<DnsRecord>>; // AC-DOM-005
+  updateRecord(
+    domainId: string,
+    recordId: string,
+    input: DnsRecordPatch,
+  ): Promise<ProviderResult<DnsRecord>>; // AC-DOM-006
+  deleteRecord(
+    domainId: string,
+    recordId: string,
+  ): Promise<ProviderResult<void>>; // AC-DOM-007
 }
 
 interface ServerProvider {
-  readonly id: 'hetzner';
-  readonly mode: 'real' | 'mock';
-  listServers(): Promise<ProviderResult<Server[]>>;                       // AC-SRV-001
-  getServer(id: string): Promise<ProviderResult<Server>>;                 // status poll (D-9)
-  power(id: string, action: 'start' | 'stop' | 'restart'): Promise<ProviderResult<void>>; // AC-SRV-004..006
+  readonly id: "hetzner";
+  readonly mode: "real" | "mock";
+  listServers(): Promise<ProviderResult<Server[]>>; // AC-SRV-001
+  getServer(id: string): Promise<ProviderResult<Server>>; // status poll (D-9)
+  power(
+    id: string,
+    action: "start" | "stop" | "restart",
+  ): Promise<ProviderResult<void>>; // AC-SRV-004..006
 }
 ```
 
 DTOs (`src/lib/providers/**/types.ts`):
+
 - `Domain { id; name; provider }` (AC-DOM-001)
 - `DnsRecord { id; type; name; value; ttl }` (AC-DOM-004)
 - `DnsRecordInput { type; name; value; ttl }` — full record fields for a create (AC-DOM-005); validated by `validation/dns.ts` (AC-DOM-008) before reaching the provider
@@ -446,17 +467,17 @@ The Domains service calls `getDnsProviders()` and awaits all with `Promise.allSe
 
 ### 5.1 Mechanism decision (ADR-002): custom lightweight session, not NextAuth/Auth.js
 
-| Option | Verdict |
-|---|---|
-| **NextAuth / Auth.js** | Rejected. Built for multi-provider OAuth and multi-user flows; for a single env-seeded operator it adds a dependency, config surface, and adapter tables far exceeding the need. Fighting the library to do env-seeded single-credential login is more code than doing it directly. Violates Simplicity First. |
-| **Custom session cookie + DB `Session` + DAL** (SELECTED) | ~100 lines, full control, exactly meets AC-AUTH-001..005. Server-side session store gives real logout invalidation (AC-AUTH-004). |
+| Option                                                    | Verdict                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **NextAuth / Auth.js**                                    | Rejected. Built for multi-provider OAuth and multi-user flows; for a single env-seeded operator it adds a dependency, config surface, and adapter tables far exceeding the need. Fighting the library to do env-seeded single-credential login is more code than doing it directly. Violates Simplicity First. |
+| **Custom session cookie + DB `Session` + DAL** (SELECTED) | ~100 lines, full control, exactly meets AC-AUTH-001..005. Server-side session store gives real logout invalidation (AC-AUTH-004).                                                                                                                                                                              |
 
 ### 5.2 Design
 
 - **Env contract & bootstrap (AC-AUTH-005; AQ-1 resolved per progress.md line 43):** `src/lib/config/env.ts` requires `OPERATOR_USERNAME` **and exactly one** of two password variables:
   - `OPERATOR_PASSWORD_HASH` — **preferred**; a pre-computed scrypt hash, used as-is (no plaintext secret in env).
   - `OPERATOR_PASSWORD` — plaintext convenience form; hashed with scrypt **in memory at startup**, and the app emits a **warning to the log** recommending the pre-hashed variable.
-  If **both** are present, `OPERATOR_PASSWORD_HASH` wins (with a warning that `OPERATOR_PASSWORD` is ignored). If the username is missing **or neither** password variable is present, the app **fails fast** at boot (throws / blocks all login with a clear message; never serves an unauthenticated dashboard — AC-AUTH-005, N-8b).
+    If **both** are present, `OPERATOR_PASSWORD_HASH` wins (with a warning that `OPERATOR_PASSWORD` is ignored). If the username is missing **or neither** password variable is present, the app **fails fast** at boot (throws / blocks all login with a clear message; never serves an unauthenticated dashboard — AC-AUTH-005, N-8b).
 - **First-boot seeding:** on first boot with no `Operator` row, seed exactly one operator from env, storing the resolved scrypt hash in `Operator.passwordHash` (`prisma/seed.ts` or an idempotent boot check). Re-seeding is a no-op if the operator exists.
 - **Password hashing:** `scrypt` from Node's built-in `crypto` (no native build dependency in the Docker image; Simplicity First). Store `salt:hash` in `Operator.passwordHash`.
 - **Login (AC-AUTH-002/003):** a Server Action verifies username + scrypt-compared password. Success → create `Session` (random `id = crypto.randomBytes(32)`, `expiresAt`), set an **httpOnly, Secure, SameSite=Lax** cookie holding the opaque session id. Invalid → error, no session (AC-AUTH-003).
@@ -547,9 +568,11 @@ lib/validation/ , lib/config/  : leaf modules, no upward imports
 Aligned with the vertical-slice plan (D-1, HC-4) and PRD Slice tags.
 
 ### 7.0 Scaffolding (progress.md task 11 — before Slice 1)
+
 Next.js 15 App Router + TS (`strict`), Tailwind, `shadcn/ui` init; Prisma init + `docker-compose.yml` (app + Postgres) + Dockerfile (NFR-DEPLOY-001); `lib/db.ts` singleton; `lib/config/env.ts`; root layout. **Exit check:** M-7 — documented Docker startup serves the login screen.
 
 ### 7.1 Slice 1 — tracer bullet (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014)
+
 1. **Auth:** env parse + fail-fast, `Operator`/`Session` models, seed, password/session/dal, login page + action, logout, `middleware.ts`. (Verifies AC-AUTH-*, M-3.)
 2. **Shell:** `(dashboard)/layout.tsx` with nav to all seven sections, client-side routing, "Coming soon" placeholder for the six non-Bookmarks sections, responsive at 375/1440px. (AC-SHELL-001..004.)
 3. **Bookmarks:** `Category` + `Bookmark` models, `services/bookmarks.ts`, REST routes + zod validation, UI (grouped display, CRUD dialogs, empty state, icon fallback). (AC-BM-001..014, M-1, M-2, M-8.)
@@ -557,6 +580,7 @@ Next.js 15 App Router + TS (`strict`), Tailwind, `shadcn/ui` init; Prisma init +
 Slice 1 has **zero provider and zero webhook dependency** (Alternative B rationale) — it needs only env-seeded operator creds.
 
 ### 7.2 Later slices (recommended order + rationale)
+
 Two independent tracks; the recommended linear order interleaves lowest-risk first:
 
 - **Slice 2 — Provider foundation + Domains** (FR-PROV-001, FR-DOM-001..002): build `ProviderResult`, DNS factory, mock + three real adapters, `validation/dns.ts` (AC-DOM-008), Domains/DNS UI (read-through proxy). Establishes the provider pattern used by Servers. (AC-PROV-001..003, AC-DOM-001..009, M-5.)
@@ -572,21 +596,21 @@ Rationale for ordering: provider track (2,3) and ingest track (4–7) are indepe
 
 ## 8. Architecture Decision Records (ADR-style, concise)
 
-| ID | Decision | Alternatives considered | Rationale / trace |
-|---|---|---|---|
-| **ADR-001** | Modular monolith, single Next.js process; no queue/Redis. | Microservices; background workers. | Single-instance self-hosted (HC-2, NFR-DEPLOY-001); Simplicity First. In-process constructs are correct at one process. |
-| **ADR-002** | Custom session-cookie auth (DB `Session` + DAL), scrypt hashing. | NextAuth/Auth.js; stateless JWT cookie. | Single env-seeded operator (D-7, OQ-5); library overkill; DB session gives real logout invalidation (AC-AUTH-004). scrypt = no native build dep. |
-| **ADR-003** | Two-tier enforcement: optimistic middleware + authoritative DAL. | Middleware-only auth; per-page ad-hoc checks. | Keeps DB out of Edge middleware; DAL guarantees AC-AUTH-001 / NFR-SEC-001; webhook path excluded from matcher. |
-| **ADR-004** | Domains/DnsRecords/Servers are read-through provider DTOs, not persisted. | Local cache/mirror of provider state. | Provider is source of truth (AC-DOM-009, AC-SRV-008); cache adds staleness/sync with no requirement. **Accepted trade-off:** read-through incurs provider-call latency on every Domains/Servers view; acceptable at single-user scale (A-3) and explicitly outside the NFR-PERF-002 DB-read budget (which covers DB-backed list sections only). |
-| **ADR-005** | One unified webhook handler `/api/webhooks/[type]`. | Four per-section endpoints. | D-3, §7 sub-decision: shared auth/validate/idempotency/ratelimit surface; `type` discriminator. |
-| **ADR-006** | In-process fixed-window rate limiter keyed by token. | Redis / DB-backed limiter. | Single process = single global counter (NFR-SEC-003); Simplicity First; default 120/min/token (progress.md line 43); documented reset-on-restart limit (R-4). |
-| **ADR-007** | Idempotency via `@@unique(tokenId,key)` + transactional create; 201 new / 200 replay. | App-level check-then-insert (racy). | DB constraint is race-safe; per-token scoping (AC-WH-004, D-8, F-3); no-key = at-least-once (AC-WH-010). |
-| **ADR-008** | `ProviderResult<T>` discriminated union (ok/error/unsupported); no thrown provider errors. | Throwing + try/catch at UI. | Per-provider error isolation (AC-DOM-003, AC-SRV-003) and graceful unsupported (AC-PROV-003, N-1). |
-| **ADR-009** | Text-search = pagination-only fallback for MVP; no `pg_trgm`. | `pg_trgm` GIN / full-text now. | D-11/R-6 permit fallback; avoids Postgres extension in image; low-100k rows (A-3). Upgrade path documented (§2.4). |
-| **ADR-010** | Keyset (cursor) pagination on `(sortField,id)` composite indexes; page size 50 configurable. | OFFSET/LIMIT pagination. | OFFSET degrades at depth; keyset holds the 500ms budget at 100k rows (NFR-PERF-001/002). |
-| **ADR-011** | Zod schemas in `lib/validation` shared by REST + webhook. | Duplicate per-route validation. | Single validation source; machine-readable errors (AC-WH-002, AC-BM-005/007/008). |
-| **ADR-012** | The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly. | Direct Prisma in route handlers. | Testability, single business-rule locus plus one narrow auth gate, clean layer boundary (§6.1). |
-| **ADR-013** | Alert→category `onDelete: SetNull` (reassign); Bookmark/Channel/Message `onDelete: Cascade`. | App-level orphan handling. | DB enforces no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002). |
+| ID          | Decision                                                                                                                                              | Alternatives considered                       | Rationale / trace                                                                                                                                                                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ADR-001** | Modular monolith, single Next.js process; no queue/Redis.                                                                                             | Microservices; background workers.            | Single-instance self-hosted (HC-2, NFR-DEPLOY-001); Simplicity First. In-process constructs are correct at one process.                                                                                                                                                                                                                         |
+| **ADR-002** | Custom session-cookie auth (DB `Session` + DAL), scrypt hashing.                                                                                      | NextAuth/Auth.js; stateless JWT cookie.       | Single env-seeded operator (D-7, OQ-5); library overkill; DB session gives real logout invalidation (AC-AUTH-004). scrypt = no native build dep.                                                                                                                                                                                                |
+| **ADR-003** | Two-tier enforcement: optimistic middleware + authoritative DAL.                                                                                      | Middleware-only auth; per-page ad-hoc checks. | Keeps DB out of Edge middleware; DAL guarantees AC-AUTH-001 / NFR-SEC-001; webhook path excluded from matcher.                                                                                                                                                                                                                                  |
+| **ADR-004** | Domains/DnsRecords/Servers are read-through provider DTOs, not persisted.                                                                             | Local cache/mirror of provider state.         | Provider is source of truth (AC-DOM-009, AC-SRV-008); cache adds staleness/sync with no requirement. **Accepted trade-off:** read-through incurs provider-call latency on every Domains/Servers view; acceptable at single-user scale (A-3) and explicitly outside the NFR-PERF-002 DB-read budget (which covers DB-backed list sections only). |
+| **ADR-005** | One unified webhook handler `/api/webhooks/[type]`.                                                                                                   | Four per-section endpoints.                   | D-3, §7 sub-decision: shared auth/validate/idempotency/ratelimit surface; `type` discriminator.                                                                                                                                                                                                                                                 |
+| **ADR-006** | In-process fixed-window rate limiter keyed by token.                                                                                                  | Redis / DB-backed limiter.                    | Single process = single global counter (NFR-SEC-003); Simplicity First; default 120/min/token (progress.md line 43); documented reset-on-restart limit (R-4).                                                                                                                                                                                   |
+| **ADR-007** | Idempotency via `@@unique(tokenId,key)` + transactional create; 201 new / 200 replay.                                                                 | App-level check-then-insert (racy).           | DB constraint is race-safe; per-token scoping (AC-WH-004, D-8, F-3); no-key = at-least-once (AC-WH-010).                                                                                                                                                                                                                                        |
+| **ADR-008** | `ProviderResult<T>` discriminated union (ok/error/unsupported); no thrown provider errors.                                                            | Throwing + try/catch at UI.                   | Per-provider error isolation (AC-DOM-003, AC-SRV-003) and graceful unsupported (AC-PROV-003, N-1).                                                                                                                                                                                                                                              |
+| **ADR-009** | Text-search = pagination-only fallback for MVP; no `pg_trgm`.                                                                                         | `pg_trgm` GIN / full-text now.                | D-11/R-6 permit fallback; avoids Postgres extension in image; low-100k rows (A-3). Upgrade path documented (§2.4).                                                                                                                                                                                                                              |
+| **ADR-010** | Keyset (cursor) pagination on `(sortField,id)` composite indexes; page size 50 configurable.                                                          | OFFSET/LIMIT pagination.                      | OFFSET degrades at depth; keyset holds the 500ms budget at 100k rows (NFR-PERF-001/002).                                                                                                                                                                                                                                                        |
+| **ADR-011** | Zod schemas in `lib/validation` shared by REST + webhook.                                                                                             | Duplicate per-route validation.               | Single validation source; machine-readable errors (AC-WH-002, AC-BM-005/007/008).                                                                                                                                                                                                                                                               |
+| **ADR-012** | The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly. | Direct Prisma in route handlers.              | Testability, single business-rule locus plus one narrow auth gate, clean layer boundary (§6.1).                                                                                                                                                                                                                                                 |
+| **ADR-013** | Alert→category `onDelete: SetNull` (reassign); Bookmark/Channel/Message `onDelete: Cascade`.                                                          | App-level orphan handling.                    | DB enforces no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002).                                                                                                                                                                                                                                                                      |
 
 ---
 
@@ -617,31 +641,34 @@ Only AQ-2 and AQ-3 remain open, and both are scoped to later slices (Slice 4 / S
 
 ## 11. Full FR → Component Traceability
 
-| FR | Component(s) | Key ACs |
-|---|---|---|
-| FR-SHELL-001 | `app/(dashboard)/layout.tsx`, `components/shell` | AC-SHELL-001..004 |
-| FR-AUTH-001 | `middleware.ts`, `lib/auth/*`, `login/`, `lib/config/env.ts`, `prisma/seed.ts` | AC-AUTH-001..005 |
-| FR-BM-001 | `services/bookmarks`, `categories/route.ts`, `components/bookmarks` | AC-BM-001..005 |
-| FR-BM-002 | `services/bookmarks`, `bookmarks/route.ts`, `validation/bookmarks` | AC-BM-006..011 |
-| FR-BM-003 | `bookmarks/page.tsx`, `components/bookmarks` | AC-BM-012..014 |
-| FR-DOM-001 | `providers/dns`, `services/domains`, `domains/page.tsx` | AC-DOM-001..003 |
-| FR-DOM-002 | `providers/dns`, `services/domains`, `validation/dns` | AC-DOM-004..009 |
-| FR-SRV-001 | `providers/servers`, `servers/page.tsx` | AC-SRV-001..003 |
-| FR-SRV-002 | `providers/servers`, server power route + poll | AC-SRV-004..008 |
-| FR-MAIL-001 | `services/mail`, `mail/page.tsx` (keyset pagination) | AC-MAIL-001..005 |
-| FR-MAIL-002 | `webhooks/[type]` (`mail`), `services/mail` | AC-MAIL-006 |
-| FR-MSG-001 | `services/messages`, `messages/*` (keyset per channel) | AC-MSG-001..004, 007 |
-| FR-MSG-002 | `webhooks/[type]` (`message`), `services/messages` | AC-MSG-005..006 (008 inactive) |
-| FR-LOG-001 | `services/logs`, `logs/page.tsx` | AC-LOG-001..004 |
-| FR-LOG-002 | `webhooks/[type]` (`log`) | AC-LOG-005 |
-| FR-ALR-001 | `services/alerts`, `AlertCategory` | AC-ALR-001..002 |
-| FR-ALR-002 | `services/alerts`, `alerts/page.tsx` | AC-ALR-003..006 |
-| FR-ALR-003 | `webhooks/[type]` (`alert`) | AC-ALR-007 |
-| FR-WH-001 | `webhooks/[type]/route.ts`, `lib/webhooks/*` | AC-WH-001..007, 010, 011 |
-| FR-WH-002 | `webhook-tokens/route.ts`, `services/webhookTokens` | AC-WH-008..009 |
-| FR-PROV-001 | `lib/providers/*` (factory + mock) | AC-PROV-001..003 |
-| NFR-DEPLOY-001 | `Dockerfile`, `docker-compose.yml` | M-7 |
-| NFR-SEC-001..003 | middleware+DAL, webhook pipeline, env secret handling | AC-AUTH-001, AC-WH-001/002/005/011 |
-| NFR-PERF-001/002 | keyset pagination + composite indexes (§2.4) | M-6 |
-| NFR-A11Y-001 | shadcn/ui a11y defaults, keyboard/focus on shell+Bookmarks | M-8 |
+| FR               | Component(s)                                                                   | Key ACs                            |
+| ---------------- | ------------------------------------------------------------------------------ | ---------------------------------- |
+| FR-SHELL-001     | `app/(dashboard)/layout.tsx`, `components/shell`                               | AC-SHELL-001..004                  |
+| FR-AUTH-001      | `middleware.ts`, `lib/auth/*`, `login/`, `lib/config/env.ts`, `prisma/seed.ts` | AC-AUTH-001..005                   |
+| FR-BM-001        | `services/bookmarks`, `categories/route.ts`, `components/bookmarks`            | AC-BM-001..005                     |
+| FR-BM-002        | `services/bookmarks`, `bookmarks/route.ts`, `validation/bookmarks`             | AC-BM-006..011                     |
+| FR-BM-003        | `bookmarks/page.tsx`, `components/bookmarks`                                   | AC-BM-012..014                     |
+| FR-DOM-001       | `providers/dns`, `services/domains`, `domains/page.tsx`                        | AC-DOM-001..003                    |
+| FR-DOM-002       | `providers/dns`, `services/domains`, `validation/dns`                          | AC-DOM-004..009                    |
+| FR-SRV-001       | `providers/servers`, `servers/page.tsx`                                        | AC-SRV-001..003                    |
+| FR-SRV-002       | `providers/servers`, server power route + poll                                 | AC-SRV-004..008                    |
+| FR-MAIL-001      | `services/mail`, `mail/page.tsx` (keyset pagination)                           | AC-MAIL-001..005                   |
+| FR-MAIL-002      | `webhooks/[type]` (`mail`), `services/mail`                                    | AC-MAIL-006                        |
+| FR-MSG-001       | `services/messages`, `messages/*` (keyset per channel)                         | AC-MSG-001..004, 007               |
+| FR-MSG-002       | `webhooks/[type]` (`message`), `services/messages`                             | AC-MSG-005..006 (008 inactive)     |
+| FR-LOG-001       | `services/logs`, `logs/page.tsx`                                               | AC-LOG-001..004                    |
+| FR-LOG-002       | `webhooks/[type]` (`log`)                                                      | AC-LOG-005                         |
+| FR-ALR-001       | `services/alerts`, `AlertCategory`                                             | AC-ALR-001..002                    |
+| FR-ALR-002       | `services/alerts`, `alerts/page.tsx`                                           | AC-ALR-003..006                    |
+| FR-ALR-003       | `webhooks/[type]` (`alert`)                                                    | AC-ALR-007                         |
+| FR-WH-001        | `webhooks/[type]/route.ts`, `lib/webhooks/*`                                   | AC-WH-001..007, 010, 011           |
+| FR-WH-002        | `webhook-tokens/route.ts`, `services/webhookTokens`                            | AC-WH-008..009                     |
+| FR-PROV-001      | `lib/providers/*` (factory + mock)                                             | AC-PROV-001..003                   |
+| NFR-DEPLOY-001   | `Dockerfile`, `docker-compose.yml`                                             | M-7                                |
+| NFR-SEC-001..003 | middleware+DAL, webhook pipeline, env secret handling                          | AC-AUTH-001, AC-WH-001/002/005/011 |
+| NFR-PERF-001/002 | keyset pagination + composite indexes (§2.4)                                   | M-6                                |
+| NFR-A11Y-001     | shadcn/ui a11y defaults, keyboard/focus on shell+Bookmarks                     | M-8                                |
+
+```
+
 ```

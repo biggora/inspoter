@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-card{background:oklch(var(--background-50));border:1px solid oklch(var(--background-200));
@@ -17,9 +17,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-card-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-card-css';
+    if (document.getElementById("insp-card-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-card-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -30,21 +30,32 @@ function useCSS() {
  * Pass `title` (with optional `icon`/`action`) to get the standard header +
  * body split; otherwise it's a padded container (`padding` controls inset).
  */
-export function Card({ title, icon, action, hover = false, onClick, padding = 'md', children, className = '' }) {
+export function Card({
+  title,
+  icon,
+  action,
+  hover = false,
+  onClick,
+  padding = "md",
+  children,
+  className = "",
+}) {
   useCSS();
   const clickable = !!onClick;
-  const Comp = clickable ? 'button' : 'div';
+  const Comp = clickable ? "button" : "div";
 
   if (title) {
     return (
       <Comp
         onClick={onClick}
         className={[
-          'insp-card',
-          hover || clickable ? 'insp-card--hover' : '',
-          clickable ? 'insp-card--clickable' : '',
+          "insp-card",
+          hover || clickable ? "insp-card--hover" : "",
+          clickable ? "insp-card--clickable" : "",
           className,
-        ].filter(Boolean).join(' ')}
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
         <div className="insp-card__head">
           <div className="insp-card__head-l">
@@ -58,17 +69,24 @@ export function Card({ title, icon, action, hover = false, onClick, padding = 'm
     );
   }
 
-  const padCls = padding === 'none' ? '' : padding === 'sm' ? 'insp-card--pad-sm' : 'insp-card--pad';
+  const padCls =
+    padding === "none"
+      ? ""
+      : padding === "sm"
+        ? "insp-card--pad-sm"
+        : "insp-card--pad";
   return (
     <Comp
       onClick={onClick}
       className={[
-        'insp-card',
+        "insp-card",
         padCls,
-        hover || clickable ? 'insp-card--hover' : '',
-        clickable ? 'insp-card--clickable' : '',
+        hover || clickable ? "insp-card--hover" : "",
+        clickable ? "insp-card--clickable" : "",
         className,
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {children}
     </Comp>

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import type { Operator } from "@/generated/prisma/client";
+import type { Operator, Workspace } from "@/generated/prisma/client";
 import { getValidSession, readSessionCookie } from "@/lib/auth/session";
 
 // Auth Data Access Layer (architecture.md §5.3, ADR-012) — the authoritative
@@ -17,7 +17,9 @@ export async function requireOperator(): Promise<Operator> {
   const session = await getValidSession(sessionId);
   if (!session) redirect("/login");
 
-  const operator = await db.operator.findUnique({ where: { id: session.operatorId } });
+  const operator = await db.operator.findUnique({
+    where: { id: session.operatorId },
+  });
   if (!operator) redirect("/login");
 
   return operator;
@@ -27,6 +29,62 @@ export async function requireOperator(): Promise<Operator> {
 // (src/app/login/actions.ts) must not call Prisma directly. This lookup
 // lives alongside requireOperator() as the DAL is the sole sanctioned
 // Prisma caller outside the service layer.
-export async function findOperatorByUsername(username: string): Promise<Operator | null> {
+export async function findOperatorByUsername(
+  username: string,
+): Promise<Operator | null> {
   return db.operator.findUnique({ where: { username } });
+}
+
+export interface AuthContext {
+  operator: Operator;
+  workspace: Workspace;
+}
+
+export async function requireAuth(): Promise<AuthContext> {
+  const sessionId = await readSessionCookie();
+  if (!sessionId) redirect("/login");
+
+  const session = await getValidSession(sessionId);
+  if (!session) redirect("/login");
+
+  const operator = await db.operator.findUnique({
+    where: { id: session.operatorId },
+  });
+  if (!operator) redirect("/login");
+
+  // Resolve workspace from session
+  let workspace: Workspace | null = null;
+  if (session.activeWorkspaceId) {
+    // Verify membership exists for this workspace
+    const membership = await db.workspaceMember.findUnique({
+      where: {
+        workspaceId_operatorId: {
+          workspaceId: session.activeWorkspaceId,
+          operatorId: operator.id,
+        },
+      },
+      include: { workspace: true },
+    });
+    if (membership) {
+      workspace = membership.workspace;
+    }
+  }
+
+  // Fallback: first workspace the user belongs to
+  if (!workspace) {
+    const membership = await db.workspaceMember.findFirst({
+      where: { operatorId: operator.id },
+      include: { workspace: true },
+      orderBy: { joinedAt: "asc" },
+    });
+    if (!membership) redirect("/login");
+    workspace = membership.workspace;
+    // Persist for next request
+    await db.session.update({
+      where: { id: session.id },
+      data: { activeWorkspaceId: workspace.id },
+    });
+  }
+
+  return { operator, workspace };
 }

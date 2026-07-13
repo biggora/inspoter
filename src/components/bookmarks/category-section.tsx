@@ -48,13 +48,17 @@ export function CategorySection({
         </h3>
         <DropdownMenu>
           <DropdownMenuTrigger
-            className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon-sm" }),
+            )}
             aria-label="More options"
           >
             <MoreVertical aria-hidden className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onRename}>Rename category</DropdownMenuItem>
+            <DropdownMenuItem onClick={onRename}>
+              Rename category
+            </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={onDelete}>
               Delete category
             </DropdownMenuItem>

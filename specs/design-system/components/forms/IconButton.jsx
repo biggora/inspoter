@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-iconbtn{display:inline-flex;align-items:center;justify-content:center;
@@ -17,9 +17,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-iconbtn-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-iconbtn-css';
+    if (document.getElementById("insp-iconbtn-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-iconbtn-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -28,14 +28,22 @@ function useCSS() {
 /**
  * IconButton — square, icon-only control for topbars, toolbars and menus.
  */
-export function IconButton({ icon, size = 'md', bordered = false, className = '', ...rest }) {
+export function IconButton({
+  icon,
+  size = "md",
+  bordered = false,
+  className = "",
+  ...rest
+}) {
   useCSS();
   const cls = [
-    'insp-iconbtn',
+    "insp-iconbtn",
     `insp-iconbtn--${size}`,
-    bordered ? 'insp-iconbtn--bordered' : '',
+    bordered ? "insp-iconbtn--bordered" : "",
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button className={cls} {...rest}>
       <i className={icon}></i>

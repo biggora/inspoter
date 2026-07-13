@@ -19,14 +19,20 @@ import { EmptyState } from "./empty-state";
 // client state; every mutation calls the API then `router.refresh()`, which
 // re-runs the Bookmarks server component and streams new props down without
 // a full page reload (AC-BM-001/002/004/006/009/010).
-export function BookmarksBoard({ categories }: { categories: CategoryWithBookmarks[] }) {
+export function BookmarksBoard({
+  categories,
+}: {
+  categories: CategoryWithBookmarks[];
+}) {
   const router = useRouter();
-  const [categoryDialog, setCategoryDialog] = useState<CategoryDialogState | null>(null);
-  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<CategoryWithBookmarks | null>(
-    null,
-  );
-  const [bookmarkDialog, setBookmarkDialog] = useState<BookmarkDialogState | null>(null);
-  const [deleteBookmarkTarget, setDeleteBookmarkTarget] = useState<Bookmark | null>(null);
+  const [categoryDialog, setCategoryDialog] =
+    useState<CategoryDialogState | null>(null);
+  const [deleteCategoryTarget, setDeleteCategoryTarget] =
+    useState<CategoryWithBookmarks | null>(null);
+  const [bookmarkDialog, setBookmarkDialog] =
+    useState<BookmarkDialogState | null>(null);
+  const [deleteBookmarkTarget, setDeleteBookmarkTarget] =
+    useState<Bookmark | null>(null);
 
   const categoryOptions = categories.map((category) => ({
     id: category.id,
@@ -48,7 +54,9 @@ export function BookmarksBoard({ categories }: { categories: CategoryWithBookmar
       </div>
 
       {categories.length === 0 ? (
-        <EmptyState onCreateCategory={() => setCategoryDialog({ mode: "create" })} />
+        <EmptyState
+          onCreateCategory={() => setCategoryDialog({ mode: "create" })}
+        />
       ) : (
         <div className="flex flex-col gap-8">
           {categories.map((category) => (
@@ -57,8 +65,12 @@ export function BookmarksBoard({ categories }: { categories: CategoryWithBookmar
               category={category}
               onRename={() => handleRename(category)}
               onDelete={() => setDeleteCategoryTarget(category)}
-              onAddBookmark={() => setBookmarkDialog({ mode: "create", categoryId: category.id })}
-              onEditBookmark={(bookmark) => setBookmarkDialog({ mode: "edit", bookmark })}
+              onAddBookmark={() =>
+                setBookmarkDialog({ mode: "create", categoryId: category.id })
+              }
+              onEditBookmark={(bookmark) =>
+                setBookmarkDialog({ mode: "edit", bookmark })
+              }
               onDeleteBookmark={(bookmark) => setDeleteBookmarkTarget(bookmark)}
             />
           ))}

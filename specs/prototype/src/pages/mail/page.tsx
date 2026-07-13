@@ -1,15 +1,15 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { mockEmails } from '@/mocks/emails';
-import type { Email } from '@/mocks/emails';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { mockEmails } from "@/mocks/emails";
+import type { Email } from "@/mocks/emails";
 
 const PAGE_SIZE = 10;
 
-type PageState = 'loading' | 'error' | 'ready';
+type PageState = "loading" | "error" | "ready";
 
 interface NotificationState {
   message: string;
-  variant: 'success' | 'error';
+  variant: "success" | "error";
 }
 
 function formatDate(iso: string): string {
@@ -20,30 +20,30 @@ function formatDate(iso: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'только что';
+  if (diffMins < 1) return "только что";
   if (diffMins < 60) return `${diffMins} мин`;
   if (diffHours < 24) return `${diffHours} ч`;
   if (diffDays < 7) return `${diffDays} дн`;
 
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return d.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 function getInitials(name: string): string {
   return name
-    .split(' ')
+    .split(" ")
     .map((w) => w[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 }
@@ -51,19 +51,22 @@ function getInitials(name: string): string {
 export default function MailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [pageState, setPageState] = useState<PageState>('loading');
+  const [pageState, setPageState] = useState<PageState>("loading");
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
-  const [notification, setNotification] = useState<NotificationState | null>(null);
+  const [notification, setNotification] = useState<NotificationState | null>(
+    null,
+  );
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [paginating, setPaginating] = useState(false);
 
   // URL params
-  const query = searchParams.get('q') || '';
-  const senderFilter = searchParams.get('sender') || '';
-  const sortOrder = (searchParams.get('sort') || 'newest') as 'newest' | 'oldest';
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const query = searchParams.get("q") || "";
+  const senderFilter = searchParams.get("sender") || "";
+  const sortOrder = (searchParams.get("sort") || "newest") as
+    "newest" | "oldest";
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   // Debounced search input
   const [searchInput, setSearchInput] = useState(query);
@@ -83,8 +86,8 @@ export default function MailPage() {
         setFilterDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   // Update URL search param helper
@@ -97,11 +100,11 @@ export default function MailPage() {
         } else {
           next.delete(key);
         }
-        if (key !== 'page') next.delete('page');
+        if (key !== "page") next.delete("page");
         return next;
       });
     },
-    [setSearchParams]
+    [setSearchParams],
   );
 
   // Debounced search
@@ -110,55 +113,55 @@ export default function MailPage() {
       setSearchInput(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        setParam('q', value);
+        setParam("q", value);
       }, 300);
     },
-    [setParam]
+    [setParam],
   );
 
   // Reset search
   const clearSearch = useCallback(() => {
-    setSearchInput('');
-    setParam('q', '');
+    setSearchInput("");
+    setParam("q", "");
   }, [setParam]);
 
   // Filter & sort
   const handleSenderFilter = useCallback(
     (sender: string) => {
-      setParam('sender', sender);
+      setParam("sender", sender);
       setFilterDropdownOpen(false);
     },
-    [setParam]
+    [setParam],
   );
 
   const clearSenderFilter = useCallback(() => {
-    setParam('sender', '');
+    setParam("sender", "");
   }, [setParam]);
 
   const toggleSort = useCallback(() => {
-    setParam('sort', sortOrder === 'newest' ? 'oldest' : 'newest');
+    setParam("sort", sortOrder === "newest" ? "oldest" : "newest");
   }, [setParam, sortOrder]);
 
   // Pagination
   const goToPage = useCallback(
     (page: number) => {
-      setParam('page', String(page));
+      setParam("page", String(page));
       setSelectedEmail(null);
     },
-    [setParam]
+    [setParam],
   );
 
   // Load emails
   const loadEmails = useCallback(() => {
-    setPageState('loading');
+    setPageState("loading");
     setSelectedEmail(null);
     setTimeout(() => {
       const shouldFail = false;
       if (shouldFail) {
-        setPageState('error');
+        setPageState("error");
       } else {
         setEmails(mockEmails.map((e) => ({ ...e })));
-        setPageState('ready');
+        setPageState("ready");
       }
     }, 600);
   }, []);
@@ -177,7 +180,7 @@ export default function MailPage() {
         (e) =>
           e.subject.toLowerCase().includes(q) ||
           e.fromName.toLowerCase().includes(q) ||
-          e.from.toLowerCase().includes(q)
+          e.from.toLowerCase().includes(q),
       );
     }
 
@@ -188,7 +191,7 @@ export default function MailPage() {
     list.sort((a, b) => {
       const da = new Date(a.receivedAt).getTime();
       const db = new Date(b.receivedAt).getTime();
-      return sortOrder === 'newest' ? db - da : da - db;
+      return sortOrder === "newest" ? db - da : da - db;
     });
 
     return list;
@@ -207,12 +210,15 @@ export default function MailPage() {
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredEmails.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const pagedEmails = filteredEmails.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pagedEmails = filteredEmails.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
 
-  const hasActiveFilters = !!query || !!senderFilter || sortOrder !== 'newest';
+  const hasActiveFilters = !!query || !!senderFilter || sortOrder !== "newest";
 
   // Loading
-  if (pageState === 'loading') {
+  if (pageState === "loading") {
     return (
       <div className="flex h-[calc(100vh-3.5rem)]">
         {/* Left panel skeletons */}
@@ -235,21 +241,25 @@ export default function MailPage() {
         </div>
         {/* Right panel skeleton */}
         <div className="hidden md:flex flex-1 items-center justify-center p-8">
-          <p className="text-sm text-foreground-400 animate-pulse">Загрузка...</p>
+          <p className="text-sm text-foreground-400 animate-pulse">
+            Загрузка...
+          </p>
         </div>
       </div>
     );
   }
 
   // Error
-  if (pageState === 'error') {
+  if (pageState === "error") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
         <div className="text-center max-w-sm animate-scale-in">
           <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
             <i className="ri-mail-close-line text-2xl text-primary-600"></i>
           </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">Не удалось загрузить почту</h3>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Не удалось загрузить почту
+          </h3>
           <p className="text-sm text-foreground-500 mb-6">
             Проверьте подключение к почтовому серверу и попробуйте снова.
           </p>
@@ -271,22 +281,24 @@ export default function MailPage() {
       {notification && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
-            notification.variant === 'success'
-              ? 'bg-accent-100/80 text-accent-800'
-              : 'bg-primary-100/70 text-primary-800'
+            notification.variant === "success"
+              ? "bg-accent-100/80 text-accent-800"
+              : "bg-primary-100/70 text-primary-800"
           }`}
           role="status"
           aria-live="polite"
         >
           <i
-            className={`${notification.variant === 'success' ? 'ri-check-line' : 'ri-error-warning-line'} w-5 h-5 flex items-center justify-center`}
+            className={`${notification.variant === "success" ? "ri-check-line" : "ri-error-warning-line"} w-5 h-5 flex items-center justify-center`}
           ></i>
           {notification.message}
         </div>
       )}
 
       {/* ===== LEFT PANEL — Email list ===== */}
-      <div className={`${selectedEmail ? 'hidden md:flex' : 'flex'} md:flex w-full md:w-[420px] md:min-w-[420px] border-r border-background-200 flex-col bg-background-50`}>
+      <div
+        className={`${selectedEmail ? "hidden md:flex" : "flex"} md:flex w-full md:w-[420px] md:min-w-[420px] border-r border-background-200 flex-col bg-background-50`}
+      >
         {/* Search & Filters */}
         <div className="p-3 border-b border-background-100 space-y-2">
           {/* Search bar */}
@@ -317,15 +329,18 @@ export default function MailPage() {
                 onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
                   senderFilter
-                    ? 'bg-primary-100/70 text-primary-700'
-                    : 'text-foreground-500 hover:text-foreground-700 hover:bg-background-100'
+                    ? "bg-primary-100/70 text-primary-700"
+                    : "text-foreground-500 hover:text-foreground-700 hover:bg-background-100"
                 }`}
               >
                 <i className="ri-filter-3-line w-4 h-4 flex items-center justify-center"></i>
                 {senderFilter
-                  ? uniqueSenders.find((e) => e.from === senderFilter)?.fromName || senderFilter
-                  : 'Отправитель'}
-                <i className={`ri-arrow-down-s-line w-4 h-4 flex items-center justify-center transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`}></i>
+                  ? uniqueSenders.find((e) => e.from === senderFilter)
+                      ?.fromName || senderFilter
+                  : "Отправитель"}
+                <i
+                  className={`ri-arrow-down-s-line w-4 h-4 flex items-center justify-center transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`}
+                ></i>
               </button>
               {filterDropdownOpen && (
                 <div className="absolute top-full left-0 mt-1 z-30 w-64 bg-background-50 border border-background-200 rounded-lg shadow-lg animate-scale-in overflow-hidden">
@@ -336,12 +351,14 @@ export default function MailPage() {
                         onClick={() => handleSenderFilter(e.from)}
                         className={`w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer ${
                           senderFilter === e.from
-                            ? 'bg-primary-50 text-primary-700'
-                            : 'text-foreground-700 hover:bg-background-100'
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-foreground-700 hover:bg-background-100"
                         }`}
                       >
                         <div className="font-medium text-xs">{e.fromName}</div>
-                        <div className="text-xs text-foreground-400">{e.from}</div>
+                        <div className="text-xs text-foreground-400">
+                          {e.from}
+                        </div>
                       </button>
                     ))}
                     {senderFilter && (
@@ -362,18 +379,22 @@ export default function MailPage() {
               onClick={toggleSort}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-foreground-500 hover:text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <i className={`${sortOrder === 'newest' ? 'ri-sort-desc' : 'ri-sort-asc'} w-4 h-4 flex items-center justify-center`}></i>
-              {sortOrder === 'newest' ? 'Сначала новые' : 'Сначала старые'}
+              <i
+                className={`${sortOrder === "newest" ? "ri-sort-desc" : "ri-sort-asc"} w-4 h-4 flex items-center justify-center`}
+              ></i>
+              {sortOrder === "newest" ? "Сначала новые" : "Сначала старые"}
             </button>
           </div>
 
           {/* Active filters bar */}
           {hasActiveFilters && filteredEmails.length === 0 && (
             <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-foreground-400">Ничего не найдено</span>
+              <span className="text-xs text-foreground-400">
+                Ничего не найдено
+              </span>
               <button
                 onClick={() => {
-                  setSearchInput('');
+                  setSearchInput("");
                   setSearchParams({});
                 }}
                 className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors cursor-pointer whitespace-nowrap"
@@ -393,8 +414,12 @@ export default function MailPage() {
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-secondary-100 flex items-center justify-center">
                   <i className="ri-mail-line text-xl text-secondary-600"></i>
                 </div>
-                <h4 className="font-heading font-semibold text-sm text-foreground-900 mb-1">Нет писем</h4>
-                <p className="text-xs text-foreground-500">Входящие пока пусты</p>
+                <h4 className="font-heading font-semibold text-sm text-foreground-900 mb-1">
+                  Нет писем
+                </h4>
+                <p className="text-xs text-foreground-500">
+                  Входящие пока пусты
+                </p>
               </div>
             </div>
           ) : filteredEmails.length === 0 && hasActiveFilters ? (
@@ -404,11 +429,15 @@ export default function MailPage() {
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-secondary-100 flex items-center justify-center">
                   <i className="ri-mail-close-line text-xl text-secondary-600"></i>
                 </div>
-                <h4 className="font-heading font-semibold text-sm text-foreground-900 mb-1">Ничего не найдено</h4>
-                <p className="text-xs text-foreground-500 mb-4">Попробуйте изменить или сбросить фильтры</p>
+                <h4 className="font-heading font-semibold text-sm text-foreground-900 mb-1">
+                  Ничего не найдено
+                </h4>
+                <p className="text-xs text-foreground-500 mb-4">
+                  Попробуйте изменить или сбросить фильтры
+                </p>
                 <button
                   onClick={() => {
-                    setSearchInput('');
+                    setSearchInput("");
                     setSearchParams({});
                   }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer whitespace-nowrap"
@@ -430,13 +459,15 @@ export default function MailPage() {
                       setSelectedEmail(email);
                       if (!email.isRead) {
                         setEmails((prev) =>
-                          prev.map((e) => (e.id === email.id ? { ...e, isRead: true } : e))
+                          prev.map((e) =>
+                            e.id === email.id ? { ...e, isRead: true } : e,
+                          ),
                         );
                       }
                     }
                   }}
                   className={`w-full text-left px-4 py-3 border-b border-background-50 hover:bg-background-100/60 transition-colors cursor-pointer ${
-                    selectedEmail?.id === email.id ? 'bg-primary-50' : ''
+                    selectedEmail?.id === email.id ? "bg-primary-50" : ""
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -450,14 +481,18 @@ export default function MailPage() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm truncate ${email.isRead ? 'text-foreground-600' : 'text-foreground-900 font-semibold'}`}>
+                        <span
+                          className={`text-sm truncate ${email.isRead ? "text-foreground-600" : "text-foreground-900 font-semibold"}`}
+                        >
                           {email.fromName}
                         </span>
                         <span className="text-xs text-foreground-400 whitespace-nowrap shrink-0">
                           {formatDate(email.receivedAt)}
                         </span>
                       </div>
-                      <p className={`text-sm truncate mt-0.5 ${email.isRead ? 'text-foreground-500' : 'text-foreground-800 font-medium'}`}>
+                      <p
+                        className={`text-sm truncate mt-0.5 ${email.isRead ? "text-foreground-500" : "text-foreground-800 font-medium"}`}
+                      >
                         {email.subject}
                       </p>
                       <p className="text-xs text-foreground-400 truncate mt-0.5">
@@ -501,23 +536,35 @@ export default function MailPage() {
       </div>
 
       {/* ===== RIGHT PANEL — Email detail ===== */}
-      <div className={`${selectedEmail ? 'flex' : 'hidden'} md:flex flex-1 flex-col bg-background-50 overflow-y-auto`}>
+      <div
+        className={`${selectedEmail ? "flex" : "hidden"} md:flex flex-1 flex-col bg-background-50 overflow-y-auto`}
+      >
         {selectedEmail ? (
           <div className="animate-fade-in">
             {/* Email header */}
             <div className="px-6 py-5 border-b border-background-100">
-              <h2 className="font-heading text-lg font-semibold text-foreground-900 mb-3">{selectedEmail.subject}</h2>
+              <h2 className="font-heading text-lg font-semibold text-foreground-900 mb-3">
+                {selectedEmail.subject}
+              </h2>
               <div className="flex items-start gap-3">
                 <div
                   className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-background-50"
-                  style={{ backgroundColor: stringToColor(selectedEmail.fromName) }}
+                  style={{
+                    backgroundColor: stringToColor(selectedEmail.fromName),
+                  }}
                 >
                   {getInitials(selectedEmail.fromName)}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground-900">{selectedEmail.fromName}</p>
-                  <p className="text-xs text-foreground-400">{selectedEmail.from}</p>
-                  <p className="text-xs text-foreground-400 mt-0.5">{formatTime(selectedEmail.receivedAt)}</p>
+                  <p className="text-sm font-semibold text-foreground-900">
+                    {selectedEmail.fromName}
+                  </p>
+                  <p className="text-xs text-foreground-400">
+                    {selectedEmail.from}
+                  </p>
+                  <p className="text-xs text-foreground-400 mt-0.5">
+                    {formatTime(selectedEmail.receivedAt)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -533,11 +580,13 @@ export default function MailPage() {
               <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-secondary-100 flex items-center justify-center">
                 <i className="ri-mail-open-line text-2xl text-secondary-500"></i>
               </div>
-              <h3 className="font-heading text-base font-semibold text-foreground-900 mb-1">Выберите письмо</h3>
+              <h3 className="font-heading text-base font-semibold text-foreground-900 mb-1">
+                Выберите письмо
+              </h3>
               <p className="text-sm text-foreground-400">
                 {filteredEmails.length > 0
-                  ? 'Нажмите на письмо слева, чтобы прочитать его'
-                  : 'Писем пока нет'}
+                  ? "Нажмите на письмо слева, чтобы прочитать его"
+                  : "Писем пока нет"}
               </p>
             </div>
           </div>
@@ -559,7 +608,7 @@ function stringToColor(str: string): string {
 
 // Utility: strip HTML tags for preview text
 function stripHtml(html: string): string {
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.innerHTML = html;
-  return div.textContent || div.innerText || '';
+  return div.textContent || div.innerText || "";
 }

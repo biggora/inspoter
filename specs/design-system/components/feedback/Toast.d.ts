@@ -1,8 +1,8 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface ToastProps {
   /** @default "success" */
-  variant?: 'success' | 'error' | 'info';
+  variant?: "success" | "error" | "info";
   /** Override the default variant icon (Remix Icon class). */
   icon?: string;
   /** Position fixed top-right. @default true */

@@ -18,7 +18,10 @@ export function toErrorResponse(error: unknown): NextResponse {
       );
     }
     if (error.code === "P2025") {
-      return NextResponse.json({ error: "Resource not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Resource not found." },
+        { status: 404 },
+      );
     }
   }
   throw error;

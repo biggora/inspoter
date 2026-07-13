@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import type { Bookmark } from '@/mocks/bookmarks';
+import { useState, useRef, useEffect } from "react";
+import type { Bookmark } from "@/mocks/bookmarks";
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -13,13 +13,13 @@ function getInitials(name: string): string {
     .filter(Boolean)
     .map((w) => w[0].toUpperCase())
     .slice(0, 2)
-    .join('');
+    .join("");
 }
 
 const initialsColors = [
-  'bg-primary-100 text-primary-700',
-  'bg-accent-100 text-accent-700',
-  'bg-secondary-100 text-secondary-700',
+  "bg-primary-100 text-primary-700",
+  "bg-accent-100 text-accent-700",
+  "bg-secondary-100 text-secondary-700",
 ];
 
 function getColorIndex(name: string): number {
@@ -30,7 +30,11 @@ function getColorIndex(name: string): number {
   return Math.abs(hash) % initialsColors.length;
 }
 
-export default function BookmarkCard({ bookmark, onEdit, onDelete }: BookmarkCardProps) {
+export default function BookmarkCard({
+  bookmark,
+  onEdit,
+  onDelete,
+}: BookmarkCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -41,8 +45,8 @@ export default function BookmarkCard({ bookmark, onEdit, onDelete }: BookmarkCar
         setMenuOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
   const initials = getInitials(bookmark.name);
@@ -59,7 +63,9 @@ export default function BookmarkCard({ bookmark, onEdit, onDelete }: BookmarkCar
           if (menuOpen) e.preventDefault();
         }}
       >
-        <span className={`w-full h-full rounded-lg flex items-center justify-center font-semibold text-sm ${colorClass}`}>
+        <span
+          className={`w-full h-full rounded-lg flex items-center justify-center font-semibold text-sm ${colorClass}`}
+        >
           {initials}
         </span>
       </a>
@@ -77,9 +83,13 @@ export default function BookmarkCard({ bookmark, onEdit, onDelete }: BookmarkCar
           {bookmark.name}
         </a>
         {bookmark.description && (
-          <p className="text-xs text-foreground-500 mt-0.5 line-clamp-1">{bookmark.description}</p>
+          <p className="text-xs text-foreground-500 mt-0.5 line-clamp-1">
+            {bookmark.description}
+          </p>
         )}
-        <p className="text-xs text-foreground-400 mt-1 truncate">{bookmark.url}</p>
+        <p className="text-xs text-foreground-400 mt-1 truncate">
+          {bookmark.url}
+        </p>
       </div>
 
       <div className="relative shrink-0" ref={menuRef}>

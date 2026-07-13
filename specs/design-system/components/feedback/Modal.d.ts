@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface ModalProps {
   /** Controls visibility. */
@@ -8,7 +8,7 @@ export interface ModalProps {
   /** Header title. */
   title: string;
   /** @default "md" (448px) — sm 360 · lg 560 */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   /** Footer action row (usually cancel + confirm Buttons). */
   footer?: React.ReactNode;
   children?: React.ReactNode;

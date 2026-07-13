@@ -1,29 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
-import { mockProfile, mockNotificationPrefs, mockAppearance } from '@/mocks/settings';
-import type { UserProfile, NotificationPrefs, AppearanceSettings } from '@/mocks/settings';
-import { ProfileTab } from '@/pages/settings/components/ProfileTab';
-import { NotificationsTab } from '@/pages/settings/components/NotificationsTab';
-import { AppearanceTab } from '@/pages/settings/components/AppearanceTab';
-import { SecurityTab } from '@/pages/settings/components/SecurityTab';
+import { useState, useEffect, useCallback } from "react";
+import {
+  mockProfile,
+  mockNotificationPrefs,
+  mockAppearance,
+} from "@/mocks/settings";
+import type {
+  UserProfile,
+  NotificationPrefs,
+  AppearanceSettings,
+} from "@/mocks/settings";
+import { ProfileTab } from "@/pages/settings/components/ProfileTab";
+import { NotificationsTab } from "@/pages/settings/components/NotificationsTab";
+import { AppearanceTab } from "@/pages/settings/components/AppearanceTab";
+import { SecurityTab } from "@/pages/settings/components/SecurityTab";
 
-type SettingsTab = 'profile' | 'notifications' | 'appearance' | 'security';
-type PageState = 'loading' | 'error' | 'ready';
+type SettingsTab = "profile" | "notifications" | "appearance" | "security";
+type PageState = "loading" | "error" | "ready";
 
 const tabs: { key: SettingsTab; label: string; icon: string }[] = [
-  { key: 'profile', label: 'Профиль', icon: 'ri-user-line' },
-  { key: 'notifications', label: 'Уведомления', icon: 'ri-notification-3-line' },
-  { key: 'appearance', label: 'Оформление', icon: 'ri-palette-line' },
-  { key: 'security', label: 'Безопасность', icon: 'ri-shield-check-line' },
+  { key: "profile", label: "Профиль", icon: "ri-user-line" },
+  {
+    key: "notifications",
+    label: "Уведомления",
+    icon: "ri-notification-3-line",
+  },
+  { key: "appearance", label: "Оформление", icon: "ri-palette-line" },
+  { key: "security", label: "Безопасность", icon: "ri-shield-check-line" },
 ];
 
 export default function SettingsPage() {
-  const [pageState, setPageState] = useState<PageState>('loading');
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [pageState, setPageState] = useState<PageState>("loading");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [profile, setProfile] = useState<UserProfile>(mockProfile);
-  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(mockNotificationPrefs);
-  const [appearance, setAppearance] = useState<AppearanceSettings>(mockAppearance);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(
+    mockNotificationPrefs,
+  );
+  const [appearance, setAppearance] =
+    useState<AppearanceSettings>(mockAppearance);
   const [saving, setSaving] = useState(false);
-  const [notification, setNotification] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     if (notification) {
@@ -32,17 +50,20 @@ export default function SettingsPage() {
     }
   }, [notification]);
 
-  const showNotify = useCallback((message: string, variant: 'success' | 'error') => {
-    setNotification({ message, variant });
-  }, []);
+  const showNotify = useCallback(
+    (message: string, variant: "success" | "error") => {
+      setNotification({ message, variant });
+    },
+    [],
+  );
 
   const loadSettings = useCallback(() => {
-    setPageState('loading');
+    setPageState("loading");
     setTimeout(() => {
       setProfile({ ...mockProfile });
       setNotifPrefs({ ...mockNotificationPrefs });
       setAppearance({ ...mockAppearance });
-      setPageState('ready');
+      setPageState("ready");
     }, 500);
   }, []);
 
@@ -50,14 +71,17 @@ export default function SettingsPage() {
     loadSettings();
   }, [loadSettings]);
 
-  const handleProfileSave = useCallback((updated: UserProfile) => {
-    setSaving(true);
-    setTimeout(() => {
-      setProfile(updated);
-      setSaving(false);
-      showNotify('Профиль успешно обновлён', 'success');
-    }, 400);
-  }, [showNotify]);
+  const handleProfileSave = useCallback(
+    (updated: UserProfile) => {
+      setSaving(true);
+      setTimeout(() => {
+        setProfile(updated);
+        setSaving(false);
+        showNotify("Профиль успешно обновлён", "success");
+      }, 400);
+    },
+    [showNotify],
+  );
 
   const handleNotifSave = useCallback((updated: NotificationPrefs) => {
     setSaving(true);
@@ -75,7 +99,7 @@ export default function SettingsPage() {
     }, 300);
   }, []);
 
-  if (pageState === 'loading') {
+  if (pageState === "loading") {
     return (
       <div className="p-6">
         {/* Tab bar skeleton */}
@@ -99,14 +123,16 @@ export default function SettingsPage() {
     );
   }
 
-  if (pageState === 'error') {
+  if (pageState === "error") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
         <div className="text-center max-w-sm animate-scale-in">
           <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
             <i className="ri-settings-4-line text-2xl text-primary-600"></i>
           </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">Не удалось загрузить настройки</h3>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Не удалось загрузить настройки
+          </h3>
           <p className="text-sm text-foreground-500 mb-6">
             Проверьте подключение и попробуйте снова.
           </p>
@@ -128,16 +154,18 @@ export default function SettingsPage() {
       {notification && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
-            notification.variant === 'success'
-              ? 'bg-accent-100/80 text-accent-800'
-              : 'bg-primary-100/70 text-primary-800'
+            notification.variant === "success"
+              ? "bg-accent-100/80 text-accent-800"
+              : "bg-primary-100/70 text-primary-800"
           }`}
           role="status"
           aria-live="polite"
         >
           <i
             className={`${
-              notification.variant === 'success' ? 'ri-check-line' : 'ri-error-warning-line'
+              notification.variant === "success"
+                ? "ri-check-line"
+                : "ri-error-warning-line"
             } w-5 h-5 flex items-center justify-center`}
           ></i>
           {notification.message}
@@ -152,11 +180,13 @@ export default function SettingsPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`inline-flex items-center gap-2 px-4 py-2.5 -mb-[1px] text-sm font-medium transition-colors cursor-pointer whitespace-nowrap border-b-2 rounded-t-lg ${
               activeTab === tab.key
-                ? 'border-primary-500 text-primary-700 bg-primary-50/30'
-                : 'border-transparent text-foreground-500 hover:text-foreground-700 hover:bg-background-100/50'
+                ? "border-primary-500 text-primary-700 bg-primary-50/30"
+                : "border-transparent text-foreground-500 hover:text-foreground-700 hover:bg-background-100/50"
             }`}
           >
-            <i className={`${tab.icon} w-4 h-4 flex items-center justify-center`}></i>
+            <i
+              className={`${tab.icon} w-4 h-4 flex items-center justify-center`}
+            ></i>
             {tab.label}
           </button>
         ))}
@@ -172,16 +202,31 @@ export default function SettingsPage() {
 
       {/* Tab content */}
       <div key={activeTab} className="animate-fade-in">
-        {activeTab === 'profile' && (
-          <ProfileTab profile={profile} onSave={handleProfileSave} onNotify={showNotify} disabled={saving} />
+        {activeTab === "profile" && (
+          <ProfileTab
+            profile={profile}
+            onSave={handleProfileSave}
+            onNotify={showNotify}
+            disabled={saving}
+          />
         )}
-        {activeTab === 'notifications' && (
-          <NotificationsTab prefs={notifPrefs} onSave={handleNotifSave} onNotify={showNotify} disabled={saving} />
+        {activeTab === "notifications" && (
+          <NotificationsTab
+            prefs={notifPrefs}
+            onSave={handleNotifSave}
+            onNotify={showNotify}
+            disabled={saving}
+          />
         )}
-        {activeTab === 'appearance' && (
-          <AppearanceTab appearance={appearance} onSave={handleAppearanceSave} onNotify={showNotify} disabled={saving} />
+        {activeTab === "appearance" && (
+          <AppearanceTab
+            appearance={appearance}
+            onSave={handleAppearanceSave}
+            onNotify={showNotify}
+            disabled={saving}
+          />
         )}
-        {activeTab === 'security' && (
+        {activeTab === "security" && (
           <SecurityTab onNotify={showNotify} disabled={saving} />
         )}
       </div>

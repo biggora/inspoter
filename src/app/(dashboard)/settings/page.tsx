@@ -1,17 +1,33 @@
-import { Settings } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import Link from "next/link";
+import { Building2, Webhook } from "lucide-react";
 
-// Settings placeholder — additive to the seven PRD sections (design.md §9
-// C-1 / plan.md §9 C-1), hosting future webhook-token management (Slice 4).
-// Tester note (plan.md §5.4 item 4): verified as a smoke check (route
-// resolves at 200), not an AC-SHELL-003 assertion — that AC's section count
-// stays exactly seven.
 export default function SettingsPage() {
   return (
-    <SectionPlaceholder
-      section="Settings"
-      description="Webhook token management will be available in a future release."
-      icon={Settings}
-    />
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Settings</h1>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/settings/workspace"
+          className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+        >
+          <Building2 className="size-5 text-muted-foreground" />
+          <div>
+            <p className="font-medium">Workspace</p>
+            <p className="text-sm text-muted-foreground">
+              Manage workspace name, members, and create new workspaces
+            </p>
+          </div>
+        </Link>
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 opacity-50">
+          <Webhook className="size-5 text-muted-foreground" />
+          <div>
+            <p className="font-medium">Webhooks</p>
+            <p className="text-sm text-muted-foreground">
+              Token management (coming soon)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

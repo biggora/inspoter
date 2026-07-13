@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -16,9 +16,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-empty-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-empty-css';
+    if (document.getElementById("insp-empty-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-empty-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -29,7 +29,14 @@ function useCSS() {
  * empty lists, "not found", and load errors. `tone` colours the well
  * (`primary` for errors, `secondary` for empty, `accent` for all-clear).
  */
-export function EmptyState({ icon, tone = 'secondary', title, description, action, className = '' }) {
+export function EmptyState({
+  icon,
+  tone = "secondary",
+  title,
+  description,
+  action,
+  className = "",
+}) {
   useCSS();
   return (
     <div className={`insp-empty ${className}`}>

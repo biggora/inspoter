@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-progress{width:100%;border-radius:var(--radius-full);background:oklch(var(--background-200));overflow:hidden;}
@@ -15,9 +15,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-progress-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-progress-css';
+    if (document.getElementById("insp-progress-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-progress-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -28,14 +28,29 @@ function useCSS() {
  * `auto` colouring maps value→tone (green <60, amber <85, red ≥85) for
  * resource-utilisation bars.
  */
-export function ProgressBar({ value = 0, tone = 'accent', size = 'sm', auto = false, className = '' }) {
+export function ProgressBar({
+  value = 0,
+  tone = "accent",
+  size = "sm",
+  auto = false,
+  className = "",
+}) {
   useCSS();
   const v = Math.max(0, Math.min(100, value));
   let t = tone;
-  if (auto) t = v >= 85 ? 'red' : v >= 60 ? 'amber' : 'accent';
+  if (auto) t = v >= 85 ? "red" : v >= 60 ? "amber" : "accent";
   return (
-    <div className={`insp-progress insp-progress--${size} ${className}`} role="progressbar" aria-valuenow={v} aria-valuemin={0} aria-valuemax={100}>
-      <div className={`insp-progress__fill insp-progress__fill--${t}`} style={{ width: `${v}%` }}></div>
+    <div
+      className={`insp-progress insp-progress--${size} ${className}`}
+      role="progressbar"
+      aria-valuenow={v}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div
+        className={`insp-progress__fill insp-progress__fill--${t}`}
+        style={{ width: `${v}%` }}
+      ></div>
     </div>
   );
 }

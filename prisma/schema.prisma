@@ -16,31 +16,69 @@ datasource db {
 
 // --- Auth (FR-AUTH-001) ---
 model Operator {
-  id           String    @id @default(cuid())
-  username     String    @unique
+  id           String            @id @default(cuid())
+  username     String            @unique
   passwordHash String // scrypt hash; never returned (NFR-SEC-002)
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime          @default(now())
   sessions     Session[]
+  memberships  WorkspaceMember[]
 }
 
 model Session {
-  id         String   @id // opaque random token (the cookie value)
-  operatorId String
-  operator   Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  id                String     @id // opaque random token (the cookie value)
+  operatorId        String
+  operator          Operator   @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  activeWorkspaceId String?
+  activeWorkspace   Workspace? @relation(fields: [activeWorkspaceId], references: [id], onDelete: SetNull)
+  expiresAt         DateTime
+  createdAt         DateTime   @default(now())
 
   @@index([expiresAt])
 }
 
+// --- Workspaces ---
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members           WorkspaceMember[]
+  sessions          Session[]
+  categories        Category[]
+  messageCategories MessageCategory[]
+  mailItems         MailItem[]
+  logEntries        LogEntry[]
+  alertCategories   AlertCategory[]
+  webhookTokens     WebhookToken[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  operatorId  String
+  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  role        String    @default("owner")
+  joinedAt    DateTime  @default(now())
+
+  @@unique([workspaceId, operatorId])
+  @@index([operatorId])
+}
+
 // --- Bookmarks (FR-BM-001..003, Slice 1) ---
 model Category {
-  id        String     @id @default(cuid())
-  name      String
-  position  Int        @default(0)
-  bookmarks Bookmark[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  position    Int        @default(0)
+  bookmarks   Bookmark[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workspaceId])
 }
 
 model Bookmark {
@@ -60,11 +98,15 @@ model Bookmark {
 
 // --- Messages (FR-MSG-001..002) ---
 model MessageCategory {
-  id        String    @id @default(cuid())
-  name      String
-  channels  Channel[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  channels    Channel[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
 }
 
 model Channel {
@@ -92,26 +134,32 @@ model Message {
 
 // --- Mail (FR-MAIL-001..002) ---
 model MailItem {
-  id         String   @id @default(cuid())
-  sender     String
-  subject    String
-  body       String
-  receivedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sender      String
+  subject     String
+  body        String
+  receivedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 
+  @@index([workspaceId])
   @@index([receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
   @@index([sender]) // equality filter (AC-MAIL-003, NFR-PERF-002)
 }
 
 // --- Logs (FR-LOG-001..002) ---
 model LogEntry {
-  id        String   @id @default(cuid())
-  level     String // e.g. info|warn|error (validated by zod, stored as string)
-  source    String
-  message   String
-  timestamp DateTime @default(now())
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  level       String // e.g. info|warn|error (validated by zod, stored as string)
+  source      String
+  message     String
+  timestamp   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 
+  @@index([workspaceId])
   @@index([timestamp, id]) // sort + keyset pagination (AC-LOG-003/004)
   @@index([level]) // equality filter (AC-LOG-002)
   @@index([source]) // equality filter (AC-LOG-002)
@@ -119,11 +167,15 @@ model LogEntry {
 
 // --- Alerts (FR-ALR-001..003) ---
 model AlertCategory {
-  id        String   @id @default(cuid())
-  name      String
-  alerts    Alert[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  alerts      Alert[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
 }
 
 model Alert {
@@ -144,6 +196,8 @@ model Alert {
 // --- Webhook (FR-WH-001..002) ---
 model WebhookToken {
   id              String           @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name            String
   tokenHash       String           @unique // sha256 of secret; raw secret shown once (AC-WH-008), never stored
   tokenPrefix     String // first chars, for UI identification only
@@ -151,6 +205,8 @@ model WebhookToken {
   revokedAt       DateTime? // AC-WH-009 revoke -> 401
   lastUsedAt      DateTime?
   idempotencyKeys IdempotencyKey[]
+
+  @@index([workspaceId])
 }
 
 model IdempotencyKey {

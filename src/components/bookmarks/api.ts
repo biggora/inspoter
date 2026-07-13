@@ -65,16 +65,26 @@ export interface BookmarkInput {
 
 export const categoriesApi = {
   create: (name: string) =>
-    request("/api/categories", { method: "POST", body: JSON.stringify({ name }) }),
+    request("/api/categories", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
   rename: (id: string, name: string) =>
-    request(`/api/categories/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
-  remove: (id: string) => request(`/api/categories/${id}`, { method: "DELETE" }),
+    request(`/api/categories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+  remove: (id: string) =>
+    request(`/api/categories/${id}`, { method: "DELETE" }),
 };
 
 export const bookmarksApi = {
   create: (input: BookmarkInput) =>
     request("/api/bookmarks", { method: "POST", body: JSON.stringify(input) }),
   update: (id: string, input: BookmarkInput) =>
-    request(`/api/bookmarks/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+    request(`/api/bookmarks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
   remove: (id: string) => request(`/api/bookmarks/${id}`, { method: "DELETE" }),
 };

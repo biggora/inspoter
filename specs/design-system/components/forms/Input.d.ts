@@ -1,6 +1,9 @@
-import * as React from 'react';
+import * as React from "react";
 
-export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface InputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "size"
+> {
   /** Field label rendered above the control. */
   label?: string;
   /** Remix Icon class shown inside the field, left. */

@@ -40,9 +40,9 @@ describe("AC-AUTH-005: operator env bootstrap contract", () => {
       OPERATOR_PASSWORD_HASH: "salt:hash",
       OPERATOR_PASSWORD: undefined,
     });
-    expect((env as unknown as { OPERATOR_USERNAME?: string }).OPERATOR_USERNAME).toBe(
-      "operator",
-    );
+    expect(
+      (env as unknown as { OPERATOR_USERNAME?: string }).OPERATOR_USERNAME,
+    ).toBe("operator");
   });
 
   it("OPERATOR_PASSWORD_HASH wins when both OPERATOR_PASSWORD_HASH and OPERATOR_PASSWORD are supplied", async () => {
@@ -56,7 +56,8 @@ describe("AC-AUTH-005: operator env bootstrap contract", () => {
       OPERATOR_PASSWORD: "plaintext-fallback",
     });
     expect(
-      (env as unknown as { OPERATOR_PASSWORD_HASH?: string }).OPERATOR_PASSWORD_HASH,
+      (env as unknown as { OPERATOR_PASSWORD_HASH?: string })
+        .OPERATOR_PASSWORD_HASH,
     ).toBe("salt:hash");
   });
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);
@@ -26,9 +26,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-badge-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-badge-css';
+    if (document.getElementById("insp-badge-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-badge-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -38,15 +38,25 @@ function useCSS() {
  * Badge — status pill. Optional leading status dot or icon.
  * tones: accent (ok/online) · amber (warn) · red (danger) · primary · secondary (idle) · neutral
  */
-export function Badge({ tone = 'neutral', size = 'md', dot = false, pulse = false, icon, children, className = '' }) {
+export function Badge({
+  tone = "neutral",
+  size = "md",
+  dot = false,
+  pulse = false,
+  icon,
+  children,
+  className = "",
+}) {
   useCSS();
   const cls = [
-    'insp-badge',
+    "insp-badge",
     `insp-badge--${tone}`,
     `insp-badge--${size}`,
-    pulse ? 'insp-badge--pulse' : '',
+    pulse ? "insp-badge--pulse" : "",
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <span className={cls}>
       {dot && <span className="insp-badge__dot"></span>}

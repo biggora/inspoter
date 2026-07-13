@@ -1,12 +1,12 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface ProgressBarProps {
   /** 0–100. Clamped. */
   value: number;
   /** Fill colour. @default "accent" */
-  tone?: 'primary' | 'accent' | 'secondary' | 'amber' | 'red';
+  tone?: "primary" | "accent" | "secondary" | "amber" | "red";
   /** Track height. @default "sm" */
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   /** Auto-colour by load: green <60, amber <85, red ≥85. Overrides `tone`. @default false */
   auto?: boolean;
   className?: string;

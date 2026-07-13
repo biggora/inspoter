@@ -35,11 +35,17 @@ export default defineConfig({
   projects: [
     {
       name: "desktop-1440",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
     },
     {
       name: "mobile-375",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 375, height: 800 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 375, height: 800 },
+      },
       testMatch: /shell-responsive\.spec\.ts/,
     },
   ],

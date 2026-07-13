@@ -1,20 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireOperator } from "@/lib/auth/dal";
+import { requireAuth } from "@/lib/auth/dal";
 import { bookmarkUpdateSchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
-
-// PATCH/DELETE /api/bookmarks/[id] — frozen contract (plan.md §5.1):
-// PATCH partial {name,url,icon,description,categoryId} -> 200 (AC-BM-009);
-// DELETE -> 204 (AC-BM-010). Missing id -> P2025 -> 404; nonexistent
-// categoryId on PATCH -> P2003 -> 400 (toErrorResponse).
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  await requireOperator();
+  await requireAuth();
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -32,7 +27,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  await requireOperator();
+  await requireAuth();
   const { id } = await params;
 
   try {

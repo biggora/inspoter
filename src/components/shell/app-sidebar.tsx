@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 import { LogoutButton } from "./logout-button";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 // AC-SHELL-001/002/004 (design.md §3.2). Single <nav> landmark hosting the
 // seven PRD sections plus Settings (design.md §9 C-1) — below `lg`/1024px
@@ -26,7 +27,15 @@ import { LogoutButton } from "./logout-button";
 // markup needed.
 const SettingsIcon = SETTINGS_NAV_ITEM.icon;
 
-export function AppSidebar({ username }: { username: string }) {
+export function AppSidebar({
+  username,
+  workspaceName,
+  workspaceId,
+}: {
+  username: string;
+  workspaceName: string;
+  workspaceId: string;
+}) {
   const pathname = usePathname();
   const isSectionActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`);
@@ -34,9 +43,10 @@ export function AppSidebar({ username }: { username: string }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <span className="px-2 text-sm font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-          inspot
-        </span>
+        <WorkspaceSwitcher
+          currentName={workspaceName}
+          currentId={workspaceId}
+        />
       </SidebarHeader>
       <SidebarContent>
         <nav aria-label="Main navigation">

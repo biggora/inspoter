@@ -19,7 +19,9 @@ const DASHBOARD_ROUTES = [
 
 test.describe("AC-AUTH-001 / M-3: unauthenticated visitor is redirected from every dashboard route", () => {
   for (const route of DASHBOARD_ROUTES) {
-    test(`${route} redirects to /login when unauthenticated`, async ({ page }) => {
+    test(`${route} redirects to /login when unauthenticated`, async ({
+      page,
+    }) => {
       await page.goto(route);
       await expect(page).toHaveURL(/\/login/);
     });

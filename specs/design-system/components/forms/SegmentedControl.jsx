@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-seg{display:inline-flex;align-items:center;gap:4px;padding:4px;font-family:var(--font-body);}
@@ -18,9 +18,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-seg-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-seg-css';
+    if (document.getElementById("insp-seg-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-seg-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -32,17 +32,26 @@ function useCSS() {
  * is the tabbed page-section switcher (Settings tabs).
  * options: [{ value, label, icon? }]
  */
-export function SegmentedControl({ options = [], value, onChange, variant = 'pill', className = '' }) {
+export function SegmentedControl({
+  options = [],
+  value,
+  onChange,
+  variant = "pill",
+  className = "",
+}) {
   useCSS();
   return (
-    <div className={`insp-seg insp-seg--${variant} ${className}`} role="tablist">
+    <div
+      className={`insp-seg insp-seg--${variant} ${className}`}
+      role="tablist"
+    >
       {options.map((opt) => (
         <button
           key={opt.value}
           role="tab"
           aria-selected={value === opt.value}
           onClick={() => onChange && onChange(opt.value)}
-          className={`insp-seg__opt ${value === opt.value ? 'is-active' : ''}`}
+          className={`insp-seg__opt ${value === opt.value ? "is-active" : ""}`}
         >
           {opt.icon && <i className={`${opt.icon} insp-seg__i`}></i>}
           {opt.label}

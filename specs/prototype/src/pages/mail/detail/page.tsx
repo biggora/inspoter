@@ -1,15 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { mockEmails } from '@/mocks/emails';
-import type { Email } from '@/mocks/emails';
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { mockEmails } from "@/mocks/emails";
+import type { Email } from "@/mocks/emails";
 
-type PageState = 'loading' | 'error' | 'ready';
+type PageState = "loading" | "error" | "ready";
 
 function getInitials(name: string): string {
   return name
-    .split(' ')
+    .split(" ")
     .map((w) => w[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 }
@@ -25,12 +25,12 @@ function stringToColor(str: string): string {
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return d.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -39,19 +39,19 @@ export default function MailDetailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [pageState, setPageState] = useState<PageState>('loading');
+  const [pageState, setPageState] = useState<PageState>("loading");
   const [email, setEmail] = useState<Email | null>(null);
 
   const loadEmail = useCallback(() => {
-    setPageState('loading');
+    setPageState("loading");
     setTimeout(() => {
       const found = mockEmails.find((e) => e.id === emailId);
       if (!found) {
-        setPageState('error');
+        setPageState("error");
         return;
       }
       setEmail(found);
-      setPageState('ready');
+      setPageState("ready");
     }, 400);
   }, [emailId]);
 
@@ -61,11 +61,11 @@ export default function MailDetailPage() {
 
   const handleBack = () => {
     const params = searchParams.toString();
-    navigate(`/mail${params ? `?${params}` : ''}`);
+    navigate(`/mail${params ? `?${params}` : ""}`);
   };
 
   // Loading skeleton
-  if (pageState === 'loading') {
+  if (pageState === "loading") {
     return (
       <div className="p-6 animate-fade-in">
         <div className="flex items-center gap-2 mb-5">
@@ -81,7 +81,11 @@ export default function MailDetailPage() {
         </div>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="animate-skeleton h-4 rounded" style={{ width: `${60 + Math.random() * 40}%` }}></div>
+            <div
+              key={i}
+              className="animate-skeleton h-4 rounded"
+              style={{ width: `${60 + Math.random() * 40}%` }}
+            ></div>
           ))}
         </div>
       </div>
@@ -89,14 +93,16 @@ export default function MailDetailPage() {
   }
 
   // Error — email not found
-  if (pageState === 'error') {
+  if (pageState === "error") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
         <div className="text-center max-w-sm animate-scale-in">
           <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
             <i className="ri-mail-close-line text-2xl text-primary-600"></i>
           </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">Письмо не найдено</h3>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Письмо не найдено
+          </h3>
           <p className="text-sm text-foreground-500 mb-6">
             Это письмо могло быть удалено или его ID указан неверно.
           </p>
@@ -124,27 +130,35 @@ export default function MailDetailPage() {
       </button>
 
       {/* Subject */}
-      <h2 className="font-heading text-lg font-semibold text-foreground-900 mb-4">{email?.subject}</h2>
+      <h2 className="font-heading text-lg font-semibold text-foreground-900 mb-4">
+        {email?.subject}
+      </h2>
 
       {/* Sender info */}
       <div className="flex items-start gap-3 mb-6 pb-5 border-b border-background-100">
         <div
           className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-background-50"
-          style={{ backgroundColor: email ? stringToColor(email.fromName) : '#999' }}
+          style={{
+            backgroundColor: email ? stringToColor(email.fromName) : "#999",
+          }}
         >
-          {email ? getInitials(email.fromName) : '?'}
+          {email ? getInitials(email.fromName) : "?"}
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground-900">{email?.fromName}</p>
+          <p className="text-sm font-semibold text-foreground-900">
+            {email?.fromName}
+          </p>
           <p className="text-xs text-foreground-400">{email?.from}</p>
-          <p className="text-xs text-foreground-400 mt-0.5">{email ? formatTime(email.receivedAt) : ''}</p>
+          <p className="text-xs text-foreground-400 mt-0.5">
+            {email ? formatTime(email.receivedAt) : ""}
+          </p>
         </div>
       </div>
 
       {/* Body */}
       <div
         className="text-sm text-foreground-800 leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: email?.bodyHtml || '' }}
+        dangerouslySetInnerHTML={{ __html: email?.bodyHtml || "" }}
       />
     </div>
   );

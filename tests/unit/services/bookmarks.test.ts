@@ -1,32 +1,44 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import * as bookmarksService from "@/lib/services/bookmarks";
 
-// Frozen contract (plan.md §5.1/§5.3 step 8) — services/bookmarks.ts CRUD
-// bodies. Mode B: the real bodies are implemented (Prisma-backed); these
-// tests exercise them directly against the real DB.
-
 const NAME_PREFIX = `mode-a-${randomUUID()}`;
+let workspaceId: string;
+
+beforeAll(async () => {
+  const workspace = await db.workspace.create({
+    data: {
+      name: "Test Workspace",
+      slug: `test-${randomUUID()}`,
+      updatedAt: new Date(),
+    },
+  });
+  workspaceId = workspace.id;
+});
 
 afterAll(async () => {
-  // Best-effort cleanup once real bodies land and start persisting rows.
-  await db.category.deleteMany({ where: { name: { startsWith: NAME_PREFIX } } });
+  await db.category.deleteMany({
+    where: { name: { startsWith: NAME_PREFIX } },
+  });
+  if (workspaceId) {
+    await db.workspace.delete({ where: { id: workspaceId } }).catch(() => {});
+  }
 });
 
 describe("AC-BM-001/012: createCategory + list()", () => {
   it("AC-BM-001: creates a category that is persisted and returned by list()", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-infra`,
     });
     expect(category.name).toBe(`${NAME_PREFIX}-infra`);
 
-    const grouped = await bookmarksService.list();
+    const grouped = await bookmarksService.list(workspaceId);
     expect(grouped.some((c) => c.id === category.id)).toBe(true);
   });
 
   it("AC-BM-012: list() groups bookmarks under their category", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-devtools`,
     });
     const bookmark = await bookmarksService.createBookmark({
@@ -35,7 +47,7 @@ describe("AC-BM-001/012: createCategory + list()", () => {
       categoryId: category.id,
     });
 
-    const grouped = await bookmarksService.list();
+    const grouped = await bookmarksService.list(workspaceId);
     const found = grouped.find((c) => c.id === category.id);
     expect(found?.bookmarks.some((b) => b.id === bookmark.id)).toBe(true);
   });
@@ -43,19 +55,23 @@ describe("AC-BM-001/012: createCategory + list()", () => {
 
 describe("AC-BM-002: renameCategory", () => {
   it("persists the new name", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-old-name`,
     });
-    const renamed = await bookmarksService.renameCategory(category.id, {
-      name: `${NAME_PREFIX}-new-name`,
-    });
+    const renamed = await bookmarksService.renameCategory(
+      category.id,
+      workspaceId,
+      {
+        name: `${NAME_PREFIX}-new-name`,
+      },
+    );
     expect(renamed.name).toBe(`${NAME_PREFIX}-new-name`);
   });
 });
 
 describe("AC-BM-003/004: deleteCategory cascade", () => {
   it("removes the category and cascades delete to its bookmarks (no orphans)", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-cascade`,
     });
     const bookmark = await bookmarksService.createBookmark({
@@ -64,7 +80,7 @@ describe("AC-BM-003/004: deleteCategory cascade", () => {
       categoryId: category.id,
     });
 
-    await bookmarksService.deleteCategory(category.id);
+    await bookmarksService.deleteCategory(category.id, workspaceId);
 
     const remainingBookmarks = await db.bookmark.findMany({
       where: { id: bookmark.id },
@@ -79,7 +95,7 @@ describe("AC-BM-003/004: deleteCategory cascade", () => {
 
 describe("AC-BM-006/009/010: bookmark CRUD", () => {
   it("AC-BM-006: creates a bookmark under a category", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-create-bookmark`,
     });
     const bookmark = await bookmarksService.createBookmark({
@@ -92,10 +108,10 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
   });
 
   it("AC-BM-009: edits an existing bookmark's fields, including moving category", async () => {
-    const categoryA = await bookmarksService.createCategory({
+    const categoryA = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-cat-a`,
     });
-    const categoryB = await bookmarksService.createCategory({
+    const categoryB = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-cat-b`,
     });
     const bookmark = await bookmarksService.createBookmark({
@@ -114,7 +130,7 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
   });
 
   it("AC-BM-010: deletes a bookmark", async () => {
-    const category = await bookmarksService.createCategory({
+    const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-delete-bookmark`,
     });
     const bookmark = await bookmarksService.createBookmark({
@@ -125,7 +141,9 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
 
     await bookmarksService.deleteBookmark(bookmark.id);
 
-    const remaining = await db.bookmark.findMany({ where: { id: bookmark.id } });
+    const remaining = await db.bookmark.findMany({
+      where: { id: bookmark.id },
+    });
     expect(remaining).toHaveLength(0);
   });
 });

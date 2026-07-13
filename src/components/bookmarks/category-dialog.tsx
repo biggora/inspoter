@@ -17,7 +17,8 @@ import { Label } from "@/components/ui/label";
 import type { Category } from "@/generated/prisma/client";
 import { ApiError, categoriesApi } from "./api";
 
-export type CategoryDialogState = { mode: "create" } | { mode: "edit"; category: Category };
+export type CategoryDialogState =
+  { mode: "create" } | { mode: "edit"; category: Category };
 
 interface CategoryDialogProps {
   state: CategoryDialogState | null;
@@ -28,7 +29,11 @@ interface CategoryDialogProps {
 // AC-BM-001/002/005 (design.md §3.3.2). Create/rename share one dialog;
 // validated on submit with the exact design copy, then re-validated
 // defensively against the API's zod response (api.ts).
-export function CategoryDialog({ state, onOpenChange, onSaved }: CategoryDialogProps) {
+export function CategoryDialog({
+  state,
+  onOpenChange,
+  onSaved,
+}: CategoryDialogProps) {
   const nameId = useId();
   const errorId = useId();
   const [name, setName] = useState("");
@@ -71,7 +76,9 @@ export function CategoryDialog({ state, onOpenChange, onSaved }: CategoryDialogP
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't save category. Try again.",
+          err instanceof ApiError
+            ? err.message
+            : "Couldn't save category. Try again.",
         );
       }
     } finally {
@@ -83,9 +90,15 @@ export function CategoryDialog({ state, onOpenChange, onSaved }: CategoryDialogP
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Rename category" : "New category"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Rename category" : "New category"}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={nameId}>Name</Label>
             <Input
@@ -104,9 +117,17 @@ export function CategoryDialog({ state, onOpenChange, onSaved }: CategoryDialogP
             )}
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" type="button" />}>Cancel</DialogClose>
+            <DialogClose render={<Button variant="outline" type="button" />}>
+              Cancel
+            </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit ? (submitting ? "Saving…" : "Save") : submitting ? "Creating…" : "Create"}
+              {isEdit
+                ? submitting
+                  ? "Saving…"
+                  : "Save"
+                : submitting
+                  ? "Creating…"
+                  : "Create"}
             </Button>
           </DialogFooter>
         </form>

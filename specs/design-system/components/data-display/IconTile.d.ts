@@ -1,12 +1,12 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface IconTileProps {
   /** Remix Icon class. Required. */
   icon: string;
   /** Tint. @default "secondary" */
-  tone?: 'primary' | 'accent' | 'secondary' | 'amber' | 'red' | 'neutral';
+  tone?: "primary" | "accent" | "secondary" | "amber" | "red" | "neutral";
   /** sm 28 · md 32 · lg 36 · xl 64 (empty-state well). @default "md" */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-dd{position:relative;display:inline-block;font-family:var(--font-body);}
@@ -24,9 +24,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-dd-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-dd-css';
+    if (document.getElementById("insp-dd-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-dd-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -37,22 +37,32 @@ function useCSS() {
  * its own open state, closes on outside click and item selection. Compose items
  * with the exported <DropdownItem>, <DropdownSep> and <DropdownLabel>.
  */
-export function Dropdown({ trigger, align = 'left', children, className = '' }) {
+export function Dropdown({
+  trigger,
+  align = "left",
+  children,
+  className = "",
+}) {
   useCSS();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef(null);
   React.useEffect(() => {
     if (!open) return;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
   return (
     <div className={`insp-dd ${className}`} ref={ref}>
       <span onClick={() => setOpen((o) => !o)}>{trigger}</span>
       {open && (
-        <div className={`insp-dd__menu insp-dd__menu--${align}`} onClick={() => setOpen(false)}>
+        <div
+          className={`insp-dd__menu insp-dd__menu--${align}`}
+          onClick={() => setOpen(false)}
+        >
           {children}
         </div>
       )}
@@ -60,9 +70,21 @@ export function Dropdown({ trigger, align = 'left', children, className = '' }) 
   );
 }
 
-export function DropdownItem({ icon, active = false, danger = false, children, ...rest }) {
+export function DropdownItem({
+  icon,
+  active = false,
+  danger = false,
+  children,
+  ...rest
+}) {
   useCSS();
-  const cls = ['insp-dd__item', active ? 'is-active' : '', danger ? 'insp-dd__item--danger' : ''].filter(Boolean).join(' ');
+  const cls = [
+    "insp-dd__item",
+    active ? "is-active" : "",
+    danger ? "insp-dd__item--danger" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button className={cls} {...rest}>
       {icon && <i className={icon}></i>}

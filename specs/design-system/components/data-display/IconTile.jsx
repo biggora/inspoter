@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-tile{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -16,9 +16,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-tile-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-tile-css';
+    if (document.getElementById("insp-tile-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-tile-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -29,10 +29,17 @@ function useCSS() {
  * repeated motif: it prefixes widget headers, list rows, stat cards and
  * empty states. `xl` is the empty-state well.
  */
-export function IconTile({ icon, tone = 'secondary', size = 'md', className = '' }) {
+export function IconTile({
+  icon,
+  tone = "secondary",
+  size = "md",
+  className = "",
+}) {
   useCSS();
   return (
-    <span className={`insp-tile insp-tile--${tone} insp-tile--${size} ${className}`}>
+    <span
+      className={`insp-tile insp-tile--${tone} insp-tile--${size} ${className}`}
+    >
       <i className={icon}></i>
     </span>
   );

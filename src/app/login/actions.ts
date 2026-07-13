@@ -2,12 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { findOperatorByUsername } from "@/lib/auth/dal";
+import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import {
   clearSessionCookie,
   createSession,
   deleteSession,
   readSessionCookie,
+  switchWorkspace,
 } from "@/lib/auth/session";
 
 // Login/logout Server Actions — frozen contract (plan.md §5.1, §5.3 Step 6).
@@ -51,7 +53,16 @@ export async function login(formData: FormData): Promise<LoginResult> {
     return { ok: false, error: "Invalid username or password." };
   }
 
-  await createSession(operator.id);
+  const session = await createSession(operator.id);
+
+  const membership = await db.workspaceMember.findFirst({
+    where: { operatorId: operator.id },
+    orderBy: { joinedAt: "asc" },
+  });
+  if (membership) {
+    await switchWorkspace(session.id, membership.workspaceId);
+  }
+
   return { ok: true };
 }
 

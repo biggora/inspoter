@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CSS = `
 .insp-field{display:flex;flex-direction:column;gap:6px;font-family:var(--font-body);}
@@ -26,9 +26,9 @@ const CSS = `
 
 function useCSS() {
   React.useEffect(() => {
-    if (document.getElementById('insp-input-css')) return;
-    const s = document.createElement('style');
-    s.id = 'insp-input-css';
+    if (document.getElementById("insp-input-css")) return;
+    const s = document.createElement("style");
+    s.id = "insp-input-css";
     s.textContent = CSS;
     document.head.appendChild(s);
   }, []);
@@ -46,33 +46,49 @@ export function Input({
   hint,
   error,
   id,
-  className = '',
+  className = "",
   ...rest
 }) {
   useCSS();
   const fieldId = id || React.useId();
   return (
     <div className={`insp-field ${className}`}>
-      {label && <label className="insp-field__label" htmlFor={fieldId}>{label}</label>}
+      {label && (
+        <label className="insp-field__label" htmlFor={fieldId}>
+          {label}
+        </label>
+      )}
       <div className="insp-input-wrap">
         {leadingIcon && <i className={`${leadingIcon} insp-input__lead`}></i>}
         <input
           id={fieldId}
           className={[
-            'insp-input',
-            leadingIcon ? 'insp-input--has-lead' : '',
-            trailingIcon ? 'insp-input--has-trail' : '',
-            error ? 'insp-input--err' : '',
-          ].filter(Boolean).join(' ')}
+            "insp-input",
+            leadingIcon ? "insp-input--has-lead" : "",
+            trailingIcon ? "insp-input--has-trail" : "",
+            error ? "insp-input--err" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           {...rest}
         />
         {trailingIcon && (
-          <button type="button" className="insp-input__trail" onClick={onTrailingClick} tabIndex={-1} aria-hidden="true">
+          <button
+            type="button"
+            className="insp-input__trail"
+            onClick={onTrailingClick}
+            tabIndex={-1}
+            aria-hidden="true"
+          >
             <i className={trailingIcon}></i>
           </button>
         )}
       </div>
-      {error ? <span className="insp-field__err">{error}</span> : hint && <span className="insp-field__hint">{hint}</span>}
+      {error ? (
+        <span className="insp-field__err">{error}</span>
+      ) : (
+        hint && <span className="insp-field__hint">{hint}</span>
+      )}
     </div>
   );
 }

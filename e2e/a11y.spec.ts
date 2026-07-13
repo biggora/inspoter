@@ -8,7 +8,9 @@ import { login } from "./utils/auth";
 // so a missing page fails on that assertion, not by silently running axe
 // against an unrelated 404/error page.
 
-test("Login screen has zero critical accessibility violations", async ({ page }) => {
+test("Login screen has zero critical accessibility violations", async ({
+  page,
+}) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
 
@@ -17,7 +19,9 @@ test("Login screen has zero critical accessibility violations", async ({ page })
   expect(critical).toEqual([]);
 });
 
-test("Shell + Bookmarks screen has zero critical accessibility violations", async ({ page }) => {
+test("Shell + Bookmarks screen has zero critical accessibility violations", async ({
+  page,
+}) => {
   await login(page);
   await page.goto("/bookmarks");
   await expect(page.getByRole("navigation")).toBeVisible();

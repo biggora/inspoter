@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type ReactNode, type KeyboardEvent } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -8,7 +8,13 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
-export default function Modal({ open, onClose, title, children, footer }: ModalProps) {
+export default function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -17,7 +23,7 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
       previousFocusRef.current = document.activeElement as HTMLElement;
       setTimeout(() => {
         const firstInput = dialogRef.current?.querySelector<HTMLElement>(
-          'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])'
+          "input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])",
         );
         firstInput?.focus();
       }, 50);
@@ -30,22 +36,22 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
   useEffect(() => {
     if (!open) return;
     const handleEsc = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
   if (!open) return null;
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       onClose();
       return;
     }
-    if (e.key === 'Tab') {
+    if (e.key === "Tab") {
       const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])'
+        "input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])",
       );
       if (!focusable || focusable.length === 0) return;
       const first = focusable[0];
@@ -62,7 +68,11 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4">
-      <div className="fixed inset-0 bg-black/30 animate-fade-in" onClick={onClose} aria-hidden="true" />
+      <div
+        className="fixed inset-0 bg-black/30 animate-fade-in"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -72,7 +82,9 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
         className="relative z-10 w-full max-w-md bg-background-50 rounded-xl border border-background-200 shadow-lg animate-scale-in"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-background-100">
-          <h3 className="font-heading text-base font-semibold text-foreground-900">{title}</h3>
+          <h3 className="font-heading text-base font-semibold text-foreground-900">
+            {title}
+          </h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-md text-foreground-400 hover:text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"

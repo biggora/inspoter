@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface SegmentOption {
   value: string;
@@ -13,7 +13,7 @@ export interface SegmentedControlProps {
   value: string;
   onChange?: (value: string) => void;
   /** "pill" = rounded time-range switch · "underline" = page tabs. @default "pill" */
-  variant?: 'pill' | 'underline';
+  variant?: "pill" | "underline";
   className?: string;
 }
 
@@ -21,4 +21,6 @@ export interface SegmentedControlProps {
  * Single-select control. Use `pill` for compact filters (time ranges,
  * refresh intervals) and `underline` for switching page sections (Settings).
  */
-export function SegmentedControl(props: SegmentedControlProps): React.JSX.Element;
+export function SegmentedControl(
+  props: SegmentedControlProps,
+): React.JSX.Element;

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import type { Bookmark, Category } from '@/mocks/bookmarks';
-import BookmarkCard from './BookmarkCard';
+import { useState, useRef, useEffect } from "react";
+import type { Bookmark, Category } from "@/mocks/bookmarks";
+import BookmarkCard from "./BookmarkCard";
 
 interface CategorySectionProps {
   category: Category;
@@ -31,14 +31,16 @@ export default function CategorySection({
         setMenuOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
   return (
     <section className="animate-fade-in">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-heading text-sm font-semibold text-foreground-800">{category.name}</h4>
+        <h4 className="font-heading text-sm font-semibold text-foreground-800">
+          {category.name}
+        </h4>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onAddBookmark(category.id)}
@@ -84,7 +86,9 @@ export default function CategorySection({
       </div>
 
       {bookmarks.length === 0 ? (
-        <p className="text-xs text-foreground-400 py-3">Нет закладок в этой категории</p>
+        <p className="text-xs text-foreground-400 py-3">
+          Нет закладок в этой категории
+        </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {bookmarks.map((bm) => (
