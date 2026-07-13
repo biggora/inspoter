@@ -9,7 +9,7 @@ export function DashboardTopbar() {
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-4">
       <SidebarTrigger aria-label="Переключить навигацию" />
-      <span className="text-sm font-semibold text-foreground">inspot</span>
+      <span className="text-sm font-semibold text-foreground">Inspoter</span>
     </header>
   );
 }
