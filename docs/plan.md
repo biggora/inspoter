@@ -1,15 +1,22 @@
 # Execution Plan — inspoter (vertical slices)
 
-**Version:** 1.3
-**Status:** Revised after ordinary doc-review (post-CONSENSUS; v1.2 → v1.3, Findings 1–3)
+**Version:** 1.4
+**Status:** Revised to record the Workspaces slice implemented out-of-band between Slice 1 and Slice 2 (v1.3 → v1.4)
 **Owner:** Planner
-**Date:** 2026-07-12
-**Normative inputs:** `docs/prd.md` v2.1 (requirements + AC-IDs), `docs/architecture.md` v1.1 (layers, schema §2.3, build order §7, ADRs §8), `docs/design.md` v1.1 (UI spec, Slice 1 dark-only), `docs/progress.md` (coordinator Decisions log)
+**Date:** 2026-07-13
+**Normative inputs:** `docs/prd.md` v2.1+ (requirements + AC-IDs, incl. §3.10 Workspaces / AC-WS-001..011), `docs/architecture.md` v1.1 (layers, schema §2.3, build order §7, ADRs §8), `docs/design.md` v1.1 (UI spec, Slice 1 dark-only), `docs/progress.md` (coordinator Decisions log)
 **Consumed by:** coordinator (dispatch), tester (test-plan matrix), backend-dev, frontend-dev, implementor, code-reviewer
 
-**Scope of this document:** Slice 0 (scaffolding) and Slice 1 (tracer bullet) are specified at **executable, per-file** detail — work starts on them immediately. Slices 2–7 are specified at **structural** detail (goal, AC coverage, ordering, coarse subtasks, disjoint scope zones) per the current-launch boundary in `progress.md` line 3. No requirement is invented beyond PRD v2.1; no architecture decision is altered. Any document conflict is recorded in §9 Conflicts, not silently "fixed".
+**Scope of this document:** Slice 0 (scaffolding) and Slice 1 (tracer bullet) are specified at **executable, per-file** detail — work starts on them immediately. Slices 2–7 are specified at **structural** detail (goal, AC coverage, ordering, coarse subtasks, disjoint scope zones) per the current-launch boundary in `progress.md` line 3. No requirement is invented beyond PRD v2.1; no architecture decision is altered. Any document conflict is recorded in §9 Conflicts, not silently "fixed". **§5a (added v1.4) documents the Workspaces slice, which was implemented between Slice 1 and Slice 2 and was not part of the original v1.0–v1.3 slice sequence.**
 
 ## Changelog
+
+**v1.4 — 2026-07-13 (retroactive documentation of the Workspaces slice, implemented out-of-band).**
+
+- **Added §5a — Slice WS (Workspaces).** Records the workspace multi-tenancy + invite-only user-management work that was implemented between Slice 1 and Slice 2: goal, AC-WS-001..011 coverage, affected files, and the note that this slice was not originally scheduled in v1.0–v1.3 — it was inserted by coordinator decision once PRD §3.10/FR-WS-001..003 were added.
+- **§1 Task Summary** now mentions workspace multi-tenancy as part of the delivered product shape.
+- **§3 Affected Areas** table gains a `Workspaces` row (schema, auth, service, API, UI paths).
+- **Appendix A** gains a Workspaces row (AC-WS-001..011, 11 IDs) and the active-AC total is updated to 90.
 
 **v1.3 — 2026-07-12 (ordinary doc-review, post-CONSENSUS; Findings 1–3; not a debate cycle).**
 
@@ -33,7 +40,7 @@
 
 ## 1. Task Summary
 
-Deliver `inspoter` — a self-hosted, single-operator operations dashboard (Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, Prisma + PostgreSQL) — as a sequence of vertical slices. Each slice is one demonstrable end-to-end user path proven by acceptance tests written before implementation. Slice 1 is the tracer bullet: it pierces every layer (env config → Prisma → service → API/server action → middleware/auth → shell UI → Bookmarks UI → tests) on the lowest-risk section (Bookmarks has zero external-provider dependency, PRD §7 Alternative B). Later slices add the provider-backed sections (Domains, Servers) and the webhook-ingest-backed sections (Logs, Alerts, Mail, Messages) plus webhook token management.
+Deliver `inspoter` — a self-hosted, workspace-scoped operations dashboard (Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui, Prisma + PostgreSQL) — as a sequence of vertical slices. Each slice is one demonstrable end-to-end user path proven by acceptance tests written before implementation. Slice 1 is the tracer bullet: it pierces every layer (env config → Prisma → service → API/server action → middleware/auth → shell UI → Bookmarks UI → tests) on the lowest-risk section (Bookmarks has zero external-provider dependency, PRD §7 Alternative B). Between Slice 1 and Slice 2, **Slice WS (Workspaces, §5a)** was inserted to add multi-tenant workspace scoping and invite-only user management ahead of the provider/webhook tracks, so every later section is workspace-scoped from the start rather than retrofitted. Later slices add the provider-backed sections (Domains, Servers) and the webhook-ingest-backed sections (Logs, Alerts, Mail, Messages) plus webhook token management.
 
 **Why this order:** proving the full fixed stack end-to-end once, on the section with no third-party credential dependency, retires integration risk before any provider or webhook code is written (PRD §7 Decision; architecture §7). The two later tracks — provider track (Domains, Servers) and webhook-ingest track (Logs, Alerts, Mail, Messages) — are independent; the webhook backbone is built once (Slice 4) and proven on the simplest payload (Logs) before its more complex consumers, satisfying the constraint that webhook ingest precede its Mail/Messages/Logs/Alerts consumers (architecture §7.2).
 
@@ -54,23 +61,24 @@ Deliver `inspoter` — a self-hosted, single-operator operations dashboard (Next
 
 ## 3. Affected Areas (whole product, by layer — per architecture §6 tree)
 
-| Layer                | Paths (architecture §6)                                                                                                                                                        | Introduced in                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| Config / bootstrap   | `src/lib/config/env.ts`, `src/lib/db.ts`, `prisma/schema.prisma`, `prisma/seed.ts`                                                                                             | Slice 0 (schema+db+base env), Slice 1 (auth env+seed) |
-| Auth                 | `src/middleware.ts`, `src/lib/auth/{session,password,dal}.ts`, `src/app/login/**`                                                                                              | Slice 1                                               |
-| Shell                | `src/app/(dashboard)/layout.tsx`, `src/app/page.tsx`, `src/components/shell/**`                                                                                                | Slice 1                                               |
-| Bookmarks            | `src/app/(dashboard)/bookmarks/**`, `src/app/api/{categories,bookmarks}/**`, `src/lib/services/bookmarks.ts`, `src/lib/validation/bookmarks.ts`, `src/components/bookmarks/**` | Slice 1                                               |
-| Provider abstraction | `src/lib/providers/{result.ts,dns/**,servers/**}`                                                                                                                              | Slice 2 (dns), Slice 3 (servers)                      |
-| Domains              | `src/app/(dashboard)/domains/**`, `src/lib/services/domains.ts`, `src/lib/validation/dns.ts`                                                                                   | Slice 2                                               |
-| Servers              | `src/app/(dashboard)/servers/**`, server power route + poll                                                                                                                    | Slice 3                                               |
-| Webhook backbone     | `src/app/api/webhooks/[type]/route.ts`, `src/lib/webhooks/**`, `src/lib/validation/webhooks.ts`, `src/app/api/webhook-tokens/**`, `src/lib/services/webhookTokens.ts`          | Slice 4                                               |
-| Logs                 | `src/app/(dashboard)/logs/**`, `src/lib/services/logs.ts`                                                                                                                      | Slice 4                                               |
-| Alerts               | `src/app/(dashboard)/alerts/**`, `src/lib/services/alerts.ts`                                                                                                                  | Slice 5                                               |
-| Mail                 | `src/app/(dashboard)/mail/**`, `src/lib/services/mail.ts`                                                                                                                      | Slice 6                                               |
-| Messages             | `src/app/(dashboard)/messages/**`, `src/lib/services/messages.ts`                                                                                                              | Slice 7                                               |
-| Settings (token UI)  | `src/app/(dashboard)/settings/**`, `src/components/settings/**` (from design §6.7; see C-4)                                                                                    | Slice 4 (Settings placeholder in Slice 1, §5.4)       |
-| Deploy               | `Dockerfile`, `docker-compose.yml`, `.env.example`                                                                                                                             | Slice 0                                               |
-| Tests                | `tests/**` (Vitest), `e2e/**` (Playwright)                                                                                                                                     | every slice (tester-owned)                            |
+| Layer                | Paths (architecture §6)                                                                                                                                                                                                                                                                                                                                                                           | Introduced in                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Config / bootstrap   | `src/lib/config/env.ts`, `src/lib/db.ts`, `prisma/schema.prisma`, `prisma/seed.ts`                                                                                                                                                                                                                                                                                                                | Slice 0 (schema+db+base env), Slice 1 (auth env+seed) |
+| Auth                 | `src/middleware.ts`, `src/lib/auth/{session,password,dal}.ts`, `src/app/login/**`                                                                                                                                                                                                                                                                                                                 | Slice 1                                               |
+| Workspaces           | `prisma/schema.prisma` (Workspace, WorkspaceMember + workspaceId FKs), `src/lib/auth/dal.ts` (`requireAuth()` → `{operator, workspace}`), `src/lib/services/workspaces.ts`, `src/app/api/workspaces/**`, `src/app/api/workspaces/[id]/members/**`, `src/app/api/workspaces/switch/**`, `src/components/shell/workspace-switcher.tsx`, `src/app/(dashboard)/settings/**` (workspace management UI) | Slice WS (§5a, between Slice 1 and Slice 2)           |
+| Shell                | `src/app/(dashboard)/layout.tsx`, `src/app/page.tsx`, `src/components/shell/**`                                                                                                                                                                                                                                                                                                                   | Slice 1                                               |
+| Bookmarks            | `src/app/(dashboard)/bookmarks/**`, `src/app/api/{categories,bookmarks}/**`, `src/lib/services/bookmarks.ts`, `src/lib/validation/bookmarks.ts`, `src/components/bookmarks/**`                                                                                                                                                                                                                    | Slice 1                                               |
+| Provider abstraction | `src/lib/providers/{result.ts,dns/**,servers/**}`                                                                                                                                                                                                                                                                                                                                                 | Slice 2 (dns), Slice 3 (servers)                      |
+| Domains              | `src/app/(dashboard)/domains/**`, `src/lib/services/domains.ts`, `src/lib/validation/dns.ts`                                                                                                                                                                                                                                                                                                      | Slice 2                                               |
+| Servers              | `src/app/(dashboard)/servers/**`, server power route + poll                                                                                                                                                                                                                                                                                                                                       | Slice 3                                               |
+| Webhook backbone     | `src/app/api/webhooks/[type]/route.ts`, `src/lib/webhooks/**`, `src/lib/validation/webhooks.ts`, `src/app/api/webhook-tokens/**`, `src/lib/services/webhookTokens.ts`                                                                                                                                                                                                                             | Slice 4                                               |
+| Logs                 | `src/app/(dashboard)/logs/**`, `src/lib/services/logs.ts`                                                                                                                                                                                                                                                                                                                                         | Slice 4                                               |
+| Alerts               | `src/app/(dashboard)/alerts/**`, `src/lib/services/alerts.ts`                                                                                                                                                                                                                                                                                                                                     | Slice 5                                               |
+| Mail                 | `src/app/(dashboard)/mail/**`, `src/lib/services/mail.ts`                                                                                                                                                                                                                                                                                                                                         | Slice 6                                               |
+| Messages             | `src/app/(dashboard)/messages/**`, `src/lib/services/messages.ts`                                                                                                                                                                                                                                                                                                                                 | Slice 7                                               |
+| Settings (token UI)  | `src/app/(dashboard)/settings/**`, `src/components/settings/**` (from design §6.7; see C-4)                                                                                                                                                                                                                                                                                                       | Slice 4 (Settings placeholder in Slice 1, §5.4)       |
+| Deploy               | `Dockerfile`, `docker-compose.yml`, `.env.example`                                                                                                                                                                                                                                                                                                                                                | Slice 0                                               |
+| Tests                | `tests/**` (Vitest), `e2e/**` (Playwright)                                                                                                                                                                                                                                                                                                                                                        | every slice (tester-owned)                            |
 
 ---
 
@@ -185,6 +193,30 @@ Ordered so the auth foundation exists before integration; internally sequential,
 ### 5.5 Slice 1 exit gate (tracer-bullet gate)
 
 All Slice-1 acceptance tests green end-to-end in a real browser against a real Postgres: M-1 (100% of AC-SHELL/AUTH/BM pass), M-2 (CRUD persists across reload + validation rejects), M-3 (zero dashboard routes reachable unauth; operator env-bootstrapped; webhook path is the only session-exempt route — the exemption is testable now even though the webhook handler lands in Slice 4, via the middleware matcher — see C-2), M-7 (documented `docker compose up` serves the **login screen**), M-8 (axe zero critical on Login/Shell/Bookmarks). Tester fills `docs/test-plan.md` to all-`PASS` for the 23 IDs; code-reviewer signs off on ADR-012 layer boundaries and NFR-SEC-001/002.
+
+---
+
+## 5a. Slice WS — Workspaces (implemented out-of-band, between Slice 1 and Slice 2)
+
+**Not part of the original v1.0–v1.3 slice sequence.** This slice was inserted by coordinator decision after Slice 1 closed and PRD §3.10 (FR-WS-001..003, AC-WS-001..011, D-13) was added, so that Slice 2 onward (Domains, Servers, and the webhook-ingest track) build directly on workspace-scoped content rather than requiring a later retrofit of every content table. It is documented here retroactively, at the same structural level as Slices 2–7 (§6), because it landed after the rest of this document was written and doc-review-passed.
+
+**Goal:** Workspace multi-tenancy with invite-only user management. All content sections (Bookmarks today; Domains/Servers/Mail/Messages/Logs/Alerts in later slices) are scoped to a `Workspace`; an operator can belong to more than one workspace (many-to-many via `WorkspaceMember`); new operator accounts are created only by an existing workspace owner (no self-service registration, extending HC-9/D-13).
+
+**AC-IDs covered:** AC-WS-001..011 (11) — `docs/prd.md` §3.10, FR-WS-001 (workspace CRUD, AC-WS-001..004), FR-WS-002 (membership/invite, AC-WS-005..008), FR-WS-003 (workspace switching, AC-WS-009..011).
+
+**Files affected (see §3 Affected Areas table for the same list):**
+
+- **Schema/migration:** `prisma/schema.prisma` — new `Workspace` and `WorkspaceMember` models, `workspaceId` FK added to every content model (`Category`, `Bookmark`, and the not-yet-built Mail/Messages/Logs/Alerts models get the column pre-added), `activeWorkspaceId` added to `Session`. `prisma/migrations/20260713042150_add_workspaces/migration.sql` is a **hand-authored** migration (not `prisma migrate dev` default output) implementing a backfill strategy: create a default workspace, backfill existing `Operator` rows as owners via `WorkspaceMember`, backfill existing `Category`/`Bookmark` rows onto that default workspace's id, then add the FK as `NOT NULL`.
+- **Auth layer:** `src/lib/auth/dal.ts` — `requireOperator()` is superseded by `requireAuth()`, returning `{operator, workspace}` (resolves the session's `activeWorkspaceId`, falling back to the operator's first remaining membership per AC-WS-009).
+- **Workspace service:** `src/lib/services/workspaces.ts` — create/rename/delete workspace (AC-WS-002..004), add/remove member by username incl. create-new-operator-on-invite (AC-WS-005..007), switch active workspace (AC-WS-009).
+- **API routes:** `src/app/api/workspaces/route.ts` (list/create), `src/app/api/workspaces/[id]/route.ts` (rename/delete), `src/app/api/workspaces/[id]/members/route.ts` + `[memberId]/route.ts` (add/remove member), `src/app/api/workspaces/switch/route.ts` (AC-WS-009/010).
+- **UI:** `src/components/shell/workspace-switcher.tsx` (sidebar switcher, AC-WS-010), `src/app/(dashboard)/settings/workspace/page.tsx` (workspace CRUD + member management UI, AC-WS-002..008).
+- **Existing content services:** `src/lib/services/bookmarks.ts` updated to scope every read/write by `workspaceId` (AC-WS-011 — no cross-workspace content leakage).
+- **Tests:** `tests/unit/services/bookmarks.test.ts` updated — all 7 existing cases now pass `workspaceId` and assert workspace-scoping; see `docs/test-plan.md` §3.2 for the traceability detail and residual gaps (workspace-specific API/integration/e2e tests are not yet authored).
+
+**Verification at time of writing:** `tsc --noEmit` 0 errors, ESLint clean, `next build` lists all routes, `npm run test` 7/7 unit tests green. No e2e/API-level workspace tests exist yet (tracked as a residual gap, `docs/test-plan.md` §3.2) — this slice has **not** been through the tester Mode A/B protocol (§2) or a code-reviewer gate, unlike Slices 0/1. Treat it as `DONE_WITH_CONCERNS` against this plan's own DoD (§10.1 item 1 is not satisfied — the AC-IDs lack authored acceptance tests).
+
+**Deviation from process (recorded, not silently absorbed):** this slice skipped the tester-Mode-A-first workflow (§2, §5's Phase 1) that governs every other slice in this document — implementation and tests were not adversarially separated. This is a process gap relative to §2's "tester owns `tests/**` exclusively, dev roles never write tests" rule (S-1, §12) and should be closed by a dedicated tester Mode-B pass before Slice 2 is considered to build on a fully-verified workspace layer.
 
 ---
 
@@ -389,11 +421,12 @@ The MVP is DONE when Slices 0–7 are each DONE and:
 
 ---
 
-## Appendix A — AC-ID → Slice coverage (all 80 IDs)
+## Appendix A — AC-ID → Slice coverage (all 91 IDs)
 
 | Slice | AC-IDs                                                 | Count        |
 | ----- | ------------------------------------------------------ | ------------ |
 | 1     | AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014    | 23           |
+| WS    | AC-WS-001..011                                         | 11           |
 | 2     | AC-PROV-001..003, AC-DOM-001..009                      | 12           |
 | 3     | AC-SRV-001..008                                        | 8            |
 | 4     | AC-WH-001..011, AC-LOG-001..005                        | 16           |
@@ -401,6 +434,6 @@ The MVP is DONE when Slices 0–7 are each DONE and:
 | 6     | AC-MAIL-001..006                                       | 6            |
 | 7     | AC-MSG-001..007                                        | 7            |
 | —     | **AC-MSG-008 — INACTIVE (gated on OQ-6), not planned** | 1 (inactive) |
-|       | **Total active**                                       | **79**       |
+|       | **Total active**                                       | **90**       |
 
-Every one of the 79 active AC-IDs (PRD Appendix B, progress.md:11–13) maps to exactly one **primary** slice. **Distributed-verification footnote (CH-PLAN-003):** AC-PROV-001 and AC-PROV-003 are exercised across Slices 2 (Domains) and 3 (Servers); AC-WH-003 and AC-WH-007 are exercised across Slices 4/5/6/7 (one webhook `type` per slice). Their primary-slice assignment above is where the mechanism is first built; full `PASS` timing is in the §10.1 distributed-AC list. AC-MSG-008 is the sole inactive ID and is intentionally UNVERIFIED per D-10/OQ-6.
+Every one of the 90 active AC-IDs (PRD Appendix B, progress.md:11–13; §3.10 for AC-WS-001..011) maps to exactly one **primary** slice. **Distributed-verification footnote (CH-PLAN-003):** AC-PROV-001 and AC-PROV-003 are exercised across Slices 2 (Domains) and 3 (Servers); AC-WH-003 and AC-WH-007 are exercised across Slices 4/5/6/7 (one webhook `type` per slice). Their primary-slice assignment above is where the mechanism is first built; full `PASS` timing is in the §10.1 distributed-AC list. AC-MSG-008 is the sole inactive ID and is intentionally UNVERIFIED per D-10/OQ-6. **Slice WS's 11 AC-IDs are implemented but not yet tester-verified** (§5a) — `docs/test-plan.md` §3.2 tracks this as a residual gap, distinct from AC-MSG-008's intentional inactivity.

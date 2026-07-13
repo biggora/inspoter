@@ -33,6 +33,8 @@ Per `docs/prd.md` §1 and Appendix B, **Slice 1 = Shell + Auth + Bookmarks**, co
 3. Bookmarks — grid, category CRUD, bookmark CRUD, empty state (§3.3)
 4. Placeholder screen template, applied to Domains/Servers/Mail/Messages/Logs/Alerts/Settings (§3.2.4)
 
+**Post-Slice-1 addition — Workspaces:** the follow-on Workspaces slice (PRD §3.10, `AC-WS-001..011`) replaced the sidebar's static wordmark with a workspace switcher (§3.2) and replaced the Settings placeholder with a hub page plus a working Workspace Management screen (§3.4, §6.7). The build-order list above reflects the original Slice 1 scope as shipped; §3.2/§3.4/§6.7 reflect the current state after that follow-on slice landed.
+
 **Landing route decision:** The PRD defines no separate "dashboard home/overview" screen (Out of Scope explicitly excludes analytics/metrics dashboards beyond the seven listed sections). Therefore, after login the operator lands directly on **Bookmarks** (`/bookmarks`), the only implemented section in Slice 1. This is a routing decision, not a missing screen — do not build a summary/widgets home page.
 
 ---
@@ -259,16 +261,24 @@ Status is never conveyed by color alone: every status dot ships with a text labe
 
 ---
 
-### 3.2 Shell (Slice 1 — AC-SHELL-001..004, AC-AUTH-004)
+### 3.2 Shell (Slice 1 — AC-SHELL-001..004, AC-AUTH-004, AC-WS-002, AC-WS-009, AC-WS-010)
 
 **Purpose / goal:** Persistent chrome hosting all seven sections plus Settings, with clear current-location indication, usable from 375px to 1440px+ with no horizontal overflow.
+
+**Workspace switcher (SidebarHeader):** the sidebar header no longer holds a static wordmark — it hosts the active workspace's name plus a chevron (`ChevronsUpDown`), and doubles as the entry point for workspace switching and creation.
+
+- Trigger shows the current workspace name (truncated, single line) and a chevron; clicking opens a `DropdownMenu`.
+- The menu lists every workspace the operator is a member of, one row per workspace, with a check mark next to the currently active one.
+- Clicking another workspace switches the operator's active workspace (session-persisted) and the shell/content refresh to the new workspace's data without a full page reload (AC-WS-010) — the switcher itself briefly disables its rows while the switch is in flight.
+- A separator followed by `Create workspace` sits at the bottom of the menu; it opens a `Dialog` with a single required `Name` field (empty/whitespace → inline error "Workspace name is required."). On success the new workspace is created and the operator is immediately switched into it (AC-WS-002), toast "Workspace created."
+- Like the rest of the sidebar, the switcher's label hides when the sidebar is collapsed to the icon-only rail (`group-data-[collapsible=icon]`).
 
 #### 3.2.1 Desktop ≥1024px (reference 1440px) — AC-SHELL-004
 
 ```
 +------------------------------------------------------------------------------------------+
 | +----------------+  +------------------------------------------------------------------+ |
-| | inspot     [«] |  |  Bookmarks                                    [+ New category]   | |
+| | Acme Corp  [v] |  |  Bookmarks                                    [+ New category]   | |
 | |----------------|  |------------------------------------------------------------------| |
 | | > Bookmarks    |  |                                                                    | |
 | |   Domains      |  |  INFRASTRUCTURE                                                   | |
@@ -314,7 +324,7 @@ Status is never conveyed by color alone: every status dot ships with a text labe
 
 [≡] tapped → off-canvas Sheet slides from left:
 +------------------------+
-| inspot            [x]  |
+| Acme Corp    [v]  [x]  |
 |-------------------------|
 | > Bookmarks             |
 |   Domains                |
@@ -354,7 +364,7 @@ Trigger: avatar + operator username in the sidebar footer (desktop) or top bar (
 
 #### 3.2.4 Placeholder screen (AC-SHELL-003)
 
-Applied to Domains, Servers, Mail, Messages, Logs, Alerts, and Settings **until each ships in its own slice**. One reusable template — do not build seven bespoke empty pages.
+Applied to Domains, Servers, Mail, Messages, Logs, and Alerts **until each ships in its own slice**. One reusable template — do not build six bespoke empty pages. Settings is no longer covered by this template: it shipped as a hub page (§6.7) with a working Workspace Management screen (§3.4) once workspaces landed, so `/settings` renders real content, not this placeholder.
 
 ```
 +------------------------------------------------------------------+
@@ -383,7 +393,7 @@ Applied to Domains, Servers, Mail, Messages, Logs, Alerts, and Settings **until 
   - Messages: "Discord-style categories and channels for incoming messages will be available in a future release."
   - Logs: "Log viewing, filtering, and webhook ingest will be available in a future release."
   - Alerts: "Categorized alert viewing and webhook ingest will be available in a future release."
-  - Settings: "Webhook token management will be available in a future release."
+  - Settings no longer uses this template (see note above) — its remaining unbuilt area, webhook token management, is instead represented by the disabled "Webhooks" card on the Settings hub (§6.7), not a full-page placeholder.
 
 ---
 
@@ -539,6 +549,73 @@ Applied to Domains, Servers, Mail, Messages, Logs, Alerts, and Settings **until 
 #### 3.3.7 Loading state
 
 - On initial load / refetch, category sections render as skeletons: `text-h3`-height gray bar (skeleton) + a row of card-shaped `Skeleton` blocks (icon circle + two text lines) matching the real card's exact dimensions — never a generic spinner (preset Rule 5).
+
+---
+
+### 3.4 Settings > Workspace — Workspace Management (AC-WS-002, AC-WS-003, AC-WS-005, AC-WS-006, AC-WS-007)
+
+**Purpose / goal:** Let a workspace owner rename the active workspace, manage its members (add an existing operator or invite a brand-new one, remove a member), and spin up additional workspaces — all from one page reached via the Settings hub's Workspace card (§6.7).
+
+```
++----------------------------------------------------------------------------+
+|  Workspace                                                                  |
+|------------------------------------------------------------------------------|
+|  Workspace name                                                              |
+|  Rename the current workspace.                                               |
+|                                                                                |
+|  WORKSPACE NAME                                                              |
+|  [ Acme Corp                                                             ]  |
+|  [ Save changes ]                                                            |
+|------------------------------------------------------------------------------|
+|  Members                                                                     |
+|  Operators with access to this workspace.                                    |
+|                                                                                |
+|   alice                    owner                                             |
+|   bob                       member                              [ remove ]   |
+|   carol                     member                              [ remove ]   |
+|                                                                                |
+|  USERNAME                        PASSWORD (only if new user)                 |
+|  [__________________]            [__________________]        [ Add member ] |
+|------------------------------------------------------------------------------|
+|  Create new workspace                                                        |
+|  Start a fresh, empty workspace and switch into it.                          |
+|                                                                                |
+|  NEW WORKSPACE NAME                                                          |
+|  [__________________________________]                   [ Create workspace ]|
++----------------------------------------------------------------------------+
+```
+
+**Layout:** Three stacked `Card` sections (Rename, Members, Create), each with a `CardHeader` (title + one-line `CardDescription`) and a `CardContent` body — the same card-body padding as §2.2. A Server Component fetches the workspace and its member list directly through the service layer and hands them to three Client Component forms/lists; none of the three sections share client state with each other.
+
+**Rename Workspace (AC-WS-003):**
+
+- Single `Input` pre-filled with the current name. `Save changes` is disabled while submitting **and** while the trimmed value equals the current name (nothing to save) — a narrow, deliberate exception to the "never silently disable submit" rule (§5) for the same reason as Login's empty-field disable (§3.1): there is nothing to submit, not an unseen validation state.
+- Empty/whitespace name → inline error "Workspace name is required." (same on-submit-then-on-blur validation timing as Bookmarks category naming, §3.3.2).
+- On success: toast "Workspace renamed.", the page — and the sidebar workspace switcher (§3.2), since it shows the same name — refresh without a full reload.
+
+**Members list (AC-WS-007):**
+
+- `divide-y` list of members, each row: username (`text-body`, weight 500) + role (`text-small`, `text-secondary`, capitalized — "owner"/"member") + a `Remove` icon-button (`UserMinus`) at the row's right edge.
+- `Remove` is disabled when exactly one member remains — a workspace can never be left member-less from this screen.
+- Clicking `Remove` opens a lightweight `AlertDialog`: `Remove "bob"?` / "This member will lose access to the workspace." — the same lighter-weight, no-cascade-warning pattern as Bookmark delete (§3.3.5), since removing a member never deletes workspace content, only that operator's access to it.
+- On confirm: row removed from the list without reload, toast "Member removed."
+
+**Add member (AC-WS-005, AC-WS-006):**
+
+- Inline form, `Username` (required) + `Password (only if new user)` (optional), submit button `Add member`.
+- If `Username` matches an existing operator, the password field is ignored server-side and that operator is simply added to the workspace (AC-WS-005). If the username doesn't exist yet, the password is required to create the new operator account as part of adding them (AC-WS-006); a missing password for a genuinely new username surfaces as a server-side field error under Password.
+- Empty username → inline error "Username is required." Other field errors returned by the API (e.g. a password-policy rejection) render under the relevant field, matching the Bookmark dialog's error-under-field pattern (§3.3.4).
+- On success: both fields clear, toast "Member added.", the members list above refreshes with the new row.
+
+**Create new workspace (AC-WS-002):**
+
+- Single `Name` field (required) + `Create workspace` button, same inline layout as Add member.
+- Empty/whitespace name → inline error "Workspace name is required."
+- On success: the new workspace is created **and immediately switched into** — mirroring the sidebar workspace switcher's own create flow (§3.2) — toast "Workspace created.", and the whole page re-renders scoped to the new (empty) workspace, including its own (single-member) Members list.
+
+**States:** All three forms follow the standard submit pattern (§5): button `disabled` + label swaps to a present-participle verb ("Saving…", "Adding…", "Creating…") while in flight, inline validation errors under the offending field, exactly one toast on completion. No loading skeletons on this page — data is fetched server-side before render (Server Component), so there is no client-side initial-load state to show.
+
+**Not yet implemented:** Workspace deletion (AC-WS-004) has no UI in this slice — no `Delete workspace` control exists on this page or in the sidebar switcher. Specify and build it in a later slice when that AC is scheduled for UI work.
 
 ---
 
@@ -748,7 +825,31 @@ Detail (drill-in / side panel on desktop ≥1024px, full-screen route on mobile)
 - Filters/sort per §4.2 (category, severity, text query; sort by timestamp or severity per AC-ALR-005).
 - **Note (backend scope):** AC-ALR-007 (webhook ingest creating an alert) is a backend AC with no dedicated UI — the entry it creates simply appears in this table per the ACs above once ingested.
 
-### 6.7 Settings — Webhook tokens (AC-WH-008, AC-WH-009)
+### 6.7 Settings
+
+**Settings hub (implemented, post-Slice-1):** `/settings` is a hub page, not a placeholder — a `text-h1` "Settings" title above a responsive card grid (`grid-cols-2` at ≥640px, `grid-cols-1` below). Each card is a link-style row: icon + title + one-line description.
+
+```
++----------------------------------------------------------------------------+
+|  Settings                                                                    |
+|--------------------------------------------------------------------------------|
+|  +----------------------------+   +----------------------------+              |
+|  | [building icon]             |   | [webhook icon, 50% opacity] |              |
+|  | Workspace                   |   | Webhooks                    |              |
+|  | Manage workspace name,      |   | Token management            |              |
+|  | members, and create new     |   | (coming soon)                |              |
+|  | workspaces                  |   |                              |              |
+|  +----------------------------+   +----------------------------+              |
++----------------------------------------------------------------------------+
+```
+
+- **Workspace card (active):** a real `Link` to `/settings/workspace`, the Workspace Management screen specified in §3.4. Standard hover (`bg-accent`) and focus states apply, same as any other nav link.
+- **Webhooks card (disabled, coming soon):** rendered at reduced opacity, not a `Link` — no href, not keyboard-focusable — matching the placeholder-card visual language (§3.2.4, `text-muted` icon) rather than the active Workspace card. Leads nowhere until webhook token management (§6.7.1) is scheduled for implementation.
+- This hub supersedes the single-purpose "Settings — Webhook tokens" placeholder from earlier revisions of this document; `/settings` is no longer covered by the generic placeholder template (§3.2.4).
+
+#### 6.7.1 Webhook tokens (later slice — AC-WH-008, AC-WH-009)
+
+Reached from the Webhooks card above once it ships; until then the card stays disabled and this screen doesn't exist in the running app. Spec retained here for when that slice is scheduled.
 
 ```
 +----------------------------------------------------------------------------+
@@ -823,25 +924,28 @@ The `lg` (1024px) sidebar-collapse threshold above is the single source of truth
 
 ## Appendix — Traceability Summary
 
-| Screen                                                          | AC-IDs covered                                                                                                                                                                                                                                                        |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Login                                                           | AC-AUTH-001, AC-AUTH-002, AC-AUTH-003                                                                                                                                                                                                                                 |
-| Shell (sidebar/topbar/mobile sheet)                             | AC-SHELL-001, AC-SHELL-002, AC-SHELL-004                                                                                                                                                                                                                              |
-| Placeholder template                                            | AC-SHELL-003                                                                                                                                                                                                                                                          |
-| User menu / logout                                              | AC-AUTH-004                                                                                                                                                                                                                                                           |
-| (Bootstrap behavior — no dedicated screen, see architecture.md) | AC-AUTH-005                                                                                                                                                                                                                                                           |
-| Bookmarks — grid + cards                                        | AC-BM-011, AC-BM-012, AC-BM-013                                                                                                                                                                                                                                       |
-| Bookmarks — category dialogs                                    | AC-BM-001, AC-BM-002, AC-BM-005                                                                                                                                                                                                                                       |
-| Bookmarks — category delete confirm                             | AC-BM-003, AC-BM-004                                                                                                                                                                                                                                                  |
-| Bookmarks — bookmark dialogs                                    | AC-BM-006, AC-BM-007, AC-BM-008, AC-BM-009                                                                                                                                                                                                                            |
-| Bookmarks — bookmark delete confirm                             | AC-BM-010                                                                                                                                                                                                                                                             |
-| Bookmarks — empty state                                         | AC-BM-014                                                                                                                                                                                                                                                             |
-| Domains — list + DNS table                                      | AC-DOM-001..009                                                                                                                                                                                                                                                       |
-| Servers — cards + power actions                                 | AC-SRV-001..008                                                                                                                                                                                                                                                       |
-| Mail — list + detail + filters                                  | AC-MAIL-001..005; AC-MAIL-006 is a backend AC (webhook ingest) — the UI only renders the resulting mail entry once created                                                                                                                                            |
-| Messages — categories/channels + feed                           | AC-MSG-001..004, AC-MSG-007; AC-MSG-005/AC-MSG-006 are backend ACs (webhook ingest accept/reject) — the UI only renders the resulting message or is unaffected by the reject path; AC-MSG-008 is inactive (gated on OQ-6) and intentionally not covered by any screen |
-| Logs — table + filters                                          | AC-LOG-001..004; AC-LOG-005 is a backend AC (webhook ingest) — the UI only renders the resulting log entry once created                                                                                                                                               |
-| Alerts — list + filters                                         | AC-ALR-001..006; AC-ALR-007 is a backend AC (webhook ingest) — the UI only renders the resulting alert once created                                                                                                                                                   |
-| Settings — webhook tokens                                       | AC-WH-008, AC-WH-009 (NFR-SEC-002 secret-handling)                                                                                                                                                                                                                    |
+| Screen                                                               | AC-IDs covered                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Login                                                                | AC-AUTH-001, AC-AUTH-002, AC-AUTH-003                                                                                                                                                                                                                                 |
+| Shell (sidebar/topbar/mobile sheet)                                  | AC-SHELL-001, AC-SHELL-002, AC-SHELL-004                                                                                                                                                                                                                              |
+| Placeholder template                                                 | AC-SHELL-003                                                                                                                                                                                                                                                          |
+| User menu / logout                                                   | AC-AUTH-004                                                                                                                                                                                                                                                           |
+| (Bootstrap behavior — no dedicated screen, see architecture.md)      | AC-AUTH-005                                                                                                                                                                                                                                                           |
+| Workspace switcher (sidebar header)                                  | AC-WS-002, AC-WS-009, AC-WS-010                                                                                                                                                                                                                                       |
+| Bookmarks — grid + cards                                             | AC-BM-011, AC-BM-012, AC-BM-013                                                                                                                                                                                                                                       |
+| Bookmarks — category dialogs                                         | AC-BM-001, AC-BM-002, AC-BM-005                                                                                                                                                                                                                                       |
+| Bookmarks — category delete confirm                                  | AC-BM-003, AC-BM-004                                                                                                                                                                                                                                                  |
+| Bookmarks — bookmark dialogs                                         | AC-BM-006, AC-BM-007, AC-BM-008, AC-BM-009                                                                                                                                                                                                                            |
+| Bookmarks — bookmark delete confirm                                  | AC-BM-010                                                                                                                                                                                                                                                             |
+| Bookmarks — empty state                                              | AC-BM-014                                                                                                                                                                                                                                                             |
+| Domains — list + DNS table                                           | AC-DOM-001..009                                                                                                                                                                                                                                                       |
+| Servers — cards + power actions                                      | AC-SRV-001..008                                                                                                                                                                                                                                                       |
+| Mail — list + detail + filters                                       | AC-MAIL-001..005; AC-MAIL-006 is a backend AC (webhook ingest) — the UI only renders the resulting mail entry once created                                                                                                                                            |
+| Messages — categories/channels + feed                                | AC-MSG-001..004, AC-MSG-007; AC-MSG-005/AC-MSG-006 are backend ACs (webhook ingest accept/reject) — the UI only renders the resulting message or is unaffected by the reject path; AC-MSG-008 is inactive (gated on OQ-6) and intentionally not covered by any screen |
+| Logs — table + filters                                               | AC-LOG-001..004; AC-LOG-005 is a backend AC (webhook ingest) — the UI only renders the resulting log entry once created                                                                                                                                               |
+| Alerts — list + filters                                              | AC-ALR-001..006; AC-ALR-007 is a backend AC (webhook ingest) — the UI only renders the resulting alert once created                                                                                                                                                   |
+| Settings hub                                                         | (no dedicated AC — routing/composition only; see §6.7)                                                                                                                                                                                                                |
+| Settings > Workspace — rename, members, add member, create workspace | AC-WS-003, AC-WS-005, AC-WS-006, AC-WS-007; AC-WS-004 (workspace deletion) has no UI in this revision — not covered by any screen                                                                                                                                     |
+| Settings — webhook tokens (later slice)                              | AC-WH-008, AC-WH-009 (NFR-SEC-002 secret-handling)                                                                                                                                                                                                                    |
 
-No PRD user story (US-1..US-10) is without a covering screen above.
+No PRD user story (US-1..US-13) is without a covering screen above, except AC-WS-004 (workspace deletion) and AC-WS-001/AC-WS-008/AC-WS-011, which are backend-only behaviors (default-workspace provisioning, shared multi-operator access, workspace-scoped content isolation) with no dedicated UI surface — the same "backend AC" treatment already applied to webhook-ingest ACs elsewhere in this table.

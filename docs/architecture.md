@@ -1,14 +1,15 @@
 # Architecture Blueprint — inspoter
 
-**Version:** 1.1
-**Status:** Draft for doc-review (v1.1 addresses doc-review findings F1–F7)
+**Version:** 1.2
+**Status:** Draft for doc-review (v1.2 documents the workspaces slice, implemented after Slice 1)
 **Owner:** Architect
-**Date:** 2026-07-12
+**Date:** 2026-07-13
 **Traces to:** `docs/prd.md` v2.1 (authoritative requirements), `docs/progress.md` (Decisions log), `specs/idea.md`
 **Consumed by:** planner, ui-ux-designer, implementors, tester
 
 **Changelog:**
 
+- **v1.2 (2026-07-13):** Documents the implemented workspaces slice (FR-WS-001..003). §1 — workspace multi-tenancy overview. §1.1 — auth DAL note updated for `requireAuth()`. §2.2/§2.3 — `Workspace`/`WorkspaceMember` models and the `workspaceId` FK added to `Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, `WebhookToken`; `Session.activeWorkspaceId`; `Operator.memberships`. §5 — new §5.4 workspace context resolution (`requireAuth()`, session fallback, invite-only `addMember`). §6 — workspace files added to the project tree. §8 — ADR-014 (session-carried workspace context, no URL prefix) and ADR-015 (invite-only registration). §10 — workspace-context data flow. §11 — FR-WS-001..003 traceability rows.
 - **v1.1 (2026-07-12):** Doc-review fixes. F1 — AQ-1 resolved per progress.md line 43 (both `OPERATOR_PASSWORD_HASH` and `OPERATOR_PASSWORD` supported); §5.2 env validation + §9 updated. F2 — auth DAL named as a sanctioned Prisma caller (§1.1, ADR-012). F3 — ADR-004 read-through latency trade-off stated. F4 — `Message` index gains `id` tiebreaker. F5 — `validation/dns.ts` added to tree. F6 — `DnsRecordInput`/`DnsRecordPatch` DTOs defined (§4.1). F7 — AQ-4 marked resolved-with-configurable-default.
 - **v1.0 (2026-07-12):** Initial blueprint.
 
@@ -21,6 +22,8 @@ This document is the authoritative design reference. Every component traces to a
 `inspoter` is a **single deployable Next.js 15 (App Router) application** backed by PostgreSQL via Prisma. It is a single-instance, self-hosted control panel (HC-2, NFR-DEPLOY-001) with seven sections plus a unified webhook ingest API.
 
 The system is intentionally a **modular monolith**, not a set of services. Justification (Simplicity First, HC-2): the deployment target is one Docker host serving one operator or a small team. Microservices, message queues, and Redis would add operational surface with no requirement to justify them. In-process constructs (in-memory rate limiter, synchronous webhook ingest) are correct precisely _because_ there is exactly one application process.
+
+All seven content sections are additionally scoped to a **workspace** (FR-WS-001..003, §3.10 of the PRD): a lightweight multi-tenancy layer, not general-purpose SaaS tenancy. A default workspace is provisioned automatically for the first (env-seeded) operator; additional operators join a workspace only by invite from an existing member (no self-service registration). An operator can belong to more than one workspace and switches which one is active per session (`Session.activeWorkspaceId`); every service call is scoped to that active workspace.
 
 ### 1.1 Architectural layers
 
@@ -57,7 +60,7 @@ The system is intentionally a **modular monolith**, not a set of services. Justi
                       └───────────────────────────────┘
 ```
 
-Note: the auth Data Access Layer (`requireOperator()`, §5.3) reads the `Session`/`Operator` tables directly via Prisma; it is the single sanctioned Prisma caller outside the service layer (ADR-012).
+Note: the auth Data Access Layer (`requireOperator()`, §5.3; `requireAuth()`, §5.4) reads the `Session`/`Operator`/`Workspace`/`WorkspaceMember` tables directly via Prisma; it is the single sanctioned Prisma caller outside the service layer (ADR-012).
 
 ### 1.2 Component diagram (Mermaid)
 
@@ -121,6 +124,15 @@ Consequence: `Domain`, `DnsRecord`, `Server` are TypeScript types returned by th
 ```mermaid
 erDiagram
     Operator ||--o{ Session : has
+    Operator ||--o{ WorkspaceMember : belongs-to
+    Workspace ||--o{ WorkspaceMember : has
+    Workspace |o--o{ Session : "active for"
+    Workspace ||--o{ Category : scopes
+    Workspace ||--o{ MessageCategory : scopes
+    Workspace ||--o{ MailItem : scopes
+    Workspace ||--o{ LogEntry : scopes
+    Workspace ||--o{ AlertCategory : scopes
+    Workspace ||--o{ WebhookToken : scopes
     Category ||--o{ Bookmark : contains
     MessageCategory ||--o{ Channel : contains
     Channel ||--o{ Message : contains
@@ -129,6 +141,8 @@ erDiagram
 
     Operator { string id PK }
     Session { string id PK }
+    Workspace { string id PK }
+    WorkspaceMember { string id PK }
     Category { string id PK }
     Bookmark { string id PK }
     MessageCategory { string id PK }
@@ -144,35 +158,71 @@ erDiagram
 
 ### 2.3 Prisma schema (entity + index level)
 
-IDs use `cuid()`. Timestamps default to `now()`. Cascade / SetNull choices satisfy the no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002).
+IDs use `cuid()`. Timestamps default to `now()`. Cascade / SetNull choices satisfy the no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002, AC-WS-004, AC-WS-009).
 
 ```prisma
 // --- Auth (FR-AUTH-001) ---
 model Operator {
-  id           String    @id @default(cuid())
-  username     String    @unique
-  passwordHash String                       // scrypt hash; never returned (NFR-SEC-002)
-  createdAt    DateTime  @default(now())
+  id           String            @id @default(cuid())
+  username     String            @unique
+  passwordHash String                                 // scrypt hash; never returned (NFR-SEC-002)
+  createdAt    DateTime          @default(now())
   sessions     Session[]
+  memberships  WorkspaceMember[]                       // FR-WS-002
 }
 
 model Session {
-  id         String   @id                   // opaque random token (the cookie value)
-  operatorId String
-  operator   Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  id                String     @id                     // opaque random token (the cookie value)
+  operatorId        String
+  operator          Operator   @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  activeWorkspaceId String?                             // FR-WS-003; resolved/refreshed by requireAuth() (§5.4)
+  activeWorkspace   Workspace? @relation(fields: [activeWorkspaceId], references: [id], onDelete: SetNull) // deleted workspace -> falls back to another membership (AC-WS-004/009)
+  expiresAt         DateTime
+  createdAt         DateTime   @default(now())
   @@index([expiresAt])
+}
+
+// --- Workspaces (FR-WS-001..003) ---
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique                           // AC-WS-002 unique slug derived from name
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members           WorkspaceMember[]
+  sessions          Session[]                           // sessions with this as their active workspace
+  categories        Category[]
+  messageCategories MessageCategory[]
+  mailItems         MailItem[]
+  logEntries        LogEntry[]
+  alertCategories   AlertCategory[]
+  webhookTokens     WebhookToken[]                       // AC-WS-004: all of the above cascade-delete with the workspace
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  operatorId  String
+  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  role        String    @default("owner")                // "owner" | "member" (RBAC beyond this field is out of scope)
+  joinedAt    DateTime  @default(now())
+  @@unique([workspaceId, operatorId])                     // AC-WS-005 one membership per operator per workspace
+  @@index([operatorId])
 }
 
 // --- Bookmarks (FR-BM-001..003, Slice 1) ---
 model Category {
-  id        String     @id @default(cuid())
-  name      String
-  position  Int        @default(0)
-  bookmarks Bookmark[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
+  name        String
+  position    Int        @default(0)
+  bookmarks   Bookmark[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  @@index([workspaceId])
 }
 
 model Bookmark {
@@ -191,11 +241,14 @@ model Bookmark {
 
 // --- Messages (FR-MSG-001..002) ---
 model MessageCategory {
-  id        String    @id @default(cuid())
-  name      String
-  channels  Channel[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
+  name        String
+  channels    Channel[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([workspaceId])
 }
 
 model Channel {
@@ -221,24 +274,30 @@ model Message {
 
 // --- Mail (FR-MAIL-001..002) ---
 model MailItem {
-  id         String   @id @default(cuid())
-  sender     String
-  subject    String
-  body       String
-  receivedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
+  sender      String
+  subject     String
+  body        String
+  receivedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  @@index([workspaceId])
   @@index([receivedAt, id])                  // sort + keyset pagination (AC-MAIL-004/005)
   @@index([sender])                          // equality filter (AC-MAIL-003, NFR-PERF-002)
 }
 
 // --- Logs (FR-LOG-001..002) ---
 model LogEntry {
-  id        String   @id @default(cuid())
-  level     String                           // e.g. info|warn|error (validated by zod, stored as string)
-  source    String
-  message   String
-  timestamp DateTime @default(now())
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
+  level       String                           // e.g. info|warn|error (validated by zod, stored as string)
+  source      String
+  message     String
+  timestamp   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  @@index([workspaceId])
   @@index([timestamp, id])                   // sort + keyset pagination (AC-LOG-003/004)
   @@index([level])                           // equality filter (AC-LOG-002)
   @@index([source])                          // equality filter (AC-LOG-002)
@@ -246,11 +305,14 @@ model LogEntry {
 
 // --- Alerts (FR-ALR-001..003) ---
 model AlertCategory {
-  id        String   @id @default(cuid())
-  name      String
-  alerts    Alert[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
+  name        String
+  alerts      Alert[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([workspaceId])
 }
 
 model Alert {
@@ -270,6 +332,8 @@ model Alert {
 // --- Webhook (FR-WH-001..002) ---
 model WebhookToken {
   id              String           @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
   name            String
   tokenHash       String           @unique   // sha256 of secret; raw secret shown once (AC-WH-008), never stored
   tokenPrefix     String                      // first chars, for UI identification only
@@ -277,6 +341,7 @@ model WebhookToken {
   revokedAt       DateTime?                    // AC-WH-009 revoke -> 401
   lastUsedAt      DateTime?
   idempotencyKeys IdempotencyKey[]
+  @@index([workspaceId])
 }
 
 model IdempotencyKey {
@@ -290,6 +355,8 @@ model IdempotencyKey {
   @@unique([tokenId, key])                    // AC-WH-004 per-token scoping; DB uniqueness = race-safe dedup
 }
 ```
+
+Note (AC-WS-002/AC-WS-005): `Workspace.slug` is derived from `name` at create time and de-duplicated by `services/workspaces.ts` (`slugify` + numeric-suffix retry); `WorkspaceMember.role` defaults to `"owner"` for the creator and is set to `"member"` for everyone added via `addMember`.
 
 ### 2.4 Pagination & indexing strategy (NFR-PERF-001, NFR-PERF-002, D-11)
 
@@ -463,7 +530,7 @@ The Domains service calls `getDnsProviders()` and awaits all with `Promise.allSe
 
 ---
 
-## 5. Authentication (FR-AUTH-001, resolves OQ-5 at architecture level)
+## 5. Authentication (FR-AUTH-001, resolves OQ-5 at architecture level; workspace context per FR-WS-002/003, §5.4)
 
 ### 5.1 Mechanism decision (ADR-002): custom lightweight session, not NextAuth/Auth.js
 
@@ -492,6 +559,21 @@ Following Next.js 15 security guidance:
 
 This split keeps DB lookups out of the (Edge-constrained) middleware while guaranteeing no dashboard data is returned unauthenticated (AC-AUTH-001, M-3).
 
+### 5.4 Workspace context resolution (FR-WS-002/003)
+
+Every workspace-scoped route (all category/bookmark/mail/message/log/alert/webhook-token routes, plus the `/api/workspaces*` routes themselves) calls **`requireAuth()`** instead of `requireOperator()`. `requireAuth()` is a superset: it does everything `requireOperator()` does and additionally resolves the operator's active `Workspace`, returning an `AuthContext { operator, workspace }`. `requireOperator()` is kept for the small number of call sites (e.g. the login Server Action) that only need the operator identity and have no workspace-scoped data to touch.
+
+Resolution order inside `requireAuth()` (`src/lib/auth/dal.ts`):
+
+1. Validate the session and load the `Operator`, exactly as `requireOperator()` does (redirect to `/login` on failure).
+2. If `Session.activeWorkspaceId` is set, look up the matching `WorkspaceMember` row for `(activeWorkspaceId, operatorId)`. If the membership still exists, that workspace is used — this re-validates membership on every request, so a removed member (AC-WS-007) or a deleted workspace (`onDelete: SetNull` on `Session.activeWorkspace`, AC-WS-004) cannot leak stale access.
+3. **Fallback:** if there is no active workspace, or the membership no longer exists, load the operator's earliest `WorkspaceMember` (`orderBy: joinedAt asc`) and use that workspace. If the operator has no membership at all, redirect to `/login` (AC-WS-009). The resolved workspace is persisted back onto `Session.activeWorkspaceId` so subsequent requests skip the fallback.
+4. Every downstream service call in the route handler receives `workspace.id` explicitly (e.g. `bookmarksService.list(workspace.id)`), enforcing AC-WS-011 (no cross-workspace data leakage) at the service boundary rather than relying on callers to remember a filter.
+
+**Switching workspace (AC-WS-009/010):** `POST /api/workspaces/switch` (`requireAuth()` for the operator identity, then a direct `WorkspaceMember` membership check) calls `switchWorkspace(sessionId, workspaceId)` (`src/lib/auth/session.ts`), which updates `Session.activeWorkspaceId`. The client (`WorkspaceSwitcher`, `src/components/shell/workspace-switcher.tsx`) then calls `router.refresh()` so server components re-render with the new workspace's data — no full page reload (AC-WS-010).
+
+**Invite-only operator creation (FR-WS-002):** there is no self-service registration screen. A workspace owner adds a member via `POST /api/workspaces/[id]/members`, which calls `services/workspaces.ts#addMember(workspaceId, { username, password? })`: if an `Operator` with that `username` already exists, it is simply linked with a new `WorkspaceMember` row (`role: "member"`); if it does not exist, the caller must supply a `password`, and `addMember` creates the `Operator` (scrypt-hashed via `hashPassword`, §5.2) and the membership in the same call. Beyond the env-seeded bootstrap operator (§5.2) and this owner-driven invite path, no other account-creation route exists (AC-WS-005/006).
+
 ---
 
 ## 6. Project Structure & Layer Dependency Rules
@@ -512,34 +594,45 @@ inspot-dashboard/
 │   │   │   ├── page.tsx
 │   │   │   └── actions.ts              # login server action (AC-AUTH-002/003)
 │   │   ├── (dashboard)/
-│   │   │   ├── layout.tsx              # shell + requireOperator() guard (FR-SHELL-001)
+│   │   │   ├── layout.tsx              # shell + requireAuth() guard (FR-SHELL-001)
 │   │   │   ├── bookmarks/page.tsx      # Slice 1
 │   │   │   ├── domains/page.tsx        # placeholder in Slice 1 (AC-SHELL-003)
 │   │   │   ├── servers/page.tsx        # placeholder …
 │   │   │   ├── mail/page.tsx
 │   │   │   ├── messages/page.tsx
 │   │   │   ├── logs/page.tsx
-│   │   │   └── alerts/page.tsx
+│   │   │   ├── alerts/page.tsx
+│   │   │   └── settings/
+│   │   │       ├── page.tsx
+│   │   │       └── workspace/page.tsx  # rename / members / danger zone (FR-WS-001/002)
 │   │   └── api/
 │   │       ├── categories/route.ts     # + [id]/route.ts
 │   │       ├── bookmarks/route.ts      # + [id]/route.ts
 │   │       ├── webhook-tokens/route.ts # + [id]/route.ts (FR-WH-002)
-│   │       └── webhooks/[type]/route.ts# unified ingest (FR-WH-001)
+│   │       ├── webhooks/[type]/route.ts# unified ingest (FR-WH-001)
+│   │       └── workspaces/             # FR-WS-001..003
+│   │           ├── route.ts            # GET list / POST create
+│   │           ├── [id]/route.ts       # PATCH rename / DELETE
+│   │           ├── [id]/members/route.ts          # GET list / POST add
+│   │           ├── [id]/members/[memberId]/route.ts # DELETE remove
+│   │           └── switch/route.ts     # POST switch active workspace
 │   ├── components/
 │   │   ├── ui/                         # shadcn/ui primitives
 │   │   ├── shell/                      # nav, sidebar, section placeholder
-│   │   └── bookmarks/                  # category/bookmark forms, cards (client)
+│   │   │   └── workspace-switcher.tsx  # sidebar-header dropdown (FR-WS-003)
+│   │   ├── bookmarks/                  # category/bookmark forms, cards (client)
+│   │   └── workspace/                  # rename/add-member/create forms, members list, api.ts client wrapper
 │   └── lib/
 │       ├── db.ts                       # Prisma client singleton
 │       ├── config/env.ts               # env parse + fail-fast (AC-AUTH-005)
-│       ├── auth/                       # session.ts, password.ts, dal.ts
-│       ├── services/                   # bookmarks.ts, mail.ts, logs.ts, alerts.ts, messages.ts, webhookTokens.ts
+│       ├── auth/                       # session.ts (+ switchWorkspace), password.ts, dal.ts (requireOperator, requireAuth)
+│       ├── services/                   # bookmarks.ts, mail.ts, logs.ts, alerts.ts, messages.ts, webhookTokens.ts, workspaces.ts
 │       ├── providers/
 │       │   ├── result.ts               # ProviderResult<T>
 │       │   ├── dns/                    # index.ts(factory), cloudflare.ts, hetzner.ts, godaddy.ts, mock.ts, types.ts
 │       │   └── servers/                # index.ts(factory), hetzner.ts, mock.ts, types.ts
 │       ├── webhooks/                   # pipeline.ts, ratelimit.ts, idempotency.ts, dispatch.ts
-│       └── validation/                 # bookmarks.ts, webhooks.ts, dns.ts (Slice 2, AC-DOM-008) (zod schemas)
+│       └── validation/                 # bookmarks.ts, webhooks.ts, dns.ts (Slice 2, AC-DOM-008), workspaces.ts (zod schemas)
 ├── tests/                              # unit + integration (Vitest)
 ├── Dockerfile
 ├── docker-compose.yml                  # app + postgres (NFR-DEPLOY-001)
@@ -596,21 +689,23 @@ Rationale for ordering: provider track (2,3) and ingest track (4–7) are indepe
 
 ## 8. Architecture Decision Records (ADR-style, concise)
 
-| ID          | Decision                                                                                                                                              | Alternatives considered                       | Rationale / trace                                                                                                                                                                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ADR-001** | Modular monolith, single Next.js process; no queue/Redis.                                                                                             | Microservices; background workers.            | Single-instance self-hosted (HC-2, NFR-DEPLOY-001); Simplicity First. In-process constructs are correct at one process.                                                                                                                                                                                                                         |
-| **ADR-002** | Custom session-cookie auth (DB `Session` + DAL), scrypt hashing.                                                                                      | NextAuth/Auth.js; stateless JWT cookie.       | Single env-seeded operator (D-7, OQ-5); library overkill; DB session gives real logout invalidation (AC-AUTH-004). scrypt = no native build dep.                                                                                                                                                                                                |
-| **ADR-003** | Two-tier enforcement: optimistic middleware + authoritative DAL.                                                                                      | Middleware-only auth; per-page ad-hoc checks. | Keeps DB out of Edge middleware; DAL guarantees AC-AUTH-001 / NFR-SEC-001; webhook path excluded from matcher.                                                                                                                                                                                                                                  |
-| **ADR-004** | Domains/DnsRecords/Servers are read-through provider DTOs, not persisted.                                                                             | Local cache/mirror of provider state.         | Provider is source of truth (AC-DOM-009, AC-SRV-008); cache adds staleness/sync with no requirement. **Accepted trade-off:** read-through incurs provider-call latency on every Domains/Servers view; acceptable at single-user scale (A-3) and explicitly outside the NFR-PERF-002 DB-read budget (which covers DB-backed list sections only). |
-| **ADR-005** | One unified webhook handler `/api/webhooks/[type]`.                                                                                                   | Four per-section endpoints.                   | D-3, §7 sub-decision: shared auth/validate/idempotency/ratelimit surface; `type` discriminator.                                                                                                                                                                                                                                                 |
-| **ADR-006** | In-process fixed-window rate limiter keyed by token.                                                                                                  | Redis / DB-backed limiter.                    | Single process = single global counter (NFR-SEC-003); Simplicity First; default 120/min/token (progress.md line 43); documented reset-on-restart limit (R-4).                                                                                                                                                                                   |
-| **ADR-007** | Idempotency via `@@unique(tokenId,key)` + transactional create; 201 new / 200 replay.                                                                 | App-level check-then-insert (racy).           | DB constraint is race-safe; per-token scoping (AC-WH-004, D-8, F-3); no-key = at-least-once (AC-WH-010).                                                                                                                                                                                                                                        |
-| **ADR-008** | `ProviderResult<T>` discriminated union (ok/error/unsupported); no thrown provider errors.                                                            | Throwing + try/catch at UI.                   | Per-provider error isolation (AC-DOM-003, AC-SRV-003) and graceful unsupported (AC-PROV-003, N-1).                                                                                                                                                                                                                                              |
-| **ADR-009** | Text-search = pagination-only fallback for MVP; no `pg_trgm`.                                                                                         | `pg_trgm` GIN / full-text now.                | D-11/R-6 permit fallback; avoids Postgres extension in image; low-100k rows (A-3). Upgrade path documented (§2.4).                                                                                                                                                                                                                              |
-| **ADR-010** | Keyset (cursor) pagination on `(sortField,id)` composite indexes; page size 50 configurable.                                                          | OFFSET/LIMIT pagination.                      | OFFSET degrades at depth; keyset holds the 500ms budget at 100k rows (NFR-PERF-001/002).                                                                                                                                                                                                                                                        |
-| **ADR-011** | Zod schemas in `lib/validation` shared by REST + webhook.                                                                                             | Duplicate per-route validation.               | Single validation source; machine-readable errors (AC-WH-002, AC-BM-005/007/008).                                                                                                                                                                                                                                                               |
-| **ADR-012** | The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly. | Direct Prisma in route handlers.              | Testability, single business-rule locus plus one narrow auth gate, clean layer boundary (§6.1).                                                                                                                                                                                                                                                 |
-| **ADR-013** | Alert→category `onDelete: SetNull` (reassign); Bookmark/Channel/Message `onDelete: Cascade`.                                                          | App-level orphan handling.                    | DB enforces no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002).                                                                                                                                                                                                                                                                      |
+| ID          | Decision                                                                                                                                              | Alternatives considered                                                                  | Rationale / trace                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ADR-001** | Modular monolith, single Next.js process; no queue/Redis.                                                                                             | Microservices; background workers.                                                       | Single-instance self-hosted (HC-2, NFR-DEPLOY-001); Simplicity First. In-process constructs are correct at one process.                                                                                                                                                                                                                                                                                          |
+| **ADR-002** | Custom session-cookie auth (DB `Session` + DAL), scrypt hashing.                                                                                      | NextAuth/Auth.js; stateless JWT cookie.                                                  | Single env-seeded operator (D-7, OQ-5); library overkill; DB session gives real logout invalidation (AC-AUTH-004). scrypt = no native build dep.                                                                                                                                                                                                                                                                 |
+| **ADR-003** | Two-tier enforcement: optimistic middleware + authoritative DAL.                                                                                      | Middleware-only auth; per-page ad-hoc checks.                                            | Keeps DB out of Edge middleware; DAL guarantees AC-AUTH-001 / NFR-SEC-001; webhook path excluded from matcher.                                                                                                                                                                                                                                                                                                   |
+| **ADR-004** | Domains/DnsRecords/Servers are read-through provider DTOs, not persisted.                                                                             | Local cache/mirror of provider state.                                                    | Provider is source of truth (AC-DOM-009, AC-SRV-008); cache adds staleness/sync with no requirement. **Accepted trade-off:** read-through incurs provider-call latency on every Domains/Servers view; acceptable at single-user scale (A-3) and explicitly outside the NFR-PERF-002 DB-read budget (which covers DB-backed list sections only).                                                                  |
+| **ADR-005** | One unified webhook handler `/api/webhooks/[type]`.                                                                                                   | Four per-section endpoints.                                                              | D-3, §7 sub-decision: shared auth/validate/idempotency/ratelimit surface; `type` discriminator.                                                                                                                                                                                                                                                                                                                  |
+| **ADR-006** | In-process fixed-window rate limiter keyed by token.                                                                                                  | Redis / DB-backed limiter.                                                               | Single process = single global counter (NFR-SEC-003); Simplicity First; default 120/min/token (progress.md line 43); documented reset-on-restart limit (R-4).                                                                                                                                                                                                                                                    |
+| **ADR-007** | Idempotency via `@@unique(tokenId,key)` + transactional create; 201 new / 200 replay.                                                                 | App-level check-then-insert (racy).                                                      | DB constraint is race-safe; per-token scoping (AC-WH-004, D-8, F-3); no-key = at-least-once (AC-WH-010).                                                                                                                                                                                                                                                                                                         |
+| **ADR-008** | `ProviderResult<T>` discriminated union (ok/error/unsupported); no thrown provider errors.                                                            | Throwing + try/catch at UI.                                                              | Per-provider error isolation (AC-DOM-003, AC-SRV-003) and graceful unsupported (AC-PROV-003, N-1).                                                                                                                                                                                                                                                                                                               |
+| **ADR-009** | Text-search = pagination-only fallback for MVP; no `pg_trgm`.                                                                                         | `pg_trgm` GIN / full-text now.                                                           | D-11/R-6 permit fallback; avoids Postgres extension in image; low-100k rows (A-3). Upgrade path documented (§2.4).                                                                                                                                                                                                                                                                                               |
+| **ADR-010** | Keyset (cursor) pagination on `(sortField,id)` composite indexes; page size 50 configurable.                                                          | OFFSET/LIMIT pagination.                                                                 | OFFSET degrades at depth; keyset holds the 500ms budget at 100k rows (NFR-PERF-001/002).                                                                                                                                                                                                                                                                                                                         |
+| **ADR-011** | Zod schemas in `lib/validation` shared by REST + webhook.                                                                                             | Duplicate per-route validation.                                                          | Single validation source; machine-readable errors (AC-WH-002, AC-BM-005/007/008).                                                                                                                                                                                                                                                                                                                                |
+| **ADR-012** | The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly. | Direct Prisma in route handlers.                                                         | Testability, single business-rule locus plus one narrow auth gate, clean layer boundary (§6.1).                                                                                                                                                                                                                                                                                                                  |
+| **ADR-013** | Alert→category `onDelete: SetNull` (reassign); Bookmark/Channel/Message `onDelete: Cascade`.                                                          | App-level orphan handling.                                                               | DB enforces no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002).                                                                                                                                                                                                                                                                                                                                       |
+| **ADR-014** | Workspace context carried on the session (`Session.activeWorkspaceId`), resolved server-side by `requireAuth()`; no `/[workspace]/...` URL prefix.    | URL-prefixed workspace routing; client-side workspace state (localStorage/context only). | FR-WS-003; keeps every existing route path unchanged (no App Router restructure), re-validates membership on every request (AC-WS-007/011) instead of trusting a client-supplied URL segment, and matches the DAL-is-authoritative pattern already established for auth (ADR-003). Trade-off: workspace is not shareable/bookmarkable via URL — acceptable for a small-team self-hosted tool (Simplicity First). |
+| **ADR-015** | Invite-only operator creation: new accounts are created only via a workspace owner's `addMember` call, never by self-service registration.            | Public sign-up page; open registration.                                                  | FR-WS-002 (AC-WS-005/006); consistent with the single-env-seeded-operator bootstrap model (D-7, ADR-002) extended to teams — the trust boundary is "already has an account or was invited by an owner," not "anyone can register." No new attack surface (registration abuse, email verification, etc.) for a self-hosted tool.                                                                                  |
 
 ---
 
@@ -629,7 +724,9 @@ Only AQ-2 and AQ-3 remain open, and both are scoped to later slices (Slice 4 / S
 
 ## 10. Data Flow (traceable, input → output)
 
-**Bookmark create (Slice 1):** client form → Server Action / `POST /api/bookmarks` → `requireOperator()` (DAL) → zod validate (name, http(s) URL — AC-BM-007/008) → `services/bookmarks.create()` → Prisma insert → revalidate → UI shows new bookmark without full reload (AC-BM-006).
+**Bookmark create (Slice 1, workspace-scoped since the workspaces slice):** client form → Server Action / `POST /api/bookmarks` → `requireAuth()` (DAL, §5.4) → zod validate (name, http(s) URL — AC-BM-007/008) → `services/bookmarks.createCategory(workspace.id, input)` / `createBookmark()` → Prisma insert scoped to `workspace.id` → revalidate → UI shows new bookmark without full reload (AC-BM-006, AC-WS-011).
+
+**Workspace context resolution (login → scoped read, FR-WS-002/003):** login Server Action → `createSession()` (no `activeWorkspaceId` yet) → operator opens any dashboard page → `(dashboard)/layout.tsx` calls `requireAuth()` → DAL reads `Session.activeWorkspaceId`; if unset or the membership was revoked, falls back to the operator's earliest `WorkspaceMember` and persists it onto the session (§5.4) → `AuthContext { operator, workspace }` flows into the page/route → every service call is scoped by `workspace.id` → operator switches via `WorkspaceSwitcher` → `POST /api/workspaces/switch` → `switchWorkspace()` updates `Session.activeWorkspaceId` → `router.refresh()` re-runs the flow above for the newly active workspace (AC-WS-009/010/011).
 
 **Domains read (Slice 2):** `domains/page.tsx` (server) → `services/domains.list()` → `getDnsProviders()` → each adapter `listDomains()` (real HTTPS or mock) → aggregate `ProviderResult[]` → render domains from healthy providers + per-provider error badge (AC-DOM-001/003).
 
@@ -641,33 +738,36 @@ Only AQ-2 and AQ-3 remain open, and both are scoped to later slices (Slice 4 / S
 
 ## 11. Full FR → Component Traceability
 
-| FR               | Component(s)                                                                   | Key ACs                            |
-| ---------------- | ------------------------------------------------------------------------------ | ---------------------------------- |
-| FR-SHELL-001     | `app/(dashboard)/layout.tsx`, `components/shell`                               | AC-SHELL-001..004                  |
-| FR-AUTH-001      | `middleware.ts`, `lib/auth/*`, `login/`, `lib/config/env.ts`, `prisma/seed.ts` | AC-AUTH-001..005                   |
-| FR-BM-001        | `services/bookmarks`, `categories/route.ts`, `components/bookmarks`            | AC-BM-001..005                     |
-| FR-BM-002        | `services/bookmarks`, `bookmarks/route.ts`, `validation/bookmarks`             | AC-BM-006..011                     |
-| FR-BM-003        | `bookmarks/page.tsx`, `components/bookmarks`                                   | AC-BM-012..014                     |
-| FR-DOM-001       | `providers/dns`, `services/domains`, `domains/page.tsx`                        | AC-DOM-001..003                    |
-| FR-DOM-002       | `providers/dns`, `services/domains`, `validation/dns`                          | AC-DOM-004..009                    |
-| FR-SRV-001       | `providers/servers`, `servers/page.tsx`                                        | AC-SRV-001..003                    |
-| FR-SRV-002       | `providers/servers`, server power route + poll                                 | AC-SRV-004..008                    |
-| FR-MAIL-001      | `services/mail`, `mail/page.tsx` (keyset pagination)                           | AC-MAIL-001..005                   |
-| FR-MAIL-002      | `webhooks/[type]` (`mail`), `services/mail`                                    | AC-MAIL-006                        |
-| FR-MSG-001       | `services/messages`, `messages/*` (keyset per channel)                         | AC-MSG-001..004, 007               |
-| FR-MSG-002       | `webhooks/[type]` (`message`), `services/messages`                             | AC-MSG-005..006 (008 inactive)     |
-| FR-LOG-001       | `services/logs`, `logs/page.tsx`                                               | AC-LOG-001..004                    |
-| FR-LOG-002       | `webhooks/[type]` (`log`)                                                      | AC-LOG-005                         |
-| FR-ALR-001       | `services/alerts`, `AlertCategory`                                             | AC-ALR-001..002                    |
-| FR-ALR-002       | `services/alerts`, `alerts/page.tsx`                                           | AC-ALR-003..006                    |
-| FR-ALR-003       | `webhooks/[type]` (`alert`)                                                    | AC-ALR-007                         |
-| FR-WH-001        | `webhooks/[type]/route.ts`, `lib/webhooks/*`                                   | AC-WH-001..007, 010, 011           |
-| FR-WH-002        | `webhook-tokens/route.ts`, `services/webhookTokens`                            | AC-WH-008..009                     |
-| FR-PROV-001      | `lib/providers/*` (factory + mock)                                             | AC-PROV-001..003                   |
-| NFR-DEPLOY-001   | `Dockerfile`, `docker-compose.yml`                                             | M-7                                |
-| NFR-SEC-001..003 | middleware+DAL, webhook pipeline, env secret handling                          | AC-AUTH-001, AC-WH-001/002/005/011 |
-| NFR-PERF-001/002 | keyset pagination + composite indexes (§2.4)                                   | M-6                                |
-| NFR-A11Y-001     | shadcn/ui a11y defaults, keyboard/focus on shell+Bookmarks                     | M-8                                |
+| FR               | Component(s)                                                                                                                                        | Key ACs                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| FR-SHELL-001     | `app/(dashboard)/layout.tsx`, `components/shell`                                                                                                    | AC-SHELL-001..004                  |
+| FR-AUTH-001      | `middleware.ts`, `lib/auth/*`, `login/`, `lib/config/env.ts`, `prisma/seed.ts`                                                                      | AC-AUTH-001..005                   |
+| FR-BM-001        | `services/bookmarks`, `categories/route.ts`, `components/bookmarks`                                                                                 | AC-BM-001..005                     |
+| FR-BM-002        | `services/bookmarks`, `bookmarks/route.ts`, `validation/bookmarks`                                                                                  | AC-BM-006..011                     |
+| FR-BM-003        | `bookmarks/page.tsx`, `components/bookmarks`                                                                                                        | AC-BM-012..014                     |
+| FR-DOM-001       | `providers/dns`, `services/domains`, `domains/page.tsx`                                                                                             | AC-DOM-001..003                    |
+| FR-DOM-002       | `providers/dns`, `services/domains`, `validation/dns`                                                                                               | AC-DOM-004..009                    |
+| FR-SRV-001       | `providers/servers`, `servers/page.tsx`                                                                                                             | AC-SRV-001..003                    |
+| FR-SRV-002       | `providers/servers`, server power route + poll                                                                                                      | AC-SRV-004..008                    |
+| FR-MAIL-001      | `services/mail`, `mail/page.tsx` (keyset pagination)                                                                                                | AC-MAIL-001..005                   |
+| FR-MAIL-002      | `webhooks/[type]` (`mail`), `services/mail`                                                                                                         | AC-MAIL-006                        |
+| FR-MSG-001       | `services/messages`, `messages/*` (keyset per channel)                                                                                              | AC-MSG-001..004, 007               |
+| FR-MSG-002       | `webhooks/[type]` (`message`), `services/messages`                                                                                                  | AC-MSG-005..006 (008 inactive)     |
+| FR-LOG-001       | `services/logs`, `logs/page.tsx`                                                                                                                    | AC-LOG-001..004                    |
+| FR-LOG-002       | `webhooks/[type]` (`log`)                                                                                                                           | AC-LOG-005                         |
+| FR-ALR-001       | `services/alerts`, `AlertCategory`                                                                                                                  | AC-ALR-001..002                    |
+| FR-ALR-002       | `services/alerts`, `alerts/page.tsx`                                                                                                                | AC-ALR-003..006                    |
+| FR-ALR-003       | `webhooks/[type]` (`alert`)                                                                                                                         | AC-ALR-007                         |
+| FR-WH-001        | `webhooks/[type]/route.ts`, `lib/webhooks/*`                                                                                                        | AC-WH-001..007, 010, 011           |
+| FR-WH-002        | `webhook-tokens/route.ts`, `services/webhookTokens`                                                                                                 | AC-WH-008..009                     |
+| FR-PROV-001      | `lib/providers/*` (factory + mock)                                                                                                                  | AC-PROV-001..003                   |
+| FR-WS-001        | `services/workspaces.ts`, `api/workspaces/route.ts` + `[id]/route.ts`, `components/workspace/*`, `settings/workspace/page.tsx`                      | AC-WS-001..004                     |
+| FR-WS-002        | `services/workspaces.ts#addMember/removeMember`, `api/workspaces/[id]/members/*`, `components/workspace/add-member-form.tsx`, `members-section.tsx` | AC-WS-005..008                     |
+| FR-WS-003        | `lib/auth/dal.ts#requireAuth`, `lib/auth/session.ts#switchWorkspace`, `api/workspaces/switch/route.ts`, `components/shell/workspace-switcher.tsx`   | AC-WS-009..011                     |
+| NFR-DEPLOY-001   | `Dockerfile`, `docker-compose.yml`                                                                                                                  | M-7                                |
+| NFR-SEC-001..003 | middleware+DAL, webhook pipeline, env secret handling                                                                                               | AC-AUTH-001, AC-WH-001/002/005/011 |
+| NFR-PERF-001/002 | keyset pagination + composite indexes (§2.4)                                                                                                        | M-6                                |
+| NFR-A11Y-001     | shadcn/ui a11y defaults, keyboard/focus on shell+Bookmarks                                                                                          | M-8                                |
 
 ```
 

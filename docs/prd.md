@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v2.1 (doc-review wording fixes on v2)
+**Version:** v2.2 (workspaces added post-Slice-1)
 **Status:** Draft for review
 **Owner:** Product Analyst
-**Date:** 2026-07-12
+**Date:** 2026-07-13
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `specs/idea.md` (verbatim request), `docs/progress.md` (Decisions log 2026-07-12 + debate cycle 1 decision)
 
@@ -13,7 +13,7 @@
 
 ### What we are building
 
-`inspoter` is a specialized, self-hosted **personal operations dashboard** — comparable to Dashy/Homarr for the bookmarking part, but extended with operational sections for managing domains, VPS servers, mail, messages, logs, and alerts. It is a single deployable Next.js application backed by PostgreSQL.
+`inspoter` is a specialized, self-hosted **personal operations dashboard** — comparable to Dashy/Homarr for the bookmarking part, but extended with operational sections for managing domains, VPS servers, mail, messages, logs, and alerts. It is a single deployable Next.js application backed by PostgreSQL. The dashboard supports **workspaces** so a single deployment can serve multiple small teams or projects, each with its own isolated content and membership, without becoming a full multi-tenant SaaS.
 
 ### What problem it solves
 
@@ -34,16 +34,18 @@ A working self-hosted dashboard where the operator can:
 
 Vertical slices. **Slice 1 (tracer bullet) = dashboard shell + minimal single-operator auth + Bookmarks.** Auth is included in Slice 1 in a minimal, env-seeded single-operator form per the coordinator decision (progress.md Decisions log, debate cycle 1); full user management/RBAC remain out of scope. All other sections are later slices. External-provider integrations (Cloudflare, Hetzner, GoDaddy, mailboxes) sit behind a **provider abstraction with a mock mode**; real API keys are supplied later via environment variables.
 
+**Workspaces were added after Slice 1** as a follow-on slice: the env-seeded operator from Slice 1 became the first workspace owner, a default workspace was created for that operator, and workspace-scoped content plus an invite-only membership model were layered on top of the existing single-operator auth (see §3.10).
+
 ---
 
 ## 2. Target Audience
 
 ### Primary persona — "The Self-Hosted Operator" (Admin)
 
-- **Who:** A technically proficient individual (or a member of a small team) who self-hosts their own infrastructure.
-- **Context:** Runs the dashboard on their own server/homelab via Docker. Owns domains at Cloudflare/Hetzner/GoDaddy and VPS instances at Hetzner. Wants a consolidated operational view.
+- **Who:** A technically proficient individual, or a small team collaborating within one or more workspaces, who self-hosts their own infrastructure.
+- **Context:** Runs the dashboard on their own server/homelab via Docker. Owns domains at Cloudflare/Hetzner/GoDaddy and VPS instances at Hetzner. Wants a consolidated operational view, optionally shared with teammates through a workspace.
 - **Skill level:** High. Comfortable with environment variables, Docker, API tokens, and reading logs. Does **not** need hand-holding onboarding flows.
-- **Deployment model:** Single-user or small-team, self-hosted. Not a multi-tenant SaaS.
+- **Deployment model:** Single-user or small-team, self-hosted, with workspace-based collaboration (§3.10). Not a general-purpose multi-tenant SaaS — workspaces exist for one operator/team to organize and optionally share their own infrastructure, not to serve unrelated third-party customers.
 
 ### Secondary actor — "External System" (machine, not a human)
 
@@ -81,7 +83,7 @@ Every acceptance criterion is executable and objectively verifiable. AC-IDs are 
 
 **FR-AUTH-001: Panel authentication (minimal single-operator, env-seeded)**
 
-- Description: The dashboard requires authentication before any section is accessible. For Slice 1 and MVP this is a **single operator** whose credentials are **seeded from environment variables** at startup (coordinator decision, debate cycle 1). Multi-account management and RBAC are out of scope.
+- Description: The dashboard requires authentication before any section is accessible. For Slice 1 and MVP the bootstrap path is a **single operator** whose credentials are **seeded from environment variables** at startup (coordinator decision, debate cycle 1). Beyond that first, env-seeded operator, additional operators are created **invite-only** by a workspace owner (FR-WS-002) — there is no self-service registration screen. RBAC beyond the workspace `role` field remains out of scope.
 - Priority: Must Have (Slice 1)
 - Acceptance Criteria:
   - **AC-AUTH-001** (Slice 1): Given an unauthenticated visitor, When they request any dashboard route (except the login route and webhook API), Then they are redirected to a login screen and no dashboard data is returned.
@@ -89,7 +91,7 @@ Every acceptance criterion is executable and objectively verifiable. AC-IDs are 
   - **AC-AUTH-003** (Slice 1): Given invalid credentials, When the user submits them, Then authentication is rejected with an error and no session is created.
   - **AC-AUTH-004** (Slice 1): Given an authenticated session, When the user logs out, Then the session is invalidated and subsequent dashboard requests redirect to login.
   - **AC-AUTH-005** (Slice 1, bootstrap): Given operator credentials supplied via environment variables at startup, When the application boots with no operator yet present, Then exactly one operator account is provisioned from those env values and can authenticate per AC-AUTH-002; Given the required auth environment variables are absent, When the application boots, Then it fails fast (refuses to start or blocks all login) with a clear message and never exposes an unauthenticated dashboard.
-  - _Note: Auth mechanism for Slice 1/MVP is fixed by coordinator decision — a single operator whose credentials are seeded from environment variables (progress.md Decisions log, debate cycle 1). The concrete session/hashing implementation is an architecture decision; the PRD mandates only the outcomes above. Multi-account/external-provider auth is retained only as a post-MVP question (OQ-5)._
+  - _Note: Auth mechanism for Slice 1/MVP is fixed by coordinator decision — a single operator whose credentials are seeded from environment variables (progress.md Decisions log, debate cycle 1). The concrete session/hashing implementation is an architecture decision; the PRD mandates only the outcomes above. Multi-account creation now exists post-Slice-1 via workspace-owner invite (FR-WS-002), not self-service registration; external-provider (OAuth/SSO) auth is retained only as a post-MVP question (OQ-5)._
 
 ---
 
@@ -315,6 +317,39 @@ Every acceptance criterion is executable and objectively verifiable. AC-IDs are 
 
 ---
 
+### 3.10 Workspaces
+
+**FR-WS-001: Workspaces (CRUD)**
+
+- Description: All content sections (Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts) are scoped to a workspace. Operators can create, rename, and delete workspaces; a default workspace is provisioned automatically on first operator registration so Slice 1's single-operator flow keeps working without any extra setup step.
+- Priority: Must Have (Later, post-Slice-1)
+- Acceptance Criteria:
+  - **AC-WS-001**: Given the first operator is provisioned (env-seeded bootstrap or a fresh seed run), When registration/seeding completes, Then a default workspace is created and that operator is made its member (owner role) without any additional manual step.
+  - **AC-WS-002**: Given an authenticated operator, When they submit a workspace-create request with a name, Then a new workspace is persisted (with a unique slug derived from the name) and the operator becomes its owner; When the name is empty, Then a validation error is shown and no workspace is created.
+  - **AC-WS-003**: Given a workspace the operator owns, When they rename it, Then the new name is persisted and reflected everywhere the workspace name is displayed (e.g., the workspace switcher).
+  - **AC-WS-004**: Given a workspace the operator owns, When they delete it and confirm, Then the workspace and all content scoped to it (categories, bookmarks, mail, messages, logs, alerts, webhook tokens, and their child entities) are cascade-deleted, and any session with that workspace as its active workspace falls back to another membership or to the login/workspace-selection flow.
+
+**FR-WS-002: Workspace membership and invite**
+
+- Description: New operator accounts are **not** self-service; they are created invite-only by an existing workspace owner. An owner can either grant access to an already-existing operator (by username) or create a brand-new operator account as part of adding them to the workspace.
+- Priority: Must Have (Later, post-Slice-1)
+- Acceptance Criteria:
+  - **AC-WS-005**: Given a workspace owner and an existing operator username not yet a member, When the owner adds that operator to the workspace, Then a `WorkspaceMember` record is created linking the operator to the workspace and the operator gains access to that workspace's content on next workspace switch/login.
+  - **AC-WS-006**: Given a workspace owner and a username that does not yet exist, When the owner invites a new user by supplying a username and password, Then a new operator account is created and simultaneously added as a member of that workspace, and the new operator can subsequently log in with those credentials.
+  - **AC-WS-007**: Given a workspace owner and an existing member of that workspace, When the owner removes that member, Then the corresponding `WorkspaceMember` record is deleted and the removed operator can no longer access that workspace's content (other workspaces they belong to are unaffected).
+  - **AC-WS-008**: Given two or more operators are members of the same workspace, When each authenticates and selects that workspace, Then each independently sees and can act on the same shared content (categories, bookmarks, etc.) for that workspace.
+
+**FR-WS-003: Workspace switching**
+
+- Description: An operator who belongs to more than one workspace can switch which workspace is active; the active workspace scopes all subsequent reads/writes for that session.
+- Priority: Must Have (Later, post-Slice-1)
+- Acceptance Criteria:
+  - **AC-WS-009**: Given an authenticated operator, When they switch their active workspace, Then the choice is persisted on the session (`activeWorkspaceId`) and is used to resolve the workspace on every subsequent request; When no active workspace is set on the session (e.g., after the active workspace was deleted), Then the workspace resolves to one of the operator's remaining memberships.
+  - **AC-WS-010**: Given the workspace switcher in the sidebar, When the operator selects a different workspace they are a member of, Then the dashboard's content updates to reflect the newly active workspace without a full page reload.
+  - **AC-WS-011**: Given an operator with access to multiple workspaces, When they view any content section (Bookmarks, Mail, Logs, Alerts, etc.), Then only content belonging to the active workspace is shown — content from other workspaces the operator belongs to is never mixed in.
+
+---
+
 ## 4. Non-Functional Requirements
 
 **NFR-DEPLOY-001 (Self-hosted / Docker):** The application must be deployable as a self-hosted service via Docker on a single host, backed by PostgreSQL. _Verification:_ a documented `docker`-based startup brings up the app + database and serves the login screen. (Traces to Decisions log: self-hosted, single deploy, PostgreSQL + Prisma.)
@@ -351,6 +386,9 @@ Every acceptance criterion is executable and objectively verifiable. AC-IDs are 
 - **US-8 (Logs):** As an operator, I want to browse, filter, and sort logs pushed from my systems, so that I can investigate incidents in one place. → FR-LOG-001..002
 - **US-9 (Alerts):** As an operator, I want categorized alerts that I can filter and sort, fed by my monitoring systems, so that I can respond to problems quickly. → FR-ALR-001..003
 - **US-10 (Webhook, external system):** As an external system, I want to POST mail/messages/logs/alerts to the dashboard with a token, so that my events show up in the operator's dashboard reliably — and **without duplicates when I supply an idempotency key** (delivery without a key is at-least-once and may duplicate, per AC-WH-010). → FR-WH-001..002
+- **US-11 (Workspaces):** As an operator, I want to create workspaces to organize my infrastructure by project/team. → FR-WS-001
+- **US-12 (Workspace invite):** As a workspace owner, I want to invite team members so they can access shared resources. → FR-WS-002
+- **US-13 (Workspace switching):** As an operator with multiple workspaces, I want to switch between them seamlessly. → FR-WS-003
 
 ---
 
@@ -358,17 +396,17 @@ Every acceptance criterion is executable and objectively verifiable. AC-IDs are 
 
 ### 6.1 Hard constraints (user-specified)
 
-| ID   | Constraint                                                                                                                | Establishing source                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| HC-1 | Stack: Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui; Route Handlers for API/webhooks; Prisma + PostgreSQL. | Brief "Стек утверждён"; progress.md line 7                         |
-| HC-2 | Self-hosted, single-user or small-team deployment.                                                                        | Brief Context                                                      |
-| HC-3 | External integrations behind a provider abstraction with mock mode; real keys via env later.                              | progress.md Decisions log line 38                                  |
-| HC-4 | Delivery in vertical slices; Slice 1 = shell + minimal auth + Bookmarks.                                                  | Brief Context / plan; progress.md line 3 + debate-cycle-1 decision |
-| HC-5 | UI English-only; i18n not required.                                                                                       | Brief Constraints                                                  |
-| HC-6 | Seven sections exactly as named: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts.                               | specs/idea.md lines 2-9                                            |
-| HC-7 | DNS providers to support: Cloudflare, Hetzner, GoDaddy. Server provider: Hetzner.                                         | specs/idea.md lines 4-5                                            |
-| HC-8 | Mail, Messages, Logs, Alerts must each support webhook ingest from external systems.                                      | specs/idea.md lines 6-9                                            |
-| HC-9 | Slice 1 auth = single operator, env-seeded credentials; no RBAC/user-mgmt.                                                | Coordinator decision, debate cycle 1 (progress.md Decisions log)   |
+| ID   | Constraint                                                                                                                                                                                                                                          | Establishing source                                                                             |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| HC-1 | Stack: Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui; Route Handlers for API/webhooks; Prisma + PostgreSQL.                                                                                                                           | Brief "Стек утверждён"; progress.md line 7                                                      |
+| HC-2 | Self-hosted, single-user or small-team deployment.                                                                                                                                                                                                  | Brief Context                                                                                   |
+| HC-3 | External integrations behind a provider abstraction with mock mode; real keys via env later.                                                                                                                                                        | progress.md Decisions log line 38                                                               |
+| HC-4 | Delivery in vertical slices; Slice 1 = shell + minimal auth + Bookmarks.                                                                                                                                                                            | Brief Context / plan; progress.md line 3 + debate-cycle-1 decision                              |
+| HC-5 | UI English-only; i18n not required.                                                                                                                                                                                                                 | Brief Constraints                                                                               |
+| HC-6 | Seven sections exactly as named: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts.                                                                                                                                                         | specs/idea.md lines 2-9                                                                         |
+| HC-7 | DNS providers to support: Cloudflare, Hetzner, GoDaddy. Server provider: Hetzner.                                                                                                                                                                   | specs/idea.md lines 4-5                                                                         |
+| HC-8 | Mail, Messages, Logs, Alerts must each support webhook ingest from external systems.                                                                                                                                                                | specs/idea.md lines 6-9                                                                         |
+| HC-9 | Slice 1 bootstrap = single operator, env-seeded credentials; no self-service registration. Post-Slice-1, additional operators are added invite-only by a workspace owner (FR-WS-002); RBAC beyond the workspace `role` field is still out of scope. | Coordinator decision, debate cycle 1 (progress.md Decisions log); extended by workspaces (D-13) |
 
 ### 6.2 Assumptions & Uncertainties register
 
@@ -444,20 +482,21 @@ Considered four independent per-section webhook endpoints vs one unified, typed 
 
 ### Decisions
 
-| ID                                     | Decision                                                                                                                                       | Source / Evidence                                                     | Affected requirements                       |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
-| D-1                                    | Deliver via vertical slices; Slice 1 = shell + minimal auth + Bookmarks.                                                                       | progress.md line 3, 37; brief; debate-cycle-1 decision                | All Slice 1 ACs                             |
-| D-2                                    | External integrations behind provider abstraction with mock mode; keys via env later.                                                          | progress.md line 38                                                   | FR-PROV-001, Domains, Servers, Mail         |
-| D-3                                    | Unified webhook ingest with `type` discriminator, not four bespoke endpoints.                                                                  | §7 sub-decision                                                       | FR-WH-001                                   |
-| D-4 (provisional — pending OQ-1..OQ-4) | Mail/Logs/Alerts are read+organize+delete for MVP; no compose/send.                                                                            | A-1 minimal interpretation (medium confidence, unconfirmed)           | FR-MAIL-001, FR-LOG-001, FR-ALR-002         |
-| D-5 (provisional — pending OQ-1)       | Mail enters primarily via webhook ingest for MVP; IMAP/POP polling deferred.                                                                   | Simplicity; brief emphasizes webhook (medium confidence, unconfirmed) | FR-MAIL-002; Out of Scope                   |
-| D-6                                    | Fixed stack per user; downstream agents do not re-litigate.                                                                                    | HC-1                                                                  | NFR-STACK-001                               |
-| D-7                                    | Slice 1 auth = minimal single operator, env-seeded credentials; RBAC/user-mgmt out of scope.                                                   | Coordinator decision, debate cycle 1 (progress.md Decisions log)      | FR-AUTH-001, AC-AUTH-002, AC-AUTH-005, HC-9 |
-| D-8                                    | Webhook idempotency key is optional and scoped per token; dedup guaranteed only with a key; success = HTTP 201 synchronous create.             | CH-PRD-002 / CH-PRD-007 resolution; doc-review F-3                    | AC-WH-003, AC-WH-004, AC-WH-010, US-10      |
-| D-9                                    | Server power-action success = provider 2xx AND polled status equals target within bound (30/30/60s).                                           | CH-PRD-003 resolution                                                 | AC-SRV-004, AC-SRV-005, AC-SRV-006          |
-| D-10                                   | Messages webhook to a missing channel is rejected (4xx) for MVP; auto-create deferred to inactive AC-MSG-008 under OQ-6.                       | CH-PRD-006 resolution                                                 | AC-MSG-006, AC-MSG-008                      |
-| D-11                                   | Substring/text filters excluded from the 500ms perf target unless a trigram/full-text index is adopted; otherwise pagination-only.             | CH-PRD-010 resolution                                                 | NFR-PERF-002                                |
-| D-12                                   | Category/channel and alert-category deletion may cascade or reassign at implementation's discretion; only the no-orphan invariant is asserted. | Doc-review F-2                                                        | AC-MSG-003, AC-ALR-002                      |
+| ID                                     | Decision                                                                                                                                                                                                                                                          | Source / Evidence                                                     | Affected requirements                       |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
+| D-1                                    | Deliver via vertical slices; Slice 1 = shell + minimal auth + Bookmarks.                                                                                                                                                                                          | progress.md line 3, 37; brief; debate-cycle-1 decision                | All Slice 1 ACs                             |
+| D-2                                    | External integrations behind provider abstraction with mock mode; keys via env later.                                                                                                                                                                             | progress.md line 38                                                   | FR-PROV-001, Domains, Servers, Mail         |
+| D-3                                    | Unified webhook ingest with `type` discriminator, not four bespoke endpoints.                                                                                                                                                                                     | §7 sub-decision                                                       | FR-WH-001                                   |
+| D-4 (provisional — pending OQ-1..OQ-4) | Mail/Logs/Alerts are read+organize+delete for MVP; no compose/send.                                                                                                                                                                                               | A-1 minimal interpretation (medium confidence, unconfirmed)           | FR-MAIL-001, FR-LOG-001, FR-ALR-002         |
+| D-5 (provisional — pending OQ-1)       | Mail enters primarily via webhook ingest for MVP; IMAP/POP polling deferred.                                                                                                                                                                                      | Simplicity; brief emphasizes webhook (medium confidence, unconfirmed) | FR-MAIL-002; Out of Scope                   |
+| D-6                                    | Fixed stack per user; downstream agents do not re-litigate.                                                                                                                                                                                                       | HC-1                                                                  | NFR-STACK-001                               |
+| D-7                                    | Slice 1 auth = minimal single operator, env-seeded credentials; RBAC/user-mgmt out of scope.                                                                                                                                                                      | Coordinator decision, debate cycle 1 (progress.md Decisions log)      | FR-AUTH-001, AC-AUTH-002, AC-AUTH-005, HC-9 |
+| D-8                                    | Webhook idempotency key is optional and scoped per token; dedup guaranteed only with a key; success = HTTP 201 synchronous create.                                                                                                                                | CH-PRD-002 / CH-PRD-007 resolution; doc-review F-3                    | AC-WH-003, AC-WH-004, AC-WH-010, US-10      |
+| D-9                                    | Server power-action success = provider 2xx AND polled status equals target within bound (30/30/60s).                                                                                                                                                              | CH-PRD-003 resolution                                                 | AC-SRV-004, AC-SRV-005, AC-SRV-006          |
+| D-10                                   | Messages webhook to a missing channel is rejected (4xx) for MVP; auto-create deferred to inactive AC-MSG-008 under OQ-6.                                                                                                                                          | CH-PRD-006 resolution                                                 | AC-MSG-006, AC-MSG-008                      |
+| D-11                                   | Substring/text filters excluded from the 500ms perf target unless a trigram/full-text index is adopted; otherwise pagination-only.                                                                                                                                | CH-PRD-010 resolution                                                 | NFR-PERF-002                                |
+| D-12                                   | Category/channel and alert-category deletion may cascade or reassign at implementation's discretion; only the no-orphan invariant is asserted.                                                                                                                    | Doc-review F-2                                                        | AC-MSG-003, AC-ALR-002                      |
+| D-13                                   | Workspaces are invite-only: beyond the first env-seeded operator, new operator accounts are created only by an existing workspace owner (via add-existing-member-by-username or create-new-operator-with-password); there is no self-service registration screen. | Implementation decision, workspaces slice (post-Slice-1)              | FR-WS-002, AC-WS-005..007, HC-9             |
 
 ### Residual risks
 
@@ -477,8 +516,8 @@ Considered four independent per-section webhook endpoints vs one unified, typed 
 Explicitly **not** part of this work (prevents scope creep):
 
 - **Billing / payments / subscriptions.**
-- **Multi-tenancy** (organizations, tenant isolation). Single-user/small-team only.
-- **User management / RBAC / multiple accounts.** MVP is a single env-seeded operator (D-7).
+- **RBAC beyond the workspace `role` field.** Workspaces (§3.10) provide basic multi-user membership and an owner role for invite/remove/rename/delete actions, but there is no granular permission system, custom roles, or fine-grained access control.
+- **Self-service registration.** MVP bootstrap is a single env-seeded operator (D-7); additional operators are created invite-only by a workspace owner (D-13, FR-WS-002), not via a public sign-up flow.
 - **Native mobile applications** (iOS/Android). Responsive web shell only per AC-SHELL-004.
 - **Composing and sending outbound email** from the Mail section (MVP is read/organize; D-4, provisional).
 - **IMAP/POP mailbox polling** as a mail source for MVP (mail arrives via webhook; D-5, provisional). May become a later provider.
@@ -526,7 +565,7 @@ These do not block Slice 1 (Bookmarks + shell + minimal auth). Each MVP interpre
 
 ## Appendix B — AC-ID Index (traceability)
 
-Slice 1 AC-IDs are marked. All IDs are stable and must not be renumbered or reused; AC-IDs appear in logical, not numeric, order (e.g., AC-MSG-007 sits inside FR-MSG-001 before AC-MSG-005/006 in FR-MSG-002). No AC-IDs have been retired in v2/v2.1.
+Slice 1 AC-IDs are marked. All IDs are stable and must not be renumbered or reused; AC-IDs appear in logical, not numeric, order (e.g., AC-MSG-007 sits inside FR-MSG-001 before AC-MSG-005/006 in FR-MSG-002). No AC-IDs have been retired in v2/v2.1/v2.2.
 
 - Shell (Slice 1): AC-SHELL-001..004
 - Auth (Slice 1): AC-AUTH-001..005 _(AC-AUTH-005 added in v2)_
@@ -539,10 +578,27 @@ Slice 1 AC-IDs are marked. All IDs are stable and must not be renumbered or reus
 - Alerts: AC-ALR-001..007
 - Webhook: AC-WH-001..011 _(AC-WH-010, AC-WH-011 added in v2; AC-WH-003 fixed to 201)_
 - Provider: AC-PROV-001..003
+- Workspaces: AC-WS-001..011 _(added in v2.2)_
 
 ---
 
 ## Appendix C — Changelog
+
+### v2.2 — 2026-07-13 (workspaces added post-Slice-1)
+
+Documents the implemented workspaces feature (multi-user small-team collaboration on a single self-hosted deployment):
+
+- **New §3.10 Workspaces:** Added **FR-WS-001** (workspace CRUD, default workspace on first registration), **FR-WS-002** (invite-only membership — add existing operator or create a new one), and **FR-WS-003** (workspace switching via session `activeWorkspaceId`). Added **AC-WS-001..011**.
+- **§1 Product Overview:** "What we are building" now mentions workspace support; "Delivery approach" notes workspaces were added after Slice 1.
+- **§2 Target Audience:** Persona updated from "single-user" to "single-user or small-team" with workspace collaboration; deployment model clarified as not a general-purpose multi-tenant SaaS.
+- **FR-AUTH-001 (§3.0):** Reworded to state that, beyond the first env-seeded operator, additional operators are invite-only via a workspace owner (FR-WS-002); no self-service registration. AC-AUTH-001..005 unchanged — they still describe the bootstrap operator's auth behavior.
+- **User Stories:** Added **US-11, US-12, US-13** for workspace creation, invite, and switching.
+- **HC-9 (§6.1):** Reworded — Slice 1 bootstrap is still single-operator/env-seeded, but post-Slice-1 invite-only multi-user access is now in scope; RBAC beyond the workspace `role` field remains out of scope.
+- **Decisions (§9):** Added **D-13** (invite-only workspace membership model).
+- **Out of Scope (§10):** Removed "Multi-tenancy" (workspaces now provide it) and "User management / RBAC / multiple accounts" (invite is implemented); replaced with "RBAC beyond the workspace `role` field" and "Self-service registration" to precisely scope what remains excluded.
+- **Appendix B:** Added Workspaces AC-WS-001..011 to the AC-ID index.
+
+No AC-IDs renumbered, reused, or retired.
 
 ### v2.1 — 2026-07-12 (ordinary doc-review wording fixes; not a debate cycle)
 

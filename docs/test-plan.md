@@ -1,9 +1,9 @@
 # Test Plan & Traceability Matrix — inspoter Slice 1
 
 **Owner:** tester
-**Status:** Mode B (green) — full suite passing after backend-dev/frontend-dev implementation, per plan.md §5.2/§10 (T-1 two-mode tester protocol). Re-verified 2026-07-12 after backend code-review fixes (§4c) — still fully green.
-**Scope:** Slice 0 test-infra exit gate (plan.md §4.2 item 13) + Slice 1 tracer bullet (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014, M-1..M-3, M-8)
-**Normative inputs:** `docs/prd.md` v2.1 (AC-IDs, §3.0/§3.1), `docs/design.md` v1.1 (selectors/copy), `docs/plan.md` v1.3 §5.1 (frozen contracts), §5.2 (Mode A task table), §10 (DoD)
+**Status:** Slice 1 — Mode B (green) — full suite passing after backend-dev/frontend-dev implementation, per plan.md §5.2/§10 (T-1 two-mode tester protocol). Re-verified 2026-07-12 after backend code-review fixes (§4c) — still fully green. **Slice WS (Workspaces, §3.2, added 2026-07-13) — PARTIAL: only the pre-existing Bookmarks service suite was updated for workspace-scoping; no dedicated workspace API/e2e tests exist yet, and Slice WS has not been through the Mode A/B protocol (plan.md §5a records this as a process deviation).**
+**Scope:** Slice 0 test-infra exit gate (plan.md §4.2 item 13) + Slice 1 tracer bullet (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014, M-1..M-3, M-8) + Slice WS workspace coverage (§3.2, partial)
+**Normative inputs:** `docs/prd.md` v2.1+ (AC-IDs, §3.0/§3.1, §3.10 Workspaces), `docs/design.md` v1.1 (selectors/copy), `docs/plan.md` v1.4 §5.1 (frozen contracts), §5.2 (Mode A task table), §5a (Slice WS), §10 (DoD)
 
 ---
 
@@ -76,6 +76,39 @@
 **M-3 (Auth enforcement):** `e2e/auth.spec.ts`'s 8-route parametrized block — zero dashboard routes reachable unauthenticated.
 **M-7 (Deployability, login-screen form):** exercised indirectly — `playwright.config.ts`'s `webServer` runs the real `npm run build && npm run start` production path (not `next dev`) and every e2e test depends on it serving `/login` correctly.
 **M-8 (Accessibility baseline):** `e2e/a11y.spec.ts`, both cases `PASS` — zero critical axe violations on Login and Shell+Bookmarks.
+
+---
+
+### 3.2 Workspaces (Slice WS, added 2026-07-13 — coverage PARTIAL)
+
+**Context:** Slice WS (plan.md §5a) was implemented between Slice 1 and Slice 2, outside the tester-Mode-A-first workflow that governs every other slice in this document (§2). This section records what test coverage exists today, distinct from what plan.md §5a and progress.md Task 18 already flag as an open process gap.
+
+| Item                                                                                                                                      | File                                    | Status     |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------- |
+| `tests/unit/services/bookmarks.test.ts` — all 7 pre-existing cases updated to pass `workspaceId` and assert workspace-scoped reads/writes | `tests/unit/services/bookmarks.test.ts` | PASS (7/7) |
+
+| AC-ID     | Description (docs/prd.md §3.10)                                       | Test coverage                                                                                                        | Status                             |
+| --------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| AC-WS-001 | Default workspace auto-created on first operator bootstrap/seed       | None                                                                                                                 | **PENDING**                        |
+| AC-WS-002 | Workspace create (name required, unique slug, creator becomes owner)  | None                                                                                                                 | **PENDING**                        |
+| AC-WS-003 | Workspace rename persists everywhere the name is displayed            | None                                                                                                                 | **PENDING**                        |
+| AC-WS-004 | Workspace delete cascades all scoped content; session falls back      | None                                                                                                                 | **PENDING**                        |
+| AC-WS-005 | Owner adds an existing operator to the workspace by username          | None                                                                                                                 | **PENDING**                        |
+| AC-WS-006 | Owner invites a new username → new operator created + added as member | None                                                                                                                 | **PENDING**                        |
+| AC-WS-007 | Owner removes a member; access to that workspace revoked              | None                                                                                                                 | **PENDING**                        |
+| AC-WS-008 | Two members of the same workspace independently see the same content  | None                                                                                                                 | **PENDING**                        |
+| AC-WS-009 | Switching active workspace persists on `Session.activeWorkspaceId`    | None                                                                                                                 | **PENDING**                        |
+| AC-WS-010 | Workspace switcher updates dashboard content without full reload      | None                                                                                                                 | **PENDING**                        |
+| AC-WS-011 | Content sections never mix data across workspaces                     | Indirect only — `bookmarks.test.ts` asserts `list()` is scoped by `workspaceId`, i.e. the Bookmarks facet of this AC | **PARTIAL (Bookmarks facet only)** |
+
+**Not covered (residual gaps, tracked for a follow-up tester dispatch):**
+
+- No API route tests for `src/app/api/workspaces/**` (create/rename/delete/members/switch) — every route in plan.md §5a's file list is currently unverified by an automated test.
+- No e2e coverage of the workspace switcher UI (`workspace-switcher.tsx`) or the Settings workspace-management screen (`settings/workspace/page.tsx`).
+- No test for the custom backfill migration (`20260713042150_add_workspaces`) beyond the implementor's manual verification (progress.md Task 18) that it applies cleanly.
+- No negative/cross-workspace-leakage test beyond the Bookmarks-service facet of AC-WS-011 — Domains/Servers/Mail/Messages/Logs/Alerts will need their own AC-WS-011 facet checks once those sections exist and are workspace-scoped.
+
+**Recommendation:** before Slice 2 builds further on top of Slice WS, run a dedicated tester Mode A/B pass against AC-WS-001..011 per the standard protocol (plan.md §2), closing the process deviation noted in plan.md §5a.
 
 ---
 
