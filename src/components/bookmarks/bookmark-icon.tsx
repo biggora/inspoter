@@ -32,8 +32,8 @@ export function BookmarkIcon({
   if (trimmedIcon && isImageReference(trimmedIcon)) {
     // Arbitrary operator-supplied external hosts; next/image would require
     // per-host remotePatterns config in next.config.ts, out of scope here.
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={trimmedIcon}
         alt=""
