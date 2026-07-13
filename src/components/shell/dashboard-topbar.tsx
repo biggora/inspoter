@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 // Shared topbar (design.md §3.2.1/§3.2.2). One trigger button doubles as the
@@ -6,10 +10,23 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 // behavior applies at the current breakpoint (Simplicity First: a single
 // control instead of two separate "«" / "≡" affordances).
 export function DashboardTopbar() {
+  const pathname = usePathname();
+  const title =
+    {
+      "/bookmarks": "Закладки",
+      "/settings": "Настройки",
+      "/logs": "Логи",
+      "/domains": "Домены",
+      "/servers": "Серверы",
+      "/mail": "Почта",
+      "/messages": "Сообщения",
+      "/alerts": "Оповещения",
+    }[pathname] ?? "Inspoter";
+
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-4">
       <SidebarTrigger aria-label="Переключить навигацию" />
-      <span className="text-sm font-semibold text-foreground">Inspoter</span>
+      <span className="text-sm font-semibold text-foreground">{title}</span>
     </header>
   );
 }

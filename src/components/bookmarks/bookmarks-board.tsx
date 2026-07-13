@@ -45,11 +45,11 @@ export function BookmarksBoard({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Bookmarks</h1>
+      <div className="flex items-start gap-4">
+        <h1 className="sr-only">Закладки</h1>
         <Button onClick={() => setCategoryDialog({ mode: "create" })}>
           <Plus aria-hidden className="size-4" />
-          New category
+          Новая категория
         </Button>
       </div>
 

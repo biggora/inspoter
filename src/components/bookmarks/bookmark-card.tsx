@@ -9,8 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import type { Bookmark } from "@/generated/prisma/client";
+import { cn } from "@/lib/utils";
 import { BookmarkIcon } from "./bookmark-icon";
 
 interface BookmarkCardProps {
@@ -23,7 +23,7 @@ interface BookmarkCardProps {
 // URL in a new tab; the overflow menu is a SIBLING (not a descendant) of
 // that link via an absolutely-positioned full-cover anchor, so the trigger
 // button never sits inside an <a> (avoids invalid/inaccessible nested
-// -interactive markup while keeping "click anywhere on the card" behavior
+// interactive markup while keeping "click anywhere on the card" behavior
 // and a real, natively-focusable link with the bookmark's name as its
 // accessible name).
 export function BookmarkCard({
@@ -32,7 +32,7 @@ export function BookmarkCard({
   onDelete,
 }: BookmarkCardProps) {
   return (
-    <div className="group/card relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-(--border-active) hover:bg-(--bg-hover)">
+    <div className="group/card relative flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-(--border-active) hover:bg-(--bg-hover)">
       <a
         href={bookmark.url}
         target="_blank"
@@ -41,40 +41,40 @@ export function BookmarkCard({
         className="absolute inset-0 z-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
-      <div className="relative z-10 flex items-center gap-2">
+      <div className="relative z-10 shrink-0">
         <BookmarkIcon icon={bookmark.icon} name={bookmark.name} />
-        <span
-          className="min-w-0 flex-1 truncate font-medium text-foreground"
-          title={bookmark.name}
-        >
-          {bookmark.name}
-        </span>
-        <div className="relative z-20">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                "opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100",
-              )}
-              aria-label="More options"
-            >
-              <MoreVertical aria-hidden className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
-      {bookmark.description && (
-        <p className="relative z-10 line-clamp-2 text-xs text-muted-foreground">
-          {bookmark.description}
-        </p>
-      )}
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate font-medium text-foreground" title={bookmark.name}>
+          {bookmark.name}
+        </span>
+        {bookmark.description ? (
+          <p className="line-clamp-1 text-xs text-muted-foreground">
+            {bookmark.description}
+          </p>
+        ) : null}
+        <span className="truncate text-xs text-muted-foreground" title={bookmark.url}>
+          {bookmark.url}
+        </span>
+      </div>
+
+      <div className="relative z-20 shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+            aria-label="Ещё действия"
+          >
+            <MoreVertical aria-hidden className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>Изменить</DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              Удалить
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

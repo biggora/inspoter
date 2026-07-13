@@ -1,18 +1,17 @@
 "use client";
 
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Plus } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import type { Bookmark } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
-import { AddBookmarkCard } from "./add-bookmark-card";
+import { cn } from "@/lib/utils";
 import { BookmarkCard } from "./bookmark-card";
 
 interface CategorySectionProps {
@@ -26,7 +25,7 @@ interface CategorySectionProps {
 
 // AC-BM-012 (design.md §3.3.1): one section per category, category name +
 // overflow menu (rename/delete) in the header row, then a responsive card
-// grid ending with the "+ Add bookmark" ghost card.
+// grid.
 export function CategorySection({
   category,
   onRename,
@@ -40,32 +39,35 @@ export function CategorySection({
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3
-          id={headingId}
-          className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        >
+        <h2 id={headingId} className="text-sm font-semibold text-foreground">
           {category.name}
-        </h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "icon-sm" }),
-            )}
-            aria-label="More options"
-          >
-            <MoreVertical aria-hidden className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onRename}>
-              Rename category
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              Delete category
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        </h2>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={onAddBookmark}>
+            <Plus aria-hidden className="size-4" />
+            Добавить
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon-sm" }),
+              )}
+              aria-label="Ещё действия"
+            >
+              <MoreVertical aria-hidden className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onRename}>
+                Переименовать категорию
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                Удалить категорию
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {category.bookmarks.map((bookmark) => (
           <BookmarkCard
             key={bookmark.id}
@@ -74,7 +76,6 @@ export function CategorySection({
             onDelete={() => onDeleteBookmark(bookmark)}
           />
         ))}
-        <AddBookmarkCard onClick={onAddBookmark} />
       </div>
     </section>
   );

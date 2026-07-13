@@ -5,25 +5,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function BookmarksLoading() {
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between gap-4">
-        <Skeleton className="h-7 w-32" />
-        <Skeleton className="h-8 w-32" />
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-8 w-36" />
       </div>
       {[0, 1].map((section) => (
         <div key={section} className="flex flex-col gap-3">
           <Skeleton className="h-4 w-40" />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[0, 1, 2, 3].map((card) => (
               <div
                 key={card}
-                className="flex flex-col gap-2 rounded-lg border border-border p-3"
+                className="flex items-start gap-3 rounded-lg border border-border p-3"
               >
-                <div className="flex items-center gap-2">
-                  <Skeleton className="size-6 rounded" />
-                  <Skeleton className="h-4 w-20" />
+                <Skeleton className="size-10 shrink-0 rounded-lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-full" />
                 </div>
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="size-8 shrink-0 rounded-lg" />
               </div>
             ))}
           </div>

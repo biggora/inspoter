@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function createCategory(page: Page, name: string) {
-  await page.getByRole("button", { name: /new category/i }).click();
+  await page.getByRole("button", { name: /новая категория/i }).click();
   await page.getByLabel(/^name$/i).fill(name);
   await page.getByRole("button", { name: /^create$/i }).click();
 }
@@ -31,18 +31,14 @@ function categorySection(page: Page, categoryName: string) {
   });
 }
 
-/** Creates a bookmark via the target category's OWN "Add bookmark" ghost
- * card (never an unscoped `.first()` — with more than one category section
- * rendered, `.first()` silently targets whichever category happens to be
- * first on the page, not the intended one; this was a real bug caught while
- * running this suite in Mode B, see the dispatch report). */
+/** Creates a bookmark via the target category's own inline add button. */
 async function createBookmark(
   page: Page,
   categoryName: string,
   fields: { name: string; url: string },
 ) {
   await categorySection(page, categoryName)
-    .getByRole("button", { name: /add bookmark/i })
+    .getByRole("button", { name: /добавить/i })
     .click();
   await page.getByLabel(/^name$/i).fill(fields.name);
   await page.getByLabel(/^url$/i).fill(fields.url);
@@ -70,7 +66,7 @@ test("AC-BM-001: creating a category persists it and it appears without a full r
 test("AC-BM-005: submitting an empty category name shows a validation error and creates nothing", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: /new category/i }).click();
+  await page.getByRole("button", { name: /новая категория/i }).click();
   await page.getByRole("button", { name: /^create$/i }).click();
   await expect(page.getByText(/category name is required/i)).toBeVisible();
 });
@@ -80,10 +76,10 @@ test("AC-BM-002: renaming a category persists and displays the new name", async 
 }) => {
   await createCategory(page, "Old Name");
   await categorySection(page, "Old Name")
-    .getByRole("button", { name: /more options/i })
+    .getByRole("button", { name: /ещё действия/i })
     .first()
     .click();
-  await page.getByRole("menuitem", { name: /rename/i }).click();
+  await page.getByRole("menuitem", { name: /переименовать категорию/i }).click();
   await page.getByLabel(/^name$/i).fill("New Name");
   await page.getByRole("button", { name: /^save$/i }).click();
   await expect(page.getByRole("heading", { name: "New Name" })).toBeVisible();
@@ -107,7 +103,7 @@ test("AC-BM-007: bookmark create without name/url shows a validation error, noth
 }) => {
   await createCategory(page, "Validation Cat");
   await categorySection(page, "Validation Cat")
-    .getByRole("button", { name: /add bookmark/i })
+    .getByRole("button", { name: /добавить/i })
     .click();
   await page.getByRole("button", { name: /^create$/i }).click();
   await expect(page.getByText(/name is required/i)).toBeVisible();
@@ -119,7 +115,7 @@ test("AC-BM-008: an invalid (non-http/https) URL shows a validation error", asyn
 }) => {
   await createCategory(page, "URL Validation Cat");
   await categorySection(page, "URL Validation Cat")
-    .getByRole("button", { name: /add bookmark/i })
+    .getByRole("button", { name: /добавить/i })
     .click();
   await page.getByLabel(/^name$/i).fill("Bad Link");
   await page.getByLabel(/^url$/i).fill("not-a-url");
@@ -140,9 +136,9 @@ test("AC-BM-009: editing a bookmark persists name/url/category changes", async (
   await categorySection(page, "Source Cat")
     .getByText("GitHub")
     .locator("..")
-    .getByRole("button", { name: /more options/i })
+    .getByRole("button", { name: /ещё действия/i })
     .click();
-  await page.getByRole("menuitem", { name: /^edit$/i }).click();
+  await page.getByRole("menuitem", { name: /изменить/i }).click();
   await page.getByLabel(/^name$/i).fill("GitHub (work)");
   await page.getByLabel(/^category$/i).selectOption({ label: "Target Cat" });
   await page.getByRole("button", { name: /save changes/i }).click();
@@ -164,9 +160,9 @@ test("AC-BM-010: deleting a bookmark removes it from the list without a full rel
   await categorySection(page, "Deletable Cat")
     .getByText("Temp Link")
     .locator("..")
-    .getByRole("button", { name: /more options/i })
+    .getByRole("button", { name: /ещё действия/i })
     .click();
-  await page.getByRole("menuitem", { name: /^delete$/i }).click();
+  await page.getByRole("menuitem", { name: /удалить/i }).click();
   await page.getByRole("button", { name: /^delete$/i }).click();
 
   await expect(page.getByText("Temp Link")).toHaveCount(0);
@@ -185,7 +181,7 @@ test("AC-BM-011: a bookmark without an icon shows a deterministic fallback, neve
     .getByText("No Icon Bookmark")
     .locator("..");
   await expect(card.locator("img[alt]:not([src])")).toHaveCount(0);
-  await expect(card.getByText(/^N$/)).toBeVisible();
+  await expect(card.getByText(/^NI$/)).toBeVisible();
 });
 
 test("AC-BM-012: bookmarks are displayed grouped under their category", async ({
@@ -247,14 +243,12 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
   // button in the header row BEFORE the bookmark cards' own "More options"
   // buttons, so within this section's DOM order the category-level trigger
   // is always first — the category and its one bookmark both expose a
-  // same-named "More options" button, so an unscoped match here is
-  // ambiguous (caught as a real strict-mode violation while running this
-  // suite).
+  // same-named control, so an unscoped match here is ambiguous.
   await categorySection(page, "Cascade Cat")
-    .getByRole("button", { name: /more options/i })
+    .getByRole("button", { name: /ещё действия/i })
     .first()
     .click();
-  await page.getByRole("menuitem", { name: /delete category/i }).click();
+  await page.getByRole("menuitem", { name: /удалить категорию/i }).click();
   await expect(page.getByText(/contains 1 bookmark/i)).toBeVisible();
 
   await page.getByRole("button", { name: /delete category/i }).click();
