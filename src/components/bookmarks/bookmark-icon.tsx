@@ -59,9 +59,9 @@ export function BookmarkIcon({
   }
 
   const toneClasses = [
-    "bg-accent/12 text-accent",
-    "bg-secondary/25 text-secondary-foreground",
-    "bg-primary/12 text-primary",
+    "bg-primary-100 text-primary-700",
+    "bg-accent-100 text-accent-700",
+    "bg-secondary-100 text-secondary-700",
   ] as const;
   const toneClass = toneClasses[hashValue(name) % toneClasses.length];
 
