@@ -8,15 +8,13 @@ export const metadata: Metadata = {
     "Панель оператора для серверов, доменов, мониторинга, бэкапов и оповещений.",
 };
 
-// Slice 1 ships dark theme only (design.md §2.3/§2.4, coordinator decision) — the
-// `dark` class is applied unconditionally here; no theme toggle in this slice.
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className="dark">
+    <html lang="ru">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -35,7 +33,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
-        <Toaster theme="dark" />
+        <Toaster theme="light" />
       </body>
     </html>
   );
