@@ -35,10 +35,10 @@ export function DeleteChannelDialog({
     setSubmitting(true);
     try {
       await channelsApi.remove(channel.id);
-      toast.success("Channel deleted.");
+      toast.success("Канал удалён.");
       onDeleted();
     } catch {
-      toast.error("Couldn't delete channel. Try again.");
+      toast.error("Не удалось удалить канал. Попробуйте снова.");
     } finally {
       setSubmitting(false);
     }
@@ -49,20 +49,20 @@ export function DeleteChannelDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Delete &ldquo;#{channel?.name}&rdquo;?
+            Удалить #{channel?.name}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Messages in this channel will be removed. This cannot be undone.
+            Сообщения этого канала будут удалены. Это действие необратимо.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Deleting…" : "Delete channel"}
+            {submitting ? "Удаление…" : "Удалить канал"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
