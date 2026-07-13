@@ -52,7 +52,7 @@ export function ChannelDialog({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Channel name is required.");
+      setError("Название канала обязательно.");
       return;
     }
 
@@ -61,10 +61,10 @@ export function ChannelDialog({
     try {
       if (state?.mode === "edit") {
         await channelsApi.rename(state.channel.id, trimmed);
-        toast.success("Channel renamed.");
+        toast.success("Канал переименован.");
       } else if (state?.mode === "create") {
         await channelsApi.create(state.categoryId, trimmed);
-        toast.success("Channel created.");
+        toast.success("Канал создан.");
       }
       onSaved();
     } catch (err) {
@@ -74,7 +74,7 @@ export function ChannelDialog({
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Couldn't save channel. Try again.",
+            : "Не удалось сохранить канал. Попробуйте снова.",
         );
       }
     } finally {
@@ -86,7 +86,9 @@ export function ChannelDialog({
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Rename channel" : "New channel"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Переименовать канал" : "Новый канал"}
+          </DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
@@ -94,7 +96,7 @@ export function ChannelDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Name</Label>
+            <Label htmlFor={nameId}>Название канала</Label>
             <Input
               id={nameId}
               value={name}
@@ -112,16 +114,16 @@ export function ChannelDialog({
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Cancel
+              Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit
                 ? submitting
-                  ? "Saving…"
-                  : "Save"
+                  ? "Сохранение…"
+                  : "Сохранить"
                 : submitting
-                  ? "Creating…"
-                  : "Create"}
+                  ? "Создание…"
+                  : "Создать"}
             </Button>
           </DialogFooter>
         </form>
