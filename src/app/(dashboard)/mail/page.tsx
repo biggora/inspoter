@@ -1,12 +1,9 @@
-import { Mail } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import { MailView } from "@/components/mail/mail-view";
 
-export default function MailPage() {
-  return (
-    <SectionPlaceholder
-      section="Mail"
-      description="Mail viewing, filtering, and webhook ingest will be available in a future release."
-      icon={Mail}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function MailPage() {
+  await requireAuth();
+  return <MailView />;
 }

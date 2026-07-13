@@ -18,15 +18,19 @@ export default function SettingsPage() {
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 opacity-50">
+        <Link
+          href="/settings/webhooks"
+          className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+        >
           <Webhook className="size-5 text-muted-foreground" />
           <div>
             <p className="font-medium">Webhooks</p>
             <p className="text-sm text-muted-foreground">
-              Token management (coming soon)
+              Manage tokens for external systems pushing mail, messages,
+              logs, and alerts
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

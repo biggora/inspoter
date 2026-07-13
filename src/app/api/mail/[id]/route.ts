@@ -1,0 +1,18 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { requireAuth } from "@/lib/auth/dal";
+import * as mailService from "@/lib/services/mail";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(_request: NextRequest, { params }: RouteContext) {
+  const { workspace } = await requireAuth();
+  const { id } = await params;
+
+  const item = await mailService.getById(id, workspace.id);
+  if (!item) {
+    return NextResponse.json({ error: "Resource not found." }, { status: 404 });
+  }
+  return NextResponse.json(item);
+}

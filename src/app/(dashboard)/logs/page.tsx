@@ -1,12 +1,9 @@
-import { ScrollText } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import { LogsView } from "@/components/logs/logs-view";
 
-export default function LogsPage() {
-  return (
-    <SectionPlaceholder
-      section="Logs"
-      description="Log viewing, filtering, and webhook ingest will be available in a future release."
-      icon={ScrollText}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function LogsPage() {
+  await requireAuth();
+  return <LogsView />;
 }

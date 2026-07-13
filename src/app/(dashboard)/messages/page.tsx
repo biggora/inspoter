@@ -1,12 +1,9 @@
-import { MessagesSquare } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import { MessagesView } from "@/components/messages/messages-view";
 
-export default function MessagesPage() {
-  return (
-    <SectionPlaceholder
-      section="Messages"
-      description="Discord-style categories and channels for incoming messages will be available in a future release."
-      icon={MessagesSquare}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function MessagesPage() {
+  await requireAuth();
+  return <MessagesView />;
 }

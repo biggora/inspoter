@@ -1,12 +1,11 @@
-import { Globe } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import * as domainsService from "@/lib/services/domains";
+import { DomainsView } from "@/components/domains/domains-view";
 
-export default function DomainsPage() {
-  return (
-    <SectionPlaceholder
-      section="Domains"
-      description="Domain and DNS record management across Cloudflare, Hetzner, and GoDaddy will be available in a future release."
-      icon={Globe}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function DomainsPage() {
+  await requireAuth();
+  const providers = await domainsService.listDomains();
+  return <DomainsView providers={providers} />;
 }

@@ -1,12 +1,9 @@
-import { Bell } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import { AlertsView } from "@/components/alerts/alerts-view";
 
-export default function AlertsPage() {
-  return (
-    <SectionPlaceholder
-      section="Alerts"
-      description="Categorized alert viewing and webhook ingest will be available in a future release."
-      icon={Bell}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function AlertsPage() {
+  await requireAuth();
+  return <AlertsView />;
 }

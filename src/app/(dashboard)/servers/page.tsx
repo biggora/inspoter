@@ -1,12 +1,9 @@
-import { Server } from "lucide-react";
-import { SectionPlaceholder } from "@/components/shell/section-placeholder";
+import { requireAuth } from "@/lib/auth/dal";
+import { ServersView } from "@/components/servers/servers-view";
 
-export default function ServersPage() {
-  return (
-    <SectionPlaceholder
-      section="Servers"
-      description="Hetzner VPS monitoring and power controls will be available in a future release."
-      icon={Server}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function ServersPage() {
+  await requireAuth();
+  return <ServersView />;
 }

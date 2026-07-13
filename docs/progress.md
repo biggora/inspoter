@@ -58,10 +58,22 @@ PRD v2.1(+) утверждён (CONSENSUS + doc-review PASS); §3.10 (Workspaces
 
 **Веха Workspaces (2026-07-13):** между Slice 1 и Slice 2 реализован Slice WS — workspace multi-tenancy + invite-only user management (11 AC-WS-ID, PRD §3.10, plan.md §5a). Схема (Workspace/WorkspaceMember + workspaceId-скоупинг), auth (`requireAuth()` → `{operator, workspace}`), сервис, API-роуты и UI (switcher в sidebar, управление workspace в Settings) реализованы; typecheck/lint/build чистые, 7/7 unit-тестов bookmarks обновлены на workspaceId и зелёные. **Не закрыто:** tester Mode A/B протокол для AC-WS-001..011 не пройден — нет API/e2e-тестов на workspace-функциональность (только косвенное покрытие через bookmarks.test.ts); code-review-гейт также не пройден. Зафиксировано как residual gap в test-plan.md §3.2 и как process-deviation в plan.md §5a.
 
-Следующий шаг — либо закрыть tester/code-review гейт для Slice WS, либо перейти к Slice 2 (Domains + provider abstraction) по plan.md §6 с явно принятым риском непокрытой workspace-логики.
+**Веха Slices 2–7 (2026-07-13):** реализованы все оставшиеся секции dashboard — Domains, Servers, Logs, Alerts, Mail, Messages + webhook ingest pipeline + webhook token management. Детали:
+
+- **Slice 2 (Provider + Domains):** ProviderResult<T> абстракция, DnsProvider interface + mock/real-stubs (Cloudflare, Hetzner, GoDaddy), DNS validation (zod), domains service с per-provider error isolation (Promise.allSettled), 3 API routes, полный UI (domain list + DNS drill-in + record CRUD dialogs).
+- **Slice 3 (Servers):** ServerProvider interface + mock (deterministic status transition) + Hetzner real stub, servers service, 3 API routes, UI с card grid + power actions (Start/Stop/Restart) + AlertDialog confirmation + status polling.
+- **Slice 4 (Webhook + Logs + Tokens):** webhook pipeline (size→parse→auth→ratelimit→type→zod→idempotency→dispatch), in-process rate limiter, idempotency via @@unique([tokenId,key]), webhook dispatch registry (все 4 типа: log/alert/mail/message), logs service с keyset pagination, webhookTokens service (create-once secret, revoke), 4 API routes, Logs UI (dense table + severity badges + filters + pagination), Settings webhook tokens page (token table + create + one-time secret + revoke).
+- **Slice 5 (Alerts):** alerts service с category upsert-by-name, alertCategory CRUD, 3 API routes, Alerts UI (dense table + severity/category/text filters + category management dialog).
+- **Slice 6 (Mail):** mail service с keyset pagination, 2 API routes, Mail UI (list + inline detail view + filters).
+- **Slice 7 (Messages):** messages service (category/channel CRUD, channel-not-found validation), 5 API routes, Messages UI (Discord-style category/channel sidebar + message feed + pagination).
+
+Итого: 29 API routes, 12 страниц, 69 компонентов, 9 сервисов, 11 provider-файлов, 4 webhook-модуля. tsc 0 ошибок, eslint 0 ошибок, build чистый, 23/23 unit тестов зелёные.
+
+**Не закрыто:** tester Mode A/B протокол для Slices 2–7 + Slice WS не пройден — нет acceptance/e2e-тестов для новых секций (только Slice 1 AC-IDs покрыты). Code-review гейт для Slices 2–7 также не пройден.
 
 ## Open questions
 
-- Нужны ли реальные API-ключи (Cloudflare/Hetzner/GoDaddy) на этапе реализации соответствующих слайсов — отложено до этих слайсов.
-- AQ-2 (число webhook-токенов в UI, связано с OQ-7) и AQ-3 (upsert-by-name категории алерта при ingest) — отложены до соответствующих слайсов (Settings/Alerts).
+- ~~Нужны ли реальные API-ключи (Cloudflare/Hetzner/GoDaddy) на этапе реализации соответствующих слайсов~~ — реализованы mock-провайдеры; real-провайдеры — stubs, переключаются через env vars.
+- ~~AQ-2 (число webhook-токенов в UI, связано с OQ-7)~~ — реализовано: Settings → Webhooks, N токенов, без скоупинга по типу (MVP).
+- ~~AQ-3 (upsert-by-name категории алерта при ingest)~~ — реализовано: alerts.create() ищет категорию по имени, создаёт если не найдена.
 - ~~jsdom отсутствует в devDeps~~ — закрыто: jsdom ^29.1.1 добавлен implementor'ом после fan-out.
