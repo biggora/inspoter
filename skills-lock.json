@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "n8n-api": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/n8n-api/SKILL.md",
+      "computedHash": "7b8f4639d8a8ce7f3c0bae1139a9508ccee8fd2909e31912ed86de6a265da256"
+    },
+    "next-best-practices": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/next-best-practices/SKILL.md",
+      "computedHash": "53a4ae3065d910329020ff57898d3719fba1d63b548fe0f6324a1d6d9d0e0b26"
+    },
+    "postgresql-optimization": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/postgresql-optimization/SKILL.md",
+      "computedHash": "8022448de70ba9a485e3b5bce34c5bbc644f93eb39b68431c9f7dabcf03aeb09"
+    },
+    "prisma-postgres": {
+      "source": "prisma/skills",
+      "sourceType": "github",
+      "skillPath": "prisma-postgres/SKILL.md",
+      "computedHash": "fd8f16f26e2cce1dd3e8e7916dcddbffddf295003eba86141f53e9d2d9d2bc0c"
+    },
+    "tailwindcss-best-practices": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/tailwindcss-best-practices/SKILL.md",
+      "computedHash": "c11771f27338b76c1f513325f0206cdd0f0285ce17e5d2e374d45410d89e7542"
+    },
+    "test-web-ui": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/test-web-ui/SKILL.md",
+      "computedHash": "ffec9cb9527875ceb8d17bb9965f236979a01d46eb7af1bf78e859c71565d53c"
+    },
+    "ui-audit": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/ui-audit/SKILL.md",
+      "computedHash": "795f9bf122a6c7a92fefa07a08485a6ac3f3becd0611628264e7816994a69b59"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    }
+  }
+}
