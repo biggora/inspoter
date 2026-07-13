@@ -1,8 +1,8 @@
 /* ==========================================================================
    Inspot — Color tokens
    Stored as raw oklch triples (L C H) and consumed as oklch(var(--token)).
-   This mirrors the production Tailwind config: colors are 50→950 ramps and
-   every ramp supports an <alpha-value>, e.g. oklch(var(--primary-500) / 0.5).
+   This mirrors the production Tailwind theme: colors are 50→950 ramps and
+   slash opacity modifiers are handled natively by Tailwind v4.
    ========================================================================== */
 
 :root {
