@@ -1,312 +1,541 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { AlertTriangle, Play, Square, RotateCcw, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import type { ServerStatus } from "@/lib/providers/servers/types";
 import { fetchServers, getServer, powerAction } from "./api";
 
 interface Server {
   id: string;
   name: string;
   type: string;
-  status: string;
+  status: ServerStatus;
   ip: string;
+  cpu: string;
+  ram: string;
+  disk: string;
+  os: string;
+  location: string;
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-    className: string;
-  }
-> = {
-  running: {
-    label: "Running",
-    variant: "default",
-    className: "bg-emerald-950 text-emerald-400 border-emerald-800",
-  },
-  stopped: {
-    label: "Stopped",
-    variant: "secondary",
-    className: "bg-zinc-800 text-zinc-400 border-zinc-700",
-  },
-  starting: {
-    label: "Starting…",
-    variant: "outline",
-    className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse",
-  },
-  stopping: {
-    label: "Stopping…",
-    variant: "outline",
-    className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse",
-  },
-  unknown: {
-    label: "Unknown",
-    variant: "secondary",
-    className: "bg-zinc-800 text-zinc-400 border-zinc-700",
-  },
-};
+type PowerActionType = "start" | "stop" | "restart";
 
-function getStatusConfig(status: string) {
-  return STATUS_CONFIG[status] ?? STATUS_CONFIG.unknown;
+interface Notification {
+  message: string;
+  variant: "success" | "error";
 }
+
+type PageState = "loading" | "error" | "empty" | "ready";
+
+const TRANSITIONAL_STATUSES: ServerStatus[] = [
+  "starting",
+  "stopping",
+  "restarting",
+];
 
 export function ServersView() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionInFlight, setActionInFlight] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<Notification | null>(null);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
     new Map(),
   );
+  const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const showNotification = useCallback(
+    (message: string, variant: "success" | "error") => {
+      setNotification({ message, variant });
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+      notificationTimeoutRef.current = setTimeout(
+        () => setNotification(null),
+        4000,
+      );
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await fetchServers();
       setServers(data);
-      setError(null);
+      setLoadError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load servers");
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to load servers",
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const run = () => load();
-    run();
+    load();
     const pollers = pollingRef.current;
     return () => {
       pollers.forEach((interval) => clearInterval(interval));
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
     };
   }, [load]);
 
-  const handlePower = async (
-    server: Server,
-    action: "start" | "stop" | "restart",
-  ) => {
-    setActionInFlight(server.id);
-    try {
-      await powerAction(server.id, action);
+  const clearCardError = useCallback((id: string) => {
+    setCardErrors((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  const handlePowerAction = useCallback(
+    async (server: Server, action: PowerActionType) => {
+      clearCardError(server.id);
+      const previousStatus = server.status;
+      const transitionalStatus: ServerStatus =
+        action === "start"
+          ? "starting"
+          : action === "stop"
+            ? "stopping"
+            : "restarting";
+
       setServers((prev) =>
         prev.map((s) =>
-          s.id === server.id
-            ? { ...s, status: action === "stop" ? "stopping" : "starting" }
-            : s,
+          s.id === server.id ? { ...s, status: transitionalStatus } : s,
         ),
       );
-      toast.success(
-        `${action.charAt(0).toUpperCase() + action.slice(1)} initiated for ${server.name}`,
-      );
+
+      try {
+        await powerAction(server.id, action);
+      } catch (err) {
+        setServers((prev) =>
+          prev.map((s) =>
+            s.id === server.id ? { ...s, status: previousStatus } : s,
+          ),
+        );
+        setCardErrors((prev) => ({
+          ...prev,
+          [server.id]:
+            err instanceof Error
+              ? err.message
+              : "Не удалось выполнить действие",
+        }));
+        return;
+      }
+
+      const existing = pollingRef.current.get(server.id);
+      if (existing) clearInterval(existing);
 
       const interval = setInterval(async () => {
         try {
           const updated = await getServer(server.id);
-          if (updated.status === "running" || updated.status === "stopped") {
+          setServers((prev) =>
+            prev.map((s) => (s.id === server.id ? updated : s)),
+          );
+          if (!TRANSITIONAL_STATUSES.includes(updated.status)) {
             clearInterval(interval);
             pollingRef.current.delete(server.id);
-            setServers((prev) =>
-              prev.map((s) => (s.id === server.id ? updated : s)),
-            );
-            setActionInFlight((prev) => (prev === server.id ? null : prev));
-          } else {
-            setServers((prev) =>
-              prev.map((s) => (s.id === server.id ? updated : s)),
+            showNotification(
+              `${server.name}: действие выполнено успешно`,
+              "success",
             );
           }
-        } catch {
+        } catch (err) {
           clearInterval(interval);
           pollingRef.current.delete(server.id);
-          setActionInFlight((prev) => (prev === server.id ? null : prev));
+          setCardErrors((prev) => ({
+            ...prev,
+            [server.id]:
+              err instanceof Error
+                ? err.message
+                : "Не удалось обновить статус",
+          }));
         }
       }, 2000);
       pollingRef.current.set(server.id, interval);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Power action failed");
-      setActionInFlight(null);
-    }
-  };
+    },
+    [clearCardError, showNotification],
+  );
 
-  if (loading) {
+  const pageState: PageState = loading
+    ? "loading"
+    : loadError
+      ? "error"
+      : servers.length === 0
+        ? "empty"
+        : "ready";
+
+  if (pageState === "loading") {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-xl font-semibold">Servers</h1>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-32 w-full" />
-              </CardContent>
-            </Card>
+      <div className="p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-background-200 bg-background-50 overflow-hidden animate-fade-in"
+            >
+              <div className="px-4 py-3.5 border-b border-background-100 flex items-center gap-2.5">
+                <div className="animate-skeleton w-9 h-9 rounded-lg shrink-0"></div>
+                <div className="space-y-1.5 flex-1">
+                  <div className="animate-skeleton h-4 w-28 rounded"></div>
+                  <div className="animate-skeleton h-3 w-24 rounded"></div>
+                </div>
+                <div className="animate-skeleton h-6 w-20 rounded-full"></div>
+              </div>
+              <div className="px-4 py-3 space-y-2">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="flex items-center justify-between">
+                    <div className="animate-skeleton h-3 w-10 rounded"></div>
+                    <div className="animate-skeleton h-3 w-32 rounded"></div>
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 py-3 border-t border-background-100 flex gap-2">
+                <div className="animate-skeleton h-7 w-16 rounded-lg"></div>
+                <div className="animate-skeleton h-7 w-16 rounded-lg"></div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (pageState === "error") {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-xl font-semibold">Servers</h1>
-        <Alert variant="destructive">
-          <AlertTriangle className="size-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={load}>
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
+      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
+        <div className="text-center max-w-sm animate-scale-in">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
+            <i className="ri-cloud-off-line text-2xl text-primary-600"></i>
+          </div>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Hetzner недоступен
+          </h3>
+          <p className="text-sm text-foreground-500 mb-6">
+            Не удалось получить данные о серверах. Проверьте подключение или
+            попробуйте позже.
+          </p>
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary-500 text-sm font-semibold text-background-50 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <i className="ri-refresh-line w-5 h-5 flex items-center justify-center"></i>
+            Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState === "empty") {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
+        <div className="text-center max-w-sm animate-scale-in">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-secondary-100 flex items-center justify-center">
+            <i className="ri-server-line text-2xl text-secondary-600"></i>
+          </div>
+          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
+            Нет серверов
+          </h3>
+          <p className="text-sm text-foreground-500">
+            В вашем аккаунте Hetzner пока нет активных VPS. Создайте сервер
+            через панель Hetzner, и он появится здесь.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Servers</h1>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {servers.map((server) => {
-          const sc = getStatusConfig(server.status);
-          const isTransitioning =
-            server.status === "starting" || server.status === "stopping";
-          const isBusy = actionInFlight === server.id || isTransitioning;
-          return (
-            <Card key={server.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{server.name}</CardTitle>
-                <p className="font-mono text-sm text-muted-foreground">
-                  {server.type}
-                </p>
-                <p className="font-mono text-sm text-muted-foreground">
-                  {server.ip}
-                </p>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between pt-2">
-                <Badge className={sc.className} aria-label={sc.label}>
-                  {sc.label}
-                </Badge>
-                <div className="flex gap-1">
-                  {server.status === "stopped" && (
-                    <PowerButton
-                      server={server}
-                      action="start"
-                      icon={<Play className="size-3.5" />}
-                      label="Start"
-                      busy={isBusy}
-                      onAction={handlePower}
-                    />
-                  )}
-                  {server.status === "running" && (
-                    <>
-                      <PowerButton
-                        server={server}
-                        action="restart"
-                        icon={<RotateCcw className="size-3.5" />}
-                        label="Restart"
-                        busy={isBusy}
-                        onAction={handlePower}
-                      />
-                      <PowerButton
-                        server={server}
-                        action="stop"
-                        icon={<Square className="size-3.5" />}
-                        label="Stop"
-                        busy={isBusy}
-                        onAction={handlePower}
-                        destructive
-                      />
-                    </>
-                  )}
-                  {isTransitioning && (
-                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+    <div className="p-6">
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
+            notification.variant === "success"
+              ? "bg-accent-100/80 text-accent-800"
+              : "bg-primary-100/70 text-primary-800"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <i
+            className={`${
+              notification.variant === "success"
+                ? "ri-check-line"
+                : "ri-error-warning-line"
+            } w-5 h-5 flex items-center justify-center`}
+          ></i>
+          {notification.message}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-foreground-500">
+          {servers.length}{" "}
+          {servers.length === 1
+            ? "сервер"
+            : servers.length >= 2 && servers.length <= 4
+              ? "сервера"
+              : "серверов"}
+        </p>
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-foreground-600 hover:text-foreground-900 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
+        >
+          <i className="ri-refresh-line w-4 h-4 flex items-center justify-center"></i>
+          Обновить
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {servers.map((server) => (
+          <ServerCard
+            key={server.id}
+            server={server}
+            onPowerAction={handlePowerAction}
+            error={cardErrors[server.id]}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function PowerButton({
+const statusConfig: Record<
+  ServerStatus,
+  { label: string; color: string; dotColor: string }
+> = {
+  running: {
+    label: "Running",
+    color: "bg-accent-100 text-accent-700",
+    dotColor: "bg-accent-500",
+  },
+  stopped: {
+    label: "Stopped",
+    color: "bg-secondary-100 text-secondary-700",
+    dotColor: "bg-secondary-400",
+  },
+  starting: {
+    label: "Starting…",
+    color: "bg-primary-100 text-primary-700",
+    dotColor: "bg-primary-400",
+  },
+  stopping: {
+    label: "Stopping…",
+    color: "bg-primary-100 text-primary-700",
+    dotColor: "bg-primary-400",
+  },
+  restarting: {
+    label: "Restarting…",
+    color: "bg-primary-100 text-primary-700",
+    dotColor: "bg-primary-400",
+  },
+  unknown: {
+    label: "Unknown",
+    color: "bg-secondary-100 text-secondary-700",
+    dotColor: "bg-secondary-400",
+  },
+};
+
+interface CardAction {
+  action: PowerActionType;
+  label: string;
+  icon: string;
+  confirmTitle: string;
+  confirmText: string;
+}
+
+function getAvailableActions(server: Server): CardAction[] {
+  switch (server.status) {
+    case "running":
+      return [
+        {
+          action: "restart",
+          label: "Restart",
+          icon: "ri-restart-line",
+          confirmTitle: `Перезапустить «${server.name}»?`,
+          confirmText:
+            "Сервер перезапустится и будет ненадолго недоступен.",
+        },
+        {
+          action: "stop",
+          label: "Stop",
+          icon: "ri-stop-circle-line",
+          confirmTitle: `Остановить «${server.name}»?`,
+          confirmText: "Сервер будет остановлен и станет недоступен.",
+        },
+      ];
+    case "stopped":
+    case "unknown":
+      return [
+        {
+          action: "start",
+          label: "Start",
+          icon: "ri-play-circle-line",
+          confirmTitle: `Запустить «${server.name}»?`,
+          confirmText:
+            "Сервер будет запущен. Это может занять несколько секунд.",
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
+function ServerCard({
   server,
-  action,
-  icon,
-  label,
-  busy,
-  destructive,
-  onAction,
+  onPowerAction,
+  error,
 }: {
   server: Server;
-  action: "start" | "stop" | "restart";
-  icon: React.ReactNode;
-  label: string;
-  busy: boolean;
-  destructive?: boolean;
-  onAction: (server: Server, action: "start" | "stop" | "restart") => void;
+  onPowerAction: (server: Server, action: PowerActionType) => void;
+  error?: string;
 }) {
-  const descriptions: Record<string, string> = {
-    start: `${server.name} will be started. This may take a few seconds.`,
-    stop: `${server.name} will be stopped and become unreachable.`,
-    restart: `${server.name} will restart and be briefly unreachable.`,
+  const [menuOpen, setMenuOpen] = useState<PowerActionType | null>(null);
+
+  const config = statusConfig[server.status] ?? statusConfig.unknown;
+  const busy = TRANSITIONAL_STATUSES.includes(server.status);
+  const availableActions = getAvailableActions(server);
+
+  const handleConfirm = (action: PowerActionType) => {
+    setMenuOpen(null);
+    onPowerAction(server, action);
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger
-        render={
-          <Button
-            variant={destructive ? "destructive" : "outline"}
-            size="sm"
-            disabled={busy}
-          />
-        }
-      >
-        {icon}
-        <span className="ml-1">{label}</span>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {label} &ldquo;{server.name}&rdquo;?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {descriptions[action]}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            className={
-              destructive
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : ""
-            }
-            onClick={() => onAction(server, action)}
-          >
-            {label}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <div className="rounded-xl border border-background-200 bg-background-50 overflow-hidden transition-colors hover:border-background-300">
+      <div className="px-4 py-3.5 border-b border-background-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-secondary-100 flex items-center justify-center shrink-0">
+            <i className="ri-server-line text-lg text-secondary-600"></i>
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-heading text-sm font-semibold text-foreground-900 truncate">
+              {server.name}
+            </h4>
+            <p className="text-xs text-foreground-500">{server.ip}</p>
+          </div>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 ${config.color}`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${busy ? "animate-pulse" : ""} ${config.dotColor}`}
+          ></span>
+          {config.label}
+        </span>
+      </div>
+
+      <div className="px-4 py-3 space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground-500">CPU</span>
+          <span className="text-foreground-800 font-medium">
+            {server.cpu}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground-500">RAM</span>
+          <span className="text-foreground-800 font-medium">
+            {server.ram}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground-500">Disk</span>
+          <span className="text-foreground-800 font-medium">
+            {server.disk}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground-500">OS</span>
+          <span className="text-foreground-800 font-medium">
+            {server.os}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground-500">Location</span>
+          <span className="text-foreground-800 font-medium">
+            {server.location}
+          </span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="px-4 pb-1">
+          <div className="flex items-start gap-1.5 rounded-md bg-primary-100/60 px-2.5 py-2 text-xs text-primary-700 animate-fade-in">
+            <i className="ri-error-warning-line w-4 h-4 flex items-center justify-center shrink-0 mt-px"></i>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-3 border-t border-background-100 flex items-center gap-2">
+        {availableActions.map((act) => (
+          <div key={act.action} className="relative">
+            <button
+              onClick={() =>
+                setMenuOpen(menuOpen === act.action ? null : act.action)
+              }
+              disabled={busy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-background-200 text-foreground-700 hover:bg-background-100 hover:border-background-300 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <i
+                className={`${act.icon} w-4 h-4 flex items-center justify-center`}
+              ></i>
+              {act.label}
+            </button>
+            {menuOpen === act.action && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setMenuOpen(null)}
+                  aria-hidden="true"
+                />
+                <div className="absolute left-0 bottom-full mb-2 w-72 rounded-lg border border-background-200 bg-background-50 shadow-lg animate-scale-in z-40">
+                  <div className="px-4 py-3">
+                    <h5 className="font-heading text-sm font-semibold text-foreground-900 mb-1">
+                      {act.confirmTitle}
+                    </h5>
+                    <p className="text-xs text-foreground-600 mb-3">
+                      {act.confirmText}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setMenuOpen(null)}
+                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-foreground-600 hover:bg-background-100 border border-background-200 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        onClick={() => handleConfirm(act.action)}
+                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-background-50 bg-primary-500 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        Подтвердить
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        {availableActions.length === 0 && !busy && (
+          <span className="text-xs text-foreground-400">
+            Нет доступных действий
+          </span>
+        )}
+        {busy && (
+          <span className="flex items-center gap-1.5 text-xs text-foreground-500">
+            <i className="ri-loader-4-line animate-spin w-4 h-4 flex items-center justify-center"></i>
+            Выполняется...
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

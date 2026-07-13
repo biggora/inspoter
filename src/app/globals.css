@@ -126,6 +126,10 @@
 }
 
 @keyframes inspot-shimmer { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
@@ -148,3 +152,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; } }
+
+@layer components {
+  .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+  .animate-slide-in-right { animation: slideInRight 0.25s ease-out forwards; }
+  .animate-scale-in { animation: scaleIn 0.2s ease-out forwards; }
+  .animate-skeleton { background: linear-gradient(90deg, oklch(var(--background-200) / 0.6) 25%, oklch(var(--background-100) / 0.5) 50%, oklch(var(--background-200) / 0.6) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+}

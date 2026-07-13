@@ -1,7 +1,7 @@
 import type { ProviderResult } from "@/lib/providers/result";
 
 export type ServerStatus =
-  "running" | "stopped" | "starting" | "stopping" | "unknown";
+  "running" | "stopped" | "starting" | "stopping" | "restarting" | "unknown";
 
 export interface Server {
   id: string;
@@ -9,6 +9,11 @@ export interface Server {
   type: string;
   status: ServerStatus;
   ip: string;
+  cpu: string;
+  ram: string;
+  disk: string;
+  os: string;
+  location: string;
 }
 
 export interface ServerProvider {
