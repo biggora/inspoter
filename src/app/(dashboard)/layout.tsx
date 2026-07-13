@@ -21,7 +21,7 @@ export default async function DashboardLayout({
       />
       <SidebarInset>
         <DashboardTopbar />
-        <main className="mx-auto w-full max-w-[1400px] flex-1 p-6">
+        <main className="w-full flex-1 p-6">
           {children}
         </main>
       </SidebarInset>
