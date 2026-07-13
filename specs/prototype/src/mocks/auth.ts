@@ -1,6 +1,6 @@
 export const MOCK_CREDENTIALS = {
-  username: "admin",
-  password: "inspot2024",
+  username: "operator",
+  password: "Test1234!",
 };
 
 export const AUTH_STORAGE_KEY = "inspot_auth";
