@@ -4,8 +4,15 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { getWebhookSchema } from "@/lib/validation/webhooks";
 import { checkRateLimit } from "@/lib/webhooks/ratelimit";
-import { checkIdempotency, recordIdempotency } from "@/lib/webhooks/idempotency";
-import { dispatch, UnsupportedWebhookTypeError, ChannelNotFoundWebhookError } from "@/lib/webhooks/dispatch";
+import {
+  checkIdempotency,
+  recordIdempotency,
+} from "@/lib/webhooks/idempotency";
+import {
+  dispatch,
+  UnsupportedWebhookTypeError,
+  ChannelNotFoundWebhookError,
+} from "@/lib/webhooks/dispatch";
 
 // Ordered webhook ingest pipeline (architecture.md §3.2, fail-closed):
 // size -> parse -> auth -> ratelimit -> type -> zod -> idempotency -> dispatch.
@@ -119,7 +126,10 @@ export async function processWebhook(
       "Rate limit exceeded for this token",
     );
     if (rate.retryAfterMs) {
-      res.headers.set("Retry-After", String(Math.ceil(rate.retryAfterMs / 1000)));
+      res.headers.set(
+        "Retry-After",
+        String(Math.ceil(rate.retryAfterMs / 1000)),
+      );
     }
     return res;
   }
@@ -127,7 +137,11 @@ export async function processWebhook(
   // 5. Type validation
   const schema = getWebhookSchema(type);
   if (!schema) {
-    return errorResponse(400, "UNSUPPORTED_TYPE", `Unsupported webhook type: ${type}`);
+    return errorResponse(
+      400,
+      "UNSUPPORTED_TYPE",
+      `Unsupported webhook type: ${type}`,
+    );
   }
 
   // 6. Zod schema validation

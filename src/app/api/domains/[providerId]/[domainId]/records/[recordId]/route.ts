@@ -27,10 +27,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   return providerResultResponse(result);
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: RouteContext,
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   await requireAuth();
   const { providerId, domainId, recordId } = await params;
 

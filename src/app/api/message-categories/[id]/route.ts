@@ -15,7 +15,10 @@ interface RouteContext {
 // messagesService.renameCategory/deleteCategory take no workspaceId (unlike
 // alertsService/bookmarksService), so workspace ownership is verified here
 // against the caller's own workspace before mutating.
-async function categoryBelongsToWorkspace(workspaceId: string, categoryId: string): Promise<boolean> {
+async function categoryBelongsToWorkspace(
+  workspaceId: string,
+  categoryId: string,
+): Promise<boolean> {
   const categories = await messagesService.listCategories(workspaceId);
   return categories.some((category) => category.id === categoryId);
 }

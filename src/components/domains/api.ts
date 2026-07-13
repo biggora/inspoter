@@ -5,7 +5,11 @@
 // providerResultResponse) and `{ error: ZodIssue[] }` (validation failure,
 // dnsRecordInputSchema/dnsRecordPatchSchema).
 
-import type { DnsRecord, DnsRecordInput, DnsRecordPatch } from "@/lib/providers/dns/types";
+import type {
+  DnsRecord,
+  DnsRecordInput,
+  DnsRecordPatch,
+} from "@/lib/providers/dns/types";
 import type { DomainsByProvider } from "@/lib/services/domains";
 
 export class ApiError extends Error {
@@ -64,9 +68,7 @@ export function fetchRecords(
   providerId: string,
   domainId: string,
 ): Promise<DnsRecord[]> {
-  return request(
-    `/api/domains/${providerId}/${domainId}/records`,
-  );
+  return request(`/api/domains/${providerId}/${domainId}/records`);
 }
 
 export function createRecord(
@@ -86,10 +88,10 @@ export function updateRecord(
   recordId: string,
   data: DnsRecordPatch,
 ): Promise<DnsRecord> {
-  return request(
-    `/api/domains/${providerId}/${domainId}/records/${recordId}`,
-    { method: "PATCH", body: JSON.stringify(data) },
-  );
+  return request(`/api/domains/${providerId}/${domainId}/records/${recordId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 export function deleteRecord(
@@ -97,8 +99,7 @@ export function deleteRecord(
   domainId: string,
   recordId: string,
 ): Promise<void> {
-  return request(
-    `/api/domains/${providerId}/${domainId}/records/${recordId}`,
-    { method: "DELETE" },
-  );
+  return request(`/api/domains/${providerId}/${domainId}/records/${recordId}`, {
+    method: "DELETE",
+  });
 }

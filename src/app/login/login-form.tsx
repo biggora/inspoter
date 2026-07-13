@@ -11,6 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "./actions";
 
+function localizeLoginError(error: string) {
+  if (error === "Username and password are required.") {
+    return "Укажите имя пользователя и пароль.";
+  }
+
+  if (error === "Invalid username or password.") {
+    return "Неверное имя пользователя или пароль.";
+  }
+
+  return "Не удалось выполнить вход. Проверьте данные и повторите попытку.";
+}
+
 // AC-AUTH-002/003 UI (design.md §3.1). Client Component: owns form state,
 // the empty-field submit-disable (design's narrow, documented exception to
 // "submit is never silently disabled" — see §3.1 rationale), and the generic
@@ -44,7 +56,7 @@ export function LoginForm({ next }: { next?: string }) {
         router.push(target);
         router.refresh();
       } else {
-        setError(result.error);
+        setError(localizeLoginError(result.error));
       }
     } finally {
       setSubmitting(false);
@@ -55,7 +67,7 @@ export function LoginForm({ next }: { next?: string }) {
     <Card className="w-full max-w-[380px]">
       <CardHeader>
         <h1 className="font-heading text-base leading-none font-medium text-foreground">
-          Sign in
+          Войти
         </h1>
       </CardHeader>
       <CardContent>
@@ -71,11 +83,12 @@ export function LoginForm({ next }: { next?: string }) {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="login-username">Username</Label>
+            <Label htmlFor="login-username">Имя пользователя</Label>
             <Input
               id="login-username"
               name="username"
               autoComplete="username"
+              placeholder="admin"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               disabled={submitting}
@@ -85,13 +98,14 @@ export function LoginForm({ next }: { next?: string }) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="login-password">Password</Label>
+            <Label htmlFor="login-password">Пароль</Label>
             <div className="relative">
               <Input
                 id="login-password"
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
+                placeholder="········"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 disabled={submitting}
@@ -102,7 +116,7 @@ export function LoginForm({ next }: { next?: string }) {
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
                 className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
               >
                 {showPassword ? (
                   <EyeOff aria-hidden className="size-4" />
@@ -117,10 +131,10 @@ export function LoginForm({ next }: { next?: string }) {
             {submitting ? (
               <>
                 <Loader2 aria-hidden className="size-4 animate-spin" />
-                Signing in…
+                Вход…
               </>
             ) : (
-              "Sign in"
+              "Войти"
             )}
           </Button>
         </form>

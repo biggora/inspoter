@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
-import { Prisma, type MessageCategory, type Channel, type Message } from "@/generated/prisma/client";
+import {
+  Prisma,
+  type MessageCategory,
+  type Channel,
+  type Message,
+} from "@/generated/prisma/client";
 
 export type CategoryWithChannels = MessageCategory & { channels: Channel[] };
 
@@ -15,20 +20,33 @@ export interface ListMessagesResult {
   nextCursor: string | null;
 }
 
-interface Cursor { t: string; id: string }
+interface Cursor {
+  t: string;
+  id: string;
+}
 
 function encodeCursor(entry: Pick<Message, "createdAt" | "id">): string {
-  return Buffer.from(JSON.stringify({ t: entry.createdAt.toISOString(), id: entry.id })).toString("base64url");
+  return Buffer.from(
+    JSON.stringify({ t: entry.createdAt.toISOString(), id: entry.id }),
+  ).toString("base64url");
 }
 
 function decodeCursor(cursor: string): Cursor | null {
   try {
-    const p = JSON.parse(Buffer.from(cursor, "base64url").toString("utf-8")) as Partial<Cursor>;
-    return typeof p.t === "string" && typeof p.id === "string" ? { t: p.t, id: p.id } : null;
-  } catch { return null; }
+    const p = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf-8"),
+    ) as Partial<Cursor>;
+    return typeof p.t === "string" && typeof p.id === "string"
+      ? { t: p.t, id: p.id }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
-export async function listCategories(workspaceId: string): Promise<CategoryWithChannels[]> {
+export async function listCategories(
+  workspaceId: string,
+): Promise<CategoryWithChannels[]> {
   return db.messageCategory.findMany({
     where: { workspaceId },
     include: { channels: { orderBy: { name: "asc" } } },
@@ -36,11 +54,17 @@ export async function listCategories(workspaceId: string): Promise<CategoryWithC
   });
 }
 
-export async function createCategory(workspaceId: string, name: string): Promise<MessageCategory> {
+export async function createCategory(
+  workspaceId: string,
+  name: string,
+): Promise<MessageCategory> {
   return db.messageCategory.create({ data: { name, workspaceId } });
 }
 
-export async function renameCategory(id: string, name: string): Promise<MessageCategory> {
+export async function renameCategory(
+  id: string,
+  name: string,
+): Promise<MessageCategory> {
   return db.messageCategory.update({ where: { id }, data: { name } });
 }
 
@@ -48,11 +72,17 @@ export async function deleteCategory(id: string): Promise<void> {
   await db.messageCategory.delete({ where: { id } });
 }
 
-export async function createChannel(categoryId: string, name: string): Promise<Channel> {
+export async function createChannel(
+  categoryId: string,
+  name: string,
+): Promise<Channel> {
   return db.channel.create({ data: { name, messageCategoryId: categoryId } });
 }
 
-export async function renameChannel(id: string, name: string): Promise<Channel> {
+export async function renameChannel(
+  id: string,
+  name: string,
+): Promise<Channel> {
   return db.channel.update({ where: { id }, data: { name } });
 }
 
@@ -100,9 +130,16 @@ export async function listMessages(
   const cursor = params.cursor ? decodeCursor(params.cursor) : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
-    where.OR = sort === "desc"
-      ? [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursor.id } }]
-      : [{ createdAt: { gt: cursorDate } }, { createdAt: cursorDate, id: { gt: cursor.id } }];
+    where.OR =
+      sort === "desc"
+        ? [
+            { createdAt: { lt: cursorDate } },
+            { createdAt: cursorDate, id: { lt: cursor.id } },
+          ]
+        : [
+            { createdAt: { gt: cursorDate } },
+            { createdAt: cursorDate, id: { gt: cursor.id } },
+          ];
   }
 
   const rows = await db.message.findMany({

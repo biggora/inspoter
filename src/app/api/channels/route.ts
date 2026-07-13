@@ -11,7 +11,10 @@ const createChannelSchema = z.object({
 
 // messagesService.createChannel takes no workspaceId, so the target
 // category's workspace ownership is verified here before creating.
-async function categoryBelongsToWorkspace(workspaceId: string, categoryId: string): Promise<boolean> {
+async function categoryBelongsToWorkspace(
+  workspaceId: string,
+  categoryId: string,
+): Promise<boolean> {
   const categories = await messagesService.listCategories(workspaceId);
   return categories.some((category) => category.id === categoryId);
 }
@@ -25,12 +28,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  if (!(await categoryBelongsToWorkspace(workspace.id, parsed.data.categoryId))) {
-    return NextResponse.json({ error: "Referenced resource does not exist." }, { status: 400 });
+  if (
+    !(await categoryBelongsToWorkspace(workspace.id, parsed.data.categoryId))
+  ) {
+    return NextResponse.json(
+      { error: "Referenced resource does not exist." },
+      { status: 400 },
+    );
   }
 
   try {
-    const channel = await messagesService.createChannel(parsed.data.categoryId, parsed.data.name);
+    const channel = await messagesService.createChannel(
+      parsed.data.categoryId,
+      parsed.data.name,
+    );
     return NextResponse.json(channel, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

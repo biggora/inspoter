@@ -51,9 +51,7 @@ const LEVEL_STYLES: Record<string, string> = {
 function LevelBadge({ level }: { level: string }) {
   const normalized = level.toLowerCase();
   const style = LEVEL_STYLES[normalized] ?? "bg-muted text-muted-foreground";
-  return (
-    <Badge className={cn("uppercase", style)}>{level}</Badge>
-  );
+  return <Badge className={cn("uppercase", style)}>{level}</Badge>;
 }
 
 function formatTimestamp(iso: string): string {
@@ -174,7 +172,11 @@ export function LogsView() {
           aria-label="Search log messages"
           className="sm:max-w-xs"
         />
-        <Select value={level} onValueChange={(v) => setLevel(v as string)} items={LEVEL_ITEMS}>
+        <Select
+          value={level}
+          onValueChange={(v) => setLevel(v as string)}
+          items={LEVEL_ITEMS}
+        >
           <SelectTrigger size="sm" aria-label="Filter by level">
             <SelectValue />
           </SelectTrigger>
@@ -262,9 +264,7 @@ export function LogsView() {
                     aria-expanded={isExpanded}
                     aria-controls={`${entry.id}-detail`}
                     className="cursor-pointer"
-                    onClick={() =>
-                      setExpandedId(isExpanded ? null : entry.id)
-                    }
+                    onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
@@ -278,9 +278,7 @@ export function LogsView() {
                     <TableCell>
                       <LevelBadge level={entry.level} />
                     </TableCell>
-                    <TableCell className="font-mono">
-                      {entry.source}
-                    </TableCell>
+                    <TableCell className="font-mono">{entry.source}</TableCell>
                     <TableCell className="max-w-md truncate font-mono">
                       {entry.message}
                     </TableCell>

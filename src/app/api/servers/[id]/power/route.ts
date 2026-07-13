@@ -24,7 +24,12 @@ export async function POST(
   if (!result.ok) {
     const status = result.kind === "error" ? 502 : 501;
     return NextResponse.json(
-      { error: result.kind === "error" ? result.message : `Unsupported: ${result.operation}` },
+      {
+        error:
+          result.kind === "error"
+            ? result.message
+            : `Unsupported: ${result.operation}`,
+      },
       { status },
     );
   }

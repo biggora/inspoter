@@ -29,12 +29,39 @@ interface Server {
   ip: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
-  running: { label: "Running", variant: "default", className: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-  stopped: { label: "Stopped", variant: "secondary", className: "bg-zinc-800 text-zinc-400 border-zinc-700" },
-  starting: { label: "Starting…", variant: "outline", className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse" },
-  stopping: { label: "Stopping…", variant: "outline", className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse" },
-  unknown: { label: "Unknown", variant: "secondary", className: "bg-zinc-800 text-zinc-400 border-zinc-700" },
+const STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+    className: string;
+  }
+> = {
+  running: {
+    label: "Running",
+    variant: "default",
+    className: "bg-emerald-950 text-emerald-400 border-emerald-800",
+  },
+  stopped: {
+    label: "Stopped",
+    variant: "secondary",
+    className: "bg-zinc-800 text-zinc-400 border-zinc-700",
+  },
+  starting: {
+    label: "Starting…",
+    variant: "outline",
+    className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse",
+  },
+  stopping: {
+    label: "Stopping…",
+    variant: "outline",
+    className: "bg-amber-950 text-amber-400 border-amber-800 animate-pulse",
+  },
+  unknown: {
+    label: "Unknown",
+    variant: "secondary",
+    className: "bg-zinc-800 text-zinc-400 border-zinc-700",
+  },
 };
 
 function getStatusConfig(status: string) {
@@ -46,7 +73,9 @@ export function ServersView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionInFlight, setActionInFlight] = useState<string | null>(null);
-  const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
+    new Map(),
+  );
 
   const load = useCallback(async () => {
     try {
@@ -69,7 +98,10 @@ export function ServersView() {
     };
   }, [load]);
 
-  const handlePower = async (server: Server, action: "start" | "stop" | "restart") => {
+  const handlePower = async (
+    server: Server,
+    action: "start" | "stop" | "restart",
+  ) => {
     setActionInFlight(server.id);
     try {
       await powerAction(server.id, action);
@@ -80,7 +112,9 @@ export function ServersView() {
             : s,
         ),
       );
-      toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} initiated for ${server.name}`);
+      toast.success(
+        `${action.charAt(0).toUpperCase() + action.slice(1)} initiated for ${server.name}`,
+      );
 
       const interval = setInterval(async () => {
         try {
@@ -88,10 +122,14 @@ export function ServersView() {
           if (updated.status === "running" || updated.status === "stopped") {
             clearInterval(interval);
             pollingRef.current.delete(server.id);
-            setServers((prev) => prev.map((s) => (s.id === server.id ? updated : s)));
+            setServers((prev) =>
+              prev.map((s) => (s.id === server.id ? updated : s)),
+            );
             setActionInFlight((prev) => (prev === server.id ? null : prev));
           } else {
-            setServers((prev) => prev.map((s) => (s.id === server.id ? updated : s)));
+            setServers((prev) =>
+              prev.map((s) => (s.id === server.id ? updated : s)),
+            );
           }
         } catch {
           clearInterval(interval);
@@ -112,7 +150,11 @@ export function ServersView() {
         <h1 className="text-xl font-semibold">Servers</h1>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i}><CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-32 w-full" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -127,7 +169,9 @@ export function ServersView() {
           <AlertTriangle className="size-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={load}>Retry</Button>
+            <Button variant="outline" size="sm" onClick={load}>
+              Retry
+            </Button>
           </AlertDescription>
         </Alert>
       </div>
@@ -140,14 +184,19 @@ export function ServersView() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {servers.map((server) => {
           const sc = getStatusConfig(server.status);
-          const isTransitioning = server.status === "starting" || server.status === "stopping";
+          const isTransitioning =
+            server.status === "starting" || server.status === "stopping";
           const isBusy = actionInFlight === server.id || isTransitioning;
           return (
             <Card key={server.id}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">{server.name}</CardTitle>
-                <p className="font-mono text-sm text-muted-foreground">{server.type}</p>
-                <p className="font-mono text-sm text-muted-foreground">{server.ip}</p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {server.type}
+                </p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {server.ip}
+                </p>
               </CardHeader>
               <CardContent className="flex items-center justify-between pt-2">
                 <Badge className={sc.className} aria-label={sc.label}>
@@ -155,15 +204,39 @@ export function ServersView() {
                 </Badge>
                 <div className="flex gap-1">
                   {server.status === "stopped" && (
-                    <PowerButton server={server} action="start" icon={<Play className="size-3.5" />} label="Start" busy={isBusy} onAction={handlePower} />
+                    <PowerButton
+                      server={server}
+                      action="start"
+                      icon={<Play className="size-3.5" />}
+                      label="Start"
+                      busy={isBusy}
+                      onAction={handlePower}
+                    />
                   )}
                   {server.status === "running" && (
                     <>
-                      <PowerButton server={server} action="restart" icon={<RotateCcw className="size-3.5" />} label="Restart" busy={isBusy} onAction={handlePower} />
-                      <PowerButton server={server} action="stop" icon={<Square className="size-3.5" />} label="Stop" busy={isBusy} onAction={handlePower} destructive />
+                      <PowerButton
+                        server={server}
+                        action="restart"
+                        icon={<RotateCcw className="size-3.5" />}
+                        label="Restart"
+                        busy={isBusy}
+                        onAction={handlePower}
+                      />
+                      <PowerButton
+                        server={server}
+                        action="stop"
+                        icon={<Square className="size-3.5" />}
+                        label="Stop"
+                        busy={isBusy}
+                        onAction={handlePower}
+                        destructive
+                      />
                     </>
                   )}
-                  {isTransitioning && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+                  {isTransitioning && (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -200,20 +273,34 @@ function PowerButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger
-        render={<Button variant={destructive ? "destructive" : "outline"} size="sm" disabled={busy} />}
+        render={
+          <Button
+            variant={destructive ? "destructive" : "outline"}
+            size="sm"
+            disabled={busy}
+          />
+        }
       >
         {icon}
         <span className="ml-1">{label}</span>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{label} &ldquo;{server.name}&rdquo;?</AlertDialogTitle>
-          <AlertDialogDescription>{descriptions[action]}</AlertDialogDescription>
+          <AlertDialogTitle>
+            {label} &ldquo;{server.name}&rdquo;?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {descriptions[action]}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            className={
+              destructive
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : ""
+            }
             onClick={() => onAction(server, action)}
           >
             {label}

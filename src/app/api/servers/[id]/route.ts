@@ -11,7 +11,12 @@ export async function GET(
   const result = await serversService.getServer(id);
   if (!result.ok) {
     return NextResponse.json(
-      { error: result.kind === "error" ? result.message : `Unsupported: ${result.operation}` },
+      {
+        error:
+          result.kind === "error"
+            ? result.message
+            : `Unsupported: ${result.operation}`,
+      },
       { status: result.kind === "error" ? 404 : 501 },
     );
   }

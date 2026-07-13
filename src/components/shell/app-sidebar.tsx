@@ -25,7 +25,6 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 // (src/hooks/use-mobile.ts) the shadcn Sidebar renders this same content in
 // an off-canvas Sheet instead of the persistent rail, with no separate
 // markup needed.
-const SettingsIcon = SETTINGS_NAV_ITEM.icon;
 
 export function AppSidebar({
   username,
@@ -42,32 +41,52 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="gap-3">
+        <div
+          role="img"
+          aria-label="Inspot"
+          className="flex h-8 items-center px-2"
+        >
+          <span
+            aria-hidden="true"
+            className="font-heading text-lg font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden"
+          >
+            Inspot
+          </span>
+          <span
+            aria-hidden="true"
+            className="hidden size-8 items-center justify-center rounded-md bg-primary-100 font-heading text-sm font-bold text-primary-700 group-data-[collapsible=icon]:inline-flex"
+          >
+            In
+          </span>
+        </div>
         <WorkspaceSwitcher
           currentName={workspaceName}
           currentId={workspaceId}
         />
       </SidebarHeader>
       <SidebarContent>
-        <nav aria-label="Main navigation">
+        <nav aria-label="Основная навигация">
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
                 {SECTION_NAV_ITEMS.map((item) => {
-                  const Icon = item.icon;
                   const active = isSectionActive(item.href);
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
                         tooltip={item.label}
-                        className={cn(
-                          "border-l-2 border-transparent",
-                          active && "border-l-2 border-primary",
-                        )}
+                        data-active={active ? "true" : "false"}
+                        className="shell-nav-item"
                         render={<Link href={item.href} />}
                       >
-                        <Icon aria-hidden className="size-4" />
+                        <span className="shell-icon-tile">
+                          <i
+                            aria-hidden="true"
+                            className={cn(item.icon, "text-base leading-none")}
+                          />
+                        </span>
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -86,9 +105,21 @@ export function AppSidebar({
                   <SidebarMenuButton
                     isActive={isSectionActive(SETTINGS_NAV_ITEM.href)}
                     tooltip={SETTINGS_NAV_ITEM.label}
+                    data-active={
+                      isSectionActive(SETTINGS_NAV_ITEM.href) ? "true" : "false"
+                    }
+                    className="shell-nav-item"
                     render={<Link href={SETTINGS_NAV_ITEM.href} />}
                   >
-                    <SettingsIcon aria-hidden className="size-4" />
+                    <span className="shell-icon-tile">
+                      <i
+                        aria-hidden="true"
+                        className={cn(
+                          SETTINGS_NAV_ITEM.icon,
+                          "text-base leading-none",
+                        )}
+                      />
+                    </span>
                     <span>{SETTINGS_NAV_ITEM.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

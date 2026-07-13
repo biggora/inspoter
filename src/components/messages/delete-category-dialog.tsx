@@ -53,8 +53,7 @@ export function DeleteCategoryDialog({
             Delete &ldquo;{category?.name}&rdquo;?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Channels in this category will be removed. This cannot be
-            undone.
+            Channels in this category will be removed. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

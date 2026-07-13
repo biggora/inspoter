@@ -176,9 +176,7 @@ export function WebhookTokensView() {
         </Button>
       </div>
 
-      {error && (
-        <p className="text-sm text-(--error-text)">{error}</p>
-      )}
+      {error && <p className="text-sm text-(--error-text)">{error}</p>}
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -189,8 +187,8 @@ export function WebhookTokensView() {
       ) : tokens.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            No webhook tokens yet. Create one so external systems can push
-            mail, messages, logs, and alerts into this workspace.
+            No webhook tokens yet. Create one so external systems can push mail,
+            messages, logs, and alerts into this workspace.
           </p>
         </div>
       ) : (
@@ -342,8 +340,8 @@ export function WebhookTokensView() {
               Revoke &ldquo;{revokeTarget?.name}&rdquo;?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Any requests using this token will be rejected immediately.
-              This cannot be undone.
+              Any requests using this token will be rejected immediately. This
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -28,7 +28,10 @@ import {
   type AlertCategoryDto,
   type AlertDto,
 } from "./api";
-import { CategoryFormDialog, type CategoryFormState } from "./category-form-dialog";
+import {
+  CategoryFormDialog,
+  type CategoryFormState,
+} from "./category-form-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
@@ -207,7 +210,10 @@ export function AlertsView() {
             <Settings2 aria-hidden className="size-4" />
             Manage categories
           </Button>
-          <Button size="sm" onClick={() => setCategoryDialog({ mode: "create" })}>
+          <Button
+            size="sm"
+            onClick={() => setCategoryDialog({ mode: "create" })}
+          >
             <Plus aria-hidden className="size-4" />
             New category
           </Button>

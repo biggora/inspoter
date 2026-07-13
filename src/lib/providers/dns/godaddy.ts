@@ -1,4 +1,10 @@
-import type { DnsProvider, Domain, DnsRecord, DnsRecordInput, DnsRecordPatch } from "@/lib/providers/dns/types";
+import type {
+  DnsProvider,
+  Domain,
+  DnsRecord,
+  DnsRecordInput,
+  DnsRecordPatch,
+} from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
 
 function unsupported<T>(operation: string): ProviderResult<T> {
@@ -17,15 +23,25 @@ export class GoDaddyDnsProvider implements DnsProvider {
     return unsupported("listRecords");
   }
 
-  async createRecord(_domainId: string, _input: DnsRecordInput): Promise<ProviderResult<DnsRecord>> {
+  async createRecord(
+    _domainId: string,
+    _input: DnsRecordInput,
+  ): Promise<ProviderResult<DnsRecord>> {
     return unsupported("createRecord");
   }
 
-  async updateRecord(_domainId: string, _recordId: string, _input: DnsRecordPatch): Promise<ProviderResult<DnsRecord>> {
+  async updateRecord(
+    _domainId: string,
+    _recordId: string,
+    _input: DnsRecordPatch,
+  ): Promise<ProviderResult<DnsRecord>> {
     return unsupported("updateRecord");
   }
 
-  async deleteRecord(_domainId: string, _recordId: string): Promise<ProviderResult<void>> {
+  async deleteRecord(
+    _domainId: string,
+    _recordId: string,
+  ): Promise<ProviderResult<void>> {
     return unsupported("deleteRecord");
   }
 }

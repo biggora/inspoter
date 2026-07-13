@@ -17,8 +17,7 @@ import { Label } from "@/components/ui/label";
 import { ApiError, messageCategoriesApi, type MessageCategoryDto } from "./api";
 
 export type CategoryDialogState =
-  | { mode: "create" }
-  | { mode: "edit"; category: MessageCategoryDto };
+  { mode: "create" } | { mode: "edit"; category: MessageCategoryDto };
 
 interface CategoryDialogProps {
   state: CategoryDialogState | null;

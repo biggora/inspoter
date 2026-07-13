@@ -1,0 +1,309 @@
+/* ==========================================================================
+   Inspot — Color tokens
+   Stored as raw oklch triples (L C H) and consumed as oklch(var(--token)).
+   This mirrors the production Tailwind config: colors are 50→950 ramps and
+   every ramp supports an <alpha-value>, e.g. oklch(var(--primary-500) / 0.5).
+   ========================================================================== */
+
+:root {
+  /* --- Background: warm near-neutral greys (hue ~80). App canvas + surfaces. */
+  --background-50: 0.985 0.002 95; /* @kind color */
+  --background-100: 0.97 0.004 90; /* @kind color */
+  --background-200: 0.94 0.006 88; /* @kind color */
+  --background-300: 0.90 0.008 85; /* @kind color */
+  --background-400: 0.84 0.01 82; /* @kind color */
+  --background-500: 0.78 0.012 80; /* @kind color */
+  --background-600: 0.65 0.014 78; /* @kind color */
+  --background-700: 0.50 0.016 76; /* @kind color */
+  --background-800: 0.35 0.012 75; /* @kind color */
+  --background-900: 0.22 0.01 74; /* @kind color */
+  --background-950: 0.14 0.008 72; /* @kind color */
+
+  /* --- Foreground: cool blue-grey ink (hue 260). Text + icons. */
+  --foreground-50: 0.92 0.003 260; /* @kind color */
+  --foreground-100: 0.84 0.004 260; /* @kind color */
+  --foreground-200: 0.74 0.005 260; /* @kind color */
+  --foreground-300: 0.62 0.006 260; /* @kind color */
+  --foreground-400: 0.50 0.007 260; /* @kind color */
+  --foreground-500: 0.40 0.008 260; /* @kind color */
+  --foreground-600: 0.32 0.009 260; /* @kind color */
+  --foreground-700: 0.25 0.01 260; /* @kind color */
+  --foreground-800: 0.18 0.011 260; /* @kind color */
+  --foreground-900: 0.13 0.012 260; /* @kind color */
+  --foreground-950: 0.09 0.01 260; /* @kind color */
+
+  /* --- Primary: warm terracotta red (hue 30). Brand action + destructive-lean. */
+  --primary-50: 0.96 0.03 30; /* @kind color */
+  --primary-100: 0.91 0.06 30; /* @kind color */
+  --primary-200: 0.85 0.09 30; /* @kind color */
+  --primary-300: 0.77 0.12 30; /* @kind color */
+  --primary-400: 0.68 0.16 30; /* @kind color */
+  --primary-500: 0.58 0.19 30; /* @kind color */
+  --primary-600: 0.50 0.17 30; /* @kind color */
+  --primary-700: 0.42 0.14 30; /* @kind color */
+  --primary-800: 0.34 0.11 30; /* @kind color */
+  --primary-900: 0.26 0.08 30; /* @kind color */
+  --primary-950: 0.18 0.05 30; /* @kind color */
+
+  /* --- Accent: teal (hue 175). Positive / healthy / "online" states. */
+  --accent-50: 0.95 0.03 175; /* @kind color */
+  --accent-100: 0.88 0.06 175; /* @kind color */
+  --accent-200: 0.80 0.09 175; /* @kind color */
+  --accent-300: 0.70 0.12 175; /* @kind color */
+  --accent-400: 0.60 0.14 175; /* @kind color */
+  --accent-500: 0.50 0.14 175; /* @kind color */
+  --accent-600: 0.43 0.12 175; /* @kind color */
+  --accent-700: 0.36 0.10 175; /* @kind color */
+  --accent-800: 0.29 0.08 175; /* @kind color */
+  --accent-900: 0.22 0.06 175; /* @kind color */
+  --accent-950: 0.15 0.04 175; /* @kind color */
+
+  /* --- Secondary: muted olive / sand (hue 85). Neutral tints, idle chips. */
+  --secondary-50: 0.96 0.015 85; /* @kind color */
+  --secondary-100: 0.90 0.02 85; /* @kind color */
+  --secondary-200: 0.82 0.025 85; /* @kind color */
+  --secondary-300: 0.72 0.03 85; /* @kind color */
+  --secondary-400: 0.62 0.035 85; /* @kind color */
+  --secondary-500: 0.52 0.04 85; /* @kind color */
+  --secondary-600: 0.44 0.035 85; /* @kind color */
+  --secondary-700: 0.36 0.03 85; /* @kind color */
+  --secondary-800: 0.28 0.025 85; /* @kind color */
+  --secondary-900: 0.20 0.02 85; /* @kind color */
+  --secondary-950: 0.13 0.015 85; /* @kind color */
+
+  /* --- Semantic status hues (amber warning, red danger) reused from Tailwind. */
+  --amber-500: 0.77 0.16 70; /* @kind color */
+  --amber-600: 0.66 0.16 62; /* @kind color */
+  --amber-700: 0.55 0.14 58; /* @kind color */
+  --red-500: 0.58 0.22 27; /* @kind color */
+  --red-600: 0.51 0.21 27; /* @kind color */
+  --red-700: 0.44 0.18 27; /* @kind color */
+
+  /* ---------- Semantic aliases (prefer these in product code) ---------- */
+  --surface-app: oklch(var(--background-50));       /* page canvas */
+  --surface-card: oklch(var(--background-50));       /* card fill (same as canvas, defined by border) */
+  --surface-sunken: oklch(var(--background-100));    /* input / hover fill */
+  --surface-hover: oklch(var(--background-100));
+  --border-subtle: oklch(var(--background-100));     /* row dividers */
+  --border-default: oklch(var(--background-200));    /* card + control borders */
+  --border-strong: oklch(var(--background-300));     /* hovered borders, inputs */
+
+  --text-primary: oklch(var(--foreground-950));      /* headings */
+  --text-body: oklch(var(--foreground-900));         /* default body */
+  --text-secondary: oklch(var(--foreground-600));    /* labels */
+  --text-muted: oklch(var(--foreground-400));        /* meta, captions */
+  --text-on-accent: oklch(var(--background-50));      /* text on filled buttons */
+
+  --action-primary: oklch(var(--primary-500));
+  --action-primary-hover: oklch(var(--primary-600));
+  --focus-ring: oklch(var(--primary-400));
+
+  --status-ok: oklch(var(--accent-500));
+  --status-warn: oklch(var(--amber-500));
+  --status-danger: oklch(var(--primary-500));
+  --status-idle: oklch(var(--secondary-400));
+}
+
+/* --------------------------------------------------------------------------
+   Dark theme — activated by `.dark` on any ancestor (matches production).
+   -------------------------------------------------------------------------- */
+.dark {
+  --background-50: 0.12 0.007 80; /* @kind color */
+  --background-100: 0.16 0.008 78; /* @kind color */
+  --background-200: 0.20 0.009 76; /* @kind color */
+  --background-300: 0.26 0.010 75; /* @kind color */
+  --background-400: 0.32 0.011 74; /* @kind color */
+  --background-500: 0.40 0.012 73; /* @kind color */
+  --background-600: 0.50 0.011 72; /* @kind color */
+  --background-700: 0.62 0.010 72; /* @kind color */
+  --background-800: 0.74 0.008 72; /* @kind color */
+  --background-900: 0.84 0.006 72; /* @kind color */
+  --background-950: 0.92 0.004 75; /* @kind color */
+
+  --foreground-50: 0.10 0.008 260; /* @kind color */
+  --foreground-100: 0.14 0.010 260; /* @kind color */
+  --foreground-200: 0.20 0.010 260; /* @kind color */
+  --foreground-300: 0.28 0.009 260; /* @kind color */
+  --foreground-400: 0.38 0.008 260; /* @kind color */
+  --foreground-500: 0.48 0.007 260; /* @kind color */
+  --foreground-600: 0.58 0.006 260; /* @kind color */
+  --foreground-700: 0.68 0.005 260; /* @kind color */
+  --foreground-800: 0.78 0.004 260; /* @kind color */
+  --foreground-900: 0.88 0.003 260; /* @kind color */
+  --foreground-950: 0.95 0.002 260; /* @kind color */
+
+  --primary-50: 0.14 0.04 35; /* @kind color */
+  --primary-100: 0.18 0.06 33; /* @kind color */
+  --primary-200: 0.24 0.09 32; /* @kind color */
+  --primary-300: 0.32 0.12 30; /* @kind color */
+  --primary-400: 0.42 0.15 30; /* @kind color */
+  --primary-500: 0.54 0.20 30; /* @kind color */
+  --primary-600: 0.62 0.18 30; /* @kind color */
+  --primary-700: 0.72 0.14 30; /* @kind color */
+  --primary-800: 0.80 0.10 30; /* @kind color */
+  --primary-900: 0.88 0.07 30; /* @kind color */
+  --primary-950: 0.94 0.04 30; /* @kind color */
+
+  --accent-50: 0.12 0.04 175; /* @kind color */
+  --accent-100: 0.18 0.06 175; /* @kind color */
+  --accent-200: 0.24 0.08 175; /* @kind color */
+  --accent-300: 0.32 0.10 175; /* @kind color */
+  --accent-400: 0.42 0.12 175; /* @kind color */
+  --accent-500: 0.54 0.15 175; /* @kind color */
+  --accent-600: 0.64 0.13 175; /* @kind color */
+  --accent-700: 0.74 0.11 175; /* @kind color */
+  --accent-800: 0.82 0.08 175; /* @kind color */
+  --accent-900: 0.90 0.05 175; /* @kind color */
+  --accent-950: 0.95 0.03 175; /* @kind color */
+
+  --secondary-50: 0.12 0.012 85; /* @kind color */
+  --secondary-100: 0.18 0.018 85; /* @kind color */
+  --secondary-200: 0.24 0.022 85; /* @kind color */
+  --secondary-300: 0.32 0.026 85; /* @kind color */
+  --secondary-400: 0.42 0.030 85; /* @kind color */
+  --secondary-500: 0.52 0.035 85; /* @kind color */
+  --secondary-600: 0.62 0.032 85; /* @kind color */
+  --secondary-700: 0.72 0.028 85; /* @kind color */
+  --secondary-800: 0.82 0.022 85; /* @kind color */
+  --secondary-900: 0.90 0.016 85; /* @kind color */
+  --secondary-950: 0.96 0.012 85; /* @kind color */
+}
+
+/* ==========================================================================
+   Inspot — Typography tokens
+   Inter = body & UI · Plus Jakarta Sans = headings/display · JetBrains Mono =
+   code, IPs, log details, metrics. Type in this product is small and dense:
+   14px is the workhorse body size, 11–12px carries meta.
+   ========================================================================== */
+
+:root {
+  /* Families */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif; /* @kind font */
+  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif; /* @kind font */
+  --font-label: 'Inter', system-ui, sans-serif; /* @kind font */
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace; /* @kind font */
+
+  /* Type scale (px). Dashboard-dense: rarely above 24px. */
+  --text-2xs: 10px;   /* micro meta, dot labels */
+  --text-xs: 11px;    /* captions, table meta */
+  --text-sm: 12px;    /* secondary labels, chips */
+  --text-base: 14px;  /* body — the default */
+  --text-md: 16px;    /* topbar title, emphasised body */
+  --text-lg: 18px;    /* section / empty-state heading */
+  --text-xl: 20px;    /* page heading */
+  --text-2xl: 24px;   /* big stat numbers */
+  --text-3xl: 30px;   /* rare hero number */
+
+  /* Weights */
+  --weight-regular: 400; /* @kind other */
+  --weight-medium: 500; /* @kind other */
+  --weight-semibold: 600; /* @kind other */
+  --weight-bold: 700; /* @kind other */
+  --weight-extrabold: 800; /* @kind other */
+
+  /* Line-heights */
+  --leading-tight: 1.2; /* @kind other */
+  --leading-snug: 1.35; /* @kind other */
+  --leading-normal: 1.5; /* @kind other */
+  --leading-relaxed: 1.65; /* @kind other */
+
+  /* Letter-spacing — uppercase micro-labels get tracked out. */
+  --tracking-wide: 0.04em; /* @kind other */
+  --tracking-normal: 0; /* @kind other */
+}
+
+/* ==========================================================================
+   Inspot — Spacing, radii, sizing tokens
+   The product runs on a 4px base grid. Controls are compact: 8px/10px vertical
+   padding on inputs & buttons, 16–20px card padding.
+   ========================================================================== */
+
+:root {
+  /* Spacing scale (4px base) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border radii — everything is soft; nothing sharp. */
+  --radius-sm: 4px;    /* tiny badges, code chips */
+  --radius-md: 6px;    /* icon tiles, menu items */
+  --radius-lg: 8px;    /* buttons, inputs, nav items — the default */
+  --radius-xl: 12px;   /* cards, panels, modals */
+  --radius-2xl: 16px;  /* empty-state icon wells */
+  --radius-full: 9999px; /* pills, switches, avatars, status dots */
+
+  /* Control heights */
+  --control-sm: 30px;  /* small buttons / filter chips */
+  --control-md: 38px;  /* inputs, default buttons */
+  --control-lg: 42px;  /* primary CTA */
+
+  /* Layout constants (from AppLayout) */
+  --sidebar-width: 256px;      /* 16rem — expanded */
+  --sidebar-width-collapsed: 64px; /* 4rem — rail */
+  --topbar-height: 56px;       /* 3.5rem */
+
+  /* Icon sizing */
+  --icon-tile-sm: 28px;   /* w-7 h-7 */
+  --icon-tile-md: 32px;   /* w-8 h-8 — most common */
+  --icon-tile-lg: 36px;   /* w-9 h-9 — server card header */
+}
+
+/* ==========================================================================
+   Inspot — Effects: shadows, borders, motion
+   Inspot is a flat, border-defined UI. Elevation is used sparingly — only
+   floating layers (menus, modals, toasts) get a shadow. Surfaces are
+   separated by 1px borders, never drop shadows.
+   ========================================================================== */
+
+:root {
+  /* Shadows — reserved for floating layers only */
+  --shadow-none: none;
+  --shadow-menu: 0 4px 12px -2px oklch(var(--foreground-950) / 0.12), 0 2px 4px -2px oklch(var(--foreground-950) / 0.08);
+  --shadow-modal: 0 12px 32px -8px oklch(var(--foreground-950) / 0.18), 0 4px 8px -4px oklch(var(--foreground-950) / 0.10);
+
+  /* Borders */
+  --border-width: 1px; /* @kind spacing */
+
+  /* Focus ring (inputs, keyboard nav) */
+  --ring-width: 2px; /* @kind spacing */
+  --ring-color: oklch(var(--primary-400)); /* @kind color */
+
+  /* Motion — quick, ease-out, no bounce. Matches production keyframes. */
+  --duration-fast: 150ms; /* @kind other */
+  --duration-base: 200ms; /* @kind other */
+  --duration-slow: 250ms; /* @kind other */
+  --duration-chart: 500ms; /* @kind other */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+
+  /* Overlay scrim behind modals */
+  --overlay-scrim: oklch(0 0 0 / 0.30); /* @kind color */
+}
+
+/* ---- Named entrance animations (lifted from production index.css) ---- */
+@keyframes inspot-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes inspot-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes inspot-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes inspot-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

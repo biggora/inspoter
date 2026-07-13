@@ -17,7 +17,10 @@ export class HetznerServerProvider implements ServerProvider {
     return unsupported("getServer");
   }
 
-  async power(_id: string, _action: "start" | "stop" | "restart"): Promise<ProviderResult<void>> {
+  async power(
+    _id: string,
+    _action: "start" | "stop" | "restart",
+  ): Promise<ProviderResult<void>> {
     return unsupported("power");
   }
 }

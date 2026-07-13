@@ -221,8 +221,9 @@ export function MessagesView() {
     useState<CategoryDialogState | null>(null);
   const [deleteCategoryTarget, setDeleteCategoryTarget] =
     useState<MessageCategoryDto | null>(null);
-  const [channelDialog, setChannelDialog] =
-    useState<ChannelDialogState | null>(null);
+  const [channelDialog, setChannelDialog] = useState<ChannelDialogState | null>(
+    null,
+  );
   const [deleteChannelTarget, setDeleteChannelTarget] =
     useState<ChannelDto | null>(null);
 

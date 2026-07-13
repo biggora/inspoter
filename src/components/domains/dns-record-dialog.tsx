@@ -284,16 +284,11 @@ export function DnsRecordDialog({
                 onChange={(event) => setPriority(event.target.value)}
                 aria-required="true"
                 aria-invalid={errors.priority ? true : undefined}
-                aria-describedby={
-                  errors.priority ? priorityErrorId : undefined
-                }
+                aria-describedby={errors.priority ? priorityErrorId : undefined}
                 className="font-mono"
               />
               {errors.priority && (
-                <p
-                  id={priorityErrorId}
-                  className="text-sm text-(--error-text)"
-                >
+                <p id={priorityErrorId} className="text-sm text-(--error-text)">
                   {errors.priority}
                 </p>
               )}

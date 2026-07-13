@@ -14,9 +14,14 @@ interface RouteContext {
 
 // messagesService.renameChannel/deleteChannel take no workspaceId, so
 // workspace ownership is verified here before mutating.
-async function channelBelongsToWorkspace(workspaceId: string, channelId: string): Promise<boolean> {
+async function channelBelongsToWorkspace(
+  workspaceId: string,
+  channelId: string,
+): Promise<boolean> {
   const categories = await messagesService.listCategories(workspaceId);
-  return categories.some((category) => category.channels.some((channel) => channel.id === channelId));
+  return categories.some((category) =>
+    category.channels.some((channel) => channel.id === channelId),
+  );
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {

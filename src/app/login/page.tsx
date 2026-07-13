@@ -13,14 +13,12 @@ export default async function LoginPage({
   const { next } = await searchParams;
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4 py-12">
+    <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4 py-12">
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-2xl font-semibold text-foreground">inspot</span>
-        <p className="text-sm text-muted-foreground">
-          self-hosted operations dashboard
-        </p>
+        <p className="text-sm text-muted-foreground">Панель управления</p>
       </div>
       <LoginForm next={next} />
-    </div>
+    </main>
   );
 }

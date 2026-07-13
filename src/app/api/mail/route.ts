@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
 
   const sortParam = sp.get("sort");
-  const sort = sortParam === "asc" ? "asc" : sortParam === "desc" ? "desc" : undefined;
+  const sort =
+    sortParam === "asc" ? "asc" : sortParam === "desc" ? "desc" : undefined;
 
   const result = await mailService.list(workspace.id, {
     cursor: sp.get("cursor") ?? undefined,

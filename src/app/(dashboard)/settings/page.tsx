@@ -26,8 +26,8 @@ export default function SettingsPage() {
           <div>
             <p className="font-medium">Webhooks</p>
             <p className="text-sm text-muted-foreground">
-              Manage tokens for external systems pushing mail, messages,
-              logs, and alerts
+              Manage tokens for external systems pushing mail, messages, logs,
+              and alerts
             </p>
           </div>
         </Link>

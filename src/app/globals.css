@@ -1,3 +1,4 @@
+@import "./inspot-tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -6,188 +7,122 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-50: oklch(var(--background-50) / <alpha-value>);
+  --color-background-100: oklch(var(--background-100) / <alpha-value>);
+  --color-background-200: oklch(var(--background-200) / <alpha-value>);
+  --color-background-300: oklch(var(--background-300) / <alpha-value>);
+  --color-background-400: oklch(var(--background-400) / <alpha-value>);
+  --color-background-500: oklch(var(--background-500) / <alpha-value>);
+  --color-background-600: oklch(var(--background-600) / <alpha-value>);
+  --color-background-700: oklch(var(--background-700) / <alpha-value>);
+  --color-background-800: oklch(var(--background-800) / <alpha-value>);
+  --color-background-900: oklch(var(--background-900) / <alpha-value>);
+  --color-background-950: oklch(var(--background-950) / <alpha-value>);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-foreground-50: oklch(var(--foreground-50) / <alpha-value>);
+  --color-foreground-100: oklch(var(--foreground-100) / <alpha-value>);
+  --color-foreground-200: oklch(var(--foreground-200) / <alpha-value>);
+  --color-foreground-300: oklch(var(--foreground-300) / <alpha-value>);
+  --color-foreground-400: oklch(var(--foreground-400) / <alpha-value>);
+  --color-foreground-500: oklch(var(--foreground-500) / <alpha-value>);
+  --color-foreground-600: oklch(var(--foreground-600) / <alpha-value>);
+  --color-foreground-700: oklch(var(--foreground-700) / <alpha-value>);
+  --color-foreground-800: oklch(var(--foreground-800) / <alpha-value>);
+  --color-foreground-900: oklch(var(--foreground-900) / <alpha-value>);
+  --color-foreground-950: oklch(var(--foreground-950) / <alpha-value>);
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: oklch(var(--primary-50) / <alpha-value>);
+  --color-primary-100: oklch(var(--primary-100) / <alpha-value>);
+  --color-primary-200: oklch(var(--primary-200) / <alpha-value>);
+  --color-primary-300: oklch(var(--primary-300) / <alpha-value>);
+  --color-primary-400: oklch(var(--primary-400) / <alpha-value>);
+  --color-primary-500: oklch(var(--primary-500) / <alpha-value>);
+  --color-primary-600: oklch(var(--primary-600) / <alpha-value>);
+  --color-primary-700: oklch(var(--primary-700) / <alpha-value>);
+  --color-primary-800: oklch(var(--primary-800) / <alpha-value>);
+  --color-primary-900: oklch(var(--primary-900) / <alpha-value>);
+  --color-primary-950: oklch(var(--primary-950) / <alpha-value>);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: var(--radius-xl);
 }
 
-/*
- * Design tokens — docs/design.md v1.1 §2.2 (spacing & radius) + §2.3 (dark palette).
- * Slice 1 ships dark theme only (coordinator decision, design.md §2.4); the `:root`
- * and `.dark` blocks below are intentionally identical so the app renders correctly
- * dark even before `dark` is applied to <html>. Tailwind's default numeric spacing
- * scale (1=4px … 16=64px) already matches design §2.2 space-1..space-16 with no
- * overrides needed. --radius-lg is set directly to 12px (design radius-lg) since
- * design's sm/md/lg ratios (6/8/12) aren't a fixed multiple of a single base unit;
- * radius-full is covered by Tailwind's built-in `rounded-full` utility.
- */
 :root {
-  --background: #0b0d10;
-  --foreground: #e7e9ec;
-  --card: #14171b;
-  --card-foreground: #e7e9ec;
-  --popover: #1c2026;
-  --popover-foreground: #e7e9ec;
-  --primary: #3b82f6;
-  --primary-foreground: #0b0d10;
-  --secondary: #14171b;
-  --secondary-foreground: #e7e9ec;
-  --muted: #1b1f25;
-  --muted-foreground: #9ba3af;
-  --accent: #1b1f25;
-  --accent-foreground: #e7e9ec;
-  --destructive: #f87171;
-  --border: #262b33;
-  --input: #262b33;
-  --ring: #5b9bf7;
-  --chart-1: #3b82f6;
-  --chart-2: #4ade80;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
-  --chart-5: #38bdf8;
-  --radius: 0.625rem;
-  --radius-lg: 0.75rem;
-  --sidebar: #14171b;
-  --sidebar-foreground: #e7e9ec;
-  --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #0b0d10;
-  --sidebar-accent: #1b1f25;
-  --sidebar-accent-foreground: #e7e9ec;
-  --sidebar-border: #262b33;
-  --sidebar-ring: #5b9bf7;
-
-  /* Design-doc-named tokens (design.md §2.3), for literal reference / arbitrary-value use */
-  --bg-page: #0b0d10;
-  --bg-surface: #14171b;
-  --bg-elevated: #1c2026;
-  --bg-sunken: #0f1215;
-  --bg-hover: #1b1f25;
-  --text-primary: #e7e9ec;
-  --text-secondary: #9ba3af;
-  --text-muted: #6b7280;
-  --text-inverse: #0b0d10;
-  --accent-primary: #3b82f6;
-  --accent-hover: #5b9bf7;
-  --accent-active: #2563eb;
-  --focus-ring: #5b9bf7;
-  --border-default: #262b33;
-  --border-subtle: #1d2127;
-  --border-active: #3b82f6;
-  --success-bg: #0f2a1e;
-  --success-text: #4ade80;
-  --warning-bg: #2a2110;
-  --warning-text: #fbbf24;
-  --error-bg: #2a1414;
-  --error-text: #f87171;
-  --info-bg: #0f2130;
-  --info-text: #38bdf8;
+  --background: var(--surface-app);
+  --foreground: var(--text-body);
+  --primary: var(--action-primary);
+  --primary-foreground: var(--text-on-accent);
+  --secondary: oklch(var(--secondary-100));
+  --secondary-foreground: var(--text-body);
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--text-primary);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-body);
+  --popover: var(--surface-card);
+  --popover-foreground: var(--text-body);
+  --border: var(--border-default);
+  --input: var(--border-strong);
+  --ring: var(--focus-ring);
+  --destructive: var(--status-danger);
+  --sidebar: var(--surface-card);
+  --sidebar-foreground: var(--text-body);
+  --sidebar-primary: var(--action-primary);
+  --sidebar-primary-foreground: var(--text-on-accent);
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border-default);
+  --sidebar-ring: var(--focus-ring);
 }
 
-.dark {
-  --background: #0b0d10;
-  --foreground: #e7e9ec;
-  --card: #14171b;
-  --card-foreground: #e7e9ec;
-  --popover: #1c2026;
-  --popover-foreground: #e7e9ec;
-  --primary: #3b82f6;
-  --primary-foreground: #0b0d10;
-  --secondary: #14171b;
-  --secondary-foreground: #e7e9ec;
-  --muted: #1b1f25;
-  --muted-foreground: #9ba3af;
-  --accent: #1b1f25;
-  --accent-foreground: #e7e9ec;
-  --destructive: #f87171;
-  --border: #262b33;
-  --input: #262b33;
-  --ring: #5b9bf7;
-  --chart-1: #3b82f6;
-  --chart-2: #4ade80;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
-  --chart-5: #38bdf8;
-  --radius-lg: 0.75rem;
-  --sidebar: #14171b;
-  --sidebar-foreground: #e7e9ec;
-  --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #0b0d10;
-  --sidebar-accent: #1b1f25;
-  --sidebar-accent-foreground: #e7e9ec;
-  --sidebar-border: #262b33;
-  --sidebar-ring: #5b9bf7;
-
-  --bg-page: #0b0d10;
-  --bg-surface: #14171b;
-  --bg-elevated: #1c2026;
-  --bg-sunken: #0f1215;
-  --bg-hover: #1b1f25;
-  --text-primary: #e7e9ec;
-  --text-secondary: #9ba3af;
-  --text-muted: #6b7280;
-  --text-inverse: #0b0d10;
-  --accent-primary: #3b82f6;
-  --accent-hover: #5b9bf7;
-  --accent-active: #2563eb;
-  --focus-ring: #5b9bf7;
-  --border-default: #262b33;
-  --border-subtle: #1d2127;
-  --border-active: #3b82f6;
-  --success-bg: #0f2a1e;
-  --success-text: #4ade80;
-  --warning-bg: #2a2110;
-  --warning-text: #fbbf24;
-  --error-bg: #2a1414;
-  --error-text: #f87171;
-  --info-bg: #0f2130;
-  --info-text: #38bdf8;
-}
+@keyframes inspot-shimmer { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+  * { @apply border-border outline-ring/50; }
+  html { font-family: var(--font-body); }
+  body { @apply bg-background text-foreground; min-width: 320px; font-family: var(--font-body); font-size: 14px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); }
+  code, pre, kbd, samp { font-family: var(--font-mono); }
 }
+
+@layer components {
+  .surface-panel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-card); box-shadow: none; }
+  .shell-nav-item { min-height: var(--control-md); border-radius: var(--radius-lg); color: var(--text-secondary); transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+  .shell-nav-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+  .shell-nav-item[data-active="true"] { background: oklch(var(--primary-100) / .72); color: oklch(var(--primary-700)); }
+  .focus-action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .focus-control:focus-visible { border-color: var(--focus-ring); outline: 2px solid oklch(var(--primary-400) / .35); outline-offset: 0; }
+  .shell-icon-tile { display: inline-flex; width: 28px; height: 28px; flex: 0 0 28px; align-items: center; justify-content: center; border-radius: var(--radius-md); background: oklch(var(--secondary-100) / .72); color: oklch(var(--secondary-700)); }
+  .shell-nav-item[data-active="true"] .shell-icon-tile { background: oklch(var(--primary-100)); color: oklch(var(--primary-700)); }
+  .reduced-motion, .reduced-motion * { animation: none !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; } }

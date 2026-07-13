@@ -45,5 +45,8 @@ export interface DnsProvider {
     recordId: string,
     input: DnsRecordPatch,
   ): Promise<ProviderResult<DnsRecord>>;
-  deleteRecord(domainId: string, recordId: string): Promise<ProviderResult<void>>;
+  deleteRecord(
+    domainId: string,
+    recordId: string,
+  ): Promise<ProviderResult<void>>;
 }

@@ -8,9 +8,14 @@ interface RouteContext {
 
 // messagesService.listMessages takes no workspaceId, so channel ownership
 // is verified here before listing.
-async function channelBelongsToWorkspace(workspaceId: string, channelId: string): Promise<boolean> {
+async function channelBelongsToWorkspace(
+  workspaceId: string,
+  channelId: string,
+): Promise<boolean> {
   const categories = await messagesService.listCategories(workspaceId);
-  return categories.some((category) => category.channels.some((channel) => channel.id === channelId));
+  return categories.some((category) =>
+    category.channels.some((channel) => channel.id === channelId),
+  );
 }
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
@@ -23,7 +28,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   const sp = request.nextUrl.searchParams;
   const sortParam = sp.get("sort");
-  const sort = sortParam === "asc" ? "asc" : sortParam === "desc" ? "desc" : undefined;
+  const sort =
+    sortParam === "asc" ? "asc" : sortParam === "desc" ? "desc" : undefined;
 
   const result = await messagesService.listMessages(id, {
     cursor: sp.get("cursor") ?? undefined,

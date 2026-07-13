@@ -62,9 +62,7 @@ function findProvider(providerId: string): DnsProvider | null {
   );
 }
 
-function unsupportedProviderResult<T>(
-  providerId: string,
-): ProviderResult<T> {
+function unsupportedProviderResult<T>(providerId: string): ProviderResult<T> {
   return {
     ok: false,
     kind: "error",

@@ -27,7 +27,10 @@ import {
 } from "@/components/ui/table";
 import type { DnsRecord } from "@/lib/providers/dns/types";
 import { ApiError, deleteRecord, fetchRecords } from "./api";
-import { DnsRecordDialog, type DnsRecordDialogState } from "./dns-record-dialog";
+import {
+  DnsRecordDialog,
+  type DnsRecordDialogState,
+} from "./dns-record-dialog";
 
 interface DnsRecordsViewProps {
   providerId: string;
@@ -49,8 +52,9 @@ export function DnsRecordsView({
   const [records, setRecords] = useState<DnsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recordDialog, setRecordDialog] =
-    useState<DnsRecordDialogState | null>(null);
+  const [recordDialog, setRecordDialog] = useState<DnsRecordDialogState | null>(
+    null,
+  );
   const [deleteTarget, setDeleteTarget] = useState<DnsRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -101,7 +105,10 @@ export function DnsRecordsView({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-1.5 text-sm"
+        >
           <button
             type="button"
             onClick={onBack}

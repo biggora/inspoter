@@ -12,7 +12,10 @@ export async function getServer(id: string) {
   return res.json();
 }
 
-export async function powerAction(id: string, action: "start" | "stop" | "restart") {
+export async function powerAction(
+  id: string,
+  action: "start" | "stop" | "restart",
+) {
   const res = await fetch(`/api/servers/${id}/power`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

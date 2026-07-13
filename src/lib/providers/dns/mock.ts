@@ -26,7 +26,13 @@ const seeds: Record<DnsProvider["id"], MockState> = {
       [
         "cf-example-com",
         [
-          { id: "cf-rec-1", type: "A", name: "@", value: "192.0.2.10", ttl: 3600 },
+          {
+            id: "cf-rec-1",
+            type: "A",
+            name: "@",
+            value: "192.0.2.10",
+            ttl: 3600,
+          },
           {
             id: "cf-rec-2",
             type: "CNAME",
@@ -46,7 +52,13 @@ const seeds: Record<DnsProvider["id"], MockState> = {
       [
         "cf-example-dev",
         [
-          { id: "cf-rec-4", type: "A", name: "@", value: "192.0.2.11", ttl: 3600 },
+          {
+            id: "cf-rec-4",
+            type: "A",
+            name: "@",
+            value: "192.0.2.11",
+            ttl: 3600,
+          },
         ],
       ],
     ]),
@@ -64,7 +76,13 @@ const seeds: Record<DnsProvider["id"], MockState> = {
       [
         "hz-example-de",
         [
-          { id: "hz-rec-1", type: "A", name: "@", value: "203.0.113.20", ttl: 300 },
+          {
+            id: "hz-rec-1",
+            type: "A",
+            name: "@",
+            value: "203.0.113.20",
+            ttl: 300,
+          },
           {
             id: "hz-rec-2",
             type: "MX",
@@ -98,7 +116,13 @@ const seeds: Record<DnsProvider["id"], MockState> = {
       [
         "gd-mysite-com",
         [
-          { id: "gd-rec-1", type: "A", name: "@", value: "198.51.100.5", ttl: 600 },
+          {
+            id: "gd-rec-1",
+            type: "A",
+            name: "@",
+            value: "198.51.100.5",
+            ttl: 600,
+          },
           {
             id: "gd-rec-2",
             type: "CNAME",
@@ -111,7 +135,13 @@ const seeds: Record<DnsProvider["id"], MockState> = {
       [
         "gd-shop-io",
         [
-          { id: "gd-rec-3", type: "A", name: "@", value: "198.51.100.6", ttl: 600 },
+          {
+            id: "gd-rec-3",
+            type: "A",
+            name: "@",
+            value: "198.51.100.6",
+            ttl: 600,
+          },
         ],
       ],
       [

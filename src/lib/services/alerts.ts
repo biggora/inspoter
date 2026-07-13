@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
-import { Prisma, type Alert, type AlertCategory } from "@/generated/prisma/client";
+import {
+  Prisma,
+  type Alert,
+  type AlertCategory,
+} from "@/generated/prisma/client";
 
 export interface CreateAlertInput {
   category: string;
@@ -26,17 +30,28 @@ export interface ListAlertsResult {
   nextCursor: string | null;
 }
 
-interface Cursor { t: string; id: string }
+interface Cursor {
+  t: string;
+  id: string;
+}
 
 function encodeCursor(entry: Pick<Alert, "timestamp" | "id">): string {
-  return Buffer.from(JSON.stringify({ t: entry.timestamp.toISOString(), id: entry.id })).toString("base64url");
+  return Buffer.from(
+    JSON.stringify({ t: entry.timestamp.toISOString(), id: entry.id }),
+  ).toString("base64url");
 }
 
 function decodeCursor(cursor: string): Cursor | null {
   try {
-    const p = JSON.parse(Buffer.from(cursor, "base64url").toString("utf-8")) as Partial<Cursor>;
-    return typeof p.t === "string" && typeof p.id === "string" ? { t: p.t, id: p.id } : null;
-  } catch { return null; }
+    const p = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf-8"),
+    ) as Partial<Cursor>;
+    return typeof p.t === "string" && typeof p.id === "string"
+      ? { t: p.t, id: p.id }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function create(
@@ -81,14 +96,22 @@ export async function list(
       : { workspaceId },
   };
   if (params.severity) where.severity = params.severity;
-  if (params.query) where.message = { contains: params.query, mode: "insensitive" };
+  if (params.query)
+    where.message = { contains: params.query, mode: "insensitive" };
 
   const cursor = params.cursor ? decodeCursor(params.cursor) : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
-    where.OR = sort === "desc"
-      ? [{ timestamp: { lt: cursorDate } }, { timestamp: cursorDate, id: { lt: cursor.id } }]
-      : [{ timestamp: { gt: cursorDate } }, { timestamp: cursorDate, id: { gt: cursor.id } }];
+    where.OR =
+      sort === "desc"
+        ? [
+            { timestamp: { lt: cursorDate } },
+            { timestamp: cursorDate, id: { lt: cursor.id } },
+          ]
+        : [
+            { timestamp: { gt: cursorDate } },
+            { timestamp: cursorDate, id: { gt: cursor.id } },
+          ];
   }
 
   const rows = await db.alert.findMany({
@@ -105,21 +128,36 @@ export async function list(
   return { items, nextCursor };
 }
 
-export async function listCategories(workspaceId: string): Promise<AlertCategory[]> {
-  return db.alertCategory.findMany({ where: { workspaceId }, orderBy: { name: "asc" } });
+export async function listCategories(
+  workspaceId: string,
+): Promise<AlertCategory[]> {
+  return db.alertCategory.findMany({
+    where: { workspaceId },
+    orderBy: { name: "asc" },
+  });
 }
 
-export async function createCategory(workspaceId: string, name: string): Promise<AlertCategory> {
+export async function createCategory(
+  workspaceId: string,
+  name: string,
+): Promise<AlertCategory> {
   return db.alertCategory.create({ data: { name, workspaceId } });
 }
 
-export async function renameCategory(id: string, workspaceId: string, name: string): Promise<AlertCategory> {
+export async function renameCategory(
+  id: string,
+  workspaceId: string,
+  name: string,
+): Promise<AlertCategory> {
   const cat = await db.alertCategory.findFirst({ where: { id, workspaceId } });
   if (!cat) throw new Error("Category not found");
   return db.alertCategory.update({ where: { id }, data: { name } });
 }
 
-export async function deleteCategory(id: string, workspaceId: string): Promise<void> {
+export async function deleteCategory(
+  id: string,
+  workspaceId: string,
+): Promise<void> {
   const cat = await db.alertCategory.findFirst({ where: { id, workspaceId } });
   if (!cat) throw new Error("Category not found");
   await db.alertCategory.delete({ where: { id } });

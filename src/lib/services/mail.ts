@@ -22,17 +22,28 @@ export interface ListMailResult {
   nextCursor: string | null;
 }
 
-interface Cursor { t: string; id: string }
+interface Cursor {
+  t: string;
+  id: string;
+}
 
 function encodeCursor(entry: Pick<MailItem, "receivedAt" | "id">): string {
-  return Buffer.from(JSON.stringify({ t: entry.receivedAt.toISOString(), id: entry.id })).toString("base64url");
+  return Buffer.from(
+    JSON.stringify({ t: entry.receivedAt.toISOString(), id: entry.id }),
+  ).toString("base64url");
 }
 
 function decodeCursor(cursor: string): Cursor | null {
   try {
-    const p = JSON.parse(Buffer.from(cursor, "base64url").toString("utf-8")) as Partial<Cursor>;
-    return typeof p.t === "string" && typeof p.id === "string" ? { t: p.t, id: p.id } : null;
-  } catch { return null; }
+    const p = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf-8"),
+    ) as Partial<Cursor>;
+    return typeof p.t === "string" && typeof p.id === "string"
+      ? { t: p.t, id: p.id }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function create(
@@ -70,9 +81,16 @@ export async function list(
   const cursor = params.cursor ? decodeCursor(params.cursor) : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
-    const cursorWhere = sort === "desc"
-      ? [{ receivedAt: { lt: cursorDate } }, { receivedAt: cursorDate, id: { lt: cursor.id } }]
-      : [{ receivedAt: { gt: cursorDate } }, { receivedAt: cursorDate, id: { gt: cursor.id } }];
+    const cursorWhere =
+      sort === "desc"
+        ? [
+            { receivedAt: { lt: cursorDate } },
+            { receivedAt: cursorDate, id: { lt: cursor.id } },
+          ]
+        : [
+            { receivedAt: { gt: cursorDate } },
+            { receivedAt: cursorDate, id: { gt: cursor.id } },
+          ];
     if (where.OR) {
       where.AND = [{ OR: where.OR }, { OR: cursorWhere }];
       delete where.OR;
@@ -94,6 +112,9 @@ export async function list(
   return { items, nextCursor };
 }
 
-export async function getById(id: string, workspaceId: string): Promise<MailItem | null> {
+export async function getById(
+  id: string,
+  workspaceId: string,
+): Promise<MailItem | null> {
   return db.mailItem.findFirst({ where: { id, workspaceId } });
 }

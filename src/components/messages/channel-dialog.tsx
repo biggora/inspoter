@@ -86,9 +86,7 @@ export function ChannelDialog({
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Rename channel" : "New channel"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Rename channel" : "New channel"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}

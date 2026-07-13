@@ -17,8 +17,7 @@ import { Label } from "@/components/ui/label";
 import { alertCategoriesApi, ApiError, type AlertCategoryDto } from "./api";
 
 export type CategoryFormState =
-  | { mode: "create" }
-  | { mode: "edit"; category: AlertCategoryDto };
+  { mode: "create" } | { mode: "edit"; category: AlertCategoryDto };
 
 interface CategoryFormDialogProps {
   state: CategoryFormState | null;

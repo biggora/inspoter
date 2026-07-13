@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const category = await alertsService.createCategory(workspace.id, parsed.data.name);
+    const category = await alertsService.createCategory(
+      workspace.id,
+      parsed.data.name,
+    );
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

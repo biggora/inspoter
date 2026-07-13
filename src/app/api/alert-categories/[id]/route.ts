@@ -23,7 +23,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const category = await alertsService.renameCategory(id, workspace.id, parsed.data.name);
+    const category = await alertsService.renameCategory(
+      id,
+      workspace.id,
+      parsed.data.name,
+    );
     return NextResponse.json(category);
   } catch (error) {
     return toErrorResponse(error);
