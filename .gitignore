@@ -54,3 +54,4 @@ next-env.d.ts
 /tmp-*
 /.claude/skills/
 /.agents/skills/
+/.pnpm-store
