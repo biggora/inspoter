@@ -54,10 +54,15 @@ model Workspace {
   categories        Category[]
   bookmarks         Bookmark[]
   messageCategories MessageCategory[]
+  channels          Channel[]
+  messages          Message[]
   mailItems         MailItem[]
   logEntries        LogEntry[]
   alertCategories   AlertCategory[]
+  alerts            Alert[]
   webhookTokens     WebhookToken[]
+  idempotencyKeys   IdempotencyKey[]
+  providerBindings  ProviderResourceBinding[]
 }
 
 model WorkspaceMember {
@@ -117,30 +122,38 @@ model MessageCategory {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@index([workspaceId])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, createdAt, id])
 }
 
 model Channel {
-  id                String          @id @default(cuid())
-  messageCategoryId String
-  messageCategory   MessageCategory @relation(fields: [messageCategoryId], references: [id], onDelete: Cascade) // AC-MSG-003
-  name              String
-  messages          Message[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                         String          @id @default(cuid())
+  workspaceId                String
+  workspace                  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messageCategoryId          String
+  messageCategoryWorkspaceId String
+  messageCategory            MessageCategory @relation(fields: [messageCategoryId, messageCategoryWorkspaceId], references: [id, workspaceId], onDelete: Cascade) // AC-MSG-003
+  name                       String
+  messages                   Message[]
+  createdAt                  DateTime        @default(now())
+  updatedAt                  DateTime        @updatedAt
 
-  @@index([messageCategoryId])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, messageCategoryId, createdAt, id])
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  channelId String
-  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  content   String
-  author    String? // source label from webhook payload
-  createdAt DateTime @default(now())
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channelId          String
+  channelWorkspaceId String
+  channel            Channel   @relation(fields: [channelId, channelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  content            String
+  author             String? // source label from webhook payload
+  createdAt          DateTime  @default(now())
 
-  @@index([channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
+  @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
 }
 
 // --- Mail (FR-MAIL-001..002) ---
@@ -155,8 +168,8 @@ model MailItem {
   createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
-  @@index([receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
-  @@index([sender]) // equality filter (AC-MAIL-003, NFR-PERF-002)
+  @@index([workspaceId, receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
+  @@index([workspaceId, sender]) // equality filter (AC-MAIL-003, NFR-PERF-002)
 }
 
 // --- Logs (FR-LOG-001..002) ---
@@ -171,9 +184,9 @@ model LogEntry {
   createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
-  @@index([timestamp, id]) // sort + keyset pagination (AC-LOG-003/004)
-  @@index([level]) // equality filter (AC-LOG-002)
-  @@index([source]) // equality filter (AC-LOG-002)
+  @@index([workspaceId, timestamp, id]) // sort + keyset pagination (AC-LOG-003/004)
+  @@index([workspaceId, level, timestamp, id]) // equality filter (AC-LOG-002)
+  @@index([workspaceId, source, timestamp, id]) // equality filter (AC-LOG-002)
 }
 
 // --- Alerts (FR-ALR-001..003) ---
@@ -186,22 +199,27 @@ model AlertCategory {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@index([workspaceId])
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, name])
 }
 
 model Alert {
-  id              String         @id @default(cuid())
-  alertCategoryId String?
-  alertCategory   AlertCategory? @relation(fields: [alertCategoryId], references: [id], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
-  severity        String
-  source          String
-  message         String
-  timestamp       DateTime       @default(now())
-  createdAt       DateTime       @default(now())
+  id                       String         @id @default(cuid())
+  workspaceId              String
+  workspace                Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  alertCategoryId          String?
+  alertCategoryWorkspaceId String?
+  alertCategory            AlertCategory? @relation(fields: [alertCategoryId, alertCategoryWorkspaceId], references: [id, workspaceId], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
+  severity                 String
+  source                   String
+  message                  String
+  timestamp                DateTime       @default(now())
+  createdAt                DateTime       @default(now())
 
-  @@index([timestamp, id]) // sort + keyset pagination (AC-ALR-005/006)
-  @@index([alertCategoryId]) // filter by category (AC-ALR-004)
-  @@index([severity]) // filter by severity (AC-ALR-004)
+  @@index([workspaceId, timestamp, id]) // sort + keyset pagination (AC-ALR-005/006)
+  @@index([workspaceId, alertCategoryId, timestamp, id]) // filter by category (AC-ALR-004)
+  @@index([workspaceId, severity, timestamp, id]) // filter by severity (AC-ALR-004)
+  @@index([workspaceId, source, timestamp, id]) // filter by source (AC-ALR-004)
 }
 
 // --- Webhook (FR-WH-001..002) ---
@@ -217,17 +235,66 @@ model WebhookToken {
   lastUsedAt      DateTime?
   idempotencyKeys IdempotencyKey[]
 
+  @@unique([id, workspaceId])
   @@index([workspaceId])
 }
 
 model IdempotencyKey {
-  id         String       @id @default(cuid())
-  tokenId    String
-  token      WebhookToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  key        String // client-supplied Idempotency-Key
-  targetType String // mail | message | log | alert
-  targetId   String // id of the created entry, returned on replay
-  createdAt  DateTime     @default(now())
+  id               String       @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tokenId          String
+  tokenWorkspaceId String
+  token            WebhookToken @relation(fields: [tokenId, tokenWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  key              String // client-supplied Idempotency-Key
+  targetType       String // mail | message | log | alert
+  targetId         String // id of the created entry, returned on replay
+  createdAt        DateTime     @default(now())
 
   @@unique([tokenId, key]) // AC-WH-004 per-token scoping; DB uniqueness = race-safe dedup
+  @@index([workspaceId, tokenId, key])
+}
+
+// --- Provider resource bindings (Q-13) ---
+enum ProviderResourceType {
+  DOMAIN
+  SERVER
+}
+
+enum ProviderMode {
+  MOCK
+  REAL
+}
+
+enum ProviderOperationState {
+  IDLE
+  RUNNING
+  RECONCILE_REQUIRED
+}
+
+model ProviderResourceBinding {
+  id                      String                 @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  provider                String
+  accountKey              String
+  resourceType            ProviderResourceType
+  mode                    ProviderMode
+  remoteId                String
+  displayName             String
+  operationState          ProviderOperationState @default(IDLE)
+  operationId             String?                @unique
+  operationKind           String?
+  operationIntent         Json?
+  operationStartedAt      DateTime?
+  operationLeaseExpiresAt DateTime?
+  lastReconciledAt        DateTime?
+  version                 Int                    @default(1)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  @@unique([id, workspaceId])
+  @@unique([provider, accountKey, resourceType, mode, remoteId])
+  @@index([workspaceId, resourceType, provider, mode])
+  @@index([operationState, operationLeaseExpiresAt])
 }

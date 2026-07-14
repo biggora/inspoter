@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "accountKey": "mock:v1",
+  "resources": [
+    {
+      "provider": "cloudflare",
+      "resourceType": "DOMAIN",
+      "key": "cf-example-com",
+      "displayName": "example.com",
+      "records": [
+        {
+          "id": "cf-rec-1",
+          "type": "A",
+          "name": "@",
+          "value": "192.0.2.10",
+          "ttl": 3600
+        },
+        {
+          "id": "cf-rec-2",
+          "type": "CNAME",
+          "name": "www",
+          "value": "example.com",
+          "ttl": 3600
+        },
+        {
+          "id": "cf-rec-3",
+          "type": "TXT",
+          "name": "@",
+          "value": "v=spf1 -all",
+          "ttl": 3600
+        }
+      ]
+    },
+    {
+      "provider": "cloudflare",
+      "resourceType": "DOMAIN",
+      "key": "cf-example-dev",
+      "displayName": "example.dev",
+      "records": [
+        {
+          "id": "cf-rec-4",
+          "type": "A",
+          "name": "@",
+          "value": "192.0.2.11",
+          "ttl": 3600
+        }
+      ]
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "DOMAIN",
+      "key": "hz-example-de",
+      "displayName": "example-host.de",
+      "records": [
+        {
+          "id": "hz-rec-1",
+          "type": "A",
+          "name": "@",
+          "value": "203.0.113.20",
+          "ttl": 300
+        },
+        {
+          "id": "hz-rec-2",
+          "type": "MX",
+          "name": "@",
+          "value": "mail.example-host.de",
+          "ttl": 300
+        }
+      ]
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "DOMAIN",
+      "key": "hz-myserver-net",
+      "displayName": "myserver.net",
+      "records": [
+        {
+          "id": "hz-rec-3",
+          "type": "AAAA",
+          "name": "@",
+          "value": "2001:db8::1",
+          "ttl": 300
+        }
+      ]
+    },
+    {
+      "provider": "godaddy",
+      "resourceType": "DOMAIN",
+      "key": "gd-mysite-com",
+      "displayName": "mysite.com",
+      "records": [
+        {
+          "id": "gd-rec-1",
+          "type": "A",
+          "name": "@",
+          "value": "198.51.100.5",
+          "ttl": 600
+        },
+        {
+          "id": "gd-rec-2",
+          "type": "CNAME",
+          "name": "www",
+          "value": "mysite.com",
+          "ttl": 600
+        }
+      ]
+    },
+    {
+      "provider": "godaddy",
+      "resourceType": "DOMAIN",
+      "key": "gd-shop-io",
+      "displayName": "shop.io",
+      "records": [
+        {
+          "id": "gd-rec-3",
+          "type": "A",
+          "name": "@",
+          "value": "198.51.100.6",
+          "ttl": 600
+        }
+      ]
+    },
+    {
+      "provider": "godaddy",
+      "resourceType": "DOMAIN",
+      "key": "gd-blog-app",
+      "displayName": "blog.app",
+      "records": [
+        {
+          "id": "gd-rec-4",
+          "type": "TXT",
+          "name": "@",
+          "value": "google-site-verification=abc123",
+          "ttl": 600
+        }
+      ]
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-01",
+      "displayName": "web-prod-01",
+      "serverType": "cx41 · 4vCPU / 16GB",
+      "status": "running",
+      "cpu": "4 vCPU (AMD EPYC)",
+      "ram": "16 GB",
+      "disk": "160 GB NVMe",
+      "ip": "49.12.34.56",
+      "location": "Nuremberg, DE",
+      "os": "Ubuntu 24.04 LTS"
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-02",
+      "displayName": "web-prod-02",
+      "serverType": "cx41 · 4vCPU / 16GB",
+      "status": "running",
+      "cpu": "4 vCPU (AMD EPYC)",
+      "ram": "16 GB",
+      "disk": "160 GB NVMe",
+      "ip": "49.12.34.78",
+      "location": "Falkenstein, DE",
+      "os": "Ubuntu 24.04 LTS"
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-03",
+      "displayName": "db-primary",
+      "serverType": "cx51 · 8vCPU / 32GB",
+      "status": "running",
+      "cpu": "8 vCPU (Intel Xeon)",
+      "ram": "32 GB",
+      "disk": "320 GB NVMe",
+      "ip": "78.46.12.34",
+      "location": "Nuremberg, DE",
+      "os": "Debian 12"
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-04",
+      "displayName": "db-replica",
+      "serverType": "cx51 · 8vCPU / 32GB",
+      "status": "stopped",
+      "cpu": "8 vCPU (Intel Xeon)",
+      "ram": "32 GB",
+      "disk": "320 GB NVMe",
+      "ip": "78.46.12.56",
+      "location": "Helsinki, FI",
+      "os": "Debian 12"
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-05",
+      "displayName": "cache-node",
+      "serverType": "cx21 · 2vCPU / 8GB",
+      "status": "running",
+      "cpu": "2 vCPU (AMD EPYC)",
+      "ram": "8 GB",
+      "disk": "80 GB NVMe",
+      "ip": "116.203.45.67",
+      "location": "Nuremberg, DE",
+      "os": "Ubuntu 24.04 LTS"
+    },
+    {
+      "provider": "hetzner",
+      "resourceType": "SERVER",
+      "key": "srv-06",
+      "displayName": "dev-staging",
+      "serverType": "cx21 · 2vCPU / 8GB",
+      "status": "stopped",
+      "cpu": "2 vCPU (AMD EPYC)",
+      "ram": "8 GB",
+      "disk": "80 GB NVMe",
+      "ip": "116.203.45.89",
+      "location": "Falkenstein, DE",
+      "os": "Ubuntu 24.04 LTS"
+    }
+  ]
+}
