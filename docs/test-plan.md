@@ -114,11 +114,11 @@
 
 | Gate | Required evidence | Current status | AC-WS disposition |
 | --- | --- | --- | --- |
-| R2.1a | Role/session/schema; manifest repair; forward/fresh PG16 migration; mock SQL parity | PENDING | No AC final PASS |
-| R2.1b | Admin authorization, last owner/membership, deterministic session fallback | PENDING | AC-WS-001..007/009 by case only |
+| R2.1a | Role/session equality CHECK; duplicate AlertCategory disposition; manifest repair; forward/fresh PG16 migration; mock SQL parity | PENDING | No AC final PASS |
+| R2.1b | Admin authorization, last owner/membership, deterministic session fallback, trimmed/Cyrillic-safe atomic workspace creation, bounded slug retry | PENDING | AC-WS-001..007/009 by case only |
 | R2.1c | Header inventory/order/status on every session browser API | PENDING | Foundation only |
-| R2.1d | Keyed boundary, stale tab, private cache/cursor, Bookmarks compound ownership | PENDING | Bookmarks facets only after runtime |
-| R2.1e | Binding identity, mock isolation, claim/transfer/remove/delete, lease/reconcile | PENDING | Provider foundation only |
+| R2.1d | Keyed boundary, stale tab, private cache, versioned cursor envelope bound to workspace/filter/sort/version before query, Bookmarks compound ownership | PENDING | Bookmarks facets only after runtime |
+| R2.1e | Binding identity, mock isolation, claim, REAL-only transfer/MOCK zero-call rejection, remove/delete, lease core/optional reconciliation metadata | PENDING | Provider foundation only |
 | R2.2 | Webhook/Logs/tokens workspace facets | PENDING | AC-WS-008/010/011 remain PARTIAL |
 | R2.3 | Domains/DNS workspace/mock facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
 | R2.4 | Servers workspace/mock facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
@@ -222,17 +222,17 @@ Authored tests, file discovery, Prisma validation, and SQL inspection remain `ST
 
 | ID | Runtime case and pass condition |
 | --- | --- |
-| Q13-DB-001 | Preflight rejects a manifest with a missing/duplicate root, Alert, Session explicit-null row, membership, or orphan disposition; accepts exact digest/full coverage without inference. |
+| Q13-DB-001 | Preflight rejects a manifest with a missing/duplicate root, Alert, Session explicit-null row, membership, or orphan disposition. A duplicate `AlertCategory (workspaceId,name)` group is rejected unless the manifest contains an explicit human merge/rename disposition. Exact digest/full coverage passes without inference. |
 | Q13-DB-002 | SERIALIZABLE advisory-lock repair writes existing columns only and makes zero provider/network calls. A forced failure rolls back repair atomically. |
 | Q13-DB-003 | Sentinel id `q13-repair-uncategorized:<workspaceId>` and `(workspaceId,'__q13_repair_uncategorized__')` collisions each abort before writes; successful migration leaves zero sentinel ids/names/references. |
 | Q13-DB-004 | Existing path: historical schema/data → manifest repair → Q-13 forward → updated seed. Fresh path: init → empty historical workspace migration → Q-13 forward with zero workspace/mock rows → transactional seed. Both pass without squash/baseline. |
 | Q13-DB-005 | Forced forward-migration failure rolls back every forward DDL/DML change while repaired historical columns remain old-binary compatible; retry succeeds. |
-| Q13-DB-006 | `WorkspaceRole` accepts only OWNER/MEMBER; Session and Alert strict optional pairs reject each partial-null permutation. |
+| Q13-DB-006 | `WorkspaceRole` accepts only OWNER/MEMBER. Session accepts both active fields NULL, or both non-NULL with `activeWorkspaceOperatorId = operatorId`; each partial-null permutation and a non-NULL shadow/operator mismatch violates the Session CHECK. Alert strict optional-pair cases still reject each partial-null permutation. |
 | Q13-DB-007 | Bookmark/Channel/Message/Idempotency parent shadows reject mismatched workspace; old single-column FKs are absent from `pg_constraint`; populated compound cascades pass. |
 | Q13-DB-008 | Alert composite `ON DELETE SET NULL` clears both category columns and preserves direct `workspaceId`; binding `ON DELETE RESTRICT` prevents uncontrolled workspace cascade. |
 | Q13-DB-009 | Binding identity rejects invalid provider/type pairs, REAL mock prefixes, trim/control violations, and UTF-8 lengths over account 256/remote 512/display 512; global identity collision is exclusive. |
-| Q13-DB-010 | Lease CHECK accepts only all-null IDLE and fully populated active states; unique operation ids and workspace-leading lease indexes exist. |
-| Q13-DB-011 | Generator reproduces committed SQL VALUES bytes and version/SHA-256; Prisma checksum/validate pass; new workspace and seed receive exactly the canonical mock set without global duplicates. |
+| Q13-DB-010 | Lease CHECK requires operation id/kind/credential-free canonical intent/start/expiry all NULL in `IDLE` and all non-NULL in `RUNNING` or `RECONCILE_REQUIRED`; `lastReconciledAt` remains optional metadata outside that group. Reject intent over 16 KiB and credential-like keys or values; prove unique operation id and required `(state, leaseExpiresAt)` index. |
+| Q13-DB-011 | Generator reproduces committed SQL VALUES bytes and version/SHA-256; Prisma checksum/validate pass; seed, `createWorkspace`, and adapters consume the same canonical JSON and produce exactly the canonical mock set without global duplicates. |
 
 ### 7.2 Request context, roles, browser, cache, and cursors
 
@@ -243,10 +243,11 @@ Authored tests, file discovery, Prisma validation, and SQL inspection remain `ST
 | Q13-CTX-003 | Header never selects authority: a matching foreign id stays non-disclosing 404; switch header names current workspace while body names an authorized destination. |
 | Q13-ROLE-001 | MEMBER can use normal content, DNS, server power, create workspace, and list members; owner-only workspace/member/discovery/claim/remove/transfer actions deny MEMBER without side effects. |
 | Q13-ROLE-002 | Concurrent attempts cannot remove the last owner or an operator's last membership; lock-order test proves workspace→operator→membership→binding and deterministic session fallback. |
+| Q13-WS-001 | A trimmed-empty workspace name is rejected with zero writes; a Cyrillic-only name produces a deterministic nonempty ASCII slug. Injected failure rolls back workspace+`OWNER` creation atomically; bounded unique-conflict retry under concurrency leaves every success as a complete workspace/OWNER pair and no orphan or partial pair. |
 | Q13-UI-001 | Switching aborts old requests, discards late responses, clears workspace caches, refreshes/remounts keyed boundary, and updates all sections without full reload. |
 | Q13-UI-002 | On stale `409`, GET may refresh/refetch once; mutation never retries. A delayed old-workspace response never repaints the new workspace. |
 | Q13-CACHE-001 | Workspace responses carry `private, no-store, max-age=0` and `Vary: Cookie, X-Inspoter-Workspace`; no shared Next cache entry serves another workspace. |
-| Q13-CURSOR-001 | Cursor replay under a different workspace or filter is rejected; valid same-workspace keyset pagination neither duplicates nor leaks rows. |
+| Q13-CURSOR-001 | A malformed envelope or mismatch in workspace, normalized filter, sort/order, or version is rejected before any database query; valid exact-binding keyset pagination neither duplicates nor leaks rows. |
 
 ### 7.3 Provider binding, mock, and operation lease
 
@@ -258,7 +259,7 @@ Authored tests, file discovery, Prisma validation, and SQL inspection remain `ST
 | Q13-PROV-004 | MOCK ids use `mock:v1:<workspaceId>:...`; two workspaces receive canonical but independent state; one workspace's mutation never changes the other. |
 | Q13-PROV-005 | Lease acquisition commits before provider I/O; successful readback CAS clears state/version; timeout-after-possible-commit enters `RECONCILE_REQUIRED`. |
 | Q13-PROV-006 | Expired lease is never stolen; reconciliation is provider-read-only; active/unresolved binding blocks mutation, transfer, remove, and workspace delete. |
-| Q13-PROV-007 | Owner-to-owner transfer and removal update local metadata only. Workspace deletion with idle bindings performs zero provider delete calls and leaves upstream resources unchanged. |
+| Q13-PROV-007 | REAL transfer requires owners of both workspaces and changes local metadata only. MOCK transfer is rejected before provider access with zero calls because `remoteId` embeds workspace. Idle removal and workspace deletion make zero provider delete calls and leave upstream resources unchanged. |
 
 ### 7.4 R2.8 all-section closure
 
