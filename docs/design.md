@@ -1,7 +1,7 @@
 # Design Specification — inspoter
 
 **Version:** v2.0
-**Status:** Approved — ordinary doc-review PASS
+**Status:** Approved — ordinary doc-review PASS; R1.5 reference-integrity recheck PASS
 **Owner:** UI/UX Designer
 **Date:** 2026-07-14
 **Source of truth for:** frontend implementor and test engineer
@@ -33,6 +33,25 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 - Q-7 and AC-ALR-008: Alerts permits confirmed deletion; acknowledge and resolve controls do not exist.
 - D-20: Bookmarks, Mail, Messages, Logs, Alerts, webhook tokens, their categories, and child records follow the active workspace. Domains and Servers are deployment/provider-account inventory and remain unchanged on workspace switch or deletion.
 - Provider modes are independent. One provider may be real, another mock, and another errored without changing the others.
+
+### 0.2 Source inventory
+
+This inventory classifies evidence. It does not change the precedence above, the approved PRD, or the §0.1 exceptions.
+
+| Source | Role |
+| --- | --- |
+| specs/ui.md | Q-3 routes, flows, responsive transformations, and shared states, subject to PRD exceptions. |
+| specs/prototype/ | Working-prototype geometry and composition. |
+| specs/inspot-design/ | Tokens, fonts, components, Remix icons, density, and motion. |
+| specs/bookmarks-page.png; specs/servers-page.png; specs/messages-page.png | Canonical visual snapshots only for the captured Bookmarks, Servers, and Messages composition. They are subordinate to the PRD, design system, and §0.1; they add neither product scope nor a fourth Q-3 source. |
+| specs/project-11944291.zip; specs/design-system.zip | Nonnormative archives and reference copies; never implementation authority. |
+
+### 0.3 Live documentation and checkpoint workflow
+
+- **P-RULE-5:** A code change that affects requirements, design, or architecture updates the corresponding document in the same change. A change to a normative spec updates this Design specification in the same change.
+- **P-RULE-3:** At each phase checkpoint, the team demonstrates updates to normative specs or this Design specification in the working app. Before work continues, it records user feedback as decisions in docs/progress.md and corrects affected documents.
+
+The precedence above, approved PRD decisions, and §0.1 exceptions still govern. This workflow neither creates nor reorders authority.
 
 ## 1. Product and navigation model
 
@@ -368,6 +387,11 @@ Dark-token values present in specs/inspot-design/ are retained only as future re
 
 ## Changelog
 
+### v2.0 R1.5 addendum — 2026-07-14
+
+- Classified canonical visual snapshots and nonnormative archives without changing the three Q-3 inputs.
+- Added the same-change documentation and phase-checkpoint feedback workflow. R1.5 reference-integrity recheck PASS.
+
 ### Ordinary doc-review rework 1/2 — 2026-07-14
 
 - DOC-DES-001: restored /settings as the compact hub with active Workspace and Webhooks links.
@@ -380,4 +404,4 @@ Dark-token values present in specs/inspot-design/ are retained only as future re
 - Fixed authority, seven-section scope, Russian finite allowlist, light-theme requirement, workspace/provider exception, and provider independence.
 - Added exact foundations, shared Login/Shell/Settings behavior, responsive/accessibility rules, complete per-section contracts, and Phase 4 deltas.
 - Added real Messages compose requirements AC-MSG-009..014 and Alerts deletion AC-ALR-008 while preserving explicit exclusions.
-- Status is Approved — ordinary doc-review PASS.
+- The core v2.0 specification reached Approved — ordinary doc-review PASS before the R1.5 addendum.

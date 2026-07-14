@@ -62,13 +62,18 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | R1.2-G | Design v2 gate metadata synchronization | technical-writer | DONE | docs/design.md v2.0 status Approved — ordinary doc-review PASS; 7/7 chapters; requirement content unchanged |
 | R1.1 | PRD v3 | product-analyst | DONE | docs/remediation-plan.md task 1.1; PRD v3 gate PASS |
 | R1.2 | design.md v2 на основе прототипа | ui-ux-designer | DONE | docs/remediation-plan.md task 1.2; Design v2 gate PASS |
-| R1.3 | architecture.md v1.3 (remediation task 1.3) | architect | IN_PROGRESS | remediation task 1.3 originally named v1.2; existing v1.2 preserved as workspace revision; audit DONE; author/review pending |
+| R1.3 | architecture.md v1.3 (remediation task 1.3) | architect | DONE | Architecture v1.3 audit, authoring/application, rework 1/2, and ordinary doc-review recheck PASS; no product-ready claim |
 | R1.3-A | Architecture v1.3 evidence audit | nextjs-architect | DONE | Next 16.2.10/proxy/settings/15 models verified; real providers are stubs; webhook idempotency and Docker pnpm gaps recorded; author/review pending |
 | R1.3-B | Architecture v1.3 authoring/application | architect + patch-operator | DONE | 13-section/§0–13 draft applied; 563 lines; metadata/anchors/stale-claim checks and `git diff --check` PASS; approval not claimed |
 | R1.3-R1 | Architecture v1.3 ordinary doc-review 1/2 | doc-reviewer | DONE_WITH_CONCERNS | PARTIAL: DOC-ARCH-001 public API/login boundary, DOC-ARCH-002 workspace-admin target authorization gap, DOC-ARCH-003 unsafe `next` prefix/open redirect; rework 1/2 required |
-| R1.3-DR1 | Architecture v1.3 ordinary rework 1/2 | architect | IN_PROGRESS | Correcting only DOC-ARCH-001..003; reviewer recheck pending |
+| R1.3-DR1 | Architecture v1.3 ordinary rework 1/2 | architect | DONE | DOC-ARCH-001..003 corrected; editor and root targeted checks PASS; reviewer recheck 1/2 pending/running |
+| R1.3-R2 | Architecture v1.3 ordinary doc-review recheck 1/2 | doc-reviewer | DONE | PASS: DOC-ARCH-001..003 closed; no material regressions; 12 pages/29 routes/42 handlers/15 models/13 DB importers and diff-check verified |
 | R1.4 | progress.md актуализация | technical-writer | DONE | docs/remediation-plan.md task 1.4; stack synchronized; 29 plan tasks tracked; Q-1..Q-12 present |
-| R1.5 | Инвентаризация specs/ → docs/ | technical-writer | PENDING | docs/remediation-plan.md task 1.5; not started |
+| R1.5 | Инвентаризация specs/ → docs/ | technical-writer | DONE | 148 specs files; DOC-INV-001..004 closed; 20/20 README links, 12/12 Design refs, Q-3/delta unchanged, diff/index checks PASS |
+| R1.5-A | specs→docs reference-integrity audit | requirements-analyst | DONE_WITH_CONCERNS | 147 files (1 ui, 60 prototype, 81 design system, 3 PNG, 2 ZIP); PARTIAL DOC-INV-001..004 |
+| R1.5-E1 | R1.5 reference-integrity authoring | technical-writer | DONE | DOC-INV-001..004 edits complete; specs 148; root path/term/diff/index checks PASS; integration reviewer pending |
+| R1.5-R1 | R1.5 reference-integrity integration review 1/2 | doc-reviewer | DONE | PASS: DOC-INV-001..004 closed; no material regressions; links, source authority, workflow, Q-3/delta and diff/index checks verified |
+| P1-P3 | Phase 1 P-RULE-3 working-app demo checkpoint | tester + coordinator | IN_PROGRESS | R1.1–R1.5 DONE; local working-app demo, evidence and user-feedback checkpoint in progress; no Phase 1 PASS claimed |
 | R2.0 | DB-изоляция e2e + CI | implementor + tester | PENDING | docs/remediation-plan.md task 2.0; not started |
 | R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.1; not started |
 | R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.2; not started |
@@ -99,7 +104,7 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
-| Phase 1 | IN_PROGRESS | Tasks 1.1 PRD v3, 1.2 Design v2, and 1.4 progress sync DONE; task 1.3 Architecture v1.3 audit and authoring DONE, ordinary review PARTIAL, rework 1/2 IN_PROGRESS; task 1.5 pending |
+| Phase 1 | IN_PROGRESS | Tasks R1.1–R1.5 DONE; P-RULE-3 working-app demo IN_PROGRESS |
 | Phase 2 | PENDING | — |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |

@@ -12,7 +12,7 @@ Terracotta is the single brand accent; teal means "healthy".
 
 ## Sources
 
-- **Codebase:** `prototype/` — a Vite + React 19 + React Router + Tailwind app (mounted locally,
+- **Codebase:** `../prototype/` — a Vite + React 19 + React Router + Tailwind app (mounted locally,
   read-only). The design system is reverse-engineered from it. Key files:
   - `prototype/src/index.css` — the oklch color ramps (light + dark) and keyframes.
   - `prototype/tailwind.config.ts` — color/family token wiring.

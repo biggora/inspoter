@@ -1,7 +1,7 @@
 # Inspot Dashboard — Architecture
 
 **Version:** 1.3
-**Status:** Draft — ordinary doc-review pending
+**Status:** Approved — ordinary doc-review PASS
 **Owner:** Architect
 **Date:** 2026-07-14
 **Normative inputs:** `docs/prd.md` v3.0, `docs/design.md` v2.0, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
