@@ -10,7 +10,7 @@
 
 ## Acceptance criteria
 
-PRD v3.0 остаётся утверждённой базовой версией (adversarial CONSENSUS + ordinary doc-review PASS); поправка PRD v3.1 Q-13 ожидает independent Q13-DOC Review 2/3. Базовый набор: ровно 100 безусловно активных + 16 условно применимых AC-REAL + 1 неактивный AC-MSG-008 = 117 уникальных AC; источник — docs/prd.md Appendix B:
+PRD v3.0 остаётся утверждённой базовой версией (adversarial CONSENSUS + ordinary doc-review PASS); поправка PRD v3.1 Q-13 одобрена independent Q13-DOC Review 2/3 с вердиктом 8/8 PASS→Accept. Базовый набор: ровно 100 безусловно активных + 16 условно применимых AC-REAL + 1 неактивный AC-MSG-008 = 117 уникальных AC; источник — docs/prd.md Appendix B:
 
 - Slice 1 без изменений: AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014.
 - Slice WS исторически существовал до Q-13, но Q-13 all-content scope, provider bindings, workspace-context precondition и repair/migration ещё не реализованы; AC-WS-008/010/011 остаются PARTIAL до R2.8 (см. test-plan.md §3.2).
@@ -108,8 +108,8 @@ PRD v3.0 остаётся утверждённой базовой версией
 | Q13-R2 | Q-13 original-reviewer recheck 1/3 | Independent Architecture Reviewer | DONE_WITH_CONCERNS | PARTIAL→Revise: V2-001 requires an Alert partial-null CHECK; V2-002 requires repair before shadow fields; V2-003 requires corrected fresh-migration replay wording; V2-004 requires JSON→SQL mock provisioning; docs authoring and R2.1 implementation gated; no approval |
 | Q13-DR3 | Q-13 final architecture correction retry 3/3 | Workspace Architecture Remediation Architect | DONE | Architecture Amendment v2.1 corrections delivered: Alert partial-null SQL CHECK, repair before shadow fields, explicit fresh-migration replay, and SQL mock manifest; reviewer recheck PASS |
 | Q13-R3 | Q-13 architecture original-reviewer recheck 2/3 | Independent Architecture Reviewer | DONE | PASS→Accept: Q13-V2-001..004 and original Q13-ARCH-001..009 CLOSED; Architecture Amendment v2.1 accepted; implementation gates remain—legacy FK removal, sentinel-collision checks, and PostgreSQL 16/Prisma migration parity |
-| Q13-DOC | Q-13 normative docs authoring/review gate | Technical Writer → Independent Doc Reviewer | IN_PROGRESS | Q-13 corrections applied to the normative document set; independent Q13-DOC Review 2/3 remains PENDING, so Phase 1 is not approved and no runtime implementation is claimed |
-| R2.1 | Slice WS Mode B + review | backend-dev + database engineer + frontend-dev → tester → code-reviewer | PENDING | Contract PASS→Accept and packages R2.1a–e implementation-ready, but code remains PENDING; execution is gated by R2.0 acceptance and Q13-DOC Review 2/3 PASS; AC-WS-008/010/011 remain PARTIAL until R2.8 |
+| Q13-DOC | Q-13 normative docs authoring/review gate | Technical Writer → Independent Doc Reviewer | DONE | Review 2/3: 8/8 PASS→Accept; normative corrections approved and Phase 1 document gate closed; no runtime implementation claim |
+| R2.1 | Slice WS Mode B + review | backend-dev + database engineer + frontend-dev → tester → code-reviewer | PENDING | Contract PASS→Accept and Q13-DOC Review 2/3 PASS; packages R2.1a–e are implementation-ready, but code remains PENDING and execution is gated by R2.0 acceptance; AC-WS-008/010/011 remain PARTIAL until R2.8 |
 | R2.1-A | Workspace Mode B/review gap audit | Workspace Security/Test Auditor | DONE_WITH_CONCERNS | STALE after Q-13: prior contract excluded Domains/Servers; the binding decision scopes every user-visible/operable content area to workspace; revise after architecture approval before implementation; earlier gap evidence remains historical; zero edits/DB/provider |
 | R2.1-A2 | Q-13 workspace contract re-audit | Workspace Contract Auditor | DONE_WITH_CONCERNS | READY for review: 42 current methods inventoried and packages R2.1a–e defined; independent review returned PARTIAL; read-only audit, no code |
 | R2.1-R1 | Q-13 workspace contract independent review 1/3 | Independent Contract Reviewer | DONE_WITH_CONCERNS | PARTIAL→Revise: R21-CR-001..008; contract not accepted; no code |
@@ -143,8 +143,8 @@ PRD v3.0 остаётся утверждённой базовой версией
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-13 on 2026-07-14 |
-| Phase 1 | IN_PROGRESS | Pre-Q13 R1.1–R1.5 reviews passed; Q-13 document corrections are applied, but independent Q13-DOC Review 2/3 remains PENDING, so Phase 1 is not approved |
-| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2 code accepted; I3 code review accepted, but runtime/full-E2E evidence remains pending revalidation through R2.0-G. R2.0-G is PENDING after retry 2 authoritative Docker preflight confirmed unrelated `prompt-improver` owns port 3900; 0/3 full runs started and explicit stop/restart authorization is required. Q-13 Architecture Amendment v2.1 and R2.1 contract PASS→Accept, with packages R2.1a–e implementation-ready but code PENDING; Q13-DOC Review 2/3 and R2.1 execution remain gated; R2.2–R2.8 pending |
+| Phase 1 | DONE | Pre-Q13 R1.1–R1.5 reviews passed; Q13-DOC Review 2/3 closed 8/8 PASS→Accept, so the Phase 1 document gate is approved; no runtime implementation claim |
+| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2 code accepted; I3 code review accepted, but runtime/full-E2E evidence remains pending revalidation through R2.0-G. R2.0-G is PENDING after retry 2 authoritative Docker preflight confirmed unrelated `prompt-improver` owns port 3900; 0/3 full runs started and explicit stop/restart authorization is required. Q-13 Architecture Amendment v2.1, Q13-DOC Review 2/3, and R2.1 contract PASS→Accept; packages R2.1a–e are implementation-ready but code remains PENDING and R2.1 execution is gated by R2.0; R2.2–R2.8 pending |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |

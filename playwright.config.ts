@@ -5,14 +5,30 @@ import {
 } from "./scripts/test-env.mjs";
 import { validateTestDatabaseTarget } from "./scripts/test-db.mjs";
 
+function parseTestAppPort(value: string | undefined): number {
+  const candidate = value ?? "3910";
+  if (!/^\d+$/.test(candidate)) {
+    throw new Error("TEST_APP_PORT must be an integer between 1024 and 65535.");
+  }
+
+  const port = Number(candidate);
+  if (!Number.isInteger(port) || port < 1024 || port > 65_535) {
+    throw new Error("TEST_APP_PORT must be an integer between 1024 and 65535.");
+  }
+  return port;
+}
+
 const testEnvironment = createTestChildEnvironment(loadTestEnvironment());
 validateTestDatabaseTarget(testEnvironment);
 Object.assign(process.env, testEnvironment);
 
+const appPort = parseTestAppPort(testEnvironment.TEST_APP_PORT);
+const appOrigin = `http://127.0.0.1:${appPort}`;
+
 const serverEnvironment = {
   ...testEnvironment,
   NODE_ENV: "production",
-  PORT: "3900",
+  PORT: String(appPort),
 };
 
 export default defineConfig({
@@ -30,7 +46,7 @@ export default defineConfig({
     ["junit", { outputFile: "test-results/playwright/junit.xml" }],
   ],
   use: {
-    baseURL: "http://127.0.0.1:3900",
+    baseURL: appOrigin,
     actionTimeout: 5_000,
     navigationTimeout: 15_000,
     trace: "retain-on-failure",
@@ -38,8 +54,8 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm exec next start -p 3900 -H 127.0.0.1",
-    url: "http://127.0.0.1:3900",
+    command: `pnpm exec next start -p ${appPort} -H 127.0.0.1`,
+    url: appOrigin,
     reuseExistingServer: false,
     timeout: 180_000,
     stdout: "pipe",

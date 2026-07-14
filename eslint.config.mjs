@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".claude/**",
     "src/generated/**",
     // Pre-existing reference material outside this app's scope (not touched by scaffolding).
     "specs/**",
