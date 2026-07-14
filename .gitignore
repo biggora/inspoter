@@ -38,6 +38,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env
 .env.local
+# Dedicated test overrides may contain local-only synthetic credentials.
+/.env.test.local
 .env.*.local
 
 # vercel

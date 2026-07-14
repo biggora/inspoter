@@ -73,8 +73,11 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | R1.5-A | specs→docs reference-integrity audit | requirements-analyst | DONE_WITH_CONCERNS | 147 files (1 ui, 60 prototype, 81 design system, 3 PNG, 2 ZIP); PARTIAL DOC-INV-001..004 |
 | R1.5-E1 | R1.5 reference-integrity authoring | technical-writer | DONE | DOC-INV-001..004 edits complete; specs 148; root path/term/diff/index checks PASS; integration reviewer pending |
 | R1.5-R1 | R1.5 reference-integrity integration review 1/2 | doc-reviewer | DONE | PASS: DOC-INV-001..004 closed; no material regressions; links, source authority, workflow, Q-3/delta and diff/index checks verified |
-| P1-P3 | Phase 1 P-RULE-3 working-app demo checkpoint | tester + coordinator | IN_PROGRESS | R1.1–R1.5 DONE; local working-app demo, evidence and user-feedback checkpoint in progress; no Phase 1 PASS claimed |
-| R2.0 | DB-изоляция e2e + CI | implementor + tester | PENDING | docs/remediation-plan.md task 2.0; not started |
+| P1-P3 | Phase 1 P-RULE-3 working-app demo checkpoint | tester + coordinator | DONE_WITH_CONCERNS | Working-app production URL http://127.0.0.1:3000; 6 cases: 4 PASS/2 PARTIAL/0 runtime FAIL/0 SKIP; auth, Bookmarks, Domains mock inventory, mobile; 0 5xx/console errors/broken images/overflow; localization finding carried to R4.1; report test-results/phase1-checkpoint/REPORT.md; user continuous-execution instruction, no blocking feedback |
+| R2.0 | DB-изоляция e2e + CI | implementor + tester | IN_PROGRESS | Audit and independent matrix review DONE; dedicated inspoter_e2e_test:3833 selected; I1 IN_PROGRESS; no implementation PASS claim |
+| R2.0-A | R2.0 DB isolation/CI evidence audit | test-infrastructure-architect | DONE | PASS: 23 Vitest/6 files, 38 Playwright/5 files, shared DB/no CI; options compared; dedicated inspoter_e2e_test:3833 selected; audit made no DB mutation |
+| R2.0-P | R2.0 implementation matrix independent review | test-infrastructure-planner | DONE | Core approach/counts confirmed; Dockerfile remains R2.0 per architecture §2.2; DB contract normalized to inspoter_e2e_test:3833 |
+| R2.0-I1 | Dedicated test DB and fail-closed guard core | test-infrastructure-engineer | IN_PROGRESS | compose/env/guard/lifecycle/package DB scripts/guard tests under implementation; current DB 3832 excluded |
 | R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.1; not started |
 | R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.2; not started |
 | R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.3; not started |
@@ -104,8 +107,8 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
-| Phase 1 | IN_PROGRESS | Tasks R1.1–R1.5 DONE; P-RULE-3 working-app demo IN_PROGRESS |
-| Phase 2 | PENDING | — |
+| Phase 1 | DONE | R1.1–R1.5 DONE; doc reviews PASS; P-RULE-3 checkpoint executed with nonblocking Phase 4 R4.1 localization carryover |
+| Phase 2 | IN_PROGRESS | R2.0 audit and independent matrix review DONE; I1 dedicated test DB/guard core IN_PROGRESS; R2.1–R2.8 pending |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |
@@ -132,6 +135,7 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 - 2026-07-14 — Q-11: порядок подключения — Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy; credentials предоставляются инкрементально только через `.env`. Решение пользователя.
 - 2026-07-14 — Q-12: требуется опциональная идемпотентная команда `db:seed:demo`. Решение пользователя.
 - 2026-07-14 — Документ architecture target version = v1.3: существующая v1.2 сохраняется как workspace-ревизия; scope остаётся remediation task 1.3.
+- 2026-07-14 — P1 P-RULE-3 checkpoint: runtime surfaces operational at http://127.0.0.1:3000; English Bookmarks/Domains inner content carried to R4.1; пользователь поручил продолжать без паузы.
 
 > Раздел ниже — исторический снимок; текущий источник состояния — Remediation ledger и Task table выше.
 

@@ -14,7 +14,14 @@
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "test:db:guard": "node scripts/test-db.mjs guard",
+    "test:db:up": "node scripts/test-db.mjs up",
+    "test:db:reset": "node scripts/test-db.mjs reset",
+    "test:db:migrate": "node scripts/test-db.mjs migrate",
+    "test:db:seed": "node scripts/test-db.mjs seed",
+    "test:db:prepare": "node scripts/test-db.mjs prepare",
+    "test:db:down": "node scripts/test-db.mjs down"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
