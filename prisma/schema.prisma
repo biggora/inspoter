@@ -15,6 +15,11 @@ datasource db {
 }
 
 // --- Auth (FR-AUTH-001) ---
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
 model Operator {
   id           String            @id @default(cuid())
   username     String            @unique
@@ -25,13 +30,14 @@ model Operator {
 }
 
 model Session {
-  id                String     @id // opaque random token (the cookie value)
-  operatorId        String
-  operator          Operator   @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  activeWorkspaceId String?
-  activeWorkspace   Workspace? @relation(fields: [activeWorkspaceId], references: [id], onDelete: SetNull)
-  expiresAt         DateTime
-  createdAt         DateTime   @default(now())
+  id                        String           @id // opaque random token (the cookie value)
+  operatorId                String
+  operator                  Operator         @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  activeWorkspaceId         String?
+  activeWorkspaceOperatorId String?
+  activeMembership          WorkspaceMember? @relation("ActiveWorkspaceMembership", fields: [activeWorkspaceId, activeWorkspaceOperatorId], references: [workspaceId, operatorId], onDelete: SetNull)
+  expiresAt                 DateTime
+  createdAt                 DateTime         @default(now())
 
   @@index([expiresAt])
 }
@@ -45,8 +51,8 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   members           WorkspaceMember[]
-  sessions          Session[]
   categories        Category[]
+  bookmarks         Bookmark[]
   messageCategories MessageCategory[]
   mailItems         MailItem[]
   logEntries        LogEntry[]
@@ -55,13 +61,14 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  operatorId  String
-  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  role        String    @default("owner")
-  joinedAt    DateTime  @default(now())
+  id             String        @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  operatorId     String
+  operator       Operator      @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  role           WorkspaceRole
+  joinedAt       DateTime      @default(now())
+  activeSessions Session[]     @relation("ActiveWorkspaceMembership")
 
   @@unique([workspaceId, operatorId])
   @@index([operatorId])
@@ -78,22 +85,26 @@ model Category {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  @@index([workspaceId])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, position, id])
 }
 
 model Bookmark {
-  id          String   @id @default(cuid())
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade) // AC-BM-004 cascade
-  name        String
-  url         String
-  icon        String? // reference value (A-2 / OQ-8): emoji | icon-name | URL
-  description String?
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  categoryId          String
+  categoryWorkspaceId String
+  category            Category  @relation(fields: [categoryId, categoryWorkspaceId], references: [id, workspaceId], onDelete: Cascade) // AC-BM-004 cascade
+  name                String
+  url                 String
+  icon                String? // reference value (A-2 / OQ-8): emoji | icon-name | URL
+  description         String?
+  position            Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  @@index([categoryId]) // grouped display AC-BM-012
+  @@index([workspaceId, categoryId, position, id]) // grouped display AC-BM-012
 }
 
 // --- Messages (FR-MSG-001..002) ---

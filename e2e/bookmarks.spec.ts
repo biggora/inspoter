@@ -12,6 +12,10 @@ function categorySection(page: Page, categoryName: string) {
   return page.getByRole("region", { name: categoryName, exact: true });
 }
 
+function categoryRegions(page: Page) {
+  return page.locator("main section[aria-labelledby]");
+}
+
 function bookmarkArticle(page: Page, bookmarkName: string) {
   return page.getByRole("article", { name: bookmarkName, exact: true });
 }
@@ -92,7 +96,7 @@ test("AC-BM-014: empty state prompts to create the first category (no error)", a
   await expect(
     page.getByRole("button", { name: "Создать категорию", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("region")).toHaveCount(0);
+  await expect(categoryRegions(page)).toHaveCount(0);
 });
 
 test("AC-BM-001: creating a category persists it and it appears without a full reload", async ({
@@ -112,7 +116,7 @@ test("AC-BM-005: submitting an empty category name shows a validation error and 
     .click();
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByText("Category name is required.")).toBeVisible();
-  await expect(page.getByRole("region")).toHaveCount(0);
+  await expect(categoryRegions(page)).toHaveCount(0);
 });
 
 test("AC-BM-002: renaming a category persists and displays the new name", async ({

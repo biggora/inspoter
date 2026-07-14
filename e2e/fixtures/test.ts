@@ -67,15 +67,19 @@ export const test = base.extend<{ testData: DeterministicTestData }>({
         });
 
         for (const id of categoryIds.reverse()) {
-          const response = await page.request.delete(
-            new URL(
-              `/api/categories/${encodeURIComponent(id)}`,
-              appUrl,
-            ).toString(),
+          const cleanupUrl = new URL(
+            `/api/categories/${encodeURIComponent(id)}`,
+            appUrl,
+          ).toString();
+          const status = await page.evaluate(
+            async (url) =>
+              (await fetch(url, { method: "DELETE", redirect: "manual" }))
+                .status,
+            cleanupUrl,
           );
-          if (response.status() !== 204 && response.status() !== 404) {
+          if (status !== 204 && status !== 404) {
             throw new Error(
-              `Category cleanup failed for ${id}: expected 204/404, received ${response.status()}.`,
+              `Category cleanup failed for ${id}: expected 204/404, received ${status}.`,
             );
           }
         }
