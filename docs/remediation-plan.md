@@ -1,10 +1,10 @@
 # Remediation Plan — inspoter (доработка до готового продукта)
 
-**Version:** 1.0
-**Status:** Draft — Phase 0 требует решений пользователя
+**Version:** 1.1
+**Status:** Active — Q-1…Q-13 приняты; Phase 2 in progress
 **Owner:** Coordinator
-**Date:** 2026-07-13
-**Normative inputs:** `docs/prd.md` v2.2, `docs/plan.md` v1.4, `docs/test-plan.md`, `docs/progress.md`, аудит кода 2026-07-13 (см. §1), `specs/ui.md`, `specs/prototype/**`, `specs/inspot-design/**`
+**Date:** 2026-07-14
+**Normative inputs:** `docs/prd.md` v3.1, `docs/architecture.md` v1.4, `docs/design.md` v2.0, `docs/plan.md` v1.4, `docs/test-plan.md`, `docs/progress.md`, аудит кода 2026-07-13 (см. §1), `specs/ui.md`, `specs/prototype/**`, `specs/inspot-design/**`
 **Consumed by:** coordinator (dispatch), product-analyst, ui-ux-designer, architect, planner, backend-dev, frontend-dev, tester, code-reviewer, technical-writer
 
 **Назначение документа:** исходный план (`plan.md`) описывал создание продукта с нуля и формально выполнен по коду, но продукт не готов. Этот план закрывает выявленные разрывы: интеграции-заглушки, тестовый долг, рассинхрон документации с реальным продуктом, неотвеченные открытые вопросы и несоблюдение процессных гейтов. Он **дополняет**, а не заменяет `plan.md`: нормы процесса (tester Mode A/B, DoD §10.1, ADR-012 и т.д.) остаются в силе и здесь ужесточаются (§8).
@@ -23,13 +23,13 @@
 | F-4 | **Открытые вопросы не отвечены, код уже противоречит принятым интерпретациям.** OQ-1..OQ-4, OQ-6, OQ-7, OQ-9 не резолвлены, хотя триггеры «confirm before Slice N» сработали. Messages UI уже содержит ввод сообщений и роут создания — против MVP-интерпретации OQ-2 («view-only») и вне плана. | `docs/prd.md` Appendix A; `src/components/messages/messages-view.tsx` (message input), `src/app/api/channels/[id]/messages/route.ts` |
 | F-5 | **Документы рассинхронизированы с кодом.** progress.md заявляет Next 15.5.20 — фактически Next 16.2.10; middleware переехал в `src/proxy.ts` (архитектура §5.3 говорит `src/middleware.ts`); проект переименован в inspoter; `specs/ui.md` + прототип живут вне контура docs/ как параллельный источник правды. | `package.json` (next 16.2.10), `src/proxy.ts`, `docs/progress.md:31` |
 | F-6 | **Процессные гейты не работали.** Деviация Slice WS задокументирована с рекомендацией «закрыть до Slice 2» — не закрыта; Slices 2–7 прошли без tester и code-review. Ни одного демо-чекпоинта с пользователем в плане не было; фидбек пользователя случился постфактум и пошёл мимо документации. | `plan.md` §5a, `progress.md:72` |
-| F-7 | **Инфраструктурные хвосты.** Нет DB-изоляции e2e для CI (test-plan §5); mock-состояние провайдеров module-global — не скоупится по workspace и сбрасывается при рестарте; свежая установка показывает пустые разделы (seed создаёт только оператора и workspace); error-mapping P2003/P2025 без тестового покрытия (test-plan §4c.4). | `docs/test-plan.md` §5, §4c; `src/lib/providers/dns/mock.ts:163`, `prisma/seed.ts:99-119` |
+| F-7 | **Инфраструктурные и workspace-хвосты.** DB-изоляция/CI проходит отдельный R2.0-гейт; provider mock state остаётся module-global, не workspace-scoped и restart-ephemeral; Domains/Servers не имеют локальных workspace bindings; fresh seed не создаёт полный demo; error mapping требует покрытия. | `docs/test-plan.md` §5, §4c; `src/lib/providers/dns/mock.ts:163`; `src/lib/providers/servers/mock.ts`; `prisma/schema.prisma` |
 
 ---
 
 ## 2. Phase 0 — Решения пользователя (блокирующий гейт)
 
-**Правило:** ни одна фаза 1–5 не стартует, пока по каждому вопросу нет явного ответа пользователя или явного «принять рекомендацию». Ответы фиксируются в `progress.md` Decisions log и переносятся в PRD v3 (Phase 1). Это закрывает корневую причину F-4 и часть F-3.
+**Правило:** ни одна фаза 1–5 не стартует, пока по каждому вопросу нет явного ответа пользователя или явного «принять рекомендацию». Ответы фиксируются в `progress.md` Decisions log и переносятся в PRD v3.1 (Phase 1). Это закрывает корневую причину F-4 и часть F-3.
 
 | ID  | Вопрос | Рекомендация (default) | Влияет на |
 | --- | ------ | ---------------------- | --------- |
@@ -43,10 +43,11 @@
 | Q-8 | (OQ-6) Webhook в несуществующий канал: 4xx (как сейчас) или auto-create? | Оставить 4xx; AC-MSG-008 остаётся inactive | — |
 | Q-9 | (OQ-7) Скоупинг webhook-токенов (по типу/источнику)? | Оставить нескоупленные (как реализовано) | — |
 | Q-10 | (OQ-9) Retention для mail/messages/logs/alerts? | Без авто-retention (A-5 подтвердить), риск R-5 остаётся принятым | — |
-| Q-11 | **Реальные интеграции: какие провайдеры нужны первыми и есть ли API-ключи/тестовые аккаунты?** Порядок по умолчанию: Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy. | Подтвердить порядок и предоставить ключи (можно по одному, фаза 3 инкрементальна) | Phase 3 |
+| Q-11 | **Реальные интеграции: какие провайдеры нужны первыми и есть ли API-ключи/тестовые аккаунты?** | Принято: Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy; ключи добавляются в deployment `.env` инкрементально. Отсутствующий ключ сохраняет zero-network mock mode, оставляет live smoke/AC-REAL провайдера PENDING и не блокирует foundation или более раннюю mock-работу. | Phase 3 |
 | Q-12 | Нужны ли демо-данные на свежей установке (seed для Logs/Alerts/Mail/Messages/Bookmarks), чтобы разделы не были пустыми «из коробки»? | Да, опциональный `db:seed:demo` | Phase 4 |
+| Q-13 | Должно ли переключение workspace менять весь контент, включая Domains и Servers? | Да: весь видимый/операбельный контент workspace-scoped; глобальны только provider credentials в `.env`; upstream resource никогда не удаляется неявно | Phase 2 R2.1a–e, R2.2–R2.8; Phase 3 |
 
-**Exit gate Phase 0:** все Q-1..Q-12 имеют зафиксированный в `progress.md` ответ.
+**Exit gate Phase 0:** все Q-1..Q-13 имеют зафиксированный в `progress.md` ответ — **DONE 2026-07-14**.
 
 ---
 
@@ -58,37 +59,45 @@
 
 | #   | Задача | Роль | Deliverable / Acceptance |
 | --- | ------ | ---- | ------------------------ |
-| 1.1 | **PRD v3.** Внести решения Phase 0: заменить NFR-I18N-001 (язык per Q-1); добавить FR-MSG-003 (человеческий ввод сообщений, AC-MSG-009..0NN — если Q-4=да); резолвить OQ-1..4/6/7/9 (перевести D-4/D-5 из provisional в confirmed или расширить scope новыми FR); добавить §3.11 «Real provider enablement» c AC-REAL-* (см. Phase 3) и критерием готовности продукта, сформулированным от ценности: «оператор с реальным ключом провайдера видит и изменяет реальные DNS-записи / управляет реальным сервером». Каждое требование получает трассировку к idea.md или к Q-ID; требования без источника удаляются. | product-analyst | prd.md v3; doc-review PASS; ни одного требования без источника |
+| 1.1 | **PRD v3.1.** Внести решения Phase 0: заменить NFR-I18N-001 (язык per Q-1); добавить FR-MSG-003 (человеческий ввод сообщений, AC-MSG-009..0NN — если Q-4=да); резолвить OQ-1..4/6/7/9 (перевести D-4/D-5 из provisional в confirmed или расширить scope новыми FR); добавить §3.11 «Real provider enablement» c AC-REAL-* (см. Phase 3) и критерием готовности продукта, сформулированным от ценности: «оператор с реальным ключом провайдера видит и изменяет реальные DNS-записи / управляет реальным сервером». Каждое требование получает трассировку к idea.md или к Q-ID; требования без источника удаляются. | product-analyst | prd.md v3.1; doc-review PASS; ни одного требования без источника |
 | 1.2 | **design.md v2 на основе прототипа.** Переписать по нормативным артефактам `specs/prototype/`, `specs/ui.md`, `specs/inspot-design/` (Q-3): светлая тема (Q-2), русские тексты (Q-1), Remix Icons, фактические лейауты Bookmarks/Servers/Messages. Зафиксировать дельту «прототип ↔ текущий код» по каждому разделу (какие разделы ещё не выровнены — вход для Phase 4). Тёмная тема — в deferred-приложение. | ui-ux-designer | design.md v2 + таблица дельт по 7 разделам; doc-review PASS |
-| 1.3 | **architecture.md v1.2.** Актуализировать: Next 16 (`src/proxy.ts` вместо `src/middleware.ts`), закрыть C-4 (внести `settings/**` в дерево §6), добавить §4.x «Real providers» (HTTP-клиенты, ретраи, маппинг ошибок провайдеров в ProviderResult, хранение ключей per NFR-SEC-002), зафиксировать фактические версии стека. | architect | architecture.md v1.2; doc-review PASS |
+| 1.3 | **architecture.md v1.4.** Сохранить CURRENT-аудит Next 16/Settings/providers и добавить утверждённый Q-13 TARGET: schema/migration/header/binding/lease/UI-cache contract. | architect | architecture.md v1.4; independent doc-review PASS; TARGET не выдан за CURRENT |
 | 1.4 | **progress.md актуализация.** Исправить версии стека, добавить строки этого плана в Task table, зафиксировать ответы Phase 0 в Decisions log. | technical-writer | progress.md консистентен с package.json и этим планом |
 | 1.5 | **Инвентаризация specs/ → docs/.** `specs/ui.md`, скриншоты и прототип объявляются нормативными входами (ссылки из design.md v2); правило синхронизации — §8 P-RULE-5. | technical-writer | Ссылочная целостность docs/ ↔ specs/ |
 
-**Exit gate Phase 1:** PRD v3, design v2, architecture v1.2 прошли doc-review; в документах нет утверждений, противоречащих коду, кроме явно помеченных «to be implemented in Phase N».
+**Exit gate Phase 1:** PRD v3.1, design v2 и architecture v1.4 должны пройти doc-review; в документах нет утверждений, противоречащих коду, кроме явно помеченных «to be implemented in Phase N».
 
 ---
 
 ## 4. Phase 2 — Закрытие тестового долга и ревью (восстановление DoD-базы)
 
-**Цель:** каждый реализованный слайс доведён до DoD §10.1 исходного плана: acceptance-тесты + code-review. Закрывает F-2, часть F-7. Тесты пишутся против PRD v3 (учитывая русскую локализацию в селекторах/копирайте).
+**Цель:** каждый реализованный слайс доведён до DoD §10.1 исходного плана: acceptance-тесты + code-review. Закрывает F-2, часть F-7. Тесты пишутся против PRD v3.1 (учитывая русскую локализацию в селекторах/копирайте).
 
-**Порядок (по риску):** 2.0 инфраструктура → 2.1 WS → 2.2 Webhook backbone (security-критично) → 2.3 Domains → 2.4 Servers → 2.5 Alerts → 2.6 Mail → 2.7 Messages. После каждого под-слайса — code-review, rework ≤2, затем следующий.
+**Порядок (по риску):** 2.0 инфраструктура → R2.1a–e workspace foundation → 2.2 Webhook/Logs/tokens → 2.3 Domains/DNS → 2.4 Servers → 2.5 Alerts → 2.6 Mail → 2.7 Messages → 2.8 all-section gate. После каждого под-слайса — code-review, rework ≤2, затем следующий.
+
+**Q-13 общий implementation gate:** каждый session-authenticated browser API проходит auth/membership → `X-Inspoter-Workspace` compare → target authorization до query/cache/write/binding/provider; foreign binding = non-disclosing 404 и zero provider calls. Provider I/O запрещён в DB transactions. Миграции/repair исполняются без provider credentials/network. Все ответы private/no-store, все client caches/cursors workspace-bound.
+
+**Q-13 database gate:** перед принятием R2.1a обязательны `prisma validate`, PostgreSQL 16 fresh replay и manifest-repaired replay, forced forward failure/retry, строгие partial-null CHECK, удаление superseded single-column FK, populated cascade/`SET NULL`/`RESTRICT`, sentinel id + `(workspaceId,reservedName)` collision/zero-remnant, выявление групп-дубликатов `AlertCategory (workspaceId,name)`; для каждой группы требуется явное решение человека merge/rename, иначе abort; identity/lease CHECK и JSON→SQL version/SHA/byte/checksum parity.
 
 | #   | Задача | Роль | AC / Acceptance |
 | --- | ------ | ---- | --------------- |
 | 2.0 | **DB-изоляция e2e + CI.** Отдельная тестовая БД (schema-per-run или `docker compose` fresh volume + TRUNCATE перед прогоном); GitHub Actions (или локальный ci-скрипт): lint → typecheck → unit → e2e на чистой БД. Закрывает test-plan §5 residual risk. | implementor + tester | 3 подряд полных прогона e2e на CI-профиле зелёные и детерминированные |
-| 2.1 | **Slice WS Mode B + review.** Тесты AC-WS-001..011: unit (workspaces-сервис: CRUD, invite, remove, switch, fallback), API-тесты `api/workspaces/**`, e2e (switcher, Settings, cross-workspace-изоляция), тест backfill-миграции `20260713042150`. Затем code-review слайса. | tester → code-reviewer | 11/11 AC-WS PASS в test-plan.md §3.2; review PASS |
-| 2.2 | **Slice 4 Mode B + review (webhook backbone, Logs, tokens).** Полная матрица статусов 401/400/201/429/413 (AC-WH-001..011), идемпотентность с ключом/без ключа (N-5/N-5b), rate-limit, one-time secret + revoke (NFR-SEC-002 — секрет отсутствует в list/detail ответах), AC-LOG-001..005, пагинация M-6. | tester → code-reviewer | 16/16 AC PASS; review PASS |
-| 2.3 | **Slice 2 Mode B + review (Domains, mock-режим).** AC-PROV-001..003 (Domains-facet), AC-DOM-001..009: mock-детерминизм, per-provider error isolation (N-1), валидация DNS-записей, CRUD через mock. | tester → code-reviewer | 12 AC PASS (Domains-facet); review PASS |
-| 2.4 | **Slice 3 Mode B + review (Servers, mock-режим).** AC-SRV-001..008 (детерминированные переходы статуса в mock, confirm-диалог, error-state), финализация AC-PROV-001/003. | tester → code-reviewer | 8 AC + AC-PROV full PASS; review PASS |
-| 2.5 | **Slice 5 Mode B + review (Alerts).** AC-ALR-001..007, upsert-by-name при ingest, no-orphan инвариант (D-12), alert-facet AC-WH-003/007. | tester → code-reviewer | 7 AC PASS; review PASS |
-| 2.6 | **Slice 6 Mode B + review (Mail).** AC-MAIL-001..006, keyset-пагинация, mail-facet AC-WH-003/007. | tester → code-reviewer | 6 AC PASS; review PASS |
-| 2.7 | **Slice 7 Mode B + review (Messages).** AC-MSG-001..007 + новые AC-MSG-009+ (человеческий ввод, если Q-4=да) + 4xx на несуществующий канал, message-facet AC-WH-003/007 → AC-WH-003/007 fully PASS. | tester → code-reviewer | 7(+N) AC PASS; review PASS |
-| 2.8 | **Дозакрытие точечных дыр.** Тесты на error-mapping P2003→400 / P2025→404 (test-plan §4c.4); axe-проверка (NFR-A11Y-001) на все новые разделы, а не только Slice 1. | tester | Кейсы добавлены и зелёные |
+| 2.1a | **Role/session/repair/migration foundation.** `WorkspaceRole`, Session composite membership, direct child ownership + compound FKs/CHECKs, Alert strict pair, full manifest repair, sentinel transport, forward/fresh migration, canonical mock SQL. | database engineer → tester → code-reviewer | PostgreSQL 16 database gate выше PASS; no provider/network; schema/manifest parity review PASS |
+| 2.1b | **Workspace administration and session safety.** Owner/member authorization, target membership, never remove last owner/last membership, deterministic fallback, lock order workspace→operator→membership→binding; trimmed nonempty workspace name, deterministic nonempty ASCII fallback for Cyrillic-only names, atomic workspace+`OWNER` creation, bounded slug-conflict retry. | backend-dev → tester → code-reviewer | AC-WS-001..007/009 facets PASS; adversarial API/concurrency tests; review PASS |
+| 2.1c | **Expected-workspace header across all browser APIs.** `X-Inspoter-Workspace` on every method including workspace list/create/admin/switch; exact `400 CONTEXT_REQUIRED`/`409 CONTEXT_STALE`; header never selects authority. | backend-dev → tester → code-reviewer | Route inventory 100%; missing/malformed/match/stale/order tests; zero business/provider work before compare |
+| 2.1d | **Keyed browser boundary + Bookmarks facet.** Abort/discard/clear/refresh/remount, GET-only refetch, mutation no-retry, private/no-store/Vary, workspace-bound cache keys; cursor envelope binds workspace + normalized filter + sort/order + version and rejects malformed/replayed envelopes before query; compound Bookmark ownership; P2003/P2025 and axe coverage. | frontend-dev + backend-dev → tester → code-reviewer | Bookmarks facet of AC-WS-008/010/011 PASS; stale-tab and cursor-replay tests; review PASS |
+| 2.1e | **Generic provider binding/claim/lease foundation.** Exclusive `ProviderResourceBinding`, account/remote identity bounds, manifest mocks, owner discovery/claim/transfer/remove, local-only delete, short lease tx → provider I/O/readback outside tx → CAS/reconcile. MOCK bindings are non-transferable because `remoteId` embeds workspace; only REAL transfer is allowed, and rejection makes zero provider calls. | backend-dev + database engineer → tester → code-reviewer | Collision/rotation/identity/claim/transfer/remove/delete/lease/reconcile tests; foreign=404+zero call; no active/unresolved deletion |
+| 2.2 | **Webhook backbone, Logs, tokens + workspace facet.** Atomic idempotency, direct/compound ownership, all 401/400/201/429/413 paths, rate limit, one-time secret/revoke, pagination, header/stale-context/API isolation. | tester → code-reviewer | AC-WH/LOG plus Logs/tokens facets of AC-WS-008/010/011 PASS; review PASS |
+| 2.3 | **Domains/DNS mock facet.** Workspace-exclusive manifest mocks/bindings, record CRUD/validation, provider error isolation, foreign-binding zero-call, cache/cursor/header/stale-tab behavior. | tester → code-reviewer | AC-DOM/PROV Domains facet + workspace facet PASS; review PASS |
+| 2.4 | **Servers mock facet.** Workspace-exclusive servers, deterministic power state, confirmation/error/reconcile, foreign-binding zero-call, header/stale-tab behavior. | tester → code-reviewer | AC-SRV/PROV Servers facet + workspace facet PASS; review PASS |
+| 2.5 | **Alerts facet.** Durable direct ownership, strict optional category pair/`SET NULL`, delete, ingest, filtering/pagination, header/cache/cursor isolation. | tester → code-reviewer | AC-ALR + Alerts facet of AC-WS-008/010/011 PASS; review PASS |
+| 2.6 | **Mail facet.** Direct ownership, webhook ingest, filters/keyset cursor bound to workspace, header/stale-tab isolation. | tester → code-reviewer | AC-MAIL + Mail facet of AC-WS-008/010/011 PASS; review PASS |
+| 2.7 | **Messages facet.** Compound category/channel/message ownership, operator/webhook origin, missing-channel 4xx, pagination cursor/header/stale-tab isolation. | tester → code-reviewer | Active AC-MSG + Messages facet of AC-WS-008/010/011 PASS; review PASS |
+| 2.8 | **Two-workspace/two-member all-section integration gate.** Switch repeatedly across Bookmarks, Domains/DNS, Servers, Mail, Messages, Logs, Alerts, Settings, and tokens; exercise reads/mutations/caches/cursors/stale tabs and role boundaries. | integration tester → code-reviewer | Only this gate may set AC-WS-008/010/011 PASS and Workspaces 11/11; zero cross-workspace leaks/provider calls; full axe/error-mapping regression PASS |
 
-**Note (Mode A/B для написанного кода):** классический Mode A («красные до реализации») невозможен ретроспективно. Правило подлинности вместо него: tester пишет тесты **только из PRD v3-формулировок AC**, не подглядывая в реализацию; каждый тест обязан упасть при инъекции мутации (spot-check code-reviewer'ом минимум на 2 тестах на слайс).
+**Note (Mode A/B для написанного кода):** классический Mode A («красные до реализации») невозможен ретроспективно. Правило подлинности вместо него: tester пишет тесты **только из PRD v3.1-формулировок AC**, не подглядывая в реализацию; каждый тест обязан упасть при инъекции мутации (spot-check code-reviewer'ом минимум на 2 тестах на слайс).
 
-**Exit gate Phase 2:** test-plan.md v2 покрывает все 90 активных AC (+ новые из PRD v3) со статусом PASS; code-review PASS для всех слайсов; CI зелёный.
+**Exit gate Phase 2:** test-plan.md покрывает все безусловно активные AC PRD v3.1; каждый facet имеет runtime evidence и review PASS; R2.8 единолично закрывает AC-WS-008/010/011 и Workspaces 11/11; CI зелёный. Static/discovery evidence не считается runtime PASS.
 
 ---
 
@@ -99,7 +108,7 @@
 **Общий каркас (3.0, перед первым провайдером):**
 
 - `src/lib/providers/http.ts` — общий тонкий HTTP-хелпер: таймаут, ретраи с backoff на 429/5xx, маппинг ошибок в `ProviderResult` (`auth_error`, `rate_limited`, `unreachable`, `provider_error`), без утечки секретов в логи. (architect специфицирует в 1.3; backend-dev реализует.)
-- **Новые AC (PRD v3 §3.11), шаблон на провайдера P:**
+- **Новые AC (PRD v3.1 §3.11), шаблон на провайдера P:**
   - AC-REAL-P-001: с валидным ключом P раздел показывает реальные данные аккаунта (домены/записи или серверы).
   - AC-REAL-P-002: мутация (создание DNS-записи / power-action) применяется в P и подтверждается повторным чтением.
   - AC-REAL-P-003: невалидный/отозванный ключ → per-provider error-индикатор, остальные провайдеры работают (N-1), приложение не падает.
@@ -113,9 +122,9 @@
 | 3.2 | **Hetzner Cloud (servers)** — list servers, статусы, power on/off/reboot + поллинг до сходимости D-9 (30/30/60s) (`HCLOUD_TOKEN`) | Hetzner Cloud | backend-dev → tester → code-reviewer | AC-REAL-HC-001..004; AC-SRV-004..006 проходят против реального API в smoke |
 | 3.3 | **Hetzner DNS** (`HETZNER_DNS_TOKEN`) | Hetzner DNS | backend-dev → tester → code-reviewer | AC-REAL-HD-001..004 |
 | 3.4 | **GoDaddy DNS** (`GODADDY_API_KEY/SECRET`; внимание: у GoDaddy порог доступности API по числу доменов — проверить применимость на аккаунте пользователя, иначе задокументированно исключить) | GoDaddy | backend-dev → tester → code-reviewer | AC-REAL-GD-001..004 или задокументированное исключение решением пользователя |
-| 3.5 | **Mock-провайдер hardening** (по итогам 3.1): состояние переживает рестарт не требуется (задокументировать), но скоупинг mock-данных не должен ломать AC-WS-011-ожидания — задокументировать, что Domains/Servers не workspace-скоупятся (данные приходят от провайдера аккаунта, не из БД), и отразить это в PRD v3 §3.11. | — | architect + technical-writer | Поведение зафиксировано в PRD/architecture; нет ложных ожиданий изоляции |
+| 3.5 | **Provider identity/mock manifest/reconciliation hardening.** Проверить стабильный `accountKey`/remote id каждого реального адаптера, rotation/mismatch/collision, provider-specific readback/reconcile; сохранить workspace-exclusive mock identity из canonical JSON и zero shared mutable state. | — | architect + backend-dev + tester | R3.x fixture/real evidence; JSON→SQL parity не регрессирует; foreign bindings zero-call; no provider I/O in DB tx |
 
-**Exit gate Phase 3:** для каждого включённого провайдера AC-REAL-* PASS (контрактные тесты в CI, живой smoke задокументирован); переключение mock↔real только через env (AC-PROV-002); демо пользователю на реальном аккаунте (§8 P-RULE-3).
+**Exit gate Phase 3:** для каждого включённого провайдера AC-REAL-* PASS (контрактные тесты в CI, живой smoke задокументирован); стабильная account identity и reconciliation подтверждены; реальные ресурсы видимы/операбельны только через active-workspace binding; переключение mock↔real только через env (AC-PROV-002); демо пользователю (§8 P-RULE-3).
 
 ---
 
@@ -146,7 +155,7 @@
 | 5.2 | End-to-end сценарий оператора на **реальных** аккаунтах (по включённым провайдерам): логин → bookmarks → реальный домен → правка DNS-записи → реальный сервер → restart → webhook-ингест log/alert/mail/message с реальным токеном → просмотр в разделах → workspace-switch | tester (чек-лист) + пользователь | Подписанный чек-лист; расхождения → issues |
 | 5.3 | **Финальное демо пользователю** и явная приёмка | coordinator + пользователь | Решение пользователя: accepted / список доработок |
 
-**MVP DoD (пересмотренный, заменяет plan.md §10.2):** продукт готов, когда (a) все активные AC PRD v3 — PASS в test-plan.md v2; (b) AC-REAL-* PASS для провайдеров, включённых решением Q-11; (c) чек-лист 5.2 подписан; (d) демо 5.3 принято пользователем. Пункт (d) — обязательный: техническая зелёность без приёмки пользователем готовностью не считается.
+**MVP DoD (пересмотренный, заменяет plan.md §10.2):** продукт готов, когда (a) все активные AC PRD v3.1 — PASS в test-plan.md v2; (b) AC-REAL-* PASS для провайдеров, включённых решением Q-11; (c) чек-лист 5.2 подписан; (d) демо 5.3 принято пользователем. Пункт (d) — обязательный: техническая зелёность без приёмки пользователем готовностью не считается.
 
 ---
 
@@ -177,9 +186,9 @@
 ## 10. Порядок, зависимости, риски
 
 ```
-Phase 0 (решения пользователя)                      [гейт: ответы Q-1..Q-12]
-   └─→ Phase 1 (PRD v3 → design v2 ∥ architecture v1.2 → sync)   [гейт: doc-review PASS]
-          └─→ Phase 2 (2.0 → WS → 4 → 2 → 3 → 5 → 6 → 7 → 2.8)   [гейт: 90+ AC PASS, CI зелёный]
+Phase 0 (решения пользователя)                      [гейт: ответы Q-1..Q-13 — DONE]
+   └─→ Phase 1 (PRD v3.1 → design v2 ∥ architecture v1.4 → sync)  [гейт: Q13-DOC review PASS]
+          └─→ Phase 2 (2.0 → 2.1a-e → 2.2 → … → 2.7 → 2.8)       [гейт: active AC PASS, WS 11/11, CI зелёный]
                  ├─→ Phase 3 (3.0 → 3.1 → 3.2 → 3.3 → 3.4)        [по мере ключей; гейт: AC-REAL PASS + демо]
                  └─→ Phase 4 (4.1 ∥ 4.2 → 4.3..4.6)               [гейт: UI-аудит + e2e зелёные]
                         └─→ Phase 5 (регресс → real-сценарий → приёмка)
@@ -187,10 +196,10 @@ Phase 0 (решения пользователя)                      [гейт
 
 - Phase 3 и Phase 4 независимы и могут идти параллельно после Phase 2; обе до Phase 5.
 - 4.1 (локализация) меняет копирайт → e2e-селекторы: tester обновляет тесты в той же итерации (иначе Phase 2 результат регрессирует). Смягчение: в 2.x селекторы строить на `data-testid`/ролях, а не на текстах, где возможно.
-- Риск: ключи провайдеров не появятся (Q-11) → Phase 3 сокращается до включённых провайдеров; продукт принимается с задокументированным ограничением (решение пользователя в 5.3), заглушки при этом заменяются на честное сообщение «провайдер не сконфигурирован», а не «unsupported» при живом ключе.
+- Риск: ключ провайдера ещё не добавлен (Q-11) → zero-network mock semantics не меняются и не считаются runtime PASS; соответствующие R3.x live smoke/AC-REAL и финальная real-provider acceptance остаются PENDING до появления credentials/account evidence.
 - Риск: объём дельты 1.2 больше ожидаемого → Phase 4 дробится на под-слайсы по разделам, каждый со своим мини-гейтом (P-RULE-1).
 
 ## 11. Изменения других документов, порождаемые этим планом
 
-- `docs/prd.md` → v3 (задача 1.1); `docs/design.md` → v2 (1.2); `docs/architecture.md` → v1.2 (1.3); `docs/progress.md` — Task table + Decisions (1.4, далее по ходу); `docs/test-plan.md` → v2, покрытие всех слайсов (Phase 2).
+- `docs/prd.md` → v3.1 (задача 1.1); `docs/design.md` → v2 (1.2); `docs/architecture.md` → v1.4 (1.3); `docs/progress.md` — Task table + Decisions (1.4, далее по ходу); `docs/test-plan.md` → v2, покрытие всех слайсов (Phase 2).
 - `docs/plan.md` не переписывается: остаётся историческим документом исходной разработки; его процессные нормы (§2, §10.1, ADR-ссылки) действуют здесь по ссылке.

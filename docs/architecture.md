@@ -235,8 +235,6 @@ flowchart LR
 
 **CURRENT:** The pagination-only substring-search fallback remains explicit. The 500 ms indexed-read objective does not cover substring scans. A future trigram/full-text change requires a measured need and a migration; it is not part of this rewrite.
 
-## 5. Authentication, session, and proxy
-
 ### 4.5 Q-13 target relational contract — not implemented
 
 **TARGET (R2.1a/e):** The schema below is normative. The current 15-model schema and two committed migrations do not implement it.
@@ -244,7 +242,7 @@ flowchart LR
 | Model | Required Q-13 ownership and relation |
 | --- | --- |
 | `WorkspaceMember` | Replace free-form/default role with `WorkspaceRole { OWNER, MEMBER }`; preserve `@@unique([workspaceId, operatorId])`. A workspace and operator must each retain at least one membership, and a workspace must retain at least one owner. |
-| `Session` | Add nullable `activeWorkspaceOperatorId`. Replace the direct `Session.activeWorkspaceId → Workspace.id` FK with composite `(activeWorkspaceId, activeWorkspaceOperatorId) → WorkspaceMember(workspaceId, operatorId) ON DELETE SET NULL`. SQL CHECK requires both columns NULL or both non-NULL; the application writes the authenticated `operatorId` shadow. |
+| `Session` | Add nullable `activeWorkspaceOperatorId`. Replace the direct `Session.activeWorkspaceId → Workspace.id` FK with composite `(activeWorkspaceId, activeWorkspaceOperatorId) → WorkspaceMember(workspaceId, operatorId) ON DELETE SET NULL`. SQL CHECK requires either both active fields NULL, or both non-NULL with `activeWorkspaceOperatorId = operatorId`; the application writes the authenticated `operatorId` shadow. |
 | `Category → Bookmark` | `Category` gains `@@unique([id, workspaceId])`. `Bookmark` gains required `workspaceId` and `categoryWorkspaceId`; CHECK `categoryWorkspaceId = workspaceId`; composite FK `(categoryId, categoryWorkspaceId) → Category(id, workspaceId) ON DELETE CASCADE`. |
 | `MessageCategory → Channel` | `MessageCategory` gains `@@unique([id, workspaceId])`. `Channel` gains required `workspaceId` and `messageCategoryWorkspaceId`; equality CHECK; composite parent FK with cascade. |
 | `Channel → Message` | `Channel` gains `@@unique([id, workspaceId])`. `Message` gains required `workspaceId` and `channelWorkspaceId`; equality CHECK; composite parent FK with cascade. |
@@ -264,7 +262,7 @@ CHECK (
 )
 ```
 
-`Session` uses the same both-null-or-both-non-null predicate for `activeWorkspaceId` and `activeWorkspaceOperatorId`. Partial-null rows must fail both constraints. The forward migration must drop these superseded single-column FKs after the compound FKs exist: `Bookmark_categoryId_fkey`, `Channel_messageCategoryId_fkey`, `Message_channelId_fkey`, `Alert_alertCategoryId_fkey`, and `IdempotencyKey_tokenId_fkey`. PostgreSQL 16 verification must prove their absence and exercise populated cascades, `Alert` composite `SET NULL`, and binding `RESTRICT` behavior.
+`Session` uses this strict predicate: both active fields are NULL, or both are non-NULL and `activeWorkspaceOperatorId = operatorId`. Its composite FK still targets the active `(workspaceId, operatorId)` membership; partial-null rows must fail. The forward migration must drop these superseded single-column FKs after the compound FKs exist: `Bookmark_categoryId_fkey`, `Channel_messageCategoryId_fkey`, `Message_channelId_fkey`, `Alert_alertCategoryId_fkey`, and `IdempotencyKey_tokenId_fkey`. PostgreSQL 16 verification must prove their absence and exercise populated cascades, `Alert` composite `SET NULL`, and binding `RESTRICT` behavior.
 
 Workspace-leading indexes are required on every scoped lookup path: category/child ordering; channel/message keyset pagination; mail/log/alert time cursors; alert category, severity, and source filters; token/idempotency lookup; and binding workspace/provider/type/mode/lease scans. Existing non-workspace indexes may remain only when a measured global operational query uses them.
 
@@ -277,14 +275,14 @@ Workspace-leading indexes are required on every scoped lookup path: category/chi
 | Identity | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace. |
 | Mock identity | `accountKey = 'mock:v1'`; `remoteId = 'mock:v1:<workspaceId>:<provider>:<key>'`. REAL rows cannot use a `mock:` prefix. No mutable module-global mock state remains. |
 | Identity validation | Application and SQL enforce UTF-8 bounds: `accountKey` 1–256 bytes, `remoteId` 1–512, `displayName` 1–512; values are trimmed and contain no control characters. Provider/resource-type pairs are restricted by CHECK. |
-| Operation lease | State is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`. Operation id is unique; kind, credential-free canonical intent, start, expiry, and reconciled status are persisted. Intent is at most 16 KiB and must never contain credentials. A CHECK requires every operation column NULL in `IDLE` and every operation column non-NULL in active states. |
-| Indexes | Workspace-leading discovery/list index `(workspaceId, resourceType, provider, mode, id)` plus lease/reconciliation indexes; the global identity unique index is mandatory. |
+| Operation lease | State is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`; operation id is unique. The CHECK treats operation id, kind, credential-free canonical intent, start, and expiry as one all-or-none group: all are NULL in `IDLE`, and all are non-NULL in `RUNNING` or `RECONCILE_REQUIRED`. `lastReconciledAt` is optional reconciliation metadata outside that group. Intent is at most 16 KiB and must never contain credentials. |
+| Indexes | Required indexes are unique `(id, workspaceId)`, workspace-leading `(workspaceId, resourceType, provider, mode)`, lease `(state, leaseExpiresAt)`, and global identity unique `(provider, accountKey, resourceType, mode, remoteId)`. |
 
 `Workspace` deletion first requires all bindings `IDLE`, then deletes local binding rows in a controlled transaction; it never sends provider delete calls. The Prisma relation remains `Restrict` so an accidental cascade cannot bypass this gate.
 
 ### 4.7 Existing-database repair and forward migration
 
-**TARGET (R2.1a):** Deployment enters maintenance mode before repair. A signed repair manifest covers every existing operator/content row exactly once: desired memberships; all roots (`Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, `WebhookToken`); every null-category `Alert`; every `Session`, including an explicit null destination; and every orphan disposition (attach or delete with data-loss acknowledgement). Preflight verifies source digest, full coverage, referential validity, reserved-value collisions, and zero guessing.
+**TARGET (R2.1a):** Deployment enters maintenance mode before repair. A signed repair manifest covers every existing operator/content row exactly once: desired memberships; all roots (`Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, `WebhookToken`); every null-category `Alert`; every `Session`, including an explicit null destination; and every orphan disposition (attach or delete with data-loss acknowledgement). Preflight verifies source digest, full coverage, referential validity, reserved-value collisions, and zero guessing. It detects duplicate `AlertCategory (workspaceId, name)` groups; each group requires an explicit human merge/rename disposition in the manifest or the repair aborts.
 
 Repair runs at `SERIALIZABLE` under an advisory lock and writes **only columns that already exist**: membership string roles, root `workspaceId`, existing child parent ids, `Session.activeWorkspaceId`, and `Alert.alertCategoryId`. A null-category Alert is transported through a temporary `AlertCategory` whose id is exactly `q13-repair-uncategorized:<workspaceId>` and whose reserved key is `(workspaceId, '__q13_repair_uncategorized__')`. Any collision aborts before writes.
 
@@ -313,6 +311,8 @@ Production order is fixed: maintenance on → preflight → manifest repair → 
 The mandatory PostgreSQL 16 gate covers fresh replay, repaired replay, forced forward failure/retry, sentinel success/collision/zero-remnant checks, partial-null rejection, composite cascades/`SET NULL`, binding `RESTRICT`, identity length/control/prefix checks, lease-state checks, JSON↔SQL byte parity, Prisma validate/checksum, and zero provider/network access.
 
 **CURRENT:** `src/proxy.ts` is an optimistic redirect layer. It checks only whether the `session` cookie exists. It redirects missing-cookie requests to `/login?next=<pathname>` and excludes login, public webhooks, framework assets, and the favicon from its matcher. It performs no database authorization.
+## 5. Authentication, session, and proxy
+
 
 **CURRENT:** `src/lib/auth/dal.ts` is authoritative. `requireOperator()` verifies a live database session and operator. `requireAuth()` additionally verifies `Session.activeWorkspaceId` membership; if invalid or unset, it selects the earliest membership and updates the session. Dashboard layout and authenticated Route Handlers use this server-side result.
 
@@ -325,6 +325,32 @@ The mandatory PostgreSQL 16 gate covers fresh replay, repaired replay, forced fo
 **TARGET (Phase 2.1):** Preserve the two-tier design: fast optimistic redirect in `src/proxy.ts`, authoritative database validation in the DAL on every protected request. Add coverage for expired sessions, removed membership, workspace fallback, and switch authorization. Enforce the workspace-administration boundary in §4.3 and the safe login target in §3.4 while preserving valid deep links.
 
 **TARGET (Phase 3):** Add `import "server-only"` guards to database, auth, config, and provider modules where applicable. This prevents accidental import into a Client Component; it does not replace request-time authorization.
+
+### 5.1 Q-13 request-context and authorization order — not implemented
+
+**TARGET (R2.1b/c):** `WorkspaceRole` has exactly `OWNER` and `MEMBER`. A member may use normal content, DNS record operations, server power actions, create a new workspace, and list members. An owner additionally renames/deletes the workspace, adds/removes members, discovers/claims/removes provider bindings, and participates in binding transfer. The service layer rejects removal of the last owner or an operator's last workspace membership. Session fallback is deterministic. Mutations acquire locks in this order: workspace → operator → membership → provider binding.
+
+Workspace creation trims the name and rejects an empty result. It produces a nonempty ASCII slug; a Cyrillic-only name uses a deterministic nonempty ASCII fallback. One transaction creates the workspace and caller's `OWNER` membership. A slug uniqueness conflict uses a bounded retry and returns a typed conflict when the bound is exhausted.
+
+Every session-authenticated browser API method requires `X-Inspoter-Workspace`, including workspace list, create, administration, and switch. Login, logout, public webhook ingest, static assets, and direct Server Component reads are the only exceptions. The header is non-empty ASCII, at most 128 bytes, and comes from the workspace rendered by the initial RSC response.
+
+The server processes a request in this exact order:
+
+1. Validate the session and resolve its active membership from the database.
+2. Parse the expected-workspace header. Missing or malformed returns `400` with `CONTEXT_REQUIRED`.
+3. Compare the header with the session workspace. Mismatch returns `409` with `CONTEXT_STALE`.
+4. Apply target-resource membership/role authorization.
+5. Only then perform a business query, cache read, write, binding lookup, or provider/network call.
+
+The header is a stale-session precondition, never a workspace selector or authority. The switch request sends the current workspace in the header and the destination membership in the body. A foreign or missing local id returns the same non-disclosing 404 before provider access.
+
+### 5.2 Q-13 browser, cache, and cursor boundary — not implemented
+
+The dashboard renders a keyed `WorkspaceBoundary`. On switch or `409 CONTEXT_STALE`, the client aborts old requests, discards old response state, clears workspace-bound client caches, refreshes the RSC tree, and remounts by workspace id. GET reads may refetch after refresh; mutations never retry automatically.
+
+Workspace responses are private and non-cacheable: `Cache-Control: private, no-store, max-age=0`, with `Vary: Cookie, X-Inspoter-Workspace`. Do not use shared Next.js caches for workspace data. Any future cache key includes workspace id and authorization dimension. Every cursor is an opaque versioned envelope bound to workspace, normalized filter, and sort/order; malformed envelopes and replays under any mismatched binding are rejected before a database query.
+
+Domains, DNS records, Servers, Bookmarks, Mail, Messages, Logs, Alerts, Settings, and tokens all obey this boundary. A stale in-flight response cannot repaint a newly selected workspace.
 
 ## 6. Public webhook architecture
 
@@ -394,9 +420,9 @@ sequenceDiagram
 
 **GAP:** Factories read `process.env` directly. No centralized provider schema validates credentials. GoDaddy mode checks only `GODADDY_API_KEY` and ignores `GODADDY_API_SECRET`.
 
-**CURRENT:** DNS and server mocks make zero external requests. Their mutable module state resets at process restart and is shared across all workspaces. Domains aggregation uses `Promise.allSettled`, so one provider failure does not remove healthy providers.
+**CURRENT / GAP:** DNS and server mocks make zero external requests. Their mutable module state resets at process restart and is shared across all workspaces, violating Q-13. Domains aggregation uses `Promise.allSettled`, so one provider failure does not remove healthy providers.
 
-**GAP:** Mock mutations are ephemeral and not workspace-scoped. This is acceptable only as clearly labelled provider-account demo state; it must never be described as durable workspace content.
+**GAP:** Mock mutations are ephemeral and not workspace-scoped. Q-13 rejects this shared mutable state. R2.1e replaces it with deterministic workspace-exclusive bindings generated from the canonical manifest.
 
 ### 7.2 Target provider modes and configuration
 
@@ -465,6 +491,23 @@ sequenceDiagram
 | TARGET (Phase 3.4) | 4 | GoDaddy DNS | list domains/records; mutations confirmed by reread; AC-REAL-GD-001…004 or evidenced account/API ineligibility plus dated explicit user exclusion |
 
 **TARGET (Phase 3):** Credentials arrive incrementally through `.env`. Missing credentials alone do not exclude GoDaddy or satisfy its release gate.
+
+### 7.8 Q-13 provider identity, claim, transfer, and lease — not implemented
+
+A provider adapter must return a stable non-secret `accountKey` and stable remote resource id. Credential rotation preserves `accountKey`. Invalid/revoked credentials return typed auth failure without mock fallback. If the configured account identity changes, existing bindings block; neither display names nor account labels may auto-match, reassign, or claim resources.
+
+Owner-only discovery performs provider I/O outside a database transaction and omits resources already assigned to another workspace. Claim repeats fresh discovery, then inserts by the global identity key with `ON CONFLICT`: the same workspace receives the existing local binding idempotently; a different workspace receives generic `409` without identity disclosure.
+
+Provider mutations use a durable lease/reconciliation state machine:
+
+1. Short transaction locks `(workspaceId, localBindingId)`, verifies role/context/version and `IDLE`, writes unique operation id, kind, credential-free canonical intent, start/expiry, and `RUNNING`, then commits.
+2. Provider mutation and readback execute outside every database transaction.
+3. A short compare-and-swap transaction clears operation fields and advances version after confirmed success. Ambiguous transport or readback moves to `RECONCILE_REQUIRED`.
+4. An expired lease is never stolen. Reconciliation is read-only provider inspection. Any `RUNNING` or unresolved binding blocks mutation, transfer, removal, and workspace deletion.
+
+Transfer requires owners of both workspaces, operates on local metadata only, and acquires locks in §5.1 order. Only a REAL binding can transfer. A MOCK binding is non-transferable because its `remoteId` embeds `workspaceId`; rejection occurs before provider access and makes zero provider calls. Removal is owner-only and deletes only the local idle binding. Workspace deletion follows the same rule. None of claim, transfer, removal, or workspace deletion deletes or mutates the upstream resource.
+
+Provider-specific identity, capability, pagination, and reconciliation facts remain R3.1–R3.4 validation work. Q-13 does not invent an upstream capability before fixture and real-account evidence exists.
 
 ## 8. Request sequences
 
@@ -570,24 +613,29 @@ src/
 
 | ADR | Label | Decision |
 | --- | --- | --- |
-| ADR-001 | CURRENT | Use one Next.js modular monolith and PostgreSQL. No queue, microservices, Redis dependency, vault, provider database, or general provider SDK. |
+| ADR-001 | CURRENT / TARGET | Use one Next.js modular monolith and PostgreSQL. Q-13 adds binding/lease metadata, not credentials or provider snapshots. No queue, microservices, Redis dependency, vault, general provider SDK, or separate service. |
 | ADR-002 | CURRENT | Use database-backed opaque sessions and scrypt password verification. Logout invalidates the database session. |
 | ADR-003 | CURRENT | `src/proxy.ts` performs optimistic cookie-presence redirects; `requireOperator()` and `requireAuth()` are authoritative. Never authorize from proxy presence alone. |
-| ADR-004 | CURRENT | Domains, DNS records, and Servers are read-through provider DTOs, not Prisma models. |
+| ADR-004 | CURRENT / GAP / TARGET R2.1e | Domains, DNS records, and Servers are currently deployment-wide read-through DTOs. Q-13 adds exclusive local `ProviderResourceBinding` ownership; provider resources themselves remain upstream and are never mirrored as Prisma snapshots. |
 | ADR-005 | CURRENT | Use one public `POST /api/webhooks/[type]` pipeline for mail, message, log, and alert ingest. |
 | ADR-006 | CURRENT | Use a token-keyed in-process rate limiter while deployment remains one application process. |
 | ADR-007 | GAP | `@@unique([tokenId,key])` exists, but current check → dispatch → record is non-atomic. Atomic claim/dispatch semantics exist only as TARGET (Phase 2.2). |
 | ADR-008 | CURRENT | Providers return in-band `success`, generic `error`, or `unsupported`; Route Handlers map generic errors to 502 and unsupported to 501. |
 | ADR-009 | CURRENT | Use keyset pagination. Keep substring search as an explicit pagination-only fallback without a numeric latency guarantee. |
 | ADR-010 | CURRENT | Share Zod validation where contracts overlap; keep request-specific validation near its boundary. |
-| ADR-011 | CURRENT / GAP | Carry active workspace on `Session.activeWorkspaceId`; the DAL verifies active membership, and URLs have no workspace segment. Target-workspace membership and owner authorization for workspace administration remain missing until Phase 2.1. |
+| ADR-011 | CURRENT / TARGET R2.1a-c | Keep workspace out of URLs and resolve it from the session. Replace the direct Session→Workspace FK with a strict optional composite membership FK. Require `X-Inspoter-Workspace` only as a stale-context precondition after auth/membership, never as authority. |
 | ADR-012 | GAP | Intended runtime Prisma callers are services and the authoritative auth DAL. Five current exceptions are recorded in §4.4 and must move behind those boundaries. |
-| ADR-013 | CURRENT | Category-child cascades apply to Bookmarks and Messages. Alert category deletion uses `SetNull`, but current Alert ownership is incomplete; TARGET (Phase 2.5) adds durable workspace ownership. |
+| ADR-013 | CURRENT / TARGET R2.1a | Replace indirect child ownership with required direct `workspaceId`, compound parent FKs, equality CHECKs, and workspace-leading indexes. Alert uses a strict nullable composite category pair with `SET NULL`. |
 | ADR-014 | CURRENT | New operators join through workspace administration; public self-registration and extended RBAC remain out of scope. |
 | ADR-015 | TARGET (Phase 3) | Select each provider independently from a complete credential set. Absent selects zero-network mock; configured invalid/revoked returns typed auth; never fall back. |
 | ADR-016 | TARGET (Phase 3) | Centralize timeout, safe retry, `Retry-After`, decoding seams, and redaction in a thin injected HTTP boundary. |
 | ADR-017 | TARGET (Phase 3) | Expand provider failures to typed, sanitized categories and map them consistently as defined in §7.4. |
-| ADR-018 | CURRENT | Deploy one application plus PostgreSQL. Domains/Servers are provider-account inventory; mock mutations are process-local, restart-ephemeral, and independent of workspace lifecycle. |
+| ADR-018 | CURRENT GAP / TARGET R2.1e | Current process-local mock state is shared and restart-ephemeral. Q-13 replaces it with manifest-derived workspace-exclusive mock bindings; only provider credentials remain deployment-global. |
+| ADR-019 | TARGET R2.1a | Repair historical columns under a full-coverage manifest before adding shadow columns; then apply one transactional forward migration. Fresh databases replay history, Q-13 forward, then transactional seed. |
+| ADR-020 | TARGET R2.1c-d | Apply auth → expected-workspace header → target authorization before business/cache/provider work; remount a keyed workspace boundary and never retry stale mutations. |
+| ADR-021 | TARGET R2.1e | Real and mock resources use exclusive global identity bindings. Local removal/deletion never deletes upstream resources. |
+| ADR-022 | TARGET R2.1e / R3.x | Execute provider I/O outside database transactions under durable lease/readback/CAS/reconciliation semantics. |
+| ADR-023 | TARGET R2.1a | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity. |
 
 ## 11. Decision and requirement traceability
 
@@ -612,9 +660,11 @@ src/
 
 | Requirement | CURRENT / GAP | TARGET and verification owner |
 | --- | --- | --- |
-| D-20 | Database content is workspace-owned; Domains/Servers are provider-account inventory. Bookmark child, workspace-administration authorization, and Alert `SetNull` gaps violate the intended boundary. | Phases 2.1 and 2.5: cross-workspace authorization, isolation, and migration tests. |
+| D-20 | **SUPERSEDED by Q-13/D-21.** The former Domains/Servers exception is historical and non-normative. | Preserve as history only. |
+| Q-13 / D-21 | Every section, provider binding, mock, cache, cursor, read, and mutation follows the active workspace. | R2.1a–e establishes the foundation; R2.2–R2.7 close facets; R2.8 proves the two-workspace/two-member all-section contract. |
 | FR-WS-001..003; AC-WS-003..007 | Workspace administration authenticates the caller but does not authorize the target workspace or owner role. | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests. |
 | AC-AUTH-001..003 | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values. | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths. |
+| Q-13 | TARGET (R2.1a–e, R2.2–R2.8) | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11. |
 | FR-MSG-003; AC-MSG-009…014 | No operator POST, explicit origin, or persisted operator attribution. | Phases 2.7 and 4.3: API, service, schema, UI, and failure-state tests. |
 | AC-ALR-008 | No alert delete route or UI action. | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent. |
 | FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported. | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection. |
@@ -633,13 +683,16 @@ src/
 | High | GAP | Real-mode provider classes are stubs; configured credentials do not deliver real value. | Phase 3 AC-REAL implementation and evidence. |
 | Medium | GAP | Provider config is unvalidated, GoDaddy selection ignores the secret, and compose passes no provider variables. | Phase 3 complete-set validation and deployment wiring. |
 | Medium | GAP | The login `next` prefix check accepts protocol-relative or externally normalized targets. | Phase 2.1 same-origin normalization and malicious/valid target tests. |
-| Medium | CURRENT | Mock mutations and rate counters reset on restart; mock state is shared across workspaces. | Keep behavior explicit; do not use mocks as persistence or tenant data. |
+| High | GAP | Mock/provider inventory is deployment-wide and mutable mock state is shared across workspaces. | R2.1e bindings plus manifest-derived mock identity; two-workspace isolation and zero foreign-provider-call tests. |
 | Medium | GAP | Five runtime Prisma callers bypass the intended service/DAL boundary. | Phase 2 boundary cleanup with unchanged external contracts. |
 | Medium | GAP | Most routes lack App Router loading/error/not-found boundaries. | Phase 4 state implementation and accessibility tests. |
 | Accepted | CURRENT | No automatic retention; database growth risk R-5 remains. | Monitor storage operationally; do not invent retention without a new decision. |
 | Dependency | TARGET (Phase 3) | Real smoke tests require credentials and eligible accounts in Q-11 order. | Keep them optional outside normal CI; never expose secrets in artifacts. |
 | Dependency | TARGET (Phase 3.4) | GoDaddy account/API eligibility may block integration. | Require real evidence plus dated user exclusion; missing credentials alone are insufficient. |
 | Non-blocking | CURRENT | OQ-8 leaves uploaded bookmark assets undecided. | Preserve reference-value behavior; do not add an asset pipeline without a sourced requirement. |
+| High | TARGET risk | Historical ownership cannot be inferred safely from current data. | Maintenance manifest with digest/full coverage, explicit orphan/null dispositions, SERIALIZABLE repair, sentinel collision/zero-remnant checks. |
+| High | TARGET risk | Provider transport can fail after an upstream commit. | Durable lease, outside-transaction I/O, readback/CAS, read-only reconciliation; block active/unresolved bindings. |
+| High | TARGET risk | A stale browser tab can issue a mutation after workspace switch. | Required expected-workspace precondition, `409 CONTEXT_STALE`, keyed remount, mutation no-retry. |
 
 ## 13. Verification contract for this document
 
@@ -653,3 +706,11 @@ src/
 | TARGET | Phase 2.1 must prove membership-gated workspace reads, owner-only workspace mutations, non-disclosing foreign-id responses, and malicious/valid login-target handling. |
 | TARGET | Phase 3 retry, redaction, error mapping, readback/reconciliation, and Q-11 order must trace to FR-REAL/AC-REAL and NFR-SEC-002. |
 | CURRENT | Phase 1 remains in progress until ordinary doc review passes; Phases 2–5 remain pending. |
+| TARGET | Q-13 implementation must remove every superseded single-column child FK and prove the compound FK/CHECK/cascade/`SET NULL`/`RESTRICT` contract on PostgreSQL 16. |
+| TARGET | Existing-database repair must prove complete manifest coverage and reserved sentinel id plus `(workspaceId, reservedName)` collision checks; fresh and repaired histories must replay without editing old migrations. |
+| TARGET | `prisma validate`, migration checksums, and canonical JSON→SQL version/SHA/byte parity must pass; repair/migration must make zero provider/network calls. |
+| TARGET | Every session-authenticated browser API must test missing/malformed/matching/stale `X-Inspoter-Workspace` in the required ordering, including switch and workspace administration. |
+| TARGET | Provider binding tests must cover stable account identity, rotation, collision, claim, transfer, remove, delete, identity bounds, lease expiry/no-steal, ambiguous outcome, and reconciliation. |
+| TARGET | R2.1a–e and R2.2–R2.7 report only their facet evidence. Only R2.8 may report AC-WS-008/010/011 and the Workspaces family as PASS/11-of-11. |
+| TARGET | Real-provider identity/capability/reconciliation facts remain R3.x validation and must not be inferred from mock behavior. |
+| CURRENT | Q-13 is approved documentation target only; the current schema, APIs, provider mocks, and UI do not yet implement it. |

@@ -1,15 +1,17 @@
-# Test Plan & Traceability Matrix — inspoter Slice 1
+# Test Plan & Traceability Matrix — inspoter production remediation
 
 **Owner:** tester
-**Status:** Historical Slice 1 Mode B runtime was green on 2026-07-12. The rewritten R2.0-I3 E2E suite is currently **PENDING_REVALIDATION** until the dedicated-database runtime gate; prior unit-test PASS evidence remains valid. **Slice WS (Workspaces, §3.2, added 2026-07-13) remains PARTIAL:** only the pre-existing Bookmarks service suite was updated for workspace scoping; no dedicated workspace API/E2E tests exist yet.
-**Scope:** Slice 0 test-infra exit gate (plan.md §4.2 item 13) + Slice 1 tracer bullet (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014, M-1..M-3, M-8) + Slice WS workspace coverage (§3.2, partial)
-**Normative inputs:** `docs/prd.md` v2.1+ (AC-IDs, §3.0/§3.1, §3.10 Workspaces), `docs/design.md` v1.1 (selectors/copy), `docs/plan.md` v1.4 §5.1 (frozen contracts), §5.2 (Mode A task table), §5a (Slice WS), §10 (DoD)
+**Status:** Historical Slice 1 Mode B runtime was green on 2026-07-12. The rewritten R2.0-I3 E2E suite remains **PENDING_REVALIDATION** until R2.0-G completes its dedicated-database repeated runtime gate; prior unit evidence remains valid. Q-13 is an approved documentation target but is **not implemented or runtime-verified**. Workspaces remain PARTIAL.
+**Scope:** Slice 0/1 evidence + R2.0 current revalidation + Q-13 workspace foundation/facet/all-section contract. This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.1, `docs/architecture.md` v1.4, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.0, `docs/plan.md` v1.4, `docs/progress.md`
 
 ---
 
 ## 1. How to read this matrix
 
 - **Status `PASS`** records either the dated 2026-07-12 Mode B evidence or unchanged unit-test evidence; it does not imply that the rewritten I3 E2E suite has run.
+- **Status `STATIC` or `DISCOVERY`** proves only source/collection shape and never satisfies an AC or runtime gate.
+- **Status `PARTIAL`** names the accepted facet evidence. AC-WS-008/010/011 stay PARTIAL through R2.7 and become PASS only at R2.8.
 - **Status `PENDING_REVALIDATION`** means the current I3 E2E test is collected and statically verified but has not yet passed the dedicated-database runtime gate. Mode A and the 2026-07-12 Mode B results remain historical evidence only.
 
 ---
@@ -79,9 +81,9 @@
 
 ---
 
-### 3.2 Workspaces (Slice WS, added 2026-07-13 — coverage PARTIAL)
+### 3.2 Workspaces (Q-13 supersedes the historical Domains/Servers exception — coverage PARTIAL)
 
-**Context:** Slice WS (plan.md §5a) was implemented between Slice 1 and Slice 2, outside the tester-Mode-A-first workflow that governs every other slice in this document (§2). This section records what test coverage exists today, distinct from what plan.md §5a and progress.md Task 18 already flag as an open process gap.
+**Context:** The historical Slice WS implementation scoped database roots but left authorization, child ownership, migration repair, browser context, Domains/Servers, and provider mocks incomplete. Q-13 requires every visible/operable area to follow the active workspace; credentials alone remain deployment-scoped. The current Bookmarks unit row below is the only accepted workspace-specific test evidence.
 
 | Item                                                                                                                                      | File                                    | Status     |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------- |
@@ -92,23 +94,40 @@
 | AC-WS-001 | Default workspace auto-created on first operator bootstrap/seed       | None                                                                                                                 | **PENDING**                        |
 | AC-WS-002 | Workspace create (name required, unique slug, creator becomes owner)  | None                                                                                                                 | **PENDING**                        |
 | AC-WS-003 | Workspace rename persists everywhere the name is displayed            | None                                                                                                                 | **PENDING**                        |
-| AC-WS-004 | Workspace delete cascades all scoped content; session falls back      | None                                                                                                                 | **PENDING**                        |
+| AC-WS-004 | Local content/bindings delete; upstream resources remain; session falls back | None                                                                                                           | **PENDING**                        |
 | AC-WS-005 | Owner adds an existing operator to the workspace by username          | None                                                                                                                 | **PENDING**                        |
 | AC-WS-006 | Owner invites a new username → new operator created + added as member | None                                                                                                                 | **PENDING**                        |
 | AC-WS-007 | Owner removes a member; access to that workspace revoked              | None                                                                                                                 | **PENDING**                        |
-| AC-WS-008 | Two members of the same workspace independently see the same content  | None                                                                                                                 | **PENDING**                        |
+| AC-WS-008 | Two members independently share every permitted section/resource      | Current code exists; no accepted Q-13 two-member runtime evidence                                                     | **PARTIAL until R2.8**             |
 | AC-WS-009 | Switching active workspace persists on `Session.activeWorkspaceId`    | None                                                                                                                 | **PENDING**                        |
-| AC-WS-010 | Workspace switcher updates dashboard content without full reload      | None                                                                                                                 | **PENDING**                        |
-| AC-WS-011 | Content sections never mix data across workspaces                     | Indirect only — `bookmarks.test.ts` asserts `list()` is scoped by `workspaceId`, i.e. the Bookmarks facet of this AC | **PARTIAL (Bookmarks facet only)** |
+| AC-WS-010 | Switch updates all sections without reload or stale repaint           | Switcher implementation exists; no accepted all-section/stale-tab runtime                                             | **PARTIAL until R2.8**             |
+| AC-WS-011 | No read/write/cache/cursor/binding/provider operation crosses workspace | Historical Bookmarks service unit only; Domains/Servers and other facets unverified                                | **PARTIAL until R2.8**             |
 
 **Not covered (residual gaps, tracked for a follow-up tester dispatch):**
 
 - No API route tests for `src/app/api/workspaces/**` (create/rename/delete/members/switch) — every route in plan.md §5a's file list is currently unverified by an automated test.
 - No e2e coverage of the workspace switcher UI (`workspace-switcher.tsx`) or the Settings workspace-management screen (`settings/workspace/page.tsx`).
-- No test for the custom backfill migration (`20260713042150_add_workspaces`) beyond the implementor's manual verification (progress.md Task 18) that it applies cleanly.
-- No negative/cross-workspace-leakage test beyond the Bookmarks-service facet of AC-WS-011 — Domains/Servers/Mail/Messages/Logs/Alerts will need their own AC-WS-011 facet checks once those sections exist and are workspace-scoped.
+- No PostgreSQL 16 proof for historical repair, Q-13 forward migration, fresh replay, strict optional pairs, compound FKs, sentinel cleanup, bindings, or manifest parity.
+- No negative cross-workspace runtime test beyond the historical Bookmarks service unit; Domains/DNS, Servers, Mail, Messages, Logs, Alerts, Settings, tokens, caches, and cursors remain unverified.
 
-**Recommendation:** before Slice 2 builds further on top of Slice WS, run a dedicated tester Mode A/B pass against AC-WS-001..011 per the standard protocol (plan.md §2), closing the process deviation noted in plan.md §5a.
+### 3.3 Q-13 facet/status matrix
+
+| Gate | Required evidence | Current status | AC-WS disposition |
+| --- | --- | --- | --- |
+| R2.1a | Role/session/schema; manifest repair; forward/fresh PG16 migration; mock SQL parity | PENDING | No AC final PASS |
+| R2.1b | Admin authorization, last owner/membership, deterministic session fallback | PENDING | AC-WS-001..007/009 by case only |
+| R2.1c | Header inventory/order/status on every session browser API | PENDING | Foundation only |
+| R2.1d | Keyed boundary, stale tab, private cache/cursor, Bookmarks compound ownership | PENDING | Bookmarks facets only after runtime |
+| R2.1e | Binding identity, mock isolation, claim/transfer/remove/delete, lease/reconcile | PENDING | Provider foundation only |
+| R2.2 | Webhook/Logs/tokens workspace facets | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.3 | Domains/DNS workspace/mock facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.4 | Servers workspace/mock facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.5 | Alerts workspace facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.6 | Mail workspace facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.7 | Messages workspace facet | PENDING | AC-WS-008/010/011 remain PARTIAL |
+| R2.8 | Two workspaces + two members across every section, Settings, and tokens | PENDING | Only this gate may set AC-WS-008/010/011 PASS and Workspaces 11/11 |
+
+`R2.0-G` is a separate infrastructure/E2E revalidation gate and remains in progress; its result cannot satisfy any Q-13 row above.
 
 ---
 
@@ -192,3 +211,57 @@ Running 38 tests using 6 workers
 ```
 
 **Historical DoD cross-check (2026-07-12, plan.md §10.1):** all 23 Slice 1 AC-IDs had authored tests and the then-current unit/E2E suites were green. For the rewritten R2.0-I3 suite, collection is 38/5 but runtime DoD is **PENDING_REVALIDATION**; no current all-green or three-run claim is made.
+
+---
+
+## 7. Q-13 executable test catalog (all PENDING)
+
+Authored tests, file discovery, Prisma validation, and SQL inspection remain `STATIC` until the named PostgreSQL/browser/provider runtime executes successfully.
+
+### 7.1 PostgreSQL 16 schema, repair, and migration
+
+| ID | Runtime case and pass condition |
+| --- | --- |
+| Q13-DB-001 | Preflight rejects a manifest with a missing/duplicate root, Alert, Session explicit-null row, membership, or orphan disposition; accepts exact digest/full coverage without inference. |
+| Q13-DB-002 | SERIALIZABLE advisory-lock repair writes existing columns only and makes zero provider/network calls. A forced failure rolls back repair atomically. |
+| Q13-DB-003 | Sentinel id `q13-repair-uncategorized:<workspaceId>` and `(workspaceId,'__q13_repair_uncategorized__')` collisions each abort before writes; successful migration leaves zero sentinel ids/names/references. |
+| Q13-DB-004 | Existing path: historical schema/data → manifest repair → Q-13 forward → updated seed. Fresh path: init → empty historical workspace migration → Q-13 forward with zero workspace/mock rows → transactional seed. Both pass without squash/baseline. |
+| Q13-DB-005 | Forced forward-migration failure rolls back every forward DDL/DML change while repaired historical columns remain old-binary compatible; retry succeeds. |
+| Q13-DB-006 | `WorkspaceRole` accepts only OWNER/MEMBER; Session and Alert strict optional pairs reject each partial-null permutation. |
+| Q13-DB-007 | Bookmark/Channel/Message/Idempotency parent shadows reject mismatched workspace; old single-column FKs are absent from `pg_constraint`; populated compound cascades pass. |
+| Q13-DB-008 | Alert composite `ON DELETE SET NULL` clears both category columns and preserves direct `workspaceId`; binding `ON DELETE RESTRICT` prevents uncontrolled workspace cascade. |
+| Q13-DB-009 | Binding identity rejects invalid provider/type pairs, REAL mock prefixes, trim/control violations, and UTF-8 lengths over account 256/remote 512/display 512; global identity collision is exclusive. |
+| Q13-DB-010 | Lease CHECK accepts only all-null IDLE and fully populated active states; unique operation ids and workspace-leading lease indexes exist. |
+| Q13-DB-011 | Generator reproduces committed SQL VALUES bytes and version/SHA-256; Prisma checksum/validate pass; new workspace and seed receive exactly the canonical mock set without global duplicates. |
+
+### 7.2 Request context, roles, browser, cache, and cursors
+
+| ID | Runtime case and pass condition |
+| --- | --- |
+| Q13-CTX-001 | Route inventory proves every session-authenticated browser API method—including workspace list/create/admin/switch—requires non-empty ASCII `X-Inspoter-Workspace` ≤128; only login/logout/public webhook/assets/direct RSC are exempt. |
+| Q13-CTX-002 | Missing/malformed header returns `400 CONTEXT_REQUIRED`; authenticated mismatch returns `409 CONTEXT_STALE`; both occur before business query/cache/write/binding/provider spies fire. |
+| Q13-CTX-003 | Header never selects authority: a matching foreign id stays non-disclosing 404; switch header names current workspace while body names an authorized destination. |
+| Q13-ROLE-001 | MEMBER can use normal content, DNS, server power, create workspace, and list members; owner-only workspace/member/discovery/claim/remove/transfer actions deny MEMBER without side effects. |
+| Q13-ROLE-002 | Concurrent attempts cannot remove the last owner or an operator's last membership; lock-order test proves workspace→operator→membership→binding and deterministic session fallback. |
+| Q13-UI-001 | Switching aborts old requests, discards late responses, clears workspace caches, refreshes/remounts keyed boundary, and updates all sections without full reload. |
+| Q13-UI-002 | On stale `409`, GET may refresh/refetch once; mutation never retries. A delayed old-workspace response never repaints the new workspace. |
+| Q13-CACHE-001 | Workspace responses carry `private, no-store, max-age=0` and `Vary: Cookie, X-Inspoter-Workspace`; no shared Next cache entry serves another workspace. |
+| Q13-CURSOR-001 | Cursor replay under a different workspace or filter is rejected; valid same-workspace keyset pagination neither duplicates nor leaks rows. |
+
+### 7.3 Provider binding, mock, and operation lease
+
+| ID | Runtime case and pass condition |
+| --- | --- |
+| Q13-PROV-001 | Stable account key/remote id survive credential rotation; invalid credential returns typed auth with no mock fallback; account mismatch blocks with no display-name auto-match. |
+| Q13-PROV-002 | Discovery occurs outside transaction and hides resources assigned elsewhere. Fresh claim plus `INSERT ON CONFLICT` is same-workspace idempotent and different-workspace generic 409. |
+| Q13-PROV-003 | Foreign/missing local binding returns non-disclosing 404 and provider/network spy count zero for list/detail/DNS mutation/server power. |
+| Q13-PROV-004 | MOCK ids use `mock:v1:<workspaceId>:...`; two workspaces receive canonical but independent state; one workspace's mutation never changes the other. |
+| Q13-PROV-005 | Lease acquisition commits before provider I/O; successful readback CAS clears state/version; timeout-after-possible-commit enters `RECONCILE_REQUIRED`. |
+| Q13-PROV-006 | Expired lease is never stolen; reconciliation is provider-read-only; active/unresolved binding blocks mutation, transfer, remove, and workspace delete. |
+| Q13-PROV-007 | Owner-to-owner transfer and removal update local metadata only. Workspace deletion with idle bindings performs zero provider delete calls and leaves upstream resources unchanged. |
+
+### 7.4 R2.8 all-section closure
+
+Create workspaces A/B and owners/members A1/A2/B1/B2. Seed distinct Bookmarks, Domains/DNS bindings and records, Servers, Mail, Messages, Logs, Alerts, Settings state, and tokens. For each role, switch A↔B repeatedly and exercise list/detail/create/update/delete where in scope, pagination/cursors, stale tabs, caches, webhook ingest, DNS mutation, server power, and owner-only controls. Pass requires zero mixed identifiers/content, zero foreign provider calls, correct role denials, no stale repaint, no automatic stale mutation retry, and unchanged upstream resources after local binding/workspace removal.
+
+Before R2.8, AC-WS-008/010/011 remain PARTIAL even when every individual facet is green. After one clean R2.8 runtime plus independent review, record those three criteria PASS and Workspaces 11/11. Real-provider facts remain R3.x and are not inferred from mock PASS.

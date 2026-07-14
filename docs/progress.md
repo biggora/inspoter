@@ -108,8 +108,12 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | Q13-DR3 | Q-13 final architecture correction retry 3/3 | Workspace Architecture Remediation Architect | DONE | Architecture Amendment v2.1 corrections delivered: Alert partial-null SQL CHECK, repair before shadow fields, explicit fresh-migration replay, and SQL mock manifest; reviewer recheck PASS |
 | Q13-R3 | Q-13 architecture original-reviewer recheck 2/3 | Independent Architecture Reviewer | DONE | PASS→Accept: Q13-V2-001..004 and original Q13-ARCH-001..009 CLOSED; Architecture Amendment v2.1 accepted; implementation gates remain—legacy FK removal, sentinel-collision checks, and PostgreSQL 16/Prisma migration parity |
 | Q13-DOC | Q-13 normative docs authoring/review gate | Technical Writer → Independent Doc Reviewer | IN_PROGRESS | Applying accepted Architecture Amendment v2.1 to normative docs and opening independent review; R2.1 implementation remains gated until PASS |
-| R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | Gated by R2.0 acceptance and Q13-DOC independent PASS; Q-13 architecture accepted, but the prior audit/contract remains stale; implementation/testing not started |
+| R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | Contract PASS→Accept and packages R2.1a–e implementation-ready; execution remains gated by R2.0 acceptance and Q13-DOC independent PASS; AC-WS-008/010/011 remain PARTIAL until R2.8; implementation/testing not started |
 | R2.1-A | Workspace Mode B/review gap audit | Workspace Security/Test Auditor | DONE_WITH_CONCERNS | STALE after Q-13: prior contract excluded Domains/Servers; the binding decision scopes every user-visible/operable content area to workspace; revise after architecture approval before implementation; earlier gap evidence remains historical; zero edits/DB/provider |
+| R2.1-A2 | Q-13 workspace contract re-audit | Workspace Contract Auditor | DONE_WITH_CONCERNS | READY for review: 42 current methods inventoried and packages R2.1a–e defined; independent review returned PARTIAL; read-only audit, no code |
+| R2.1-R1 | Q-13 workspace contract independent review 1/3 | Independent Contract Reviewer | DONE_WITH_CONCERNS | PARTIAL→Revise: R21-CR-001..008; contract not accepted; no code |
+| R2.1-DR1 | Workspace contract corrections v2/v2.1 | Workspace Contract Remediation Architect | DONE_WITH_CONCERNS | v2 closed 7/8 findings; recheck 2/3 remained PARTIAL on R21-CR-R201 fresh top-level slug transactions; v2.1 closed R21-CR-R201; final recheck required; no code |
+| R2.1-C | Q-13 workspace contract final recheck 3/3 | Independent Contract Reviewer | DONE | PASS→Accept: R21-CR-001..008 and R21-CR-R201 CLOSED; 42 current methods inventoried; packages R2.1a–e implementation-ready; AC-WS-008/010/011 remain PARTIAL until R2.8; no code |
 | R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.2; not started |
 | R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.3; not started |
 | R2.4 | Slice 3 Mode B + review (Servers, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.4; not started |
@@ -139,7 +143,7 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
 | Phase 1 | DONE | R1.1–R1.5 DONE; doc reviews PASS; P-RULE-3 checkpoint executed with nonblocking Phase 4 R4.1 localization carryover |
-| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2/I3 code/test implementation accepted; R2.0-G PENDING after R2G-ENV-001 preflight with 0/3 runs started, awaiting authorized port 3900 release; Q-13 Architecture Amendment v2.1 PASS→Accept with Q13-DOC IN_PROGRESS; R2.1 audit/contract stale and gated by R2.0 plus docs review; R2.2–R2.8 pending |
+| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2/I3 code/test implementation accepted; R2.0-G PENDING after R2G-ENV-001 preflight with 0/3 runs started, awaiting authorized port 3900 release; Q-13 Architecture Amendment v2.1 and R2.1 contract PASS→Accept, with packages R2.1a–e implementation-ready; Q13-DOC IN_PROGRESS and R2.1 execution gated by R2.0 plus independent docs PASS; R2.2–R2.8 pending |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |
