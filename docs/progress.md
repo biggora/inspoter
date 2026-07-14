@@ -74,10 +74,12 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | R1.5-E1 | R1.5 reference-integrity authoring | technical-writer | DONE | DOC-INV-001..004 edits complete; specs 148; root path/term/diff/index checks PASS; integration reviewer pending |
 | R1.5-R1 | R1.5 reference-integrity integration review 1/2 | doc-reviewer | DONE | PASS: DOC-INV-001..004 closed; no material regressions; links, source authority, workflow, Q-3/delta and diff/index checks verified |
 | P1-P3 | Phase 1 P-RULE-3 working-app demo checkpoint | tester + coordinator | DONE_WITH_CONCERNS | Working-app production URL http://127.0.0.1:3000; 6 cases: 4 PASS/2 PARTIAL/0 runtime FAIL/0 SKIP; auth, Bookmarks, Domains mock inventory, mobile; 0 5xx/console errors/broken images/overflow; localization finding carried to R4.1; report test-results/phase1-checkpoint/REPORT.md; user continuous-execution instruction, no blocking feedback |
-| R2.0 | DB-изоляция e2e + CI | implementor + tester | IN_PROGRESS | Audit and independent matrix review DONE; dedicated inspoter_e2e_test:3833 selected; I1 IN_PROGRESS; no implementation PASS claim |
+| R2.0 | DB-изоляция e2e + CI | implementor + tester | IN_PROGRESS | Audit/matrix DONE; I1 rework 1/2 PASS; independent security/code review IN_PROGRESS; no I1 acceptance claim |
 | R2.0-A | R2.0 DB isolation/CI evidence audit | test-infrastructure-architect | DONE | PASS: 23 Vitest/6 files, 38 Playwright/5 files, shared DB/no CI; options compared; dedicated inspoter_e2e_test:3833 selected; audit made no DB mutation |
 | R2.0-P | R2.0 implementation matrix independent review | test-infrastructure-planner | DONE | Core approach/counts confirmed; Dockerfile remains R2.0 per architecture §2.2; DB contract normalized to inspoter_e2e_test:3833 |
-| R2.0-I1 | Dedicated test DB and fail-closed guard core | test-infrastructure-engineer | IN_PROGRESS | compose/env/guard/lifecycle/package DB scripts/guard tests under implementation; current DB 3832 excluded |
+| R2.0-I1 | Dedicated test DB and fail-closed guard core | test-infrastructure-engineer | IN_PROGRESS | Rework 1/2 PASS; independent security/code review IN_PROGRESS; I1 acceptance pending |
+| R2.0-I1-DR1 | Test DB guard core rework 1/2 | test-infrastructure-engineer | DONE | PASS: local Prisma CLI via createRequire/require.resolve + process.execPath, shell:false, sanitized env; syntax/26 guards/valid+unsafe targets/compose/lint/typecheck/diff PASS; isolated lifecycle 2 migrations/seed/15 tables/down-v cleanup PASS; port 3832 untouched |
+| R2.0-I1-R1 | Dedicated test DB core independent security/code review | Security Auditor/Code Reviewer | IN_PROGRESS | Independent gate: fail-closed target guard, identity before reset, no secret leakage or command injection, Docker isolation, and regression/tests under review; no I1 acceptance claim |
 | R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.1; not started |
 | R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.2; not started |
 | R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.3; not started |
@@ -108,7 +110,7 @@ PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). 
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
 | Phase 1 | DONE | R1.1–R1.5 DONE; doc reviews PASS; P-RULE-3 checkpoint executed with nonblocking Phase 4 R4.1 localization carryover |
-| Phase 2 | IN_PROGRESS | R2.0 audit and independent matrix review DONE; I1 dedicated test DB/guard core IN_PROGRESS; R2.1–R2.8 pending |
+| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1 rework 1/2 DONE; independent security/code review IN_PROGRESS; R2.1–R2.8 pending |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |
