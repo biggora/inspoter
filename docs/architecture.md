@@ -1,10 +1,10 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.3
-**Status:** Approved — ordinary doc-review PASS
+**Version:** 1.4
+**Status:** Draft Q-13 target amendment — independent doc-review pending
 **Owner:** Architect
 **Date:** 2026-07-14
-**Normative inputs:** `docs/prd.md` v3.0, `docs/design.md` v2.0, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
+**Normative inputs:** `docs/prd.md` v3.1, `docs/design.md` v2.0, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state on 2026-07-14
 
 ## 0. Reading contract
@@ -15,20 +15,21 @@ This document separates repository facts from planned work. Every behavioral sta
 - **GAP** — verified divergence between the repository and approved requirements or the intended boundary.
 - **TARGET (Phase N)** — planned remediation. A target path or behavior does not exist until its phase implements and verifies it.
 
-The repository is authoritative for **CURRENT**. PRD v3, Design v2, accepted Q-1…Q-12, and the remediation plan are authoritative for **TARGET**. Version 1.2 remains a historical workspace revision; version 1.3 replaces its architectural claims.
+The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q-1…Q-13, and the remediation plan are authoritative for **TARGET**. Version 1.3 remains the approved pre-Q-13 snapshot; version 1.4 supersedes its Domains/Servers workspace exception but preserves the historical record.
 
 ### 0.1 Changelog
 
+- **v1.4 (2026-07-14):** defines the approved but unimplemented Q-13 target: every visible/operable area follows the active workspace; provider credentials remain deployment-scoped; exclusive resource bindings, repair/forward migrations, stale-context preconditions, durable provider leases, workspace-bound UI/cache/cursors, and facet gates are normative.
 - **v1.3 (2026-07-14):** reconciles the document with Next.js 16.2.10, `src/proxy.ts`, 12 pages, 29 route files, 42 handlers, 15 Prisma models, active Settings routes, D-20, FR-MSG-003, AC-ALR-008, the verified webhook idempotency race, real-provider stubs, deployment gaps, and the Phase 3 provider target.
 - **v1.2 (2026-07-13):** historical workspace revision.
 
 ## 1. Scope and system context
 
-**CURRENT:** Inspot Dashboard is one Next.js App Router application backed by PostgreSQL through Prisma. It is a modular monolith deployed as one application container plus one database container. Browser operators use authenticated dashboard routes. External systems use the public webhook endpoint. Domains and Servers read provider-account inventory through provider adapters.
+**CURRENT:** Inspot Dashboard is one Next.js App Router application backed by PostgreSQL through Prisma. It is a modular monolith deployed as one application container plus one database container. Browser operators use authenticated dashboard routes. External systems use the public webhook endpoint. Domains and Servers currently read deployment-wide provider-account inventory through provider adapters; this is a Q-13 isolation GAP.
 
-**CURRENT:** The architecture has no microservices, queue, Redis dependency, provider-state database, vault integration, or general provider SDK. The in-process webhook rate limiter and mock-provider state assume one application process.
+**CURRENT:** The architecture has no microservices, queue, Redis dependency, provider-resource binding table, vault integration, or general provider SDK. The in-process webhook rate limiter and mock-provider state assume one application process; mutable mock state is shared across workspaces.
 
-**TARGET (Phase 3):** Keep the modular monolith. Add only a validated provider configuration boundary, a thin injected HTTP boundary, complete adapters, typed error mapping, and tests. Do not add a queue, vault, provider database, general SDK, or separate service.
+**TARGET (R2.1e, Phase 3):** Keep the modular monolith. Add local provider-resource binding/operation metadata, a validated provider configuration boundary, a thin injected HTTP boundary, complete adapters, typed error mapping, and tests. Do not persist credentials or provider snapshots, and do not add a queue, vault, general SDK, or separate service.
 
 ```mermaid
 flowchart LR
@@ -54,7 +55,7 @@ flowchart LR
 | --- | --- | --- |
 | CURRENT | `src/app`, `src/components` | App Router layouts/pages, Server Components, interactive Client Components, login actions, REST handlers |
 | CURRENT | `src/lib/auth` | Cookie/session primitives and authoritative operator/workspace resolution |
-| CURRENT | `src/lib/services` | Workspace-scoped business operations and provider orchestration |
+| CURRENT / GAP | `src/lib/services` | Database-content workspace operations; provider orchestration currently omits workspace bindings |
 | CURRENT | `src/lib/webhooks` | Public ingest pipeline, dispatch, rate limiting, idempotency lookup/record |
 | CURRENT | `src/lib/providers` | DNS/server contracts, factories, deterministic mocks, incomplete real-mode classes |
 | CURRENT | `src/lib/db.ts`, Prisma | Prisma client and persisted PostgreSQL state |
@@ -186,7 +187,7 @@ flowchart LR
 14. `WebhookToken`
 15. `IdempotencyKey`
 
-### 4.2 D-20 ownership boundary
+### 4.2 Current ownership boundary and Q-13 replacement
 
 | Label | Data family | Ownership and persistence |
 | --- | --- | --- |
@@ -196,8 +197,9 @@ flowchart LR
 | CURRENT | Mail and Logs | `MailItem.workspaceId` and `LogEntry.workspaceId` directly own rows. |
 | CURRENT | Alerts | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`. |
 | CURRENT | Webhook tokens | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership. |
-| CURRENT | Domains and Servers | Provider DTOs only. There are no `Domain`, `DnsRecord`, or `Server` Prisma models. These resources belong to configured provider accounts. |
-| TARGET (D-20) | Workspace lifecycle | Workspace switching/deletion affects Bookmarks, Mail, Messages, Logs, Alerts, tokens, categories, and children. It never changes or deletes Domains, Servers, DNS records, or provider resources. |
+| CURRENT / GAP | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory. |
+| TARGET (Q-13, R2.1e) | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access. |
+| TARGET (Q-13) | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets. |
 
 ### 4.3 Verified ownership gaps
 
@@ -234,6 +236,81 @@ flowchart LR
 **CURRENT:** The pagination-only substring-search fallback remains explicit. The 500 ms indexed-read objective does not cover substring scans. A future trigram/full-text change requires a measured need and a migration; it is not part of this rewrite.
 
 ## 5. Authentication, session, and proxy
+
+### 4.5 Q-13 target relational contract — not implemented
+
+**TARGET (R2.1a/e):** The schema below is normative. The current 15-model schema and two committed migrations do not implement it.
+
+| Model | Required Q-13 ownership and relation |
+| --- | --- |
+| `WorkspaceMember` | Replace free-form/default role with `WorkspaceRole { OWNER, MEMBER }`; preserve `@@unique([workspaceId, operatorId])`. A workspace and operator must each retain at least one membership, and a workspace must retain at least one owner. |
+| `Session` | Add nullable `activeWorkspaceOperatorId`. Replace the direct `Session.activeWorkspaceId → Workspace.id` FK with composite `(activeWorkspaceId, activeWorkspaceOperatorId) → WorkspaceMember(workspaceId, operatorId) ON DELETE SET NULL`. SQL CHECK requires both columns NULL or both non-NULL; the application writes the authenticated `operatorId` shadow. |
+| `Category → Bookmark` | `Category` gains `@@unique([id, workspaceId])`. `Bookmark` gains required `workspaceId` and `categoryWorkspaceId`; CHECK `categoryWorkspaceId = workspaceId`; composite FK `(categoryId, categoryWorkspaceId) → Category(id, workspaceId) ON DELETE CASCADE`. |
+| `MessageCategory → Channel` | `MessageCategory` gains `@@unique([id, workspaceId])`. `Channel` gains required `workspaceId` and `messageCategoryWorkspaceId`; equality CHECK; composite parent FK with cascade. |
+| `Channel → Message` | `Channel` gains `@@unique([id, workspaceId])`. `Message` gains required `workspaceId` and `channelWorkspaceId`; equality CHECK; composite parent FK with cascade. |
+| `AlertCategory → Alert` | `AlertCategory` gains `@@unique([id, workspaceId])` and `@@unique([workspaceId, name])`. `Alert` gains required `workspaceId` and nullable `alertCategoryWorkspaceId`; composite `(alertCategoryId, alertCategoryWorkspaceId) → AlertCategory(id, workspaceId) ON DELETE SET NULL`. |
+| `WebhookToken → IdempotencyKey` | `WebhookToken` gains `@@unique([id, workspaceId])`. `IdempotencyKey` gains required `workspaceId` and `tokenWorkspaceId`; equality CHECK; composite parent FK with cascade. |
+| Existing roots | `Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, and `WebhookToken` retain required direct `workspaceId`. `Workspace` gains inverse relations for every direct owner, including all new children and provider bindings. |
+
+The Alert optional-pair constraint is strict despite PostgreSQL `MATCH SIMPLE`:
+
+```sql
+CHECK (
+  ("alertCategoryId" IS NULL AND "alertCategoryWorkspaceId" IS NULL)
+  OR
+  ("alertCategoryId" IS NOT NULL
+   AND "alertCategoryWorkspaceId" IS NOT NULL
+   AND "alertCategoryWorkspaceId" = "workspaceId")
+)
+```
+
+`Session` uses the same both-null-or-both-non-null predicate for `activeWorkspaceId` and `activeWorkspaceOperatorId`. Partial-null rows must fail both constraints. The forward migration must drop these superseded single-column FKs after the compound FKs exist: `Bookmark_categoryId_fkey`, `Channel_messageCategoryId_fkey`, `Message_channelId_fkey`, `Alert_alertCategoryId_fkey`, and `IdempotencyKey_tokenId_fkey`. PostgreSQL 16 verification must prove their absence and exercise populated cascades, `Alert` composite `SET NULL`, and binding `RESTRICT` behavior.
+
+Workspace-leading indexes are required on every scoped lookup path: category/child ordering; channel/message keyset pagination; mail/log/alert time cursors; alert category, severity, and source filters; token/idempotency lookup; and binding workspace/provider/type/mode/lease scans. Existing non-workspace indexes may remain only when a measured global operational query uses them.
+
+### 4.6 `ProviderResourceBinding` target
+
+**TARGET (R2.1e):** `ProviderResourceBinding` is local ownership/operation metadata, not a credential store or provider snapshot.
+
+| Field family | Contract |
+| --- | --- |
+| Identity | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace. |
+| Mock identity | `accountKey = 'mock:v1'`; `remoteId = 'mock:v1:<workspaceId>:<provider>:<key>'`. REAL rows cannot use a `mock:` prefix. No mutable module-global mock state remains. |
+| Identity validation | Application and SQL enforce UTF-8 bounds: `accountKey` 1–256 bytes, `remoteId` 1–512, `displayName` 1–512; values are trimmed and contain no control characters. Provider/resource-type pairs are restricted by CHECK. |
+| Operation lease | State is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`. Operation id is unique; kind, credential-free canonical intent, start, expiry, and reconciled status are persisted. Intent is at most 16 KiB and must never contain credentials. A CHECK requires every operation column NULL in `IDLE` and every operation column non-NULL in active states. |
+| Indexes | Workspace-leading discovery/list index `(workspaceId, resourceType, provider, mode, id)` plus lease/reconciliation indexes; the global identity unique index is mandatory. |
+
+`Workspace` deletion first requires all bindings `IDLE`, then deletes local binding rows in a controlled transaction; it never sends provider delete calls. The Prisma relation remains `Restrict` so an accidental cascade cannot bypass this gate.
+
+### 4.7 Existing-database repair and forward migration
+
+**TARGET (R2.1a):** Deployment enters maintenance mode before repair. A signed repair manifest covers every existing operator/content row exactly once: desired memberships; all roots (`Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, `WebhookToken`); every null-category `Alert`; every `Session`, including an explicit null destination; and every orphan disposition (attach or delete with data-loss acknowledgement). Preflight verifies source digest, full coverage, referential validity, reserved-value collisions, and zero guessing.
+
+Repair runs at `SERIALIZABLE` under an advisory lock and writes **only columns that already exist**: membership string roles, root `workspaceId`, existing child parent ids, `Session.activeWorkspaceId`, and `Alert.alertCategoryId`. A null-category Alert is transported through a temporary `AlertCategory` whose id is exactly `q13-repair-uncategorized:<workspaceId>` and whose reserved key is `(workspaceId, '__q13_repair_uncategorized__')`. Any collision aborts before writes.
+
+The committed Q-13 forward migration is one explicit `BEGIN`/`COMMIT` unit:
+
+1. Re-run guards and reserved-id/name collision checks.
+2. Create `WorkspaceRole`; remove the legacy role default; convert only `owner`/`member` values.
+3. Drop the old Session→Workspace FK, add/derive the operator shadow only for valid memberships, then add the composite membership FK and strict optional-pair CHECK.
+4. Add direct child ownership and parent-workspace shadows; derive them from repaired parents; add equality CHECKs, parent composite uniques, and compound FKs; then remove superseded single-column FKs.
+5. Add/derive durable Alert ownership from repaired categories. For sentinel Alerts, derive `workspaceId`, null both category columns, delete all sentinels, and assert zero sentinel ids/names/rows.
+6. Add workspace-leading indexes, `ProviderResourceBinding`, identity/state CHECKs, and generated mock-resource inserts.
+7. Commit only after every invariant query returns zero violations.
+
+If repair commits but the forward migration fails, PostgreSQL rolls back the forward transaction completely. The repaired rows remain compatible with the old binary; maintenance stays enabled, the new binary is prohibited, and operators inspect Prisma/PostgreSQL diagnostics before retrying. No guessed down migration or data rewrite is allowed.
+
+Fresh installation remains an exact historical replay: `init` → historical workspace migration with zero operator/content → Q-13 forward migration with zero workspace/mock rows → updated transactional seed. The seed creates the operator, workspace, `OWNER` membership, and mock bindings. Do not squash, edit, or baseline old migrations.
+
+### 4.8 Canonical mock manifest and migration parity
+
+`prisma/mock-provider-resources.v1.json` is the canonical mock catalog. A deterministic pre-release generator canonicalizes JSON, computes SHA-256, and writes an immutable version/hash header plus a marked SQL `VALUES` region into the checked-in Q-13 migration. The SQL performs `Workspace CROSS JOIN VALUES` inside the migration transaction and uses the exact global identity conflict key. PostgreSQL never imports JSON at runtime.
+
+CI regenerates the SQL region and compares version, SHA-256, and bytes. Prisma's migration checksum remains authoritative. `seed`, `createWorkspace`, and provider adapters read the same JSON. A changed catalog requires a new versioned JSON file and a new forward migration; editing an applied migration is forbidden.
+
+Production order is fixed: maintenance on → preflight → manifest repair → repair verification → `prisma migrate deploy` → `pg_constraint`/index/manifest parity inspection → application smoke → maintenance off. Repair and migration execute with provider credentials unavailable and must make zero network/provider calls.
+
+The mandatory PostgreSQL 16 gate covers fresh replay, repaired replay, forced forward failure/retry, sentinel success/collision/zero-remnant checks, partial-null rejection, composite cascades/`SET NULL`, binding `RESTRICT`, identity length/control/prefix checks, lease-state checks, JSON↔SQL byte parity, Prisma validate/checksum, and zero provider/network access.
 
 **CURRENT:** `src/proxy.ts` is an optimistic redirect layer. It checks only whether the `session` cookie exists. It redirects missing-cookie requests to `/login?next=<pathname>` and excludes login, public webhooks, framework assets, and the favicon from its matcher. It performs no database authorization.
 

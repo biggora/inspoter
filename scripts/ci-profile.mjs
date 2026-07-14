@@ -36,10 +36,13 @@ const UNTRUSTED_RUNTIME_ENVIRONMENT_KEYS = [
   "npm_config_user_agent",
   "COREPACK_HOME",
   "COREPACK_DEFAULT_TO_LATEST",
+  "COREPACK_ENV_FILE",
   "COREPACK_ENABLE_PROJECT_SPEC",
   "COREPACK_ENABLE_STRICT",
+  "COREPACK_ENABLE_AUTO_PIN",
   "COREPACK_INTEGRITY_KEYS",
   "COREPACK_NPM_REGISTRY",
+  "COREPACK_ENABLE_UNSAFE_CUSTOM_URLS",
   "XDG_CACHE_HOME",
   "LOCALAPPDATA",
   "APPDATA",
@@ -198,6 +201,12 @@ function trustedCorepackEnvironment(environment, nodeEnvironment) {
 
   childEnvironment.NODE_ENV = nodeEnvironment;
   childEnvironment.NO_COLOR = "1";
+  childEnvironment.COREPACK_ENV_FILE = "0";
+  childEnvironment.COREPACK_DEFAULT_TO_LATEST = "0";
+  childEnvironment.COREPACK_ENABLE_PROJECT_SPEC = "1";
+  childEnvironment.COREPACK_ENABLE_STRICT = "1";
+  childEnvironment.COREPACK_ENABLE_AUTO_PIN = "0";
+  childEnvironment.COREPACK_ENABLE_UNSAFE_CUSTOM_URLS = "0";
   childEnvironment.COREPACK_ENABLE_NETWORK = "0";
   childEnvironment.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
   return childEnvironment;
