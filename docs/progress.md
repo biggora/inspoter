@@ -142,9 +142,9 @@ PRD v3.0 остаётся утверждённой базовой версией
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
-| Phase 1 | DONE | R1.1–R1.5 DONE; doc reviews PASS; P-RULE-3 checkpoint executed with nonblocking Phase 4 R4.1 localization carryover |
-| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2/I3 code/test implementation accepted; R2.0-G PENDING after retry 2 authoritative Docker preflight confirmed unrelated `prompt-improver` owns port 3900, with 0/3 full runs started and explicit stop/restart authorization required; Q-13 Architecture Amendment v2.1 and R2.1 contract PASS→Accept, with packages R2.1a–e implementation-ready; Q13-DOC IN_PROGRESS and R2.1 execution gated by R2.0 plus independent docs PASS; R2.2–R2.8 pending |
+| Phase 0 | DONE | user explicitly accepted Q-1…Q-13 on 2026-07-14 |
+| Phase 1 | IN_PROGRESS | Pre-Q13 R1.1–R1.5 reviews passed; Q-13 document corrections are applied, but independent Q13-DOC Review 2/3 remains PENDING, so Phase 1 is not approved |
+| Phase 2 | IN_PROGRESS | R2.0 audit/matrix and I1/I2 code accepted; I3 code review accepted, but runtime/full-E2E evidence remains pending revalidation through R2.0-G. R2.0-G is PENDING after retry 2 authoritative Docker preflight confirmed unrelated `prompt-improver` owns port 3900; 0/3 full runs started and explicit stop/restart authorization is required. Q-13 Architecture Amendment v2.1 and R2.1 contract PASS→Accept, with packages R2.1a–e implementation-ready but code PENDING; Q13-DOC Review 2/3 and R2.1 execution remain gated; R2.2–R2.8 pending |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |
