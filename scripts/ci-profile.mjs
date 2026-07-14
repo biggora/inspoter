@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { readFileSync, realpathSync, statSync } from "node:fs";
-import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import {
   createTestChildEnvironment,
   loadTestEnvironment,
@@ -22,6 +29,8 @@ const PNPM_VERSION_ENVIRONMENT_KEYS = [
   "WINDIR",
   "ComSpec",
   "TEMP",
+  "TMP",
+];
 const UNTRUSTED_RUNTIME_ENVIRONMENT_KEYS = [
   "npm_execpath",
   "npm_config_user_agent",
@@ -41,8 +50,6 @@ const UNTRUSTED_RUNTIME_ENVIRONMENT_KEYS = [
   "LD_PRELOAD",
   "DYLD_INSERT_LIBRARIES",
   "DYLD_LIBRARY_PATH",
-];
-  "TMP",
 ];
 
 export const PROFILE_STEPS = Object.freeze({
@@ -131,7 +138,9 @@ function trustedPnpmLauncherAt(corepackDirectory, runtimePrefix) {
     const binEntry = corepackPnpmBinEntry(packageManifest);
     if (binEntry.length === 0) return undefined;
 
-    const launcher = realpathSync(resolve(canonicalCorepackDirectory, binEntry));
+    const launcher = realpathSync(
+      resolve(canonicalCorepackDirectory, binEntry),
+    );
     if (
       !statSync(launcher).isFile() ||
       !isPathInside(canonicalCorepackDirectory, launcher)
@@ -219,7 +228,10 @@ function pnpmVersionEnvironment(environment) {
 function environmentValue(environment, expectedKey) {
   const normalizedExpectedKey = expectedKey.toLowerCase();
   for (const [key, value] of Object.entries(environment)) {
-    if (key.toLowerCase() === normalizedExpectedKey && typeof value === "string") {
+    if (
+      key.toLowerCase() === normalizedExpectedKey &&
+      typeof value === "string"
+    ) {
       return value;
     }
   }
@@ -397,10 +409,7 @@ async function probePnpmVersionWithLauncher(pnpmLauncher, environment) {
     child.once("error", onError);
     child.once("close", onClose);
     if (!settled) {
-      deadline = setTimeout(
-        () => void rejectProbe(),
-        PNPM_VERSION_TIMEOUT_MS,
-      );
+      deadline = setTimeout(() => void rejectProbe(), PNPM_VERSION_TIMEOUT_MS);
     }
   });
 }
@@ -463,7 +472,8 @@ export async function executeCiProfile({
 
   const executeStep =
     runStep ??
-    ((step, childEnvironment) => runPnpmStep(pnpmLauncher, step, childEnvironment));
+    ((step, childEnvironment) =>
+      runPnpmStep(pnpmLauncher, step, childEnvironment));
 
   let cleanupArmed = false;
   let primaryError;

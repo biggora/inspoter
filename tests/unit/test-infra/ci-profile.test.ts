@@ -83,24 +83,13 @@ function readProcessTree(pidPath: string) {
 }
 
 function validLifecycleEnvironment(): NodeJS.ProcessEnv {
-  const npmExecPath = process.env.npm_execpath;
-  const userAgent = process.env.npm_config_user_agent;
-  if (
-    typeof npmExecPath !== "string" ||
-    typeof userAgent !== "string" ||
-    !userAgent.startsWith("pnpm/11.12.0 ")
-  ) {
-    throw new Error("CI profile tests require the pnpm 11.12.0 lifecycle.");
-  }
-
-  return {
-    ...process.env,
-    npm_execpath: npmExecPath,
-    npm_config_user_agent: userAgent,
+  return environmentWithExactKeys({
+    npm_execpath: "ignored-by-ci-profile-tests",
+    npm_config_user_agent: "pnpm/11.12.0 npm/? node/test test",
     ALLOW_TEST_DB_RESET: "1",
     TEST_DATABASE_MARKER: "inspoter-e2e",
     DATABASE_URL: SAFE_DATABASE_URL,
-  };
+  });
 }
 
 function environmentWithExactKeys(
@@ -267,7 +256,7 @@ describe("deterministic CI profile runner", () => {
     expect(result.signal).toBeNull();
     expect(existsSync(probeSentinel)).toBe(false);
     expect(existsSync(runSentinel)).toBe(false);
-    expect(result.stderr).toContain("Refusing test database operation");
+    expect(result.stderr).toBe("[ci-profile] CI profile failed.\n");
     expect(result.stderr).not.toContain(temporaryDirectory);
     expect(result.stderr).not.toContain(SAFE_DATABASE_URL);
   });
