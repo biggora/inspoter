@@ -1,18 +1,20 @@
 # Progress Ledger — inspoter
 
-**Goal:** Разработать документацию (PRD, архитектура, дизайн, план) и реализовать панель управления (Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts + webhook API). Этот запуск: docs + каркас + tracer bullet (оболочка + Bookmarks).
+**Goal:** Реализовать `docs/remediation-plan.md` и довести все семь разделов панели, интеграции провайдеров, тесты, документацию и release gates до production-ready состояния.
 
 **Артефакты:** [PRD](prd.md) · [Architecture](architecture.md) · [Design](design.md) · [Plan](plan.md)
 
-**Стек (утверждён пользователем 2026-07-12):** Next.js 15 (App Router) + TypeScript + Tailwind CSS + shadcn/ui, Route Handlers для API/webhooks, Prisma + PostgreSQL.
+**Текущий стек (проверен по package.json 2026-07-14):** Next.js 16.2.10 (App Router, `src/proxy.ts`), React/react-dom 19.1.0, TypeScript ^5, Tailwind ^4 + shadcn/ui, Route Handlers, Prisma/@prisma/client ^7.8.0 + PostgreSQL, zod ^4.4.3, Vitest ^4.1.10, Playwright ^1.61.1, eslint ^9 / eslint-config-next 16.2.10, pnpm 11.12.0.
+
+Исторические строки задач сохраняют версии, актуальные на момент выполнения, и не являются источником текущего стека.
 
 ## Acceptance criteria
 
-PRD v2.1(+) утверждён (CONSENSUS + doc-review PASS); §3.10 (Workspaces) добавлена после Slice 1. 90 активных AC + 1 неактивный (AC-MSG-008, gated on OQ-6). Полный индекс — docs/prd.md Appendix B:
+PRD v3.0 утверждён (adversarial CONSENSUS + ordinary doc-review PASS). Базовый набор: ровно 100 безусловно активных + 16 условно применимых AC-REAL + 1 неактивный AC-MSG-008 = 117 уникальных AC; источник — docs/prd.md Appendix B:
 
-- Slice 1 (tracer bullet): AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014
-- Slice WS (Workspaces, между Slice 1 и Slice 2): AC-WS-001..011 (FR-WS-001..003, §3.10) — реализовано, тестовое покрытие частичное (см. test-plan.md §3.2)
-- Последующие слайсы: AC-DOM-001..009, AC-SRV-001..008, AC-MAIL-001..006, AC-MSG-001..007 (+008 inactive), AC-LOG-001..005, AC-ALR-001..007, AC-WH-001..011, AC-PROV-001..003
+- Slice 1 без изменений: AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014.
+- Slice WS без изменений: AC-WS-001..011 — реализовано, тестовое покрытие частичное (см. test-plan.md §3.2).
+- Последующие слайсы: AC-DOM-001..009, AC-SRV-001..008, AC-MAIL-001..006, AC-MSG-001..007 и AC-MSG-009..014 (AC-MSG-008 inactive), AC-LOG-001..005, AC-ALR-001..008, AC-WH-001..011, AC-PROV-001..003, AC-REAL-CF-001..004, AC-REAL-HC-001..004, AC-REAL-HD-001..004, AC-REAL-GD-001..004 (16 conditional), AC-DEMO-001..003.
 
 ## Task table
 
@@ -41,6 +43,67 @@ PRD v2.1(+) утверждён (CONSENSUS + doc-review PASS); §3.10 (Workspaces
 | 17б | Slice 1: финальный прогон + recheck                              | tester + code-reviewer                   | DONE               | reviewer: все 5 фиксов CLOSED (PASS); tester: stale-комментарии обновлены, финальный прогон 23/23 unit + 38/38 e2e GREEN; test-plan.md §4c дополнен. SLICE 1 ЗАКРЫТ (tracer bullet gate PASS)                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | 18  | Slice WS: Workspaces (схема+миграция+auth+сервис+API+UI)         | implementor / backend-dev / frontend-dev | DONE               | Workspace + WorkspaceMember модели, workspaceId на всех content-сущностях; requireAuth() → {operator, workspace}; workspace-сервис (CRUD, invite-only members, switch); API-роуты /api/workspaces/**; UI: switcher в sidebar, управление в Settings. Кастомная SQL-миграция `20260713042150_add_workspaces` с backfill (default workspace + существующие Category/Bookmark). tsc 0 ошибок, ESLint чистый, build проходит все роуты, 7/7 unit (bookmarks.test.ts) green. Ручная браузерная проверка: логин, sidebar показывает имя workspace, Settings работает. Не прошло tester Mode A/B протокол §2 plan.md — см. plan.md §5a "Deviation from process" |
 | 19  | Slice WS: обновление документации (plan/progress/test-plan/idea) | technical-writer                         | DONE               | plan.md v1.4 (§5a добавлена, §1/§3/Appendix A обновлены); progress.md (эта задача, Decisions log, Итог запуска); test-plan.md §3.2 (Workspaces, AC-WS-001..011 отслежены как PENDING/PARTIAL); specs/idea.md (буллет про workspaces)                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| R1.1-C | PRD v3 creator draft | product-analyst | DONE | v3.0; 117/117 unique AC definitions; 16 AC-REAL; Q-1…Q-12 applied; creator/editor retry 3/3 completed; adversarial cycle 0 and doc-review not yet passed |
+| R1.1-A0 | PRD v3 adversarial initial | adversarial-reviewer | REVISE | docs/prd.md v3.0; cycle 0; unresolved: CH-PRD-001, CH-PRD-002 |
+| R1.1-C1 | PRD v3 debate revision | product-analyst | DONE | docs/prd.md v3.0; cycle 1; CH-PRD-001/002 accepted_and_fixed; challenger recheck pending |
+| R1.1-A1 | PRD v3 adversarial recheck | adversarial-reviewer | CONSENSUS | docs/prd.md v3.0; cycle 1; unresolved: none |
+| R1.1-D0 | PRD v3 ordinary doc-review | doc-reviewer | DONE_WITH_CONCERNS | docs/prd.md v3.0; findings: DOC-PRD-001..005; creator rework 1/2 pending |
+| R1.1-DR1 | PRD v3 ordinary doc-review rework | product-analyst | DONE | docs/prd.md v3.0; DOC-PRD-001..005 fixed; 117/117 unique AC definitions; 16 AC-REAL; 1 inactive; ordinary reviewer recheck pending |
+| R1.1-D1 | PRD v3 ordinary doc-review recheck 1/2 | doc-reviewer | DONE_WITH_CONCERNS | DOC-PRD-001..005 PASS; new DOC-PRD-006: specs/ui.md workspace all-content scope conflicts with provider inventory; creator rework 2/2 pending |
+| R1.1-DR2 | PRD v3 ordinary doc-review rework 2/2 | product-analyst | DONE | DOC-PRD-006 fixed by explicit specs/ui.md workspace-scope precedence; 117/117 unique AC definitions; final reviewer recheck 2/2 pending |
+| R1.1-D2 | PRD v3 ordinary doc-review recheck 2/2 | doc-reviewer | DONE | DOC-PRD-001..006 PASS; 117/117 unique AC definitions; new findings none; ordinary doc-review gate PASS |
+| R1.1-G | PRD v3 gate metadata synchronization | technical-writer | DONE | docs/prd.md status Approved — adversarial CONSENSUS; ordinary doc-review PASS; requirement content unchanged |
+| R1.2-A | Design v2 normative source audit | design-source-analyst | DONE | 7/7 sections; PRD/Q precedence normalized across specs/prototype, specs/inspot-design, specs/ui; light/Russian/Remix/deferred-dark explicit; blockers none |
+| R1.2-B | Design v2 current UI delta audit | frontend-ui-auditor | DONE | 65 files inspected; 7/7 sections; 5 PARTIAL, Messages and Alerts CONTRADICT; 24 Lucide-import files vs 5 Remix-class files; static audit only |
+| R1.2-C | Design v2 authoring | ui-ux-designer | DONE | docs/design.md v2.0; 371 lines; 7/7 section chapters; delta matrix 5 PARTIAL + 2 CONTRADICTS; 27/27 cited files exist; ordinary doc-review pending |
+| R1.2-D0 | Design v2 ordinary doc-review | doc-reviewer | DONE_WITH_CONCERNS | findings DOC-DES-001 HIGH (/settings hub), DOC-DES-002 HIGH (a11y baseline), DOC-DES-003 MEDIUM (Logs trace); creator rework 1/2 pending |
+| R1.2-DR1 | Design v2 ordinary doc-review rework 1/2 | ui-ux-designer | DONE | DOC-DES-001..003 fixed; 7/7 chapters; delta 5 PARTIAL + 2 CONTRADICTS; final reviewer recheck 1/2 pending |
+| R1.2-D1 | Design v2 ordinary doc-review recheck 1/2 | doc-reviewer | DONE | DOC-DES-001..003 PASS; new material findings none; 7/7 chapters; delta 5 PARTIAL + 2 CONTRADICTS; ordinary doc-review gate PASS |
+| R1.2-G | Design v2 gate metadata synchronization | technical-writer | DONE | docs/design.md v2.0 status Approved — ordinary doc-review PASS; 7/7 chapters; requirement content unchanged |
+| R1.1 | PRD v3 | product-analyst | DONE | docs/remediation-plan.md task 1.1; PRD v3 gate PASS |
+| R1.2 | design.md v2 на основе прототипа | ui-ux-designer | DONE | docs/remediation-plan.md task 1.2; Design v2 gate PASS |
+| R1.3 | architecture.md v1.3 (remediation task 1.3) | architect | IN_PROGRESS | remediation task 1.3 originally named v1.2; existing v1.2 preserved as workspace revision; audit DONE; author/review pending |
+| R1.3-A | Architecture v1.3 evidence audit | nextjs-architect | DONE | Next 16.2.10/proxy/settings/15 models verified; real providers are stubs; webhook idempotency and Docker pnpm gaps recorded; author/review pending |
+| R1.3-B | Architecture v1.3 authoring/application | architect + patch-operator | DONE | 13-section/§0–13 draft applied; 563 lines; metadata/anchors/stale-claim checks and `git diff --check` PASS; approval not claimed |
+| R1.3-R1 | Architecture v1.3 ordinary doc-review 1/2 | doc-reviewer | DONE_WITH_CONCERNS | PARTIAL: DOC-ARCH-001 public API/login boundary, DOC-ARCH-002 workspace-admin target authorization gap, DOC-ARCH-003 unsafe `next` prefix/open redirect; rework 1/2 required |
+| R1.3-DR1 | Architecture v1.3 ordinary rework 1/2 | architect | IN_PROGRESS | Correcting only DOC-ARCH-001..003; reviewer recheck pending |
+| R1.4 | progress.md актуализация | technical-writer | DONE | docs/remediation-plan.md task 1.4; stack synchronized; 29 plan tasks tracked; Q-1..Q-12 present |
+| R1.5 | Инвентаризация specs/ → docs/ | technical-writer | PENDING | docs/remediation-plan.md task 1.5; not started |
+| R2.0 | DB-изоляция e2e + CI | implementor + tester | PENDING | docs/remediation-plan.md task 2.0; not started |
+| R2.1 | Slice WS Mode B + review | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.1; not started |
+| R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.2; not started |
+| R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.3; not started |
+| R2.4 | Slice 3 Mode B + review (Servers, mock-режим) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.4; not started |
+| R2.5 | Slice 5 Mode B + review (Alerts) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.5; not started |
+| R2.6 | Slice 6 Mode B + review (Mail) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.6; not started |
+| R2.7 | Slice 7 Mode B + review (Messages) | tester → code-reviewer | PENDING | docs/remediation-plan.md task 2.7; not started |
+| R2.8 | Дозакрытие точечных дыр | tester | PENDING | docs/remediation-plan.md task 2.8; not started |
+| R3.0 | HTTP-каркас + фикстурная инфраструктура | backend-dev | PENDING | docs/remediation-plan.md task 3.0; not started |
+| R3.1 | Cloudflare DNS | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.1; not started |
+| R3.2 | Hetzner Cloud (servers) | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.2; not started |
+| R3.3 | Hetzner DNS | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.3; not started |
+| R3.4 | GoDaddy DNS | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.4; not started |
+| R3.5 | Mock-провайдер hardening | architect + technical-writer | PENDING | docs/remediation-plan.md task 3.5; not started |
+| R4.1 | Завершить локализацию и выравнивание по прототипу | frontend-dev | PENDING | docs/remediation-plan.md task 4.1; not started |
+| R4.2 | Светлая тема — добить токены | frontend-dev | PENDING | docs/remediation-plan.md task 4.2; not started |
+| R4.3 | Messages compose — довести до спеки | backend-dev + frontend-dev | PENDING | docs/remediation-plan.md task 4.3; not started |
+| R4.4 | Demo-seed | backend-dev | PENDING | docs/remediation-plan.md task 4.4; not started |
+| R4.5 | Onboarding пустых состояний | frontend-dev | PENDING | docs/remediation-plan.md task 4.5; not started |
+| R4.6 | README + deploy-документация | technical-writer | PENDING | docs/remediation-plan.md task 4.6; not started |
+| R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | PENDING | docs/remediation-plan.md task 5.1; not started |
+| R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | PENDING | docs/remediation-plan.md task 5.2; not started |
+| R5.3 | Финальное демо пользователю и явная приёмка | coordinator + пользователь | PENDING | docs/remediation-plan.md task 5.3; not started |
+
+## Remediation ledger
+
+| Phase | Status | Evidence |
+| --- | --- | --- |
+| Phase 0 | DONE | user explicitly accepted Q-1…Q-12 on 2026-07-14 |
+| Phase 1 | IN_PROGRESS | Tasks 1.1 PRD v3, 1.2 Design v2, and 1.4 progress sync DONE; task 1.3 Architecture v1.3 audit and authoring DONE, ordinary review PARTIAL, rework 1/2 IN_PROGRESS; task 1.5 pending |
+| Phase 2 | PENDING | — |
+| Phase 3 | PENDING | — |
+| Phase 4 | PENDING | — |
+| Phase 5 | PENDING | — |
 
 ## Decisions log
 
@@ -49,8 +112,23 @@ PRD v2.1(+) утверждён (CONSENSUS + doc-review PASS); §3.10 (Workspaces
 - 2026-07-12 — Решение координатора по CH-PRD-005: auth входит в Slice 1 в минимальной форме — единственный оператор, credentials через env-переменные (закрывает и bootstrap из CH-PRD-004). Полноценные user-менеджмент/RBAC — вне scope.
 
 - 2026-07-12 — Решения координатора по вопросам архитектора: AQ-1 — поддерживать обе env-переменные, `OPERATOR_PASSWORD_HASH` (предпочтительно) и `OPERATOR_PASSWORD` (plaintext, хэшируется в памяти при старте, с предупреждением в логе); AQ-4 — дефолт rate limit 120 req/min/token, конфигурируем через env (плейсхолдер до калибровки, R-4).
-- 2026-07-12 — Решение координатора по design M-3: Slice 1 поставляется только с тёмной темой; theme toggle и светлая палитра — отложены на последующий слайс (спека остаётся в design.md с пометкой deferred).
+- 2026-07-12 — Решение координатора по design M-3: Slice 1 поставляется только с тёмной темой; theme toggle и светлая палитра — отложены на последующий слайс (спека остаётся в design.md с пометкой deferred). — ЗАМЕНЕНО Q-2 (2026-07-14): текущая production-база light-only, dark/toggle deferred.
 - 2026-07-13 — Добавлена multi-tenancy на уровне workspace. Invite-only модель (первый пользователь — через seed, новые пользователи — только владельцем workspace). Many-to-many Operator↔Workspace через WorkspaceMember. Контекст активного workspace — через Session.activeWorkspaceId. Ролей/прав доступа за пределами поля `role` пока нет (RBAC вне scope, как и было зафиксировано для Slice 1 — HC-9/D-13 в prd.md).
+- 2026-07-14 — Q-1: интерфейс выпускается только на русском языке. Решение пользователя.
+- 2026-07-14 — Q-2: светлая тема становится основной; тёмная тема и переключатель отложены. Решение пользователя.
+- 2026-07-14 — Q-3: `specs/prototype/`, `specs/inspot-design/` и `specs/ui.md` — нормативные источники дизайна. Решение пользователя.
+- 2026-07-14 — Q-4: ввод сообщений человеком в Messages UI становится FR-MSG-003 с новыми acceptance criteria. Решение пользователя.
+- 2026-07-14 — Q-5: Mail остаётся read-only в этой итерации. Решение пользователя.
+- 2026-07-14 — Q-6: Servers поддерживает только просмотр статуса и действия start/stop/restart. Решение пользователя.
+- 2026-07-14 — Q-7: acknowledge/resolve не входит в эту итерацию Alerts; остаются просмотр, организация и удаление. Решение пользователя.
+- 2026-07-14 — Q-8: webhook в несуществующий канал возвращает 4xx; auto-create не используется, AC-MSG-008 остаётся inactive. Решение пользователя.
+- 2026-07-14 — Q-9: webhook-токены остаются нескоупленными. Решение пользователя.
+- 2026-07-14 — Q-10: автоматический retention не используется; риск R-5 принят. Решение пользователя.
+- 2026-07-14 — Q-11: порядок подключения — Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy; credentials предоставляются инкрементально только через `.env`. Решение пользователя.
+- 2026-07-14 — Q-12: требуется опциональная идемпотентная команда `db:seed:demo`. Решение пользователя.
+- 2026-07-14 — Документ architecture target version = v1.3: существующая v1.2 сохраняется как workspace-ревизия; scope остаётся remediation task 1.3.
+
+> Раздел ниже — исторический снимок; текущий источник состояния — Remediation ledger и Task table выше.
 
 ## Итог запуска (2026-07-12, дополнено 2026-07-13)
 

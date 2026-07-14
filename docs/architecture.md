@@ -1,774 +1,578 @@
-# Architecture Blueprint — inspoter
+# Inspot Dashboard — Architecture
 
-**Version:** 1.2
-**Status:** Draft for doc-review (v1.2 documents the workspaces slice, implemented after Slice 1)
+**Version:** 1.3
+**Status:** Draft — ordinary doc-review pending
 **Owner:** Architect
-**Date:** 2026-07-13
-**Traces to:** `docs/prd.md` v2.1 (authoritative requirements), `docs/progress.md` (Decisions log), `specs/idea.md`
-**Consumed by:** planner, ui-ux-designer, implementors, tester
+**Date:** 2026-07-14
+**Normative inputs:** `docs/prd.md` v3.0, `docs/design.md` v2.0, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
+**Implementation evidence:** repository state on 2026-07-14
 
-**Changelog:**
+## 0. Reading contract
 
-- **v1.2 (2026-07-13):** Documents the implemented workspaces slice (FR-WS-001..003). §1 — workspace multi-tenancy overview. §1.1 — auth DAL note updated for `requireAuth()`. §2.2/§2.3 — `Workspace`/`WorkspaceMember` models and the `workspaceId` FK added to `Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, `WebhookToken`; `Session.activeWorkspaceId`; `Operator.memberships`. §5 — new §5.4 workspace context resolution (`requireAuth()`, session fallback, invite-only `addMember`). §6 — workspace files added to the project tree. §8 — ADR-014 (session-carried workspace context, no URL prefix) and ADR-015 (invite-only registration). §10 — workspace-context data flow. §11 — FR-WS-001..003 traceability rows.
-- **v1.1 (2026-07-12):** Doc-review fixes. F1 — AQ-1 resolved per progress.md line 43 (both `OPERATOR_PASSWORD_HASH` and `OPERATOR_PASSWORD` supported); §5.2 env validation + §9 updated. F2 — auth DAL named as a sanctioned Prisma caller (§1.1, ADR-012). F3 — ADR-004 read-through latency trade-off stated. F4 — `Message` index gains `id` tiebreaker. F5 — `validation/dns.ts` added to tree. F6 — `DnsRecordInput`/`DnsRecordPatch` DTOs defined (§4.1). F7 — AQ-4 marked resolved-with-configurable-default.
-- **v1.0 (2026-07-12):** Initial blueprint.
+This document separates repository facts from planned work. Every behavioral statement uses one of these labels:
 
-This document is the authoritative design reference. Every component traces to an FR/AC/NFR or a decision D-ID from the PRD. The technology stack is fixed by HC-1 / NFR-STACK-001 / D-6 and is **not** re-litigated here — this blueprint decides only _how_ to arrange that fixed stack.
+- **CURRENT** — verified in the repository.
+- **GAP** — verified divergence between the repository and approved requirements or the intended boundary.
+- **TARGET (Phase N)** — planned remediation. A target path or behavior does not exist until its phase implements and verifies it.
 
----
+The repository is authoritative for **CURRENT**. PRD v3, Design v2, accepted Q-1…Q-12, and the remediation plan are authoritative for **TARGET**. Version 1.2 remains a historical workspace revision; version 1.3 replaces its architectural claims.
 
-## 1. System Overview
+### 0.1 Changelog
 
-`inspoter` is a **single deployable Next.js 15 (App Router) application** backed by PostgreSQL via Prisma. It is a single-instance, self-hosted control panel (HC-2, NFR-DEPLOY-001) with seven sections plus a unified webhook ingest API.
+- **v1.3 (2026-07-14):** reconciles the document with Next.js 16.2.10, `src/proxy.ts`, 12 pages, 29 route files, 42 handlers, 15 Prisma models, active Settings routes, D-20, FR-MSG-003, AC-ALR-008, the verified webhook idempotency race, real-provider stubs, deployment gaps, and the Phase 3 provider target.
+- **v1.2 (2026-07-13):** historical workspace revision.
 
-The system is intentionally a **modular monolith**, not a set of services. Justification (Simplicity First, HC-2): the deployment target is one Docker host serving one operator or a small team. Microservices, message queues, and Redis would add operational surface with no requirement to justify them. In-process constructs (in-memory rate limiter, synchronous webhook ingest) are correct precisely _because_ there is exactly one application process.
+## 1. Scope and system context
 
-All seven content sections are additionally scoped to a **workspace** (FR-WS-001..003, §3.10 of the PRD): a lightweight multi-tenancy layer, not general-purpose SaaS tenancy. A default workspace is provisioned automatically for the first (env-seeded) operator; additional operators join a workspace only by invite from an existing member (no self-service registration). An operator can belong to more than one workspace and switches which one is active per session (`Session.activeWorkspaceId`); every service call is scoped to that active workspace.
+**CURRENT:** Inspot Dashboard is one Next.js App Router application backed by PostgreSQL through Prisma. It is a modular monolith deployed as one application container plus one database container. Browser operators use authenticated dashboard routes. External systems use the public webhook endpoint. Domains and Servers read provider-account inventory through provider adapters.
+
+**CURRENT:** The architecture has no microservices, queue, Redis dependency, provider-state database, vault integration, or general provider SDK. The in-process webhook rate limiter and mock-provider state assume one application process.
+
+**TARGET (Phase 3):** Keep the modular monolith. Add only a validated provider configuration boundary, a thin injected HTTP boundary, complete adapters, typed error mapping, and tests. Do not add a queue, vault, provider database, general SDK, or separate service.
+
+```mermaid
+flowchart LR
+    Operator["Operator browser — CURRENT"] --> Proxy["src/proxy.ts — CURRENT optimistic redirect"]
+    Proxy --> App["App Router pages and layouts — CURRENT"]
+    App --> DAL["Auth DAL — CURRENT authoritative check"]
+    App --> Routes["Route Handlers and login actions — CURRENT"]
+    Routes --> Services["Domain services — CURRENT"]
+    DAL --> DB[("PostgreSQL via Prisma — CURRENT")]
+    Services --> DB
+    Services --> Providers["Provider factories/adapters — CURRENT"]
+    Providers --> Mock["Process-local mocks — CURRENT"]
+    Providers --> Stubs["Real-mode classes returning unsupported — CURRENT GAP"]
+    Sender["External webhook sender — CURRENT"] --> Webhook["POST /api/webhooks/[type] — CURRENT public route"]
+    Webhook --> Services
+    HTTP["Injected provider HTTP boundary — TARGET Phase 3"] --> Upstream["Cloudflare / Hetzner / GoDaddy — TARGET Phase 3"]
+    Providers -.-> HTTP
+```
 
 ### 1.1 Architectural layers
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Presentation (src/app, src/components)                                │
-│  ─ Server Components (data fetch, no interactivity)                     │
-│  ─ Client Components ("use client": forms, dialogs, list actions)      │
-│  ─ shadcn/ui primitives + Tailwind                                     │
-└───────────────┬──────────────────────────────────┬───────────────────┘
-                │ (server actions / fetch)          │
-┌───────────────▼──────────────┐   ┌────────────────▼───────────────────┐
-│  Route Handlers (src/app/api) │   │  Server Actions (colocated)        │
-│  ─ REST for section CRUD      │   │  ─ mutations from forms             │
-│  ─ /api/webhooks/[type]       │   │                                     │
-└───────────────┬──────────────┘   └────────────────┬───────────────────┘
-                │                                    │
-┌───────────────▼────────────────────────────────────▼──────────────────┐
-│  Service layer (src/lib/services)                                       │
-│  ─ business rules, validation orchestration, no framework types        │
-│  ─ with the auth DAL, the only sanctioned callers of Prisma/providers   │
-└───────┬───────────────────────────────┬───────────────────┬───────────┘
-        │                               │                   │
-┌───────▼─────────┐   ┌─────────────────▼──────┐   ┌────────▼───────────┐
-│ Prisma / db.ts  │   │ Provider abstraction   │   │ Webhook pipeline   │
-│ (PostgreSQL)    │   │ (src/lib/providers)    │   │ (src/lib/webhooks) │
-│                 │   │ ─ DnsProvider          │   │ ─ auth (Bearer)    │
-│ persisted       │   │ ─ ServerProvider       │   │ ─ rate limit (mem) │
-│ entities        │   │ ─ real | mock (env)    │   │ ─ idempotency      │
-└─────────────────┘   └────────┬───────────────┘   └────────────────────┘
-                               │ HTTPS (real mode only)
-                      ┌────────▼─────────────────────┐
-                      │ Cloudflare / Hetzner / GoDaddy│
-                      └───────────────────────────────┘
-```
+| Label | Layer | Current responsibility |
+| --- | --- | --- |
+| CURRENT | `src/app`, `src/components` | App Router layouts/pages, Server Components, interactive Client Components, login actions, REST handlers |
+| CURRENT | `src/lib/auth` | Cookie/session primitives and authoritative operator/workspace resolution |
+| CURRENT | `src/lib/services` | Workspace-scoped business operations and provider orchestration |
+| CURRENT | `src/lib/webhooks` | Public ingest pipeline, dispatch, rate limiting, idempotency lookup/record |
+| CURRENT | `src/lib/providers` | DNS/server contracts, factories, deterministic mocks, incomplete real-mode classes |
+| CURRENT | `src/lib/db.ts`, Prisma | Prisma client and persisted PostgreSQL state |
+| GAP | Cross-layer Prisma imports | Five runtime callers outside the intended service/Auth-DAL rule remain; §4.4 lists them |
+| TARGET (Phase 3) | `src/lib/config/providers.ts`, `src/lib/providers/http.ts` | Central server-only provider configuration and thin injected HTTP behavior; both paths are absent now |
 
-Note: the auth Data Access Layer (`requireOperator()`, §5.3; `requireAuth()`, §5.4) reads the `Session`/`Operator`/`Workspace`/`WorkspaceMember` tables directly via Prisma; it is the single sanctioned Prisma caller outside the service layer (ADR-012).
+## 2. Technology and deployment
 
-### 1.2 Component diagram (Mermaid)
+### 2.1 Exact current stack
+
+| Label | Component | Declared | Resolved / runtime contract | Evidence |
+| --- | --- | --- | --- | --- |
+| CURRENT | Next.js | `16.2.10` | `16.2.10` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | React / React DOM | `19.1.0` | `19.1.0` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Prisma CLI / client / PG adapter | `^7.8.0` | `7.8.0` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | `pg` | `^8.22.0` | `8.22.0` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Zod | `^4.4.3` | `4.4.3` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Tailwind CSS | `^4` | `4.3.2` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | TypeScript | `^5` | `5.9.3` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Vitest | `^4.1.10` | `4.1.10` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Playwright | `^1.61.1` | `1.61.1` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | ESLint | `^9` | `9.39.5` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Package manager | `pnpm@11.12.0` | lockfile format `9.0` | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Application image | — | `node:24-slim` in all Docker stages | `Dockerfile` |
+| CURRENT | Database image | — | `postgres:16` | `docker-compose.yml` |
+
+**CURRENT:** A developer workstation may use Node 22, but workstation Node is not a deployment contract. The Docker contract is `node:24-slim`.
+
+### 2.2 Deployment gaps
+
+| Label | Finding | Required disposition |
+| --- | --- | --- |
+| CURRENT | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `npm run start`. | Preserve unless deployment validation changes the contract. |
+| GAP | The repository declares pnpm and contains `pnpm-lock.yaml`, but `Dockerfile` copies nonexistent `package-lock.json` and runs `npm ci`; `playwright.config.ts` also starts `npm run build && npm run start`. | TARGET (Phase 2.0): use one package manager and its lockfile in Docker, CI, and Playwright. Keep frozen-lockfile behavior. |
+| GAP | `docker-compose.yml` does not pass `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`, `GODADDY_API_SECRET`, or `HCLOUD_TOKEN` to the application container. | TARGET (Phase 3): wire optional provider variables without values or secrets in source control. |
+| CURRENT | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup. |
+| GAP | Base env validation does not validate provider credentials or complete credential sets. | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration. |
+
+## 3. App Router and presentation boundary
+
+### 3.1 Complete current page tree
+
+**CURRENT:** The application contains 12 `page.tsx` files. The `(dashboard)` route group does not add a URL segment.
+
+| Label | URL | File | Boundary and data source |
+| --- | --- | --- | --- |
+| CURRENT | `/` | `src/app/page.tsx` | Server Component; redirects to `/bookmarks` |
+| CURRENT | `/login` | `src/app/login/page.tsx` | Server Component; awaits `searchParams`, renders Client `LoginForm` |
+| CURRENT | `/bookmarks` | `src/app/(dashboard)/bookmarks/page.tsx` | Server Component; `requireAuth()` plus workspace-scoped service read |
+| CURRENT | `/domains` | `src/app/(dashboard)/domains/page.tsx` | Server Component; `requireAuth()` plus provider aggregation |
+| CURRENT | `/servers` | `src/app/(dashboard)/servers/page.tsx` | Authenticated Server Component shell; Client view fetches API |
+| CURRENT | `/mail` | `src/app/(dashboard)/mail/page.tsx` | Authenticated Server Component shell; Client view fetches API |
+| CURRENT | `/messages` | `src/app/(dashboard)/messages/page.tsx` | Authenticated Server Component shell; Client view fetches API |
+| CURRENT | `/logs` | `src/app/(dashboard)/logs/page.tsx` | Authenticated Server Component shell; Client view fetches API |
+| CURRENT | `/alerts` | `src/app/(dashboard)/alerts/page.tsx` | Authenticated Server Component shell; Client view fetches API |
+| CURRENT | `/settings` | `src/app/(dashboard)/settings/page.tsx` | Server Component under authenticated dashboard layout; links to active settings destinations |
+| CURRENT | `/settings/workspace` | `src/app/(dashboard)/settings/workspace/page.tsx` | Server Component; workspace/member service read, Client mutation forms |
+| CURRENT | `/settings/webhooks` | `src/app/(dashboard)/settings/webhooks/page.tsx` | Authenticated Server Component shell; Client token management |
+
+### 3.2 Complete current route-handler families
+
+**CURRENT:** `src/app/api` contains 29 `route.ts` files and 42 exported handlers: 14 GET, 12 POST, 7 PATCH, and 9 DELETE.
+
+| Label | Family | Current URL patterns and methods | Files / handlers |
+| --- | --- | --- | --- |
+| CURRENT | Workspaces | `GET,POST /api/workspaces`; `PATCH,DELETE /api/workspaces/[id]`; `GET,POST /api/workspaces/[id]/members`; `DELETE /api/workspaces/[id]/members/[memberId]`; `POST /api/workspaces/switch` | 5 / 8 |
+| CURRENT | Bookmark categories and bookmarks | `POST /api/categories`; `PATCH,DELETE /api/categories/[id]`; `POST /api/bookmarks`; `PATCH,DELETE /api/bookmarks/[id]` | 4 / 6 |
+| CURRENT | Domains and DNS records | `GET /api/domains`; `GET,POST /api/domains/[providerId]/[domainId]/records`; `PATCH,DELETE /api/domains/[providerId]/[domainId]/records/[recordId]` | 3 / 5 |
+| CURRENT | Servers and power | `GET /api/servers`; `GET /api/servers/[id]`; `POST /api/servers/[id]/power` | 3 / 3 |
+| CURRENT | Mail | `GET /api/mail`; `GET /api/mail/[id]` | 2 / 2 |
+| CURRENT | Message categories, channels, messages | `GET,POST /api/message-categories`; `PATCH,DELETE /api/message-categories/[id]`; `POST /api/channels`; `PATCH,DELETE /api/channels/[id]`; `GET /api/channels/[id]/messages` | 5 / 8 |
+| CURRENT | Logs | `GET /api/logs` | 1 / 1 |
+| CURRENT | Alerts and alert categories | `GET /api/alerts`; `GET,POST /api/alert-categories`; `PATCH,DELETE /api/alert-categories/[id]` | 3 / 5 |
+| CURRENT | Webhook tokens | `GET,POST /api/webhook-tokens`; `DELETE /api/webhook-tokens/[id]` | 2 / 3 |
+| CURRENT | Public webhook ingest | `POST /api/webhooks/[type]` | 1 / 1 |
+
+**GAP:** `src/app/api/channels/[id]/messages/route.ts` exports GET only. No authenticated human-message POST exists, so FR-MSG-003 and AC-MSG-009…014 are not implemented.
+
+**TARGET (Phase 2.7):** Add authenticated `POST /api/channels/[id]/messages` to the existing route file. Derive operator identity from `requireAuth()`, reject blank content and foreign/missing channels, persist origin, and return failure without optimistic success.
+
+**GAP:** No alert-delete handler or `src/app/api/alerts/[id]/route.ts` exists. AC-ALR-008 is not implemented.
+
+**TARGET (Phase 2.5):** Add a workspace-scoped confirmed alert deletion. The minimal proposed route is `DELETE /api/alerts/[id]`; this path is explicitly absent from the current tree. Do not add acknowledge or resolve actions.
+
+### 3.3 Special files and navigation states
+
+| Label | Finding |
+| --- | --- |
+| CURRENT | `src/app/layout.tsx` is the root layout; `src/app/(dashboard)/layout.tsx` resolves auth/workspace and renders the shell. |
+| CURRENT | Only Bookmarks has route-level streaming UI: `src/app/(dashboard)/bookmarks/loading.tsx`. |
+| GAP | No `error.tsx`, `global-error.tsx`, or `not-found.tsx` exists under `src/app`. The other dashboard routes have no route-level loading boundary. |
+| TARGET (Phase 4) | Add route-appropriate loading, error/retry, and not-found boundaries where Design v2 requires them. Keep error details sanitized. |
+
+### 3.4 Server/Client boundaries, fetching, mutation, navigation
+
+**CURRENT:** Pages and layouts remain Server Components by default. They call `requireAuth()` and may call services directly. Interactive boards, dialogs, filters, pagination, power actions, and settings forms are narrow Client Components marked with `"use client"`.
+
+**CURRENT:** Bookmarks and workspace settings load initial database state in Server Components and pass serializable props to Client Components. Domains aggregates providers in its Server Component. Servers, Mail, Messages, Logs, Alerts, and webhook-token settings fetch their Route Handlers from Client views.
+
+**CURRENT:** Most mutations use Client `fetch()` helpers, then update local state or call `router.refresh()`. Login and logout use Server Actions. Internal navigation uses `next/link`, `redirect()`, and `useRouter`; `/` redirects to `/bookmarks`. After login, the Client applies one string-prefix check, `next.startsWith("/")`, before `router.push()`; this is not a validated target.
+
+**GAP:** The prefix check also accepts protocol-relative values such as `//attacker.example`. The Client neither normalizes the value nor proves that it is a same-origin local path.
+
+**TARGET (Phase 2.1):** Accept only a normalized same-origin local path. Reject `//`, encoded or normalized external forms, backslashes, and control characters where applicable; preserve safe deep links. Test malicious and valid targets.
+
+**GAP:** Several Client sections cannot use route-level streaming because their initial read begins after hydration. This is a documented current boundary, not a claim that Client fetching is always preferred.
+
+**TARGET (Phase 4):** Keep interactivity client-side, but move stable initial reads to Server Components when this removes a loading waterfall without duplicating state. Pass only serializable data and keep server-only modules outside the Client graph.
+
+## 4. Persistence and workspace boundary
+
+### 4.1 Exact current Prisma model inventory
+
+**CURRENT:** `prisma/schema.prisma` defines exactly 15 models:
+
+1. `Operator`
+2. `Session`
+3. `Workspace`
+4. `WorkspaceMember`
+5. `Category`
+6. `Bookmark`
+7. `MessageCategory`
+8. `Channel`
+9. `Message`
+10. `MailItem`
+11. `LogEntry`
+12. `AlertCategory`
+13. `Alert`
+14. `WebhookToken`
+15. `IdempotencyKey`
+
+### 4.2 D-20 ownership boundary
+
+| Label | Data family | Ownership and persistence |
+| --- | --- | --- |
+| CURRENT | Auth and workspace | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace. |
+| CURRENT | Bookmarks | `Category.workspaceId` owns categories; `Bookmark` is a category child. |
+| CURRENT | Messages | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children. |
+| CURRENT | Mail and Logs | `MailItem.workspaceId` and `LogEntry.workspaceId` directly own rows. |
+| CURRENT | Alerts | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`. |
+| CURRENT | Webhook tokens | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership. |
+| CURRENT | Domains and Servers | Provider DTOs only. There are no `Domain`, `DnsRecord`, or `Server` Prisma models. These resources belong to configured provider accounts. |
+| TARGET (D-20) | Workspace lifecycle | Workspace switching/deletion affects Bookmarks, Mail, Messages, Logs, Alerts, tokens, categories, and children. It never changes or deletes Domains, Servers, DNS records, or provider resources. |
+
+### 4.3 Verified ownership gaps
+
+**GAP:** Bookmark categories are scoped correctly, but bookmark child mutations are not. `POST /api/bookmarks` discards the workspace from `requireAuth()` and accepts any `categoryId`. `PATCH` and `DELETE /api/bookmarks/[id]` operate by bookmark id alone. `src/lib/services/bookmarks.ts` therefore permits create, move, update, or delete without proving that the bookmark and target category belong to the active workspace.
+
+**TARGET (Phase 2.1):** Pass `workspaceId` into every bookmark child mutation. Scope bookmark lookup through `category.workspaceId`, validate both source and destination ownership, return a non-disclosing not-found response for foreign ids, and add cross-workspace API/e2e tests.
+
+**GAP:** `PATCH` and `DELETE /api/workspaces/[id]`, `GET` and `POST /api/workspaces/[id]/members`, and `DELETE /api/workspaces/[id]/members/[memberId]` call `requireAuth()` but do not authorize the target workspace or owner role. `src/lib/services/workspaces.ts` accepts arbitrary target ids, so membership in the active workspace does not prevent reading or mutating another workspace by id.
+
+**TARGET (Phase 2.1):** Require target-workspace membership for member-list reads. Require the target workspace's owner role for rename, delete, add-member, and remove-member mutations, as defined by the PRD owner boundaries. Return a non-disclosing response for foreign ids, and add API/e2e isolation tests for member and non-member callers.
+
+**GAP:** `Alert.alertCategoryId` is nullable with `onDelete: SetNull`, but `Alert` has no `workspaceId`. Deleting a category can therefore remove the only workspace ownership path. The current list query filters through `alertCategory.workspaceId`, so a null-category alert becomes inaccessible; a future id-only delete would also lack an ownership predicate.
+
+**TARGET (Phase 2.5):** Add durable workspace ownership to `Alert` and scope list/delete by that field. Keep category optional if reassign-to-uncategorized remains the chosen no-orphan behavior. Backfill category-linked alerts during migration; explicitly disposition any legacy null-category rows whose workspace cannot be inferred before enforcing the relation.
+
+**GAP:** `Message` stores optional `author` text but no explicit origin and no authoring operator relation. The current UI composer is demo-only and does not persist.
+
+**TARGET (Phase 2.7):** Add persisted `operator | webhook` origin. Store the authenticated `operatorId` for operator posts; retain a sanitized available source for webhook posts. Backfill existing persisted messages as webhook-origin, because current operator compose does not write. Render origin in the feed.
+
+### 4.4 Prisma access boundary
+
+**CURRENT:** Exactly 13 files under `src` import `@/lib/db`: seven service modules and six files outside `src/lib/services`.
+
+| Label | Group | Files |
+| --- | --- | --- |
+| CURRENT | Intended service callers | `services/alerts.ts`, `bookmarks.ts`, `logs.ts`, `mail.ts`, `messages.ts`, `webhookTokens.ts`, `workspaces.ts` |
+| CURRENT | Intended authoritative DAL | `src/lib/auth/dal.ts` |
+| GAP | Direct callers outside service/DAL rule | `src/app/login/actions.ts`, `src/app/api/workspaces/switch/route.ts`, `src/lib/auth/session.ts`, `src/lib/webhooks/idempotency.ts`, `src/lib/webhooks/pipeline.ts` |
+
+**TARGET (Phase 2):** ADR-012 keeps services and the authoritative auth DAL as runtime Prisma entry points. Move membership lookup, session persistence, webhook token lookup, and idempotency persistence behind narrow service/DAL functions. `src/lib/db.ts` remains the only Prisma client constructor. `prisma/seed.ts` remains an operational bootstrap path, not a request-layer exception.
+
+**CURRENT:** Mail, Logs, Alerts, and Messages use cursor pagination with timestamp/id tie-breakers and `LIST_PAGE_SIZE`. Text search uses Prisma case-insensitive `contains`; no trigram/full-text index exists.
+
+**CURRENT:** The pagination-only substring-search fallback remains explicit. The 500 ms indexed-read objective does not cover substring scans. A future trigram/full-text change requires a measured need and a migration; it is not part of this rewrite.
+
+## 5. Authentication, session, and proxy
+
+**CURRENT:** `src/proxy.ts` is an optimistic redirect layer. It checks only whether the `session` cookie exists. It redirects missing-cookie requests to `/login?next=<pathname>` and excludes login, public webhooks, framework assets, and the favicon from its matcher. It performs no database authorization.
+
+**CURRENT:** `src/lib/auth/dal.ts` is authoritative. `requireOperator()` verifies a live database session and operator. `requireAuth()` additionally verifies `Session.activeWorkspaceId` membership; if invalid or unset, it selects the earliest membership and updates the session. Dashboard layout and authenticated Route Handlers use this server-side result.
+
+**CURRENT:** Session ids are opaque random values stored in PostgreSQL. The cookie is HTTP-only, secure, same-site `lax`, path `/`, and expires after seven days. Logout deletes the database session and cookie. Password verification uses scrypt. Base env validation accepts `OPERATOR_PASSWORD_HASH` as preferred and `OPERATOR_PASSWORD` as a development convenience; if both exist, the hash wins.
+
+**GAP:** Cookie presence in the proxy never proves identity or workspace membership. Any document or test that treats the proxy as authoritative is incorrect.
+
+**GAP:** Active-workspace resolution does not authorize a different workspace id supplied to an administration handler. §4.3 records this target-workspace ownership gap.
+
+**TARGET (Phase 2.1):** Preserve the two-tier design: fast optimistic redirect in `src/proxy.ts`, authoritative database validation in the DAL on every protected request. Add coverage for expired sessions, removed membership, workspace fallback, and switch authorization. Enforce the workspace-administration boundary in §4.3 and the safe login target in §3.4 while preserving valid deep links.
+
+**TARGET (Phase 3):** Add `import "server-only"` guards to database, auth, config, and provider modules where applicable. This prevents accidental import into a Client Component; it does not replace request-time authorization.
+
+## 6. Public webhook architecture
+
+### 6.1 Current ordered pipeline
+
+**CURRENT:** `POST /api/webhooks/[type]` is the only public API Route Handler family that does not require a session. `/login` and its login Server Action are the separate public human-authentication surface. `src/lib/webhooks/pipeline.ts` processes requests in this order:
+
+1. Enforce declared and streamed body-size limits.
+2. Parse JSON.
+3. Parse Bearer authorization, hash the token, load `WebhookToken`, and reject missing, invalid, or revoked tokens.
+4. Apply the process-local fixed-window rate limit by token id.
+5. Resolve the type schema and validate the payload with Zod.
+6. Check an optional token-scoped idempotency key.
+7. Dispatch synchronously to the workspace-scoped Mail, Message, Log, or Alert service.
+8. Insert the idempotency record after dispatch.
+9. Return `201` for a new effect or `200` for a previously recorded key.
+
+**CURRENT:** The endpoint returns structured errors for 401, 400, 413, and 429. It sets `Retry-After` for its own rate limit. A missing idempotency key intentionally permits duplicate effects under retry.
 
 ```mermaid
-flowchart TD
-    subgraph Client[Browser - operator]
-        UI[Server + Client Components<br/>shadcn/ui + Tailwind]
+sequenceDiagram
+    participant Sender as External sender
+    participant Route as Webhook route CURRENT
+    participant Pipe as Pipeline CURRENT
+    participant DB as PostgreSQL CURRENT
+    participant Service as Workspace service CURRENT
+    Sender->>Route: POST /api/webhooks/[type]
+    Route->>Pipe: request and type
+    Pipe->>Pipe: size, parse
+    Pipe->>DB: token hash lookup and revocation check
+    Pipe->>Pipe: rate limit, type and Zod validation
+    Pipe->>DB: idempotency lookup when key exists
+    Pipe->>Service: dispatch
+    Service->>DB: create content row
+    Pipe->>DB: insert IdempotencyKey after effect
+    Note over Pipe,DB: GAP: check, dispatch, record are not atomic
+    Pipe-->>Sender: 201 new or 200 known replay
+```
+
+### 6.2 Idempotency invariant
+
+**CURRENT:** Prisma enforces `@@unique([tokenId, key])` on `IdempotencyKey`.
+
+**GAP:** The code performs check → dispatch → record outside a transaction. Concurrent requests with the same new key can both create effects before one idempotency insert loses the unique race. The losing insert error is swallowed, so uniqueness protects only the key table, not the side effect.
+
+**TARGET (Phase 2.2):** Claim the token/key before dispatch and keep claim, content creation, and final target id under transaction semantics. A duplicate completed claim returns `200` with the stored id; a new claim returns `201` after commit. A failed transaction must not leave a successful-looking claim. Add concurrent same-key tests that prove exactly one effect, replay tests, no-key duplicate tests, and failure/rollback tests.
+
+**CURRENT:** The rate limiter is a module-scope map. It resets on restart and is not shared across replicas.
+
+**TARGET (Phase 2.2):** Keep the in-process limiter for the single-process deployment and test its exact limits. A shared limiter becomes necessary only if deployment topology changes.
+
+## 7. Provider architecture
+
+### 7.1 Current contracts and mode selection
+
+**CURRENT:** Provider operations return exactly one of these `ProviderResult<T>` shapes:
+
+| Label | Shape | Current HTTP mapping |
+| --- | --- | --- |
+| CURRENT | `{ ok: true, data: T }` | configured success status; `undefined` data becomes 204 |
+| CURRENT | `{ ok: false, kind: "error", message: string }` | 502 |
+| CURRENT | `{ ok: false, kind: "unsupported", operation: string }` | 501 |
+
+**CURRENT:** DNS factories return Cloudflare, Hetzner DNS, and GoDaddy providers. Server factory returns Hetzner Cloud. Missing credentials select deterministic process-local mocks. Present credentials select real-mode classes.
+
+**GAP:** Every real-mode operation currently returns `unsupported`; no upstream request exists. Credential presence therefore does not mean a working real integration.
+
+**GAP:** Factories read `process.env` directly. No centralized provider schema validates credentials. GoDaddy mode checks only `GODADDY_API_KEY` and ignores `GODADDY_API_SECRET`.
+
+**CURRENT:** DNS and server mocks make zero external requests. Their mutable module state resets at process restart and is shared across all workspaces. Domains aggregation uses `Promise.allSettled`, so one provider failure does not remove healthy providers.
+
+**GAP:** Mock mutations are ephemeral and not workspace-scoped. This is acceptable only as clearly labelled provider-account demo state; it must never be described as durable workspace content.
+
+### 7.2 Target provider modes and configuration
+
+**TARGET (Phase 3):** Add a centralized `server-only` provider configuration module. Resolve each provider independently:
+
+- Cloudflare DNS requires its complete credential.
+- Hetzner Cloud requires its complete credential.
+- Hetzner DNS requires its complete credential.
+- GoDaddy requires both key and secret.
+- A complete absent credential set selects mock and causes zero upstream calls.
+- A complete configured set selects real mode.
+- An incomplete set fails configuration explicitly; it does not silently choose mock.
+- Invalid or revoked real credentials produce typed provider authentication failure and never fall back to mock.
+
+**TARGET (Phase 3):** Keep configuration values in environment variables. Never persist provider credentials in Prisma, return them through APIs, render them, or log them. `docker-compose.yml` may reference variable names but must not contain values.
+
+### 7.3 Target HTTP boundary
+
+**TARGET (Phase 3):** Add `src/lib/providers/http.ts`. This path is absent now. Keep it thin and provider-neutral. Inject `fetch`, timeout, sleeper, clock, and random source. Use `AbortSignal` for deadlines. Parse provider envelopes through typed decoders and return sanitized metadata only.
+
+**TARGET (Phase 3):** Provider adapters own provider-specific URL construction, authentication headers, payloads, response envelopes, pagination, and DTO mapping. The HTTP boundary owns transport timeout, retry scheduling, `Retry-After` parsing, safe body limits, and redaction. Do not build a general external-service SDK.
+
+### 7.4 Target result and HTTP mapping
+
+| Label | Target `ProviderResult` category | Route response |
+| --- | --- | --- |
+| TARGET (Phase 3) | success | operation-specific 2xx |
+| TARGET (Phase 3) | `auth` | 502; provider-account authentication is not operator authentication |
+| TARGET (Phase 3) | `rate_limit` | 429 plus sanitized `Retry-After` |
+| TARGET (Phase 3) | `not_found` | 404 |
+| TARGET (Phase 3) | `validation` | 422 |
+| TARGET (Phase 3) | `conflict` | 409 |
+| TARGET (Phase 3) | `upstream` or malformed response | 502 |
+| TARGET (Phase 3) | `timeout` | 504 |
+| TARGET (Phase 3) | `unsupported` | 501 |
+
+**TARGET (Phase 3):** Client responses expose a stable category and safe message, never upstream response bodies, credentials, authorization headers, or sensitive query values.
+
+### 7.5 Target timeout and retry policy
+
+**TARGET (Phase 3):** Retry only network failures and HTTP 408, 425, 429, and 5xx. Honor `Retry-After` in delta-seconds and HTTP-date forms. Use at most three total attempts with capped exponential backoff and jitter.
+
+**TARGET (Phase 3):** Never retry authentication, authorization, validation, unsupported, not-found, or conflict results. Reads may retry. Mutations retry only when the provider operation and idempotency mechanism make replay safe.
+
+**TARGET (Phase 3):** Do not retry DNS create, server reboot/restart, or any ambiguous commit without provider-supported idempotency or an explicit reconciliation/readback algorithm. After a successful mutation, reread provider state as required by AC-REAL. If transport fails after a possible commit, reconcile before deciding whether another mutation is safe.
+
+### 7.6 Target observability, redaction, and tests
+
+**TARGET (Phase 3):** Structured provider logs contain only `provider`, `operation`, result `category`, safe status, attempts, duration, timeout/retry flags, and sanitized request id. Redact credentials, authorization headers, sensitive query values, and upstream bodies before logging or returning an error.
+
+**TARGET (Phase 3):** Inject test seams for fetch, time, sleep, and randomness. Required coverage:
+
+- unit tests for timeout, retry eligibility, backoff cap/jitter, both `Retry-After` forms, typed parsing, and redaction;
+- provider fixture contract tests for success and every supported error envelope;
+- mutation readback/reconciliation tests for AC-REAL;
+- invalid/revoked credential tests proving typed auth and no mock fallback;
+- optional real-account smoke tests outside normal CI, with no secrets in artifacts.
+
+### 7.7 Q-11 rollout
+
+| Label | Order | Provider | Exit evidence |
+| --- | --- | --- | --- |
+| TARGET (Phase 3.1) | 1 | Cloudflare DNS | list zones/records; create/update/delete confirmed by reread; AC-REAL-CF-001…004 |
+| TARGET (Phase 3.2) | 2 | Hetzner Cloud | list/status; start/stop/restart confirmed by polling; AC-REAL-HC-001…004 |
+| TARGET (Phase 3.3) | 3 | Hetzner DNS | list zones/records; mutations confirmed by reread; AC-REAL-HD-001…004 |
+| TARGET (Phase 3.4) | 4 | GoDaddy DNS | list domains/records; mutations confirmed by reread; AC-REAL-GD-001…004 or evidenced account/API ineligibility plus dated explicit user exclusion |
+
+**TARGET (Phase 3):** Credentials arrive incrementally through `.env`. Missing credentials alone do not exclude GoDaddy or satisfy its release gate.
+
+## 8. Request sequences
+
+### 8.1 Authenticated dashboard read and mutation — CURRENT
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Proxy as src/proxy.ts
+    participant Layout as Dashboard layout
+    participant DAL as Auth DAL
+    participant Page as Server or Client view
+    participant Route as Authenticated Route Handler
+    participant Service
+    participant Store as PostgreSQL or provider mock/stub
+    Browser->>Proxy: navigation with cookie
+    Proxy->>Layout: cookie exists; optimistic pass
+    Layout->>DAL: requireAuth()
+    DAL->>Store: validate session, operator, membership
+    DAL-->>Layout: operator and active workspace
+    Layout->>Page: render
+    alt Server initial read
+        Page->>Service: workspace id or provider inventory request
+        Service->>Store: query
+        Store-->>Page: serializable data
+    else Client read or mutation
+        Browser->>Route: fetch API
+        Route->>DAL: requireAuth()
+        Route->>Service: validated input and workspace id
+        Service->>Store: read or mutation
+        Route-->>Browser: JSON / no-content
+        Browser->>Layout: router.refresh when server state must refresh
     end
-    subgraph Ext[External system - machine]
-        WHClient[Webhook sender]
+```
+
+**GAP:** Bookmark child mutations and workspace administration bypass target-workspace ownership or role predicates inside this sequence; §4.3 defines both corrections.
+
+### 8.2 Real-provider read or mutation — TARGET (Phase 3)
+
+```mermaid
+sequenceDiagram
+    participant Service
+    participant Config as server-only provider config TARGET
+    participant Factory as provider factory TARGET
+    participant Mock as deterministic mock
+    participant Adapter as real adapter TARGET
+    participant HTTP as injected HTTP boundary TARGET
+    participant Provider as upstream provider
+    Service->>Config: resolve complete credential mode
+    Config->>Factory: mock or real, never invalid-key fallback
+    alt credential absent
+        Factory->>Mock: operation
+        Mock-->>Service: typed success/error, zero upstream calls
+    else credential configured
+        Factory->>Adapter: operation and credential reference
+        Adapter->>HTTP: typed request, decoder, retry policy
+        HTTP->>Provider: bounded request
+        Provider-->>HTTP: response
+        HTTP-->>Adapter: decoded success or sanitized typed failure
+        Adapter-->>Service: ProviderResult
+        opt successful mutation
+            Service->>Adapter: reread/reconcile provider state
+            Adapter-->>Service: confirmed state
+        end
     end
-
-    UI -->|server actions / fetch| MW[middleware.ts<br/>optimistic auth redirect]
-    MW --> RH[Route Handlers<br/>src/app/api/*]
-    UI -->|render| SC[Server Components<br/>dashboard pages]
-
-    WHClient -->|POST Bearer token| WH[/api/webhooks/type/]
-
-    RH --> SVC[Service layer<br/>src/lib/services]
-    SC --> DAL[Auth DAL<br/>requireOperator]
-    SC --> SVC
-    WH --> WPIPE[Webhook pipeline<br/>size - auth - ratelimit - validate - idempotency]
-    WPIPE --> SVC
-
-    SVC --> DB[(PostgreSQL<br/>via Prisma)]
-    SVC --> PROV[Provider abstraction]
-    PROV -->|real mode| CFH[Cloudflare / Hetzner / GoDaddy]
-    PROV -->|mock mode| MOCK[Deterministic mock data]
-    DAL --> DB
 ```
 
-### 1.3 Requirement-to-layer traceability (summary; full map in §11)
+## 9. Current-versus-target project tree
 
-| Concern                       | PRD source               | Where it lives                                        |
-| ----------------------------- | ------------------------ | ----------------------------------------------------- |
-| Shell + nav                   | FR-SHELL-001             | `app/(dashboard)/layout.tsx`, `components/shell`      |
-| Auth                          | FR-AUTH-001, NFR-SEC-001 | `middleware.ts`, `lib/auth`, `login/`                 |
-| Bookmarks CRUD                | FR-BM-001..003           | `app/(dashboard)/bookmarks`, `lib/services/bookmarks` |
-| Domains / DNS (proxy)         | FR-DOM-001..002          | `lib/providers/dns`, `app/(dashboard)/domains`        |
-| Servers                       | FR-SRV-001..002          | `lib/providers/servers`, `app/(dashboard)/servers`    |
-| Mail / Msg / Log / Alert view | FR-MAIL/MSG/LOG/ALR      | `lib/services/*`, matching pages                      |
-| Webhook ingest                | FR-WH-001..002           | `app/api/webhooks/[type]`, `lib/webhooks`             |
-| Provider abstraction          | FR-PROV-001              | `lib/providers`                                       |
+**CURRENT:** The complete page and Route Handler families are in §3. This focused tree shows architectural boundaries and every new path proposed by v1.3.
 
----
-
-## 2. Data Model
-
-### 2.1 What is persisted vs. what is a provider DTO
-
-**Decision (ADR-004): Domains, DnsRecords and Servers are NOT persisted. They are read-through provider DTOs.**
-
-- The registrar/cloud provider is the source of truth for domains, DNS records, and server state (AC-DOM-004..009, AC-SRV-001..008 all say "submitted to the provider" / "the provider's actual state").
-- A local cache would introduce staleness, cache-invalidation logic, and a sync job — none of which the PRD requires, and all of which fight AC-DOM-009 / AC-SRV-008 ("displayed state reflects the provider's actual, unchanged state"). Simplicity First rejects the cache.
-- Mock mode (AC-PROV-001) returns the same DTO shapes deterministically, so the UI is exercisable with zero DB rows for these sections.
-
-Consequence: `Domain`, `DnsRecord`, `Server` are TypeScript types returned by the provider layer (`src/lib/providers/**/types.ts`), never Prisma models.
-
-### 2.2 Persisted entities (Prisma) and relationships
-
-```mermaid
-erDiagram
-    Operator ||--o{ Session : has
-    Operator ||--o{ WorkspaceMember : belongs-to
-    Workspace ||--o{ WorkspaceMember : has
-    Workspace |o--o{ Session : "active for"
-    Workspace ||--o{ Category : scopes
-    Workspace ||--o{ MessageCategory : scopes
-    Workspace ||--o{ MailItem : scopes
-    Workspace ||--o{ LogEntry : scopes
-    Workspace ||--o{ AlertCategory : scopes
-    Workspace ||--o{ WebhookToken : scopes
-    Category ||--o{ Bookmark : contains
-    MessageCategory ||--o{ Channel : contains
-    Channel ||--o{ Message : contains
-    AlertCategory |o--o{ Alert : groups
-    WebhookToken ||--o{ IdempotencyKey : scopes
-
-    Operator { string id PK }
-    Session { string id PK }
-    Workspace { string id PK }
-    WorkspaceMember { string id PK }
-    Category { string id PK }
-    Bookmark { string id PK }
-    MessageCategory { string id PK }
-    Channel { string id PK }
-    Message { string id PK }
-    MailItem { string id PK }
-    LogEntry { string id PK }
-    AlertCategory { string id PK }
-    Alert { string id PK }
-    WebhookToken { string id PK }
-    IdempotencyKey { string id PK }
+```text
+src/
+├── proxy.ts                                             [CURRENT]
+├── instrumentation.ts                                  [CURRENT]
+├── app/
+│   ├── layout.tsx                                      [CURRENT]
+│   ├── page.tsx                                        [CURRENT]
+│   ├── login/{page.tsx,login-form.tsx,actions.ts}      [CURRENT]
+│   ├── (dashboard)/{layout,bookmarks,domains,servers,
+│   │   mail,messages,logs,alerts,settings}/...          [CURRENT]
+│   ├── api/channels/[id]/messages/route.ts             [CURRENT GET; TARGET Phase 2.7 POST]
+│   ├── api/alerts/route.ts                              [CURRENT GET]
+│   ├── api/alerts/[id]/route.ts                         [TARGET Phase 2.5; ABSENT]
+│   └── api/webhooks/[type]/route.ts                     [CURRENT POST]
+└── lib/
+    ├── auth/{dal,password,session}.ts                   [CURRENT]
+    ├── config/env.ts                                    [CURRENT base config]
+    ├── config/providers.ts                              [TARGET Phase 3; ABSENT]
+    ├── db.ts                                            [CURRENT]
+    ├── services/...                                     [CURRENT]
+    ├── webhooks/{pipeline,dispatch,idempotency,
+    │   ratelimit}.ts                                    [CURRENT]
+    └── providers/
+        ├── result.ts                                    [CURRENT narrow result]
+        ├── http.ts                                      [TARGET Phase 3; ABSENT]
+        ├── dns/{index,types,mock,cloudflare,hetzner,
+        │   godaddy}.ts                                  [CURRENT mocks + real stubs; TARGET Phase 3 adapters]
+        └── servers/{index,types,mock,hetzner}.ts        [CURRENT mock + real stub; TARGET Phase 3 adapter]
 ```
 
-### 2.3 Prisma schema (entity + index level)
-
-IDs use `cuid()`. Timestamps default to `now()`. Cascade / SetNull choices satisfy the no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002, AC-WS-004, AC-WS-009).
-
-```prisma
-// --- Auth (FR-AUTH-001) ---
-model Operator {
-  id           String            @id @default(cuid())
-  username     String            @unique
-  passwordHash String                                 // scrypt hash; never returned (NFR-SEC-002)
-  createdAt    DateTime          @default(now())
-  sessions     Session[]
-  memberships  WorkspaceMember[]                       // FR-WS-002
-}
-
-model Session {
-  id                String     @id                     // opaque random token (the cookie value)
-  operatorId        String
-  operator          Operator   @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  activeWorkspaceId String?                             // FR-WS-003; resolved/refreshed by requireAuth() (§5.4)
-  activeWorkspace   Workspace? @relation(fields: [activeWorkspaceId], references: [id], onDelete: SetNull) // deleted workspace -> falls back to another membership (AC-WS-004/009)
-  expiresAt         DateTime
-  createdAt         DateTime   @default(now())
-  @@index([expiresAt])
-}
-
-// --- Workspaces (FR-WS-001..003) ---
-model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique                           // AC-WS-002 unique slug derived from name
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  members           WorkspaceMember[]
-  sessions          Session[]                           // sessions with this as their active workspace
-  categories        Category[]
-  messageCategories MessageCategory[]
-  mailItems         MailItem[]
-  logEntries        LogEntry[]
-  alertCategories   AlertCategory[]
-  webhookTokens     WebhookToken[]                       // AC-WS-004: all of the above cascade-delete with the workspace
-}
-
-model WorkspaceMember {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  operatorId  String
-  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  role        String    @default("owner")                // "owner" | "member" (RBAC beyond this field is out of scope)
-  joinedAt    DateTime  @default(now())
-  @@unique([workspaceId, operatorId])                     // AC-WS-005 one membership per operator per workspace
-  @@index([operatorId])
-}
-
-// --- Bookmarks (FR-BM-001..003, Slice 1) ---
-model Category {
-  id          String     @id @default(cuid())
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  name        String
-  position    Int        @default(0)
-  bookmarks   Bookmark[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  @@index([workspaceId])
-}
-
-model Bookmark {
-  id          String   @id @default(cuid())
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade) // AC-BM-004 cascade
-  name        String
-  url         String
-  icon        String?                        // reference value (A-2 / OQ-8): emoji | icon-name | URL
-  description String?
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  @@index([categoryId])                      // grouped display AC-BM-012
-}
-
-// --- Messages (FR-MSG-001..002) ---
-model MessageCategory {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  name        String
-  channels    Channel[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  @@index([workspaceId])
-}
-
-model Channel {
-  id                String          @id @default(cuid())
-  messageCategoryId String
-  messageCategory   MessageCategory @relation(fields: [messageCategoryId], references: [id], onDelete: Cascade) // AC-MSG-003
-  name              String
-  messages          Message[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  @@index([messageCategoryId])
-}
-
-model Message {
-  id        String   @id @default(cuid())
-  channelId String
-  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  content   String
-  author    String?                          // source label from webhook payload
-  createdAt DateTime @default(now())
-  @@index([channelId, createdAt, id])        // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
-}
-
-// --- Mail (FR-MAIL-001..002) ---
-model MailItem {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  sender      String
-  subject     String
-  body        String
-  receivedAt  DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  @@index([workspaceId])
-  @@index([receivedAt, id])                  // sort + keyset pagination (AC-MAIL-004/005)
-  @@index([sender])                          // equality filter (AC-MAIL-003, NFR-PERF-002)
-}
-
-// --- Logs (FR-LOG-001..002) ---
-model LogEntry {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  level       String                           // e.g. info|warn|error (validated by zod, stored as string)
-  source      String
-  message     String
-  timestamp   DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  @@index([workspaceId])
-  @@index([timestamp, id])                   // sort + keyset pagination (AC-LOG-003/004)
-  @@index([level])                           // equality filter (AC-LOG-002)
-  @@index([source])                          // equality filter (AC-LOG-002)
-}
-
-// --- Alerts (FR-ALR-001..003) ---
-model AlertCategory {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  name        String
-  alerts      Alert[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  @@index([workspaceId])
-}
-
-model Alert {
-  id              String         @id @default(cuid())
-  alertCategoryId String?
-  alertCategory   AlertCategory? @relation(fields: [alertCategoryId], references: [id], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
-  severity        String
-  source          String
-  message         String
-  timestamp       DateTime       @default(now())
-  createdAt       DateTime       @default(now())
-  @@index([timestamp, id])                   // sort + keyset pagination (AC-ALR-005/006)
-  @@index([alertCategoryId])                 // filter by category (AC-ALR-004)
-  @@index([severity])                        // filter by severity (AC-ALR-004)
-}
-
-// --- Webhook (FR-WH-001..002) ---
-model WebhookToken {
-  id              String           @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // AC-WS-011 workspace scoping
-  name            String
-  tokenHash       String           @unique   // sha256 of secret; raw secret shown once (AC-WH-008), never stored
-  tokenPrefix     String                      // first chars, for UI identification only
-  createdAt       DateTime         @default(now())
-  revokedAt       DateTime?                    // AC-WH-009 revoke -> 401
-  lastUsedAt      DateTime?
-  idempotencyKeys IdempotencyKey[]
-  @@index([workspaceId])
-}
-
-model IdempotencyKey {
-  id         String       @id @default(cuid())
-  tokenId    String
-  token      WebhookToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  key        String                          // client-supplied Idempotency-Key
-  targetType String                          // mail | message | log | alert
-  targetId   String                          // id of the created entry, returned on replay
-  createdAt  DateTime     @default(now())
-  @@unique([tokenId, key])                    // AC-WH-004 per-token scoping; DB uniqueness = race-safe dedup
-}
-```
-
-Note (AC-WS-002/AC-WS-005): `Workspace.slug` is derived from `name` at create time and de-duplicated by `services/workspaces.ts` (`slugify` + numeric-suffix retry); `WorkspaceMember.role` defaults to `"owner"` for the creator and is set to `"member"` for everyone added via `addMember`.
-
-### 2.4 Pagination & indexing strategy (NFR-PERF-001, NFR-PERF-002, D-11)
-
-- **Keyset (cursor) pagination**, not `OFFSET`, for Mail / Logs / Alerts / Messages. Cursor = `(sortField, id)`; the composite indexes above make each page a bounded index range scan that stays under the 500ms target at 100k rows (NFR-PERF-002, A-3). Default page size **50, configurable** via env `LIST_PAGE_SIZE` (NFR-PERF-001). The `id` tiebreaker in every keyset index (e.g. `Message(channelId, createdAt, id)`) prevents skipped/duplicated rows when `sortField` values collide.
-- **Equality/range filters** (level, source, sender, severity, alertCategory, timestamp ranges) are served by the B-tree indexes above → within the NFR-PERF-002 budget.
-- **Substring/text-search filters** (AC-MAIL-003 subject text, AC-LOG-002 text query, AC-ALR-004 text query): **Decision (ADR-009) — pagination-only fallback for MVP; no `pg_trgm`.** Rationale: adopting `pg_trgm` requires a Postgres extension in the Docker image and GIN indexes that complicate migrations, for a self-hosted low-100k-row dataset (A-3). D-11/R-6 explicitly permit the pagination-only fallback. Text filters run as `ILIKE %term%` bounded by keyset pagination (NFR-PERF-001), carrying no numeric latency guarantee (exactly as NFR-PERF-002 allows). **Upgrade path documented:** if datasets grow, add `CREATE EXTENSION pg_trgm` + GIN indexes on `MailItem.subject`, `LogEntry.message`, `Alert.message` via a later migration — no schema/model change required, satisfying AC forward-compatibility.
-
----
-
-## 3. Webhook Ingest API
-
-### 3.1 Endpoint shape — single unified handler (D-3)
-
-**Decision (ADR-005): one route file, `POST /api/webhooks/[type]`**, where `type ∈ {mail, message, log, alert}`. The `[type]` path segment is the discriminator (D-3, §7 sub-decision). One handler = one security pipeline = minimal duplicated attack surface (NFR-SEC-003). An unknown segment falls through to a `400 unsupported type` branch (AC-WH-006).
-
-Rejected alternative: four bespoke endpoints — duplicates auth/ratelimit/idempotency/size code four times, contradicting D-3.
-
-### 3.2 Processing pipeline (ordered; fail-closed)
-
-```mermaid
-flowchart TD
-    A[POST /api/webhooks/type] --> B{Body size <= max?}
-    B -- no --> B1[413 Payload Too Large]:::err
-    B -- yes --> C{Parse JSON}
-    C -- fail --> C1[400 unparseable]:::err
-    C -- ok --> D{Bearer token valid and not revoked?}
-    D -- no --> D1[401 Unauthorized]:::err
-    D -- yes --> E{Rate limit ok for token?}
-    E -- no --> E1[429 + Retry-After]:::err
-    E -- yes --> F{type supported?}
-    F -- no --> F1[400 unsupported type]:::err
-    F -- yes --> G{Zod schema valid for type?}
-    G -- no --> G1[400 machine-readable error]:::err
-    G -- yes --> H{Idempotency-Key present?}
-    H -- yes, seen before --> I[200 + existing id]
-    H -- yes, new --> J[create entry + record key<br/>in one transaction]
-    H -- no --> K[create entry]
-    J --> L[201 + created id]
-    K --> L
-    classDef err fill:#fdd,stroke:#c00;
-```
-
-Order rationale: cheap/abuse-blocking checks first (size → parse → auth → rate limit) before doing DB work, per NFR-SEC-003 (unrestricted resource consumption). Note: size check precedes auth so oversized junk is rejected without a DB token lookup.
-
-### 3.3 Authentication
-
-- Header `Authorization: Bearer <secret>`. The handler computes `sha256(secret)` and looks up `WebhookToken.tokenHash` (unique index). Missing / no-match / `revokedAt != null` → **401** (AC-WH-001, AC-WH-009). Raw secrets are never stored or logged (NFR-SEC-002).
-- This is the **only** unauthenticated-by-session route (NFR-SEC-001, AC-AUTH-001 exception); it is excluded from the session middleware matcher (§5.3).
-
-### 3.4 Idempotency (AC-WH-004, AC-WH-010, D-8)
-
-- Client sends optional `Idempotency-Key` header.
-- **With key:** the create + `IdempotencyKey` insert run in a **single Prisma transaction**. The `@@unique([tokenId, key])` constraint makes concurrent duplicates race-safe: the loser catches the unique-violation, re-reads the stored `targetId`, and returns **200** with the existing id. First writer returns **201**. Scoped per token — same key under a different token is a separate entry (AC-WH-004, F-3).
-- **Without key:** always a fresh create; may duplicate on retry (at-least-once, AC-WH-010). No dedup attempted.
-
-### 3.5 Rate limiting (AC-WH-005, NFR-SEC-003)
-
-**Decision (ADR-006): in-process fixed-window counter, keyed by `tokenId`.** A `Map<tokenId, {count, windowStart}>` in module scope. Over-limit → **429** with `Retry-After`. Config via env `WEBHOOK_RATE_LIMIT` (default 120/min per token, per progress.md line 43) and `WEBHOOK_RATE_WINDOW_MS`.
-
-Justification & explicit limits: the deployment is single-instance single-process (HC-2, NFR-DEPLOY-001), so one in-memory counter _is_ the global counter — no Redis needed (Simplicity First). Documented limitations, accepted per R-4: (1) counters reset on process restart; (2) not shared across replicas — but horizontal scaling is out of scope. If multi-instance is ever adopted, swap this one module for a shared store; nothing else changes.
-
-### 3.6 Body-size & parse limits (AC-WH-011)
-
-- Read `Content-Length`; if it exceeds `WEBHOOK_MAX_BODY_BYTES` (default 64 KB) → **413** before reading the body. Also cap the actual read to guard against a lying/absent header. Unparseable JSON → **400**. Nothing created in either case (AC-WH-011, N-14).
-
-### 3.7 Error format (AC-WH-002, machine-readable)
-
-All webhook errors share one shape:
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_FAILED",
-    "message": "human summary",
-    "details": [{ "path": "subject", "issue": "required" }]
-  }
-}
-```
-
-`code` is a stable enum (`UNAUTHORIZED`, `RATE_LIMITED`, `UNSUPPORTED_TYPE`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `UNPARSEABLE`, `CHANNEL_NOT_FOUND`). `details` is the Zod issue list. HTTP status carries the primary signal; `code` disambiguates for machines.
-
-### 3.8 Per-type payload contracts (Zod, `src/lib/validation/webhooks.ts`)
-
-| type      | required fields                     | optional   | on success             | notable AC                                                                               |
-| --------- | ----------------------------------- | ---------- | ---------------------- | ---------------------------------------------------------------------------------------- |
-| `log`     | level, source, message              | timestamp  | 201 + id (AC-LOG-005)  |                                                                                          |
-| `alert`   | category, severity, source, message | timestamp  | 201 + id (AC-ALR-007)  | category resolved/created by name → `AlertCategory`                                      |
-| `mail`    | sender, subject, body               | receivedAt | 201 + id (AC-MAIL-006) |                                                                                          |
-| `message` | channelId, content                  | author     | 201 + id (AC-MSG-005)  | **channel must exist → else 400 `CHANNEL_NOT_FOUND`** (AC-MSG-006, D-10; no auto-create) |
-
-AC-MSG-008 (auto-create) is inactive (OQ-6) and not implemented.
-
-### 3.9 Token management (FR-WH-002)
-
-- Authenticated operator-only REST: `POST /api/webhook-tokens` generates `crypto.randomBytes(24)`, returns the raw secret **once** (AC-WH-008), stores only `sha256` + prefix. `GET` lists tokens **without** secrets (NFR-SEC-002). `DELETE /:id` sets `revokedAt` (AC-WH-009).
-
----
-
-## 4. Provider Abstraction (FR-PROV-001)
-
-### 4.1 Interfaces (`src/lib/providers`)
-
-All operations return a discriminated `ProviderResult<T>` so callers never see thrown provider errors (AC-PROV-003, AC-DOM-003, AC-SRV-003):
-
-```ts
-type ProviderResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; kind: "error"; message: string } // provider errored/unreachable (N-1, N-2)
-  | { ok: false; kind: "unsupported"; operation: string }; // AC-PROV-003
-```
-
-```ts
-interface DnsProvider {
-  readonly id: "cloudflare" | "hetzner" | "godaddy";
-  readonly mode: "real" | "mock";
-  listDomains(): Promise<ProviderResult<Domain[]>>; // AC-DOM-001
-  listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>>; // AC-DOM-004
-  createRecord(
-    domainId: string,
-    input: DnsRecordInput,
-  ): Promise<ProviderResult<DnsRecord>>; // AC-DOM-005
-  updateRecord(
-    domainId: string,
-    recordId: string,
-    input: DnsRecordPatch,
-  ): Promise<ProviderResult<DnsRecord>>; // AC-DOM-006
-  deleteRecord(
-    domainId: string,
-    recordId: string,
-  ): Promise<ProviderResult<void>>; // AC-DOM-007
-}
-
-interface ServerProvider {
-  readonly id: "hetzner";
-  readonly mode: "real" | "mock";
-  listServers(): Promise<ProviderResult<Server[]>>; // AC-SRV-001
-  getServer(id: string): Promise<ProviderResult<Server>>; // status poll (D-9)
-  power(
-    id: string,
-    action: "start" | "stop" | "restart",
-  ): Promise<ProviderResult<void>>; // AC-SRV-004..006
-}
-```
-
-DTOs (`src/lib/providers/**/types.ts`):
-
-- `Domain { id; name; provider }` (AC-DOM-001)
-- `DnsRecord { id; type; name; value; ttl }` (AC-DOM-004)
-- `DnsRecordInput { type; name; value; ttl }` — full record fields for a create (AC-DOM-005); validated by `validation/dns.ts` (AC-DOM-008) before reaching the provider
-- `DnsRecordPatch { value?; ttl? }` — editable fields for an update (AC-DOM-006)
-- `Server { id; name; type; status: 'running' | 'stopped' | ... }` (AC-SRV-001)
-
-### 4.2 Real-vs-mock selection by env (AC-PROV-002, no code change)
-
-A factory reads env at call time:
-
-```
-getDnsProviders(): DnsProvider[]   // one entry per provider; real if its creds present, else mock
-getServerProvider(): ServerProvider // Hetzner real if HCLOUD_TOKEN present, else mock
-```
-
-- `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`/`SECRET`, `HCLOUD_TOKEN` — presence toggles real vs mock per provider (AC-PROV-002). Keys are read from env only, never persisted, never returned in any API response or UI (NFR-SEC-002).
-
-### 4.3 Mock contract (AC-PROV-001, AC-DOM-002, AC-SRV-002, N-13)
-
-- Mock implementations return **deterministic** representative data with **zero network calls**. Server mocks implement a deterministic status transition so power actions are testable: `power('start')` → subsequent `getServer` reports `running` within the D-9 bound; `stop` → `stopped`; `restart` → `running` (AC-SRV-004..006 note, mock determinism). State held in a process-local map keyed by server id.
-
-### 4.4 Per-provider error isolation (AC-DOM-003, N-1)
-
-The Domains service calls `getDnsProviders()` and awaits all with `Promise.allSettled`-style aggregation, mapping each provider to `ProviderResult`. Healthy providers' domains render; a failed provider yields a per-provider error indicator — never a whole-section crash. Same pattern for `unsupported` operations (AC-PROV-003).
-
----
-
-## 5. Authentication (FR-AUTH-001, resolves OQ-5 at architecture level; workspace context per FR-WS-002/003, §5.4)
-
-### 5.1 Mechanism decision (ADR-002): custom lightweight session, not NextAuth/Auth.js
-
-| Option                                                    | Verdict                                                                                                                                                                                                                                                                                                        |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **NextAuth / Auth.js**                                    | Rejected. Built for multi-provider OAuth and multi-user flows; for a single env-seeded operator it adds a dependency, config surface, and adapter tables far exceeding the need. Fighting the library to do env-seeded single-credential login is more code than doing it directly. Violates Simplicity First. |
-| **Custom session cookie + DB `Session` + DAL** (SELECTED) | ~100 lines, full control, exactly meets AC-AUTH-001..005. Server-side session store gives real logout invalidation (AC-AUTH-004).                                                                                                                                                                              |
-
-### 5.2 Design
-
-- **Env contract & bootstrap (AC-AUTH-005; AQ-1 resolved per progress.md line 43):** `src/lib/config/env.ts` requires `OPERATOR_USERNAME` **and exactly one** of two password variables:
-  - `OPERATOR_PASSWORD_HASH` — **preferred**; a pre-computed scrypt hash, used as-is (no plaintext secret in env).
-  - `OPERATOR_PASSWORD` — plaintext convenience form; hashed with scrypt **in memory at startup**, and the app emits a **warning to the log** recommending the pre-hashed variable.
-    If **both** are present, `OPERATOR_PASSWORD_HASH` wins (with a warning that `OPERATOR_PASSWORD` is ignored). If the username is missing **or neither** password variable is present, the app **fails fast** at boot (throws / blocks all login with a clear message; never serves an unauthenticated dashboard — AC-AUTH-005, N-8b).
-- **First-boot seeding:** on first boot with no `Operator` row, seed exactly one operator from env, storing the resolved scrypt hash in `Operator.passwordHash` (`prisma/seed.ts` or an idempotent boot check). Re-seeding is a no-op if the operator exists.
-- **Password hashing:** `scrypt` from Node's built-in `crypto` (no native build dependency in the Docker image; Simplicity First). Store `salt:hash` in `Operator.passwordHash`.
-- **Login (AC-AUTH-002/003):** a Server Action verifies username + scrypt-compared password. Success → create `Session` (random `id = crypto.randomBytes(32)`, `expiresAt`), set an **httpOnly, Secure, SameSite=Lax** cookie holding the opaque session id. Invalid → error, no session (AC-AUTH-003).
-- **Logout (AC-AUTH-004):** delete the `Session` row and clear the cookie; subsequent requests fail the DAL check → redirect to login.
-
-### 5.3 Enforcement — two-tier (middleware + Data Access Layer)
-
-Following Next.js 15 security guidance:
-
-1. **`src/middleware.ts` (optimistic):** cheap cookie-presence check; redirects requests without a session cookie to `/login`. Matcher **excludes** `/login`, `/api/webhooks/:path*`, and static assets (AC-AUTH-001 exception for the webhook API, NFR-SEC-001). This runs on every navigation but does no DB work.
-2. **DAL `requireOperator()` (authoritative):** in `src/lib/auth/dal.ts`, called by the `(dashboard)` server layout and by every non-webhook API route handler. It validates the session id against the DB (exists + not expired) via Prisma and is the real gate — middleware alone is never trusted for authorization. Returns the operator or redirects/401s. This DAL is the one sanctioned Prisma caller outside the service layer (ADR-012).
-
-This split keeps DB lookups out of the (Edge-constrained) middleware while guaranteeing no dashboard data is returned unauthenticated (AC-AUTH-001, M-3).
-
-### 5.4 Workspace context resolution (FR-WS-002/003)
-
-Every workspace-scoped route (all category/bookmark/mail/message/log/alert/webhook-token routes, plus the `/api/workspaces*` routes themselves) calls **`requireAuth()`** instead of `requireOperator()`. `requireAuth()` is a superset: it does everything `requireOperator()` does and additionally resolves the operator's active `Workspace`, returning an `AuthContext { operator, workspace }`. `requireOperator()` is kept for the small number of call sites (e.g. the login Server Action) that only need the operator identity and have no workspace-scoped data to touch.
-
-Resolution order inside `requireAuth()` (`src/lib/auth/dal.ts`):
-
-1. Validate the session and load the `Operator`, exactly as `requireOperator()` does (redirect to `/login` on failure).
-2. If `Session.activeWorkspaceId` is set, look up the matching `WorkspaceMember` row for `(activeWorkspaceId, operatorId)`. If the membership still exists, that workspace is used — this re-validates membership on every request, so a removed member (AC-WS-007) or a deleted workspace (`onDelete: SetNull` on `Session.activeWorkspace`, AC-WS-004) cannot leak stale access.
-3. **Fallback:** if there is no active workspace, or the membership no longer exists, load the operator's earliest `WorkspaceMember` (`orderBy: joinedAt asc`) and use that workspace. If the operator has no membership at all, redirect to `/login` (AC-WS-009). The resolved workspace is persisted back onto `Session.activeWorkspaceId` so subsequent requests skip the fallback.
-4. Every downstream service call in the route handler receives `workspace.id` explicitly (e.g. `bookmarksService.list(workspace.id)`), enforcing AC-WS-011 (no cross-workspace data leakage) at the service boundary rather than relying on callers to remember a filter.
-
-**Switching workspace (AC-WS-009/010):** `POST /api/workspaces/switch` (`requireAuth()` for the operator identity, then a direct `WorkspaceMember` membership check) calls `switchWorkspace(sessionId, workspaceId)` (`src/lib/auth/session.ts`), which updates `Session.activeWorkspaceId`. The client (`WorkspaceSwitcher`, `src/components/shell/workspace-switcher.tsx`) then calls `router.refresh()` so server components re-render with the new workspace's data — no full page reload (AC-WS-010).
-
-**Invite-only operator creation (FR-WS-002):** there is no self-service registration screen. A workspace owner adds a member via `POST /api/workspaces/[id]/members`, which calls `services/workspaces.ts#addMember(workspaceId, { username, password? })`: if an `Operator` with that `username` already exists, it is simply linked with a new `WorkspaceMember` row (`role: "member"`); if it does not exist, the caller must supply a `password`, and `addMember` creates the `Operator` (scrypt-hashed via `hashPassword`, §5.2) and the membership in the same call. Beyond the env-seeded bootstrap operator (§5.2) and this owner-driven invite path, no other account-creation route exists (AC-WS-005/006).
-
----
-
-## 6. Project Structure & Layer Dependency Rules
-
-```
-inspot-dashboard/
-├── prisma/
-│   ├── schema.prisma
-│   ├── migrations/
-│   └── seed.ts                         # operator bootstrap (AC-AUTH-005)
-├── src/
-│   ├── middleware.ts                   # optimistic auth redirect (§5.3)
-│   ├── app/
-│   │   ├── layout.tsx                  # root: html/body/providers
-│   │   ├── page.tsx                    # redirect -> /bookmarks
-│   │   ├── globals.css
-│   │   ├── login/
-│   │   │   ├── page.tsx
-│   │   │   └── actions.ts              # login server action (AC-AUTH-002/003)
-│   │   ├── (dashboard)/
-│   │   │   ├── layout.tsx              # shell + requireAuth() guard (FR-SHELL-001)
-│   │   │   ├── bookmarks/page.tsx      # Slice 1
-│   │   │   ├── domains/page.tsx        # placeholder in Slice 1 (AC-SHELL-003)
-│   │   │   ├── servers/page.tsx        # placeholder …
-│   │   │   ├── mail/page.tsx
-│   │   │   ├── messages/page.tsx
-│   │   │   ├── logs/page.tsx
-│   │   │   ├── alerts/page.tsx
-│   │   │   └── settings/
-│   │   │       ├── page.tsx
-│   │   │       └── workspace/page.tsx  # rename / members / danger zone (FR-WS-001/002)
-│   │   └── api/
-│   │       ├── categories/route.ts     # + [id]/route.ts
-│   │       ├── bookmarks/route.ts      # + [id]/route.ts
-│   │       ├── webhook-tokens/route.ts # + [id]/route.ts (FR-WH-002)
-│   │       ├── webhooks/[type]/route.ts# unified ingest (FR-WH-001)
-│   │       └── workspaces/             # FR-WS-001..003
-│   │           ├── route.ts            # GET list / POST create
-│   │           ├── [id]/route.ts       # PATCH rename / DELETE
-│   │           ├── [id]/members/route.ts          # GET list / POST add
-│   │           ├── [id]/members/[memberId]/route.ts # DELETE remove
-│   │           └── switch/route.ts     # POST switch active workspace
-│   ├── components/
-│   │   ├── ui/                         # shadcn/ui primitives
-│   │   ├── shell/                      # nav, sidebar, section placeholder
-│   │   │   └── workspace-switcher.tsx  # sidebar-header dropdown (FR-WS-003)
-│   │   ├── bookmarks/                  # category/bookmark forms, cards (client)
-│   │   └── workspace/                  # rename/add-member/create forms, members list, api.ts client wrapper
-│   └── lib/
-│       ├── db.ts                       # Prisma client singleton
-│       ├── config/env.ts               # env parse + fail-fast (AC-AUTH-005)
-│       ├── auth/                       # session.ts (+ switchWorkspace), password.ts, dal.ts (requireOperator, requireAuth)
-│       ├── services/                   # bookmarks.ts, mail.ts, logs.ts, alerts.ts, messages.ts, webhookTokens.ts, workspaces.ts
-│       ├── providers/
-│       │   ├── result.ts               # ProviderResult<T>
-│       │   ├── dns/                    # index.ts(factory), cloudflare.ts, hetzner.ts, godaddy.ts, mock.ts, types.ts
-│       │   └── servers/                # index.ts(factory), hetzner.ts, mock.ts, types.ts
-│       ├── webhooks/                   # pipeline.ts, ratelimit.ts, idempotency.ts, dispatch.ts
-│       └── validation/                 # bookmarks.ts, webhooks.ts, dns.ts (Slice 2, AC-DOM-008), workspaces.ts (zod schemas)
-├── tests/                              # unit + integration (Vitest)
-├── Dockerfile
-├── docker-compose.yml                  # app + postgres (NFR-DEPLOY-001)
-└── .env.example
-```
-
-### 6.1 Dependency rules (enforced by review; one-directional)
-
-```
-app/ (pages, components, route handlers, server actions)
-   └─→ lib/services/ ──→ lib/providers/  (no db)
-                     └─→ lib/db.ts (Prisma)
-   └─→ lib/auth/dal ──→ lib/db.ts        (sanctioned Prisma caller for session/operator)
-lib/validation/ , lib/config/  : leaf modules, no upward imports
-```
-
-- **The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly.** (Rationale: a single locus for business rules plus one narrow auth gate; keeps Prisma out of the client bundle boundary and centralizes testing.)
-- **Providers MUST NOT import `db.ts`** — they are pure integration adapters returning DTOs.
-- **UI components MUST NOT import provider/service internals** — they receive DTOs as props / from server components.
-- Zod schemas in `lib/validation` are the single source of input validation, reused by both REST routes and the webhook pipeline.
-
----
-
-## 7. Implementation Sequence
-
-Aligned with the vertical-slice plan (D-1, HC-4) and PRD Slice tags.
-
-### 7.0 Scaffolding (progress.md task 11 — before Slice 1)
-
-Next.js 15 App Router + TS (`strict`), Tailwind, `shadcn/ui` init; Prisma init + `docker-compose.yml` (app + Postgres) + Dockerfile (NFR-DEPLOY-001); `lib/db.ts` singleton; `lib/config/env.ts`; root layout. **Exit check:** M-7 — documented Docker startup serves the login screen.
-
-### 7.1 Slice 1 — tracer bullet (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014)
-
-1. **Auth:** env parse + fail-fast, `Operator`/`Session` models, seed, password/session/dal, login page + action, logout, `middleware.ts`. (Verifies AC-AUTH-*, M-3.)
-2. **Shell:** `(dashboard)/layout.tsx` with nav to all seven sections, client-side routing, "Coming soon" placeholder for the six non-Bookmarks sections, responsive at 375/1440px. (AC-SHELL-001..004.)
-3. **Bookmarks:** `Category` + `Bookmark` models, `services/bookmarks.ts`, REST routes + zod validation, UI (grouped display, CRUD dialogs, empty state, icon fallback). (AC-BM-001..014, M-1, M-2, M-8.)
-
-Slice 1 has **zero provider and zero webhook dependency** (Alternative B rationale) — it needs only env-seeded operator creds.
-
-### 7.2 Later slices (recommended order + rationale)
-
-Two independent tracks; the recommended linear order interleaves lowest-risk first:
-
-- **Slice 2 — Provider foundation + Domains** (FR-PROV-001, FR-DOM-001..002): build `ProviderResult`, DNS factory, mock + three real adapters, `validation/dns.ts` (AC-DOM-008), Domains/DNS UI (read-through proxy). Establishes the provider pattern used by Servers. (AC-PROV-001..003, AC-DOM-001..009, M-5.)
-- **Slice 3 — Servers** (FR-SRV-001..002): `ServerProvider` (Hetzner + deterministic mock), power actions with confirmation + status polling (D-9). Reuses Slice 2's provider machinery. (AC-SRV-001..008.)
-- **Slice 4 — Webhook backbone + Logs** (FR-WH-001..002, FR-LOG-001..002): build the full ingest pipeline (auth, ratelimit, idempotency, size limits, error format) + token management, with **Logs** as the first and simplest consumer (flat entry, no relations). Delivers the reusable ingest core. (AC-WH-001..011, AC-LOG-001..005, M-4, M-6.)
-- **Slice 5 — Alerts** (FR-ALR-001..003): adds `AlertCategory` + category filtering; reuses ingest core (`alert` type). (AC-ALR-001..007.)
-- **Slice 6 — Mail** (FR-MAIL-001..002): list + detail view + filter/sort; `mail` ingest type. (AC-MAIL-001..006.)
-- **Slice 7 — Messages** (FR-MSG-001..002): most complex data model (category → channel → message, keyset pagination per channel, channel-targeted ingest with 4xx on missing channel). Last because it exercises the deepest relations. (AC-MSG-001..007.)
-
-Rationale for ordering: provider track (2,3) and ingest track (4–7) are independent; within the ingest track, complexity rises Logs → Alerts → Mail → Messages, so the webhook backbone is proven on the simplest payload first. This order is a recommendation for the planner; PRD does not fix later-slice order.
-
----
-
-## 8. Architecture Decision Records (ADR-style, concise)
-
-| ID          | Decision                                                                                                                                              | Alternatives considered                                                                  | Rationale / trace                                                                                                                                                                                                                                                                                                                                                                                                |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ADR-001** | Modular monolith, single Next.js process; no queue/Redis.                                                                                             | Microservices; background workers.                                                       | Single-instance self-hosted (HC-2, NFR-DEPLOY-001); Simplicity First. In-process constructs are correct at one process.                                                                                                                                                                                                                                                                                          |
-| **ADR-002** | Custom session-cookie auth (DB `Session` + DAL), scrypt hashing.                                                                                      | NextAuth/Auth.js; stateless JWT cookie.                                                  | Single env-seeded operator (D-7, OQ-5); library overkill; DB session gives real logout invalidation (AC-AUTH-004). scrypt = no native build dep.                                                                                                                                                                                                                                                                 |
-| **ADR-003** | Two-tier enforcement: optimistic middleware + authoritative DAL.                                                                                      | Middleware-only auth; per-page ad-hoc checks.                                            | Keeps DB out of Edge middleware; DAL guarantees AC-AUTH-001 / NFR-SEC-001; webhook path excluded from matcher.                                                                                                                                                                                                                                                                                                   |
-| **ADR-004** | Domains/DnsRecords/Servers are read-through provider DTOs, not persisted.                                                                             | Local cache/mirror of provider state.                                                    | Provider is source of truth (AC-DOM-009, AC-SRV-008); cache adds staleness/sync with no requirement. **Accepted trade-off:** read-through incurs provider-call latency on every Domains/Servers view; acceptable at single-user scale (A-3) and explicitly outside the NFR-PERF-002 DB-read budget (which covers DB-backed list sections only).                                                                  |
-| **ADR-005** | One unified webhook handler `/api/webhooks/[type]`.                                                                                                   | Four per-section endpoints.                                                              | D-3, §7 sub-decision: shared auth/validate/idempotency/ratelimit surface; `type` discriminator.                                                                                                                                                                                                                                                                                                                  |
-| **ADR-006** | In-process fixed-window rate limiter keyed by token.                                                                                                  | Redis / DB-backed limiter.                                                               | Single process = single global counter (NFR-SEC-003); Simplicity First; default 120/min/token (progress.md line 43); documented reset-on-restart limit (R-4).                                                                                                                                                                                                                                                    |
-| **ADR-007** | Idempotency via `@@unique(tokenId,key)` + transactional create; 201 new / 200 replay.                                                                 | App-level check-then-insert (racy).                                                      | DB constraint is race-safe; per-token scoping (AC-WH-004, D-8, F-3); no-key = at-least-once (AC-WH-010).                                                                                                                                                                                                                                                                                                         |
-| **ADR-008** | `ProviderResult<T>` discriminated union (ok/error/unsupported); no thrown provider errors.                                                            | Throwing + try/catch at UI.                                                              | Per-provider error isolation (AC-DOM-003, AC-SRV-003) and graceful unsupported (AC-PROV-003, N-1).                                                                                                                                                                                                                                                                                                               |
-| **ADR-009** | Text-search = pagination-only fallback for MVP; no `pg_trgm`.                                                                                         | `pg_trgm` GIN / full-text now.                                                           | D-11/R-6 permit fallback; avoids Postgres extension in image; low-100k rows (A-3). Upgrade path documented (§2.4).                                                                                                                                                                                                                                                                                               |
-| **ADR-010** | Keyset (cursor) pagination on `(sortField,id)` composite indexes; page size 50 configurable.                                                          | OFFSET/LIMIT pagination.                                                                 | OFFSET degrades at depth; keyset holds the 500ms budget at 100k rows (NFR-PERF-001/002).                                                                                                                                                                                                                                                                                                                         |
-| **ADR-011** | Zod schemas in `lib/validation` shared by REST + webhook.                                                                                             | Duplicate per-route validation.                                                          | Single validation source; machine-readable errors (AC-WH-002, AC-BM-005/007/008).                                                                                                                                                                                                                                                                                                                                |
-| **ADR-012** | The service layer and the auth DAL (`lib/auth/dal.ts`) are the only sanctioned Prisma callers; routes/components/actions never touch Prisma directly. | Direct Prisma in route handlers.                                                         | Testability, single business-rule locus plus one narrow auth gate, clean layer boundary (§6.1).                                                                                                                                                                                                                                                                                                                  |
-| **ADR-013** | Alert→category `onDelete: SetNull` (reassign); Bookmark/Channel/Message `onDelete: Cascade`.                                                          | App-level orphan handling.                                                               | DB enforces no-orphan invariant (D-12, AC-BM-004, AC-MSG-003, AC-ALR-002).                                                                                                                                                                                                                                                                                                                                       |
-| **ADR-014** | Workspace context carried on the session (`Session.activeWorkspaceId`), resolved server-side by `requireAuth()`; no `/[workspace]/...` URL prefix.    | URL-prefixed workspace routing; client-side workspace state (localStorage/context only). | FR-WS-003; keeps every existing route path unchanged (no App Router restructure), re-validates membership on every request (AC-WS-007/011) instead of trusting a client-supplied URL segment, and matches the DAL-is-authoritative pattern already established for auth (ADR-003). Trade-off: workspace is not shareable/bookmarkable via URL — acceptable for a small-team self-hosted tool (Simplicity First). |
-| **ADR-015** | Invite-only operator creation: new accounts are created only via a workspace owner's `addMember` call, never by self-service registration.            | Public sign-up page; open registration.                                                  | FR-WS-002 (AC-WS-005/006); consistent with the single-env-seeded-operator bootstrap model (D-7, ADR-002) extended to teams — the trust boundary is "already has an account or was invited by an owner," not "anyone can register." No new attack surface (registration abuse, email verification, etc.) for a self-hosted tool.                                                                                  |
-
----
-
-## 9. Open Questions (for the user / coordinator)
-
-Architect-level items. The PRD's product Open Questions (OQ-1..OQ-9) remain tracked in the PRD.
-
-- **AQ-1 (env password form) — RESOLVED** (coordinator, progress.md line 43): support **both** `OPERATOR_PASSWORD_HASH` (preferred, used as-is) and `OPERATOR_PASSWORD` (plaintext, hashed in memory at startup with a log warning). Applied in the §5.2 env contract. No longer open.
-- **AQ-2 (webhook token count, ties to OQ-7/A-4):** schema supports N tokens already; MVP UI may expose just one. Deferred to Slice 4 per progress.md line 48. Not a Slice 1 blocker.
-- **AQ-3 (Alert category on ingest):** webhook `alert.category` is a name; blueprint assumes upsert-by-name for sender convenience. Deferred to Slice 5 per progress.md line 48. Not a Slice 1 blocker.
-- **AQ-4 (rate-limit default) — RESOLVED (configurable default)** (coordinator, progress.md line 43): default **120 req/min per token**, configurable via env (`WEBHOOK_RATE_LIMIT`); real-world calibration remains an accepted post-launch task (R-4). Applied in §3.5 / ADR-006.
-
-Only AQ-2 and AQ-3 remain open, and both are scoped to later slices (Slice 4 / Slice 5); **none blocks Slice 1** (PRD Appendix A).
-
----
-
-## 10. Data Flow (traceable, input → output)
-
-**Bookmark create (Slice 1, workspace-scoped since the workspaces slice):** client form → Server Action / `POST /api/bookmarks` → `requireAuth()` (DAL, §5.4) → zod validate (name, http(s) URL — AC-BM-007/008) → `services/bookmarks.createCategory(workspace.id, input)` / `createBookmark()` → Prisma insert scoped to `workspace.id` → revalidate → UI shows new bookmark without full reload (AC-BM-006, AC-WS-011).
-
-**Workspace context resolution (login → scoped read, FR-WS-002/003):** login Server Action → `createSession()` (no `activeWorkspaceId` yet) → operator opens any dashboard page → `(dashboard)/layout.tsx` calls `requireAuth()` → DAL reads `Session.activeWorkspaceId`; if unset or the membership was revoked, falls back to the operator's earliest `WorkspaceMember` and persists it onto the session (§5.4) → `AuthContext { operator, workspace }` flows into the page/route → every service call is scoped by `workspace.id` → operator switches via `WorkspaceSwitcher` → `POST /api/workspaces/switch` → `switchWorkspace()` updates `Session.activeWorkspaceId` → `router.refresh()` re-runs the flow above for the newly active workspace (AC-WS-009/010/011).
-
-**Domains read (Slice 2):** `domains/page.tsx` (server) → `services/domains.list()` → `getDnsProviders()` → each adapter `listDomains()` (real HTTPS or mock) → aggregate `ProviderResult[]` → render domains from healthy providers + per-provider error badge (AC-DOM-001/003).
-
-**Server power action (Slice 3):** client confirm dialog (AC-SRV-007) → `POST` route → DAL → `ServerProvider.power()` → provider 2xx → poll `getServer()` until status = target within bound (D-9) → UI reflects actual state; on provider reject → error surfaced, state unchanged (AC-SRV-008, N-2).
-
-**Webhook ingest (Slice 4+):** external `POST /api/webhooks/log` → pipeline (size→parse→Bearer auth→ratelimit→type→zod→idempotency) → `services/logs.create()` in txn → 201 + id → later the authenticated operator opens Logs and sees the entry (AC-WH-003/007, AC-LOG-005, end-to-end M-4).
-
----
-
-## 11. Full FR → Component Traceability
-
-| FR               | Component(s)                                                                                                                                        | Key ACs                            |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| FR-SHELL-001     | `app/(dashboard)/layout.tsx`, `components/shell`                                                                                                    | AC-SHELL-001..004                  |
-| FR-AUTH-001      | `middleware.ts`, `lib/auth/*`, `login/`, `lib/config/env.ts`, `prisma/seed.ts`                                                                      | AC-AUTH-001..005                   |
-| FR-BM-001        | `services/bookmarks`, `categories/route.ts`, `components/bookmarks`                                                                                 | AC-BM-001..005                     |
-| FR-BM-002        | `services/bookmarks`, `bookmarks/route.ts`, `validation/bookmarks`                                                                                  | AC-BM-006..011                     |
-| FR-BM-003        | `bookmarks/page.tsx`, `components/bookmarks`                                                                                                        | AC-BM-012..014                     |
-| FR-DOM-001       | `providers/dns`, `services/domains`, `domains/page.tsx`                                                                                             | AC-DOM-001..003                    |
-| FR-DOM-002       | `providers/dns`, `services/domains`, `validation/dns`                                                                                               | AC-DOM-004..009                    |
-| FR-SRV-001       | `providers/servers`, `servers/page.tsx`                                                                                                             | AC-SRV-001..003                    |
-| FR-SRV-002       | `providers/servers`, server power route + poll                                                                                                      | AC-SRV-004..008                    |
-| FR-MAIL-001      | `services/mail`, `mail/page.tsx` (keyset pagination)                                                                                                | AC-MAIL-001..005                   |
-| FR-MAIL-002      | `webhooks/[type]` (`mail`), `services/mail`                                                                                                         | AC-MAIL-006                        |
-| FR-MSG-001       | `services/messages`, `messages/*` (keyset per channel)                                                                                              | AC-MSG-001..004, 007               |
-| FR-MSG-002       | `webhooks/[type]` (`message`), `services/messages`                                                                                                  | AC-MSG-005..006 (008 inactive)     |
-| FR-LOG-001       | `services/logs`, `logs/page.tsx`                                                                                                                    | AC-LOG-001..004                    |
-| FR-LOG-002       | `webhooks/[type]` (`log`)                                                                                                                           | AC-LOG-005                         |
-| FR-ALR-001       | `services/alerts`, `AlertCategory`                                                                                                                  | AC-ALR-001..002                    |
-| FR-ALR-002       | `services/alerts`, `alerts/page.tsx`                                                                                                                | AC-ALR-003..006                    |
-| FR-ALR-003       | `webhooks/[type]` (`alert`)                                                                                                                         | AC-ALR-007                         |
-| FR-WH-001        | `webhooks/[type]/route.ts`, `lib/webhooks/*`                                                                                                        | AC-WH-001..007, 010, 011           |
-| FR-WH-002        | `webhook-tokens/route.ts`, `services/webhookTokens`                                                                                                 | AC-WH-008..009                     |
-| FR-PROV-001      | `lib/providers/*` (factory + mock)                                                                                                                  | AC-PROV-001..003                   |
-| FR-WS-001        | `services/workspaces.ts`, `api/workspaces/route.ts` + `[id]/route.ts`, `components/workspace/*`, `settings/workspace/page.tsx`                      | AC-WS-001..004                     |
-| FR-WS-002        | `services/workspaces.ts#addMember/removeMember`, `api/workspaces/[id]/members/*`, `components/workspace/add-member-form.tsx`, `members-section.tsx` | AC-WS-005..008                     |
-| FR-WS-003        | `lib/auth/dal.ts#requireAuth`, `lib/auth/session.ts#switchWorkspace`, `api/workspaces/switch/route.ts`, `components/shell/workspace-switcher.tsx`   | AC-WS-009..011                     |
-| NFR-DEPLOY-001   | `Dockerfile`, `docker-compose.yml`                                                                                                                  | M-7                                |
-| NFR-SEC-001..003 | middleware+DAL, webhook pipeline, env secret handling                                                                                               | AC-AUTH-001, AC-WH-001/002/005/011 |
-| NFR-PERF-001/002 | keyset pagination + composite indexes (§2.4)                                                                                                        | M-6                                |
-| NFR-A11Y-001     | shadcn/ui a11y defaults, keyboard/focus on shell+Bookmarks                                                                                          | M-8                                |
-
-```
-
-```
+## 10. Architecture decisions
+
+| ADR | Label | Decision |
+| --- | --- | --- |
+| ADR-001 | CURRENT | Use one Next.js modular monolith and PostgreSQL. No queue, microservices, Redis dependency, vault, provider database, or general provider SDK. |
+| ADR-002 | CURRENT | Use database-backed opaque sessions and scrypt password verification. Logout invalidates the database session. |
+| ADR-003 | CURRENT | `src/proxy.ts` performs optimistic cookie-presence redirects; `requireOperator()` and `requireAuth()` are authoritative. Never authorize from proxy presence alone. |
+| ADR-004 | CURRENT | Domains, DNS records, and Servers are read-through provider DTOs, not Prisma models. |
+| ADR-005 | CURRENT | Use one public `POST /api/webhooks/[type]` pipeline for mail, message, log, and alert ingest. |
+| ADR-006 | CURRENT | Use a token-keyed in-process rate limiter while deployment remains one application process. |
+| ADR-007 | GAP | `@@unique([tokenId,key])` exists, but current check → dispatch → record is non-atomic. Atomic claim/dispatch semantics exist only as TARGET (Phase 2.2). |
+| ADR-008 | CURRENT | Providers return in-band `success`, generic `error`, or `unsupported`; Route Handlers map generic errors to 502 and unsupported to 501. |
+| ADR-009 | CURRENT | Use keyset pagination. Keep substring search as an explicit pagination-only fallback without a numeric latency guarantee. |
+| ADR-010 | CURRENT | Share Zod validation where contracts overlap; keep request-specific validation near its boundary. |
+| ADR-011 | CURRENT / GAP | Carry active workspace on `Session.activeWorkspaceId`; the DAL verifies active membership, and URLs have no workspace segment. Target-workspace membership and owner authorization for workspace administration remain missing until Phase 2.1. |
+| ADR-012 | GAP | Intended runtime Prisma callers are services and the authoritative auth DAL. Five current exceptions are recorded in §4.4 and must move behind those boundaries. |
+| ADR-013 | CURRENT | Category-child cascades apply to Bookmarks and Messages. Alert category deletion uses `SetNull`, but current Alert ownership is incomplete; TARGET (Phase 2.5) adds durable workspace ownership. |
+| ADR-014 | CURRENT | New operators join through workspace administration; public self-registration and extended RBAC remain out of scope. |
+| ADR-015 | TARGET (Phase 3) | Select each provider independently from a complete credential set. Absent selects zero-network mock; configured invalid/revoked returns typed auth; never fall back. |
+| ADR-016 | TARGET (Phase 3) | Centralize timeout, safe retry, `Retry-After`, decoding seams, and redaction in a thin injected HTTP boundary. |
+| ADR-017 | TARGET (Phase 3) | Expand provider failures to typed, sanitized categories and map them consistently as defined in §7.4. |
+| ADR-018 | CURRENT | Deploy one application plus PostgreSQL. Domains/Servers are provider-account inventory; mock mutations are process-local, restart-ephemeral, and independent of workspace lifecycle. |
+
+## 11. Decision and requirement traceability
+
+### 11.1 Accepted Q decisions
+
+| Decision | Label | Architectural consequence |
+| --- | --- | --- |
+| Q-1 | TARGET (Phase 4) | Visible UI is Russian-only under the PRD allowlist; current mixed copy remains a UI gap. |
+| Q-2 | CURRENT | Light theme is primary; dark theme and a switcher are deferred. |
+| Q-3 | TARGET (Phase 4) | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions. |
+| Q-4 | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only. |
+| Q-5 | CURRENT | Mail remains read-only. No compose/send route is planned for this iteration. |
+| Q-6 | CURRENT | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned. |
+| Q-7 | GAP / TARGET (Phase 2.5) | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded. |
+| Q-8 | CURRENT | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive. |
+| Q-9 | CURRENT | Webhook tokens are not restricted by event type/source; they remain workspace-owned. |
+| Q-10 | CURRENT | No automatic retention. Growth risk R-5 remains accepted. |
+| Q-11 | TARGET (Phase 3) | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials. |
+| Q-12 | TARGET (Phase 4.4) | Add an optional idempotent `db:seed:demo`, separate from production bootstrap. |
+
+### 11.2 Key normative traces
+
+| Requirement | CURRENT / GAP | TARGET and verification owner |
+| --- | --- | --- |
+| D-20 | Database content is workspace-owned; Domains/Servers are provider-account inventory. Bookmark child, workspace-administration authorization, and Alert `SetNull` gaps violate the intended boundary. | Phases 2.1 and 2.5: cross-workspace authorization, isolation, and migration tests. |
+| FR-WS-001..003; AC-WS-003..007 | Workspace administration authenticates the caller but does not authorize the target workspace or owner role. | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests. |
+| AC-AUTH-001..003 | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values. | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths. |
+| FR-MSG-003; AC-MSG-009…014 | No operator POST, explicit origin, or persisted operator attribution. | Phases 2.7 and 4.3: API, service, schema, UI, and failure-state tests. |
+| AC-ALR-008 | No alert delete route or UI action. | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent. |
+| FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported. | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection. |
+| NFR-SEC-002 | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete. | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures. |
+| PRD v3 / Design v2 | Approved normative inputs; implementation still has known UI and behavior deltas. | Phases 2–4; do not mark product complete before Phase 5 acceptance. |
+
+## 12. Residual risks and dependencies
+
+| Priority | Label | Risk / dependency | Required control |
+| --- | --- | --- | --- |
+| High | GAP | Concurrent same-key webhooks can duplicate effects. | Phase 2.2 atomic claim and concurrency tests. |
+| High | GAP | Bookmark child ids can cross workspace boundaries. | Phase 2.1 ownership predicates and isolation tests. |
+| High | GAP | Authenticated operators can target workspace-administration ids without target membership or owner authorization. | Phase 2.1 target-workspace predicates, owner checks, and isolation tests. |
+| High | GAP | Alert `SetNull` can erase the only workspace ownership path. | Phase 2.5 schema migration, legacy-null disposition, scoped delete/list tests. |
+| High | GAP | Docker cannot build from the declared pnpm lock contract as written. | Phase 2.0 package-manager alignment and clean-container CI. |
+| High | GAP | Real-mode provider classes are stubs; configured credentials do not deliver real value. | Phase 3 AC-REAL implementation and evidence. |
+| Medium | GAP | Provider config is unvalidated, GoDaddy selection ignores the secret, and compose passes no provider variables. | Phase 3 complete-set validation and deployment wiring. |
+| Medium | GAP | The login `next` prefix check accepts protocol-relative or externally normalized targets. | Phase 2.1 same-origin normalization and malicious/valid target tests. |
+| Medium | CURRENT | Mock mutations and rate counters reset on restart; mock state is shared across workspaces. | Keep behavior explicit; do not use mocks as persistence or tenant data. |
+| Medium | GAP | Five runtime Prisma callers bypass the intended service/DAL boundary. | Phase 2 boundary cleanup with unchanged external contracts. |
+| Medium | GAP | Most routes lack App Router loading/error/not-found boundaries. | Phase 4 state implementation and accessibility tests. |
+| Accepted | CURRENT | No automatic retention; database growth risk R-5 remains. | Monitor storage operationally; do not invent retention without a new decision. |
+| Dependency | TARGET (Phase 3) | Real smoke tests require credentials and eligible accounts in Q-11 order. | Keep them optional outside normal CI; never expose secrets in artifacts. |
+| Dependency | TARGET (Phase 3.4) | GoDaddy account/API eligibility may block integration. | Require real evidence plus dated user exclusion; missing credentials alone are insufficient. |
+| Non-blocking | CURRENT | OQ-8 leaves uploaded bookmark assets undecided. | Preserve reference-value behavior; do not add an asset pipeline without a sourced requirement. |
+
+## 13. Verification contract for this document
+
+| Label | Check |
+| --- | --- |
+| CURRENT | Stack values must match `package.json`, `pnpm-lock.yaml`, `Dockerfile`, `docker-compose.yml`, and `playwright.config.ts`. |
+| CURRENT | Page, route-file, handler, method, model, and database-importer counts must match the repository. |
+| CURRENT | Every current path in §§3 and 9 must exist. |
+| TARGET | Every absent future path must carry `TARGET (Phase N)` and `ABSENT`. |
+| GAP | Webhook atomicity, Bookmark ownership, workspace-administration authorization, login target validation, Alert ownership, human message POST, alert deletion, provider stubs, and deployment mismatch must remain visible until code and tests close them. |
+| TARGET | Phase 2.1 must prove membership-gated workspace reads, owner-only workspace mutations, non-disclosing foreign-id responses, and malicious/valid login-target handling. |
+| TARGET | Phase 3 retry, redaction, error mapping, readback/reconciliation, and Q-11 order must trace to FR-REAL/AC-REAL and NFR-SEC-002. |
+| CURRENT | Phase 1 remains in progress until ordinary doc review passes; Phases 2–5 remain pending. |
