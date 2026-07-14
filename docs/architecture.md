@@ -88,8 +88,8 @@ flowchart LR
 
 | Label | Finding | Required disposition |
 | --- | --- | --- |
-| CURRENT | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `npm run start`. | Preserve unless deployment validation changes the contract. |
-| GAP | The repository declares pnpm and contains `pnpm-lock.yaml`, but `Dockerfile` copies nonexistent `package-lock.json` and runs `npm ci`; `playwright.config.ts` also starts `npm run build && npm run start`. | TARGET (Phase 2.0): use one package manager and its lockfile in Docker, CI, and Playwright. Keep frozen-lockfile behavior. |
+| CURRENT | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `pnpm run start`. | Preserve unless deployment validation changes the contract. |
+| CURRENT / PENDING REVALIDATION | Docker, CI, and Playwright use Node 24, Corepack, `pnpm@11.12.0`, and `pnpm-lock.yaml`; dependency installation is frozen-lockfile, and Playwright starts the built application. | R2.0 implementation is complete; only the three-run `R2.0-G` runtime integration gate remains pending. |
 | GAP | `docker-compose.yml` does not pass `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`, `GODADDY_API_SECRET`, or `HCLOUD_TOKEN` to the application container. | TARGET (Phase 3): wire optional provider variables without values or secrets in source control. |
 | CURRENT | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup. |
 | GAP | Base env validation does not validate provider credentials or complete credential sets. | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration. |
@@ -272,11 +272,11 @@ Workspace-leading indexes are required on every scoped lookup path: category/chi
 
 | Field family | Contract |
 | --- | --- |
-| Identity | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace. |
+| Identity | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, exact `ProviderResourceType` values `{DOMAIN, SERVER}` in `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace. |
 | Mock identity | `accountKey = 'mock:v1'`; `remoteId = 'mock:v1:<workspaceId>:<provider>:<key>'`. REAL rows cannot use a `mock:` prefix. No mutable module-global mock state remains. |
 | Identity validation | Application and SQL enforce UTF-8 bounds: `accountKey` 1–256 bytes, `remoteId` 1–512, `displayName` 1–512; values are trimmed and contain no control characters. Provider/resource-type pairs are restricted by CHECK. |
-| Operation lease | State is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`; operation id is unique. The CHECK treats operation id, kind, credential-free canonical intent, start, and expiry as one all-or-none group: all are NULL in `IDLE`, and all are non-NULL in `RUNNING` or `RECONCILE_REQUIRED`. `lastReconciledAt` is optional reconciliation metadata outside that group. Intent is at most 16 KiB and must never contain credentials. |
-| Indexes | Required indexes are unique `(id, workspaceId)`, workspace-leading `(workspaceId, resourceType, provider, mode)`, lease `(state, leaseExpiresAt)`, and global identity unique `(provider, accountKey, resourceType, mode, remoteId)`. |
+| Operation lease | Exact fields are `operationState`, `operationId`, `operationKind`, `operationIntent`, `operationStartedAt`, `operationLeaseExpiresAt`, `lastReconciledAt`, and `version`. `operationState` is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`; `operationId` is unique. The CHECK treats `operationId`, `operationKind`, credential-free canonical `operationIntent`, `operationStartedAt`, and `operationLeaseExpiresAt` as one active-evidence group: all are NULL in `IDLE`, and all are non-NULL in `RUNNING` or `RECONCILE_REQUIRED`. `lastReconciledAt` is optional reconciliation metadata outside that group. Intent is at most 16 KiB and must never contain credentials. |
+| Indexes | Required indexes are unique `(id, workspaceId)`, workspace-leading `(workspaceId, resourceType, provider, mode)`, lease `(operationState, operationLeaseExpiresAt)`, and global identity unique `(provider, accountKey, resourceType, mode, remoteId)`. |
 
 `Workspace` deletion first requires all bindings `IDLE`, then deletes local binding rows in a controlled transaction; it never sends provider delete calls. The Prisma relation remains `Restrict` so an accidental cascade cannot bypass this gate.
 
@@ -330,15 +330,15 @@ The mandatory PostgreSQL 16 gate covers fresh replay, repaired replay, forced fo
 
 **TARGET (R2.1b/c):** `WorkspaceRole` has exactly `OWNER` and `MEMBER`. A member may use normal content, DNS record operations, server power actions, create a new workspace, and list members. An owner additionally renames/deletes the workspace, adds/removes members, discovers/claims/removes provider bindings, and participates in binding transfer. The service layer rejects removal of the last owner or an operator's last workspace membership. Session fallback is deterministic. Mutations acquire locks in this order: workspace → operator → membership → provider binding.
 
-Workspace creation trims the name and rejects an empty result. It produces a nonempty ASCII slug; a Cyrillic-only name uses a deterministic nonempty ASCII fallback. One transaction creates the workspace and caller's `OWNER` membership. A slug uniqueness conflict uses a bounded retry and returns a typed conflict when the bound is exhausted.
+Workspace creation trims the name and rejects an empty result. It produces a nonempty ASCII slug; a Cyrillic-only name uses a deterministic nonempty ASCII fallback. Slug candidates are `base`, `base-2`, and so on, with at most five candidates. Each candidate runs in a fresh top-level transaction that creates the workspace and caller's `OWNER` membership. Catch occurs outside the transaction callback: retry only the named `Workspace_slug_key` constraint, fail every non-slug error immediately, and return a typed conflict when the bound is exhausted. Tests must prove the fresh-transaction boundary, retry-only behavior, non-slug immediate failure, Cyrillic fallback, and five-candidate exhaustion.
 
 Every session-authenticated browser API method requires `X-Inspoter-Workspace`, including workspace list, create, administration, and switch. Login, logout, public webhook ingest, static assets, and direct Server Component reads are the only exceptions. The header is non-empty ASCII, at most 128 bytes, and comes from the workspace rendered by the initial RSC response.
 
 The server processes a request in this exact order:
 
 1. Validate the session and resolve its active membership from the database.
-2. Parse the expected-workspace header. Missing or malformed returns `400` with `CONTEXT_REQUIRED`.
-3. Compare the header with the session workspace. Mismatch returns `409` with `CONTEXT_STALE`.
+2. Parse the expected-workspace header. Missing or malformed returns `400` with `WORKSPACE_CONTEXT_REQUIRED`.
+3. Compare the header with the session workspace. Mismatch returns `409` with `WORKSPACE_CONTEXT_STALE`.
 4. Apply target-resource membership/role authorization.
 5. Only then perform a business query, cache read, write, binding lookup, or provider/network call.
 
@@ -346,7 +346,7 @@ The header is a stale-session precondition, never a workspace selector or author
 
 ### 5.2 Q-13 browser, cache, and cursor boundary — not implemented
 
-The dashboard renders a keyed `WorkspaceBoundary`. On switch or `409 CONTEXT_STALE`, the client aborts old requests, discards old response state, clears workspace-bound client caches, refreshes the RSC tree, and remounts by workspace id. GET reads may refetch after refresh; mutations never retry automatically.
+The dashboard renders a keyed `WorkspaceBoundary`. On switch or `409 WORKSPACE_CONTEXT_STALE`, the client aborts old requests, discards old response state, clears workspace-bound client caches, refreshes the RSC tree, and remounts by workspace id. GET reads may refetch after refresh; mutations never retry automatically.
 
 Workspace responses are private and non-cacheable: `Cache-Control: private, no-store, max-age=0`, with `Vary: Cookie, X-Inspoter-Workspace`. Do not use shared Next.js caches for workspace data. Any future cache key includes workspace id and authorization dimension. Every cursor is an opaque versioned envelope bound to workspace, normalized filter, and sort/order; malformed envelopes and replays under any mismatched binding are rejected before a database query.
 
@@ -679,7 +679,7 @@ src/
 | High | GAP | Bookmark child ids can cross workspace boundaries. | Phase 2.1 ownership predicates and isolation tests. |
 | High | GAP | Authenticated operators can target workspace-administration ids without target membership or owner authorization. | Phase 2.1 target-workspace predicates, owner checks, and isolation tests. |
 | High | GAP | Alert `SetNull` can erase the only workspace ownership path. | Phase 2.5 schema migration, legacy-null disposition, scoped delete/list tests. |
-| High | GAP | Docker cannot build from the declared pnpm lock contract as written. | Phase 2.0 package-manager alignment and clean-container CI. |
+| High | PENDING REVALIDATION | Node 24/Corepack/`pnpm@11.12.0`, frozen-lockfile Docker/CI, and the Playwright production-server command are implemented. | Complete the three-run `R2.0-G` runtime integration gate. |
 | High | GAP | Real-mode provider classes are stubs; configured credentials do not deliver real value. | Phase 3 AC-REAL implementation and evidence. |
 | Medium | GAP | Provider config is unvalidated, GoDaddy selection ignores the secret, and compose passes no provider variables. | Phase 3 complete-set validation and deployment wiring. |
 | Medium | GAP | The login `next` prefix check accepts protocol-relative or externally normalized targets. | Phase 2.1 same-origin normalization and malicious/valid target tests. |
@@ -692,7 +692,7 @@ src/
 | Non-blocking | CURRENT | OQ-8 leaves uploaded bookmark assets undecided. | Preserve reference-value behavior; do not add an asset pipeline without a sourced requirement. |
 | High | TARGET risk | Historical ownership cannot be inferred safely from current data. | Maintenance manifest with digest/full coverage, explicit orphan/null dispositions, SERIALIZABLE repair, sentinel collision/zero-remnant checks. |
 | High | TARGET risk | Provider transport can fail after an upstream commit. | Durable lease, outside-transaction I/O, readback/CAS, read-only reconciliation; block active/unresolved bindings. |
-| High | TARGET risk | A stale browser tab can issue a mutation after workspace switch. | Required expected-workspace precondition, `409 CONTEXT_STALE`, keyed remount, mutation no-retry. |
+| High | TARGET risk | A stale browser tab can issue a mutation after workspace switch. | Required expected-workspace precondition, `409 WORKSPACE_CONTEXT_STALE`, keyed remount, mutation no-retry. |
 
 ## 13. Verification contract for this document
 

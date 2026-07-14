@@ -1,7 +1,7 @@
 # Product Requirements Document — inspoter
 
 **Version:** v3.1
-**Status:** Draft Q-13 amendment — independent doc-review pending
+**Status:** Draft v3.1 Q-13/D-21 amendment — independent Review 2 pending
 **Owner:** Product Analyst
 **Date:** 2026-07-14
 **Source of truth for:** architect, ui-ux-designer, planner, tester
@@ -420,7 +420,7 @@ Each provider selects its mode independently under AC-PROV-001..002: an absent c
 
 **NFR-SEC-003 (Webhook abuse resistance):** The webhook ingest API must enforce token auth (AC-WH-001), payload validation (AC-WH-002), body-size/parse limits (AC-WH-011), and rate limiting (AC-WH-005) to resist unauthorized or abusive ingestion. Aligns with OWASP API Top 10 (broken auth, unrestricted resource consumption).
 
-**NFR-SEC-004 (Workspace-context precondition):** Every session-authenticated browser API request, including workspace list/create/admin/switch, must present the non-empty ASCII `X-Inspoter-Workspace` value rendered with the page (maximum 128 bytes). The server first authenticates and resolves membership, then compares the header with the session workspace before any business query, cache, write, binding lookup, or provider call. Missing/malformed context returns `400 CONTEXT_REQUIRED`; mismatch returns `409 CONTEXT_STALE`. The header never selects or authorizes a workspace. Login, logout, public webhooks, assets, and direct Server Component reads are excluded. A stale mutation is never retried automatically.
+**NFR-SEC-004 (Workspace-context precondition):** Every session-authenticated browser API request, including workspace list/create/admin/switch, must present the non-empty ASCII `X-Inspoter-Workspace` value rendered with the page (maximum 128 bytes). The server first authenticates and resolves membership, then compares the header with the session workspace before any business query, cache, write, binding lookup, or provider call. Missing or malformed context returns `400 WORKSPACE_CONTEXT_REQUIRED`; stale or inaccessible context returns `409 WORKSPACE_CONTEXT_STALE`. The header never selects or authorizes a workspace. Login, logout, public webhooks, assets, and direct Server Component reads are excluded. A stale mutation is never retried automatically.
 
 **NFR-PERF-001 (List pagination):** All potentially unbounded lists (Mail, Logs, Alerts, and Messages within a channel) must be paginated (server-side), returning a bounded page size (default target: 50 items/page, configurable) so a single request never loads the entire table. _Verification:_ AC-MAIL-005, AC-LOG-004, AC-ALR-006, AC-MSG-007; response payload item count ≤ configured page size.
 
@@ -561,7 +561,7 @@ An all-at-once rollout would delay every provider until all credentials and acco
 | N-18 | One configured real-provider credential is invalid or revoked. | That provider returns a provider-specific authentication error with no fallback to mock; unrelated providers retain their independent modes; no crash. | AC-PROV-002, AC-REAL-CF/HC/HD/GD-003 |
 | N-19 | One provider credential is absent. | Only that provider uses deterministic mock mode and makes zero external calls; unrelated providers retain their independent modes. | AC-PROV-001; Q-11 |
 | N-20 | Demo seed is repeated or requested against production. | Repeat creates no duplicates; production data is unchanged and remains separate. | AC-DEMO-002..003 |
-| N-21 | A stale tab submits a request after another tab switches workspace. | Server returns `409 CONTEXT_STALE` before business or provider work; client discards stale data, refreshes/remounts, and never retries a mutation automatically. | AC-WS-009..011, NFR-SEC-004 |
+| N-21 | A stale tab submits a request after another tab switches workspace. | Server returns `409 WORKSPACE_CONTEXT_STALE` before business or provider work; client discards stale data, refreshes/remounts, and never retries a mutation automatically. | AC-WS-009..011, NFR-SEC-004 |
 | N-22 | A local provider binding belongs to another workspace or is missing. | Non-disclosing 404 before provider/network access; no account-name matching or implicit claim. | AC-DOM-004..009, AC-SRV-004..008, AC-PROV-002, AC-WS-011 |
 | N-23 | A provider mutation times out after a possible upstream commit. | Binding enters reconciliation-required state; reads may reconcile, while mutations, transfer, removal, and workspace deletion stay blocked until resolved. | AC-DOM-005..009, AC-SRV-004..008 |
 | N-24 | Workspace deletion includes provider bindings. | Idle local bindings and local content delete; upstream provider resources remain unchanged. | AC-WS-004 |

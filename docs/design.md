@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.0
-**Status:** Approved — ordinary doc-review PASS; R1.5 reference-integrity recheck PASS
+**Version:** v2.1
+**Status:** Draft Q-13 amendment — independent doc-review pending
 **Owner:** UI/UX Designer
 **Date:** 2026-07-14
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** approved docs/prd.md v3.0 and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.1 (D-21/Q-13), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -15,7 +15,7 @@ This document is the executable visual and interaction contract for remediation 
 
 Precedence, highest first:
 
-1. docs/prd.md v3.0 governs product scope, acceptance criteria, explicit Q decisions, and D-20.
+1. docs/prd.md v3.1 governs product scope, acceptance criteria, explicit Q decisions, and D-21/Q-13.
 2. specs/inspot-design/ governs tokens, fonts, components, icon family, density, and motion.
 3. specs/prototype/ governs demonstrated geometry and composition when it does not conflict with items 1–2.
 4. specs/ui.md governs routes, flows, responsive transformations, and shared states, subject to the exceptions below.
@@ -31,7 +31,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 - Q-5: Mail remains read-only; no compose, reply, forward, delete, or mailbox polling UI.
 - Q-6: Servers permits inventory/status plus start, stop, and restart only.
 - Q-7 and AC-ALR-008: Alerts permits confirmed deletion; acknowledge and resolve controls do not exist.
-- D-20: Bookmarks, Mail, Messages, Logs, Alerts, webhook tokens, their categories, and child records follow the active workspace. Domains and Servers are deployment/provider-account inventory and remain unchanged on workspace switch or deletion.
+- D-21/Q-13: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts, Settings, webhook tokens, selected detail, exclusive local provider-resource bindings, mock state, caches, and cursors follow the active workspace. Provider credentials alone remain deployment-global `.env` secrets. Removing a local binding or workspace never deletes an upstream provider resource. D-20 is superseded and non-normative.
 - Provider modes are independent. One provider may be real, another mock, and another errored without changing the others.
 
 ### 0.2 Source inventory
@@ -172,7 +172,7 @@ After success, navigate to /bookmarks. Invalid credentials preserve the username
 
 The shared protected shell contains the 256/64px sidebar, 56px top bar, workspace switcher, seven-section navigation, separated Settings link, page title/context action, operator menu, and Russian logout action.
 
-Workspace switching updates workspace-scoped content without full-page reload. The switcher shows pending, failure/retry, and empty-membership handling. It must not imply that Domains or Servers changed. The top bar action belongs to the current page and collapses to a labeled or icon-plus-label mobile control without losing its accessible name.
+Workspace switching updates all seven sections, Settings, webhook tokens, selected detail, local provider-resource bindings, mock state, caches, and cursors without a full-page reload. A switch aborts prior requests, discards late responses, clears the previous workspace's selected binding/detail and client state, remounts the keyed workspace boundary, and refetches destination content. The switcher shows pending, failure/retry, and empty-membership handling. The top bar action belongs to the current page and collapses to a labeled or icon-plus-label mobile control without losing its accessible name.
 
 ### 4.3 Settings utility
 
@@ -223,9 +223,9 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 ## 5.2 Domains
 
-**Route and scope:** /domains; deployment/provider-account inventory. DNS detail is selected state within this route until routing architecture names a path. Trace: AC-DOM-001..009, AC-PROV-001..003, D-20.
+**Route and scope:** /domains; exclusive local provider-resource bindings owned by the active workspace. DNS detail is selected state keyed to that workspace until routing architecture names a path. Trace: AC-DOM-001..009, AC-PROV-001..003, AC-WS-010..011, D-21/Q-13.
 
-**Layout/content:** provider-aware inventory showing domain name and Cloudflare, Hetzner DNS, or GoDaddy source. Selecting a domain opens its DNS records with type, name, value, and TTL. Provider identity and mode/error are visible without implying workspace ownership.
+**Layout/content:** provider-aware inventory showing only domains bound to the active workspace, with domain name and Cloudflare, Hetzner DNS, or GoDaddy source. Selecting a domain opens that binding's DNS records with type, name, value, and TTL. Provider identity and mode/error are visible without exposing credentials.
 
 **Actions:** select domain; refresh one provider; create/edit/delete a DNS record with confirmation for delete. Validate type-specific name/value and TTL before provider submission. Refresh and mutation errors are provider-local.
 
@@ -235,15 +235,15 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 **Accessibility:** provider error is announced once and linked to its retry; record labels remain associated after stacking; type and status are text, not color-only; dialogs meet shared focus rules.
 
-**Acceptance:** inventory/provider behavior satisfies AC-DOM-001..003; DNS CRUD/validation/failure satisfies AC-DOM-004..009; switching workspace changes neither content nor selection solely because of the switch; each provider can independently be real, mock, or errored.
+**Acceptance:** inventory/provider behavior satisfies AC-DOM-001..003; DNS CRUD/validation/failure satisfies AC-DOM-004..009; switching workspace loads destination-workspace bindings and clears the prior DNS selection; each provider can independently be real, mock, or errored. Foreign or missing local bindings disclose no resource and trigger no provider call.
 
-**Exclusions:** domain registration/transfer/renewal, nameserver lifecycle, provider credential entry, bulk DNS editing, and any workspace ownership label.
+**Exclusions:** domain registration/transfer/renewal, nameserver lifecycle, provider credential entry, bulk DNS editing, and deletion of upstream resources when a local binding or workspace is removed.
 
 ## 5.3 Servers
 
-**Route and scope:** /servers; deployment/provider-account inventory. Trace: AC-SRV-001..008, AC-PROV-001..003, D-20.
+**Route and scope:** /servers; exclusive local provider-resource bindings owned by the active workspace. Selected server detail and pending state are keyed to that workspace. Trace: AC-SRV-001..008, AC-PROV-001..003, AC-WS-010..011, D-21/Q-13.
 
-**Layout/content:** compact summary followed by a responsive server-card grid. Each card shows name, Hetzner Cloud provider, VPS type/configuration, IP, power status, and only information returned by the provider. Use semantic status tokens and Russian labels.
+**Layout/content:** compact summary followed by a responsive grid showing only servers bound to the active workspace. Each card shows name, Hetzner Cloud provider, VPS type/configuration, IP, power status, and only information returned by the provider. Use semantic status tokens and Russian labels.
 
 **Actions:** start a stopped server; stop or restart a running server; refresh inventory. Every power action opens a real modal confirmation with action, server name, consequence, cancel, and confirm. Only the affected card enters pending/polling state.
 
@@ -253,9 +253,9 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 **Accessibility:** action menu is keyboard-operable; confirmation traps focus, closes on Escape, restores trigger focus, and announces pending/result; status includes text.
 
-**Acceptance:** inventory/mock/error satisfies AC-SRV-001..003; start/stop/restart and 30/30/60-second status checks satisfy AC-SRV-004..008; workspace switch leaves the inventory unchanged; no other lifecycle controls render.
+**Acceptance:** inventory/mock/error satisfies AC-SRV-001..003; start/stop/restart and 30/30/60-second status checks satisfy AC-SRV-004..008; switching workspace loads destination-workspace bindings and clears prior selected/pending state; no other lifecycle controls render. Foreign or missing local bindings disclose no resource and trigger no provider call.
 
-**Exclusions:** create, delete, rebuild, resize, reinstall, rescue, snapshots, volumes, networking changes, and workspace assignment.
+**Exclusions:** create, delete, rebuild, resize, reinstall, rescue, snapshots, volumes, networking changes, provider credential entry, and deletion of upstream servers when a local binding or workspace is removed.
 
 ## 5.4 Mail
 
@@ -341,7 +341,7 @@ For Mail, Messages, Logs, and Alerts, end-to-end ingest tests create a backend r
 
 ## 7. Current implementation delta for Phase 4
 
-Snapshot basis: repository state reviewed 2026-07-14. Status is conformance against this v2.0 target, not release completion.
+Snapshot basis: repository state reviewed 2026-07-14. Status is conformance against this v2.1 target, not release completion.
 
 | Section   | Current status | Already aligned                                                                                     | Required Phase 4 delta                                                                                                                                                                                  | Verification evidence                                                                                                                                                            |
 | --------- | -------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -377,7 +377,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Messages no auto-create                     | Q-8; AC-MSG-006, AC-MSG-008 inactive, AC-MSG-013                      |
 | Logs read/filter/sort and observable ingest | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
 | Alerts delete, no acknowledge/resolve       | Q-7; AC-ALR-001..008                                                  |
-| Workspace CRUD/switch/isolation exception   | AC-WS-001..011; D-20                                                  |
+| All-content workspace switch and isolation  | AC-WS-001..011; D-21/Q-13                                             |
 | Active webhook token utility                | AC-WH-008..009                                                        |
 | Observable ingest without added surface     | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
 
