@@ -1,16 +1,19 @@
 import { spawn } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import {
   createTestChildEnvironment,
   loadTestEnvironment,
 } from "./test-env.mjs";
+import REPOSITORY_ROOT from "./repository-root.cjs";
 
-const REPOSITORY_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const require = createRequire(import.meta.url);
+const require = createRequire(resolve(REPOSITORY_ROOT, "package.json"));
 const PRISMA_CLI = require.resolve("prisma/build/index.js");
+const TEST_DB_SCRIPT = realpathSync(
+  resolve(REPOSITORY_ROOT, "scripts", "test-db.mjs"),
+);
 
 const EXPECTED_HOSTS = new Set(["localhost", "127.0.0.1"]);
 const EXPECTED_PORT = "3833";
@@ -50,16 +53,9 @@ function refuse(reason) {
 }
 
 /**
- * Pure, pre-connect validation for every test database mutation.
+ * Pure, pre-connect validation for read-only test configuration consumers.
  */
-export function validateTestDatabaseGuard(environment) {
-  if (environment.ALLOW_TEST_DB_RESET !== "1") {
-    refuse("ALLOW_TEST_DB_RESET must equal 1.");
-  }
-  if (environment.TEST_DATABASE_MARKER !== EXPECTED_MARKER) {
-    refuse("TEST_DATABASE_MARKER must equal the dedicated test marker.");
-  }
-
+export function validateTestDatabaseTarget(environment) {
   const rawUrl = environment.DATABASE_URL;
   if (typeof rawUrl !== "string" || rawUrl.length === 0) {
     refuse("DATABASE_URL is required.");
@@ -120,6 +116,20 @@ export function validateTestDatabaseGuard(environment) {
     sanitizedTarget:
       databaseUrl.hostname + ":" + databaseUrl.port + "/" + database,
   };
+}
+
+/**
+ * Pure, pre-connect validation for every test database mutation.
+ */
+export function validateTestDatabaseGuard(environment) {
+  if (environment.ALLOW_TEST_DB_RESET !== "1") {
+    refuse("ALLOW_TEST_DB_RESET must equal 1.");
+  }
+  if (environment.TEST_DATABASE_MARKER !== EXPECTED_MARKER) {
+    refuse("TEST_DATABASE_MARKER must equal the dedicated test marker.");
+  }
+
+  return validateTestDatabaseTarget(environment);
 }
 
 function dockerExecutable() {
@@ -282,8 +292,17 @@ async function main() {
   }
 }
 
-const invokedPath = process.argv[1] ? resolve(process.argv[1]) : "";
-if (invokedPath === fileURLToPath(import.meta.url)) {
+function resolveInvokedPath(value) {
+  if (!value) return "";
+  try {
+    return realpathSync(resolve(value));
+  } catch {
+    return "";
+  }
+}
+
+const invokedPath = resolveInvokedPath(process.argv[1]);
+if (invokedPath === TEST_DB_SCRIPT) {
   main().catch((error) => {
     if (
       error instanceof TestDatabaseGuardError ||

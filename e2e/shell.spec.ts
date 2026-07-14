@@ -1,20 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
-// AC-SHELL-001..003 (design.md §3.2). The dashboard shell
-// (src/app/(dashboard)/layout.tsx, src/components/shell/**) has not been
-// built yet, so every test below is expected to fail at the login step
-// (no /login form to reach the shell through) or at the assertion — both
-// are real "missing implementation" symptoms, not harness bugs.
-
+// AC-SHELL-001..003 (design.md §3.2): Russian navigation and every
+// implemented dashboard route remain available through the shared shell.
 const SECTIONS = [
-  "Bookmarks",
-  "Domains",
-  "Servers",
-  "Mail",
-  "Messages",
-  "Logs",
-  "Alerts",
+  "Закладки",
+  "Домены",
+  "Серверы",
+  "Почта",
+  "Сообщения",
+  "Логи",
+  "Оповещения",
 ];
 
 test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
@@ -29,6 +25,7 @@ test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
 
 test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)", async ({
   page,
+  testData,
 }) => {
   await login(page);
   await page.evaluate(() => {
@@ -39,9 +36,9 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
 
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "Domains", exact: true })
+    .getByRole("link", { name: "Домены", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/domains/);
+  await expect(page).toHaveURL(testData.localUrl("/domains"));
 
   const markerSurvived = await page.evaluate(
     () =>
@@ -51,37 +48,94 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
   expect(markerSurvived).toBe(true);
 });
 
-const PLACEHOLDER_SECTIONS: Array<[path: string, label: string]> = [
-  ["domains", "Domains"],
-  ["servers", "Servers"],
-  ["mail", "Mail"],
-  ["messages", "Messages"],
-  ["logs", "Logs"],
-  ["alerts", "Alerts"],
-];
+const IMPLEMENTED_SECTIONS = [
+  {
+    path: "/domains",
+    label: "Домены",
+    readiness: { role: "heading", name: "Domains" },
+  },
+  {
+    path: "/servers",
+    label: "Серверы",
+    readiness: { role: "button", name: "Обновить" },
+  },
+  {
+    path: "/mail",
+    label: "Почта",
+    readiness: { role: "heading", name: "Mail" },
+  },
+  {
+    path: "/messages",
+    label: "Сообщения",
+    readiness: { role: "heading", name: "Каналы" },
+  },
+  {
+    path: "/logs",
+    label: "Логи",
+    readiness: { role: "heading", name: "Logs" },
+  },
+  {
+    path: "/alerts",
+    label: "Оповещения",
+    readiness: { role: "heading", name: "Alerts" },
+  },
+] as const;
 
-test.describe("AC-SHELL-003: not-yet-implemented sections show a coming-soon placeholder", () => {
-  for (const [path, label] of PLACEHOLDER_SECTIONS) {
-    test(`${label} renders a placeholder, not an error or blank screen`, async ({
+const SETTINGS_ROUTE = {
+  path: "/settings",
+  label: "Настройки",
+  readiness: { role: "heading", name: "Settings" },
+} as const;
+
+test.describe("AC-SHELL-003: implemented sections render through the active shell", () => {
+  for (const { path, label, readiness } of IMPLEMENTED_SECTIONS) {
+    test(`${label} renders its implemented route and active navigation`, async ({
       page,
+      testData,
     }) => {
       await login(page);
-      const response = await page.goto(`/${path}`);
+      const response = await page.goto(path);
+
       expect(
-        response?.status(),
-        `${path} should resolve (not 404/500)`,
+        response,
+        `${path} should return a document response`,
+      ).not.toBeNull();
+      expect(
+        response!.status(),
+        `${path} should resolve without a 4xx/5xx response`,
       ).toBeLessThan(400);
+      await expect(page).toHaveURL(testData.localUrl(path));
       await expect(
-        page.getByText(new RegExp(`${label}\\s*(—|-)\\s*coming soon`, "i")),
+        page
+          .getByRole("navigation", { name: "Основная навигация" })
+          .getByRole("link", { name: label, exact: true }),
+      ).toHaveAttribute("data-active", "true");
+      await expect(
+        page.getByRole(readiness.role, { name: readiness.name, exact: true }),
       ).toBeVisible();
     });
   }
 });
 
-test("Settings placeholder renders (smoke check per plan.md §5.4 note — not an AC-SHELL-003 assertion)", async ({
+test("Settings route renders through the active shell (smoke check, not AC-SHELL-003)", async ({
   page,
+  testData,
 }) => {
   await login(page);
-  const response = await page.goto("/settings");
-  expect(response?.status()).toBe(200);
+  const response = await page.goto(SETTINGS_ROUTE.path);
+
+  expect(response).not.toBeNull();
+  expect(response!.status()).toBeLessThan(400);
+  await expect(page).toHaveURL(testData.localUrl(SETTINGS_ROUTE.path));
+  await expect(
+    page
+      .getByRole("navigation", { name: "Основная навигация" })
+      .getByRole("link", { name: SETTINGS_ROUTE.label, exact: true }),
+  ).toHaveAttribute("data-active", "true");
+  await expect(
+    page.getByRole(SETTINGS_ROUTE.readiness.role, {
+      name: SETTINGS_ROUTE.readiness.name,
+      exact: true,
+    }),
+  ).toBeVisible();
 });

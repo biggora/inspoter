@@ -55,7 +55,7 @@ export function CategorySection({
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon-sm" }),
               )}
-              aria-label="Ещё действия"
+              aria-label={`Действия категории «${category.name}»`}
             >
               <MoreVertical aria-hidden className="size-4" />
             </DropdownMenuTrigger>

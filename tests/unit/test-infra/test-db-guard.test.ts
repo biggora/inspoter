@@ -1,10 +1,13 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   runCompose,
   validateTestDatabaseGuard,
+  validateTestDatabaseTarget,
 } from "../../../scripts/test-db.mjs";
 import { loadTestEnvironment } from "../../../scripts/test-env.mjs";
 
@@ -15,6 +18,52 @@ const VALID_ENVIRONMENT = {
   DATABASE_URL:
     "postgresql://test_user:test_password@127.0.0.1:3833/inspoter_e2e_test?schema=public",
 };
+
+const REPOSITORY_ROOT = resolve(
+  fileURLToPath(new URL("../../../", import.meta.url)),
+);
+const TEST_DB_SCRIPT = join(REPOSITORY_ROOT, "scripts", "test-db.mjs");
+const TEMPORARY_DIRECTORIES: string[] = [];
+
+function createTemporaryDirectory(prefix: string) {
+  const directory = mkdtempSync(join(tmpdir(), prefix));
+  TEMPORARY_DIRECTORIES.push(directory);
+  return directory;
+}
+
+const FOREIGN_WORKING_DIRECTORY = createTemporaryDirectory(
+  "inspoter-foreign-cwd-",
+);
+
+afterAll(() => {
+  for (const directory of TEMPORARY_DIRECTORIES) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+function runGuardSubprocess(
+  cwd: string,
+  overrides: Record<string, string | undefined> = {},
+) {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    NODE_ENV: "test",
+    ALLOW_TEST_DB_RESET: "1",
+    TEST_DATABASE_MARKER: "inspoter-e2e",
+    ...overrides,
+  };
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete environment[key];
+  }
+
+  return spawnSync(process.execPath, [TEST_DB_SCRIPT, "guard"], {
+    cwd,
+    env: environment,
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+}
 
 function environmentWith(overrides: Record<string, string | undefined>) {
   return { ...VALID_ENVIRONMENT, ...overrides };
@@ -38,6 +87,28 @@ describe("dedicated test database guard", () => {
       schema: "public",
       sanitizedTarget: "127.0.0.1:3833/inspoter_e2e_test",
     });
+  });
+
+  it("separates safe target validation from destructive authorization", () => {
+    const targetOnlyEnvironment = environmentWith({
+      ALLOW_TEST_DB_RESET: undefined,
+      TEST_DATABASE_MARKER: undefined,
+    });
+
+    expect(validateTestDatabaseTarget(targetOnlyEnvironment)).toMatchObject({
+      database: "inspoter_e2e_test",
+      port: "3833",
+    });
+    expect(() => validateTestDatabaseGuard(targetOnlyEnvironment)).toThrow(
+      /ALLOW_TEST_DB_RESET must equal 1/,
+    );
+    expect(() =>
+      validateTestDatabaseTarget({
+        ...targetOnlyEnvironment,
+        DATABASE_URL:
+          "postgresql://test_user:test_password@127.0.0.1:3832/inspoter_e2e_test",
+      }),
+    ).toThrow(/port/);
   });
 
   it("accepts localhost, postgres: protocol, and an absent schema", () => {
@@ -173,7 +244,7 @@ describe("dedicated test database guard", () => {
   });
 
   it("never loads destructive opt-ins from test environment files", () => {
-    const repositoryRoot = mkdtempSync(join(tmpdir(), "inspoter-test-env-"));
+    const repositoryRoot = createTemporaryDirectory("inspoter-test-env-");
     writeFileSync(
       join(repositoryRoot, ".env.test.example"),
       "ALLOW_TEST_DB_RESET=1\nTEST_DATABASE_MARKER=inspoter-e2e\nNODE_ENV=test\n",
@@ -199,7 +270,7 @@ describe("dedicated test database guard", () => {
   });
 
   it("accepts destructive opt-ins supplied explicitly by the caller", () => {
-    const repositoryRoot = mkdtempSync(join(tmpdir(), "inspoter-test-env-"));
+    const repositoryRoot = createTemporaryDirectory("inspoter-test-env-");
     writeFileSync(join(repositoryRoot, ".env.test.example"), "NODE_ENV=test\n");
 
     const environment = loadTestEnvironment({
@@ -221,5 +292,45 @@ describe("dedicated test database guard", () => {
         "down/volume cleanup",
       ),
     ).rejects.toThrow(/ALLOW_TEST_DB_RESET must equal 1/);
+  });
+  it.each([
+    ["repository root", REPOSITORY_ROOT],
+    ["nested directory", join(REPOSITORY_ROOT, "src")],
+    ["foreign directory", FOREIGN_WORKING_DIRECTORY],
+  ])("executes the guard from a $name cwd", (_name, cwd) => {
+    const result = runGuardSubprocess(cwd, { DATABASE_URL: undefined });
+
+    expect(result.status).toBe(0);
+    expect(result.signal).toBeNull();
+    expect(result.stdout.trim()).toBe(
+      "[test-db] guard ok: 127.0.0.1:3833/inspoter_e2e_test.",
+    );
+    expect(result.stderr).toBe("");
+  });
+
+  it.each([
+    [
+      "unsafe developer target",
+      {
+        DATABASE_URL:
+          "postgresql://test_user:test_password@127.0.0.1:3832/inspoter_e2e_test?schema=public",
+      },
+    ],
+    [
+      "missing reset markers",
+      {
+        DATABASE_URL: VALID_ENVIRONMENT.DATABASE_URL,
+        ALLOW_TEST_DB_RESET: undefined,
+        TEST_DATABASE_MARKER: undefined,
+      },
+    ],
+  ])("rejects $name from a foreign cwd", (_name, overrides) => {
+    const result = runGuardSubprocess(FOREIGN_WORKING_DIRECTORY, overrides);
+
+    expect(result.status).toBe(1);
+    expect(result.signal).toBeNull();
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("Refusing test database operation");
+    expect(result.stderr).not.toContain(String(overrides.DATABASE_URL));
   });
 });

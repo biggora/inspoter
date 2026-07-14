@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
 // AC-SHELL-004 (design.md §3.2.1/§3.2.2, §7). Runs on both Playwright

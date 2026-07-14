@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_ENV: test
+      DATABASE_URL: postgresql://inspoter_test:local_test_only@127.0.0.1:3833/inspoter_e2e_test?schema=public
+      ALLOW_TEST_DB_RESET: "1"
+      TEST_DATABASE_MARKER: inspoter-e2e
+      OPERATOR_USERNAME: test-operator
+      OPERATOR_PASSWORD: local-test-only-password
+      CLOUDFLARE_API_TOKEN: ""
+      HETZNER_DNS_TOKEN: ""
+      GODADDY_API_KEY: ""
+      GODADDY_API_SECRET: ""
+      HCLOUD_TOKEN: ""
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.12.0 --activate
+          test "$(pnpm --version)" = "11.12.0"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run deterministic verification profile
+        run: pnpm test:ci
+
+      - name: Build and smoke-test production image
+        run: |
+          set -euo pipefail
+          pnpm run test:db:up
+          pnpm run test:db:prepare
+          docker build --tag inspoter-ci:verify .
+          test "$(docker image inspect --format '{{.Config.User}}' inspoter-ci:verify)" = "node"
+          docker run --detach \
+            --name inspoter-smoke \
+            --network inspoter-test_default \
+            --publish 127.0.0.1:3901:3000 \
+            --env DATABASE_URL=postgresql://inspoter_test:local_test_only@db-test:5432/inspoter_e2e_test?schema=public \
+            --env OPERATOR_USERNAME=test-operator \
+            --env OPERATOR_PASSWORD=local-test-only-password \
+            --env CLOUDFLARE_API_TOKEN= \
+            --env HETZNER_DNS_TOKEN= \
+            --env GODADDY_API_KEY= \
+            --env GODADDY_API_SECRET= \
+            --env HCLOUD_TOKEN= \
+            inspoter-ci:verify
+
+          status=000
+          for attempt in $(seq 1 60); do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:3901/login || true)"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            if [ "$(docker inspect --format '{{.State.Running}}' inspoter-smoke)" != "true" ]; then
+              docker logs inspoter-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$status" != "200" ]; then
+            docker logs inspoter-smoke
+            exit 1
+          fi
+
+      - name: Always clean isolated test resources
+        if: always()
+        run: |
+          docker rm --force inspoter-smoke 2>/dev/null || true
+          docker compose -p inspoter-test -f docker-compose.test.yml down -v --remove-orphans
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: test-artifacts
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 7

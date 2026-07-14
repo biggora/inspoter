@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { parse } from "dotenv";
-
-const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+import REPOSITORY_ROOT from "./repository-root.cjs";
 
 const TEST_ENV_KEYS = new Set([
   "NODE_ENV",

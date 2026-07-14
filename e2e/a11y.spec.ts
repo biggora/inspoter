@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "./fixtures/test";
 import AxeBuilder from "@axe-core/playwright";
 import { login } from "./utils/auth";
 
@@ -12,7 +12,9 @@ test("Login screen has zero critical accessibility violations", async ({
   page,
 }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Войти", exact: true }),
+  ).toBeVisible();
 
   const results = await new AxeBuilder({ page }).analyze();
   const critical = results.violations.filter((v) => v.impact === "critical");

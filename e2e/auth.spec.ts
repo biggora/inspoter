@@ -1,5 +1,10 @@
-import { test, expect } from "@playwright/test";
-import { login, OPERATOR_USERNAME, OPERATOR_PASSWORD } from "./utils/auth";
+import { expect, test } from "./fixtures/test";
+import {
+  login,
+  OPERATOR_PASSWORD,
+  OPERATOR_USERNAME,
+  submitLoginForm,
+} from "./utils/auth";
 
 // AC-AUTH-001..005, M-3 (design.md §3.1, §1.1; plan.md §5.2). Mode B:
 // src/app/login/**, src/proxy.ts, and src/app/(dashboard)/** are
@@ -38,8 +43,10 @@ test("AC-AUTH-002: valid env-seeded credentials establish a session and reach th
 test("AC-AUTH-003: invalid credentials are rejected with a generic error and no session", async ({
   page,
 }) => {
-  await login(page, "not-the-operator", "wrong-password");
-  await expect(page.getByText(/invalid username or password/i)).toBeVisible();
+  await submitLoginForm(page, "not-the-operator", "wrong-password");
+  await expect(
+    page.getByText("Неверное имя пользователя или пароль."),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
 });
 
@@ -49,7 +56,7 @@ test("AC-AUTH-004: logout invalidates the session and subsequent requests redire
   await login(page);
   await expect(page).toHaveURL(/\/bookmarks/);
 
-  await page.getByRole("button", { name: /log ?out/i }).click();
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 
   await page.goto("/bookmarks");

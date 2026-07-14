@@ -25,7 +25,10 @@ export function BookmarkCard({
   onDelete,
 }: BookmarkCardProps) {
   return (
-    <div className="group relative flex items-start gap-3 rounded-lg border border-background-200 bg-background-50 p-3 text-sm transition-colors hover:border-background-300">
+    <article
+      aria-label={bookmark.name}
+      className="group relative flex items-start gap-3 rounded-lg border border-background-200 bg-background-50 p-3 text-sm transition-colors hover:border-background-300"
+    >
       <a
         href={bookmark.url}
         target="_blank"
@@ -61,7 +64,7 @@ export function BookmarkCard({
               buttonVariants({ variant: "ghost", size: "icon-sm" }),
               "opacity-0 transition-all group-hover:opacity-100",
             )}
-            aria-label="Ещё действия"
+            aria-label={`Действия закладки «${bookmark.name}»`}
           >
             <MoreVertical aria-hidden className="size-4" />
           </DropdownMenuTrigger>
@@ -73,6 +76,6 @@ export function BookmarkCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </article>
   );
 }

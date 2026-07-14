@@ -1,36 +1,50 @@
 import { defineConfig, devices } from "@playwright/test";
+import {
+  createTestChildEnvironment,
+  loadTestEnvironment,
+} from "./scripts/test-env.mjs";
+import { validateTestDatabaseTarget } from "./scripts/test-db.mjs";
 
-// Playwright config (plan.md §4.2 item 13 / T-1). Two projects cover the
-// AC-SHELL-004 viewport requirement (375px mobile, 1440px desktop); the
-// mobile project only re-runs the viewport-sensitive shell-responsive spec
-// to keep the suite's run time bounded (functional specs run once, on
-// desktop-1440).
+const testEnvironment = createTestChildEnvironment(loadTestEnvironment());
+validateTestDatabaseTarget(testEnvironment);
+Object.assign(process.env, testEnvironment);
+
+const serverEnvironment = {
+  ...testEnvironment,
+  NODE_ENV: "production",
+  PORT: "3900",
+};
+
 export default defineConfig({
   testDir: "./e2e",
+  fullyParallel: false,
   timeout: 20_000,
   expect: { timeout: 5_000 },
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  forbidOnly: true,
+  retries: 0,
+  workers: 1,
+  outputDir: "test-results/playwright",
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "playwright-report" }],
+    ["junit", { outputFile: "test-results/playwright/junit.xml" }],
+  ],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3900",
     actionTimeout: 5_000,
     navigationTimeout: 15_000,
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   webServer: {
-    // Mode B switch: production build+start rather than `next dev`. Observed
-    // in Mode B's first full run — under `next dev --turbopack`'s on-demand
-    // per-route compilation, 6 parallel workers cold-hitting distinct routes
-    // caused hydration races (React controlled inputs not yet listening when
-    // Playwright's `.fill()`/`.click()` landed), producing flaky failures
-    // unrelated to any AC (e.g. the Sign in button observed still disabled
-    // after a correct fill()). A prebuilt production server serves already
-    // -compiled, already-hydrating bundles, removing that race deterministically.
-    command: "npm run build && npm run start",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    command: "pnpm exec next start -p 3900 -H 127.0.0.1",
+    url: "http://127.0.0.1:3900",
+    reuseExistingServer: false,
     timeout: 180_000,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: serverEnvironment,
   },
   projects: [
     {

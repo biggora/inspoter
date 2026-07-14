@@ -1,39 +1,49 @@
-# inspoter — multi-stage Docker build (NFR-DEPLOY-001, ADR-002:
-# scrypt hashing uses Node's built-in `crypto`, so no native build toolchain
-# is required in any stage).
-
-# ---- deps: install dependencies only (cached layer) ----
-FROM node:24-slim AS deps
+FROM node:24-slim AS base
 WORKDIR /app
-COPY package.json package-lock.json ./
-# --ignore-scripts: `postinstall` runs `prisma generate`, which needs
-# prisma/schema.prisma — not copied into this cache-only layer. The builder
-# stage generates the client explicitly once the full source is present.
-RUN npm ci --ignore-scripts
+ENV COREPACK_HOME=/corepack
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable \
+    && corepack prepare pnpm@11.12.0 --activate \
+    && chmod -R a+rX /corepack
 
-# ---- builder: generate Prisma client + build the Next.js app ----
-FROM node:24-slim AS builder
-WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY prisma/schema.prisma ./prisma/schema.prisma
+COPY prisma.config.ts ./prisma.config.ts
+RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:3833/inspoter_e2e_test?schema=public" \
+    OPERATOR_USERNAME=build-operator \
+    OPERATOR_PASSWORD=build-only-password \
+    pnpm install --frozen-lockfile
+
+FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
-RUN npm run build
+RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:3833/inspoter_e2e_test?schema=public" \
+    OPERATOR_USERNAME=build-operator \
+    OPERATOR_PASSWORD=build-only-password \
+    pnpm exec prisma generate
+RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:3833/inspoter_e2e_test?schema=public" \
+    OPERATOR_USERNAME=build-operator \
+    OPERATOR_PASSWORD=build-only-password \
+    pnpm run build
 
-# ---- runtime: minimal image that runs migrations then starts the app ----
-FROM node:24-slim AS runtime
-WORKDIR /app
-ENV NODE_ENV=production
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-
+FROM base AS runtime
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    COREPACK_ENABLE_NETWORK=0
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder --chown=node:node /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
+RUN chown node:node /app
+USER node
 EXPOSE 3000
-
-# Apply the full schema (Decision P-1) then start the app.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && exec pnpm run start"]
