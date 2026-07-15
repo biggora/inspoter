@@ -134,7 +134,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 | R4.4 | Demo-seed | backend-dev | DONE | Idempotent seed-demo.ts: bookmarks, logs, alerts, mail, messages, token; commit 40c4e8b |
 | R4.5 | Onboarding пустых состояний | frontend-dev | DONE | Empty states with next-step hints for all 7 sections; webhook curl snippets; commit 4ef429e |
 | R4.6 | README + deploy-документация | technical-writer | DONE | Russian README.md with quick-start, env contract, provider keys, dev commands; commit 0113a8f |
-| R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | DONE | Full CI: lint 0 errors, typecheck clean, 321 unit + 38 e2e green on fresh DB; CI profile complete |
+| R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | DONE | Full CI after all Phase 2-4 changes: lint 0 errors, typecheck clean, 321 unit + 38 e2e = 359 green on fresh DB; 2 consecutive full CI passes |
 | R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | PENDING | Requires real provider API keys (CLOUDFLARE_API_TOKEN, HCLOUD_TOKEN, etc.) to verify AC-REAL-* |
 | R5.3 | Финальное демо пользователю и явная приёмка | coordinator + пользователь | PENDING | Awaiting user demo session |
 
