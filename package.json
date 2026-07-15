@@ -19,6 +19,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:demo": "node prisma/seed-demo.ts",
     "test:db:guard": "node scripts/test-db.mjs guard",
     "test:db:up": "node scripts/test-db.mjs up",
     "test:db:reset": "node scripts/test-db.mjs reset",
