@@ -37,7 +37,7 @@ pnpm build
 pnpm start
 ```
 
-Открыть [http://localhost:3000](http://localhost:3000) и авторизоваться под `OPERATOR_USERNAME` / `OPERATOR_PASSWORD`, указанными в `.env`.
+Открыть [http://localhost:3800](http://localhost:3800) и авторизоваться под `OPERATOR_USERNAME` / `OPERATOR_PASSWORD`, указанными в `.env`.
 
 > Для локальной разработки с hot-reload вместо шагов 5 используйте `pnpm dev` — сервер поднимется на [http://localhost:3800](http://localhost:3800).
 
