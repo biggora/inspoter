@@ -1,3 +1,4 @@
+import { createProviderHttpClient } from "@/lib/providers/http";
 import type {
   DnsProvider,
   Domain,
@@ -7,41 +8,142 @@ import type {
 } from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
 
-function unsupported<T>(operation: string): ProviderResult<T> {
-  return { ok: false, kind: "unsupported", operation };
+const BASE_URL = "https://api.cloudflare.com/client/v4";
+
+interface CloudflareError {
+  code: number;
+  message: string;
+}
+
+interface CloudflareEnvelope<T> {
+  success: boolean;
+  errors: CloudflareError[];
+  result: T;
+}
+
+interface CloudflareZone {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface CloudflareDnsRecord {
+  id: string;
+  type: string;
+  name: string;
+  content: string;
+  ttl: number;
+  priority?: number;
+}
+
+function toDomain(zone: CloudflareZone): Domain {
+  return { id: zone.id, name: zone.name, provider: "cloudflare" };
+}
+
+function toDnsRecord(record: CloudflareDnsRecord): DnsRecord {
+  return {
+    id: record.id,
+    type: record.type,
+    name: record.name,
+    value: record.content,
+    ttl: record.ttl,
+  };
+}
+
+function envelopeError<T>(errors: CloudflareError[]): ProviderResult<T> {
+  return {
+    ok: false,
+    kind: "error",
+    message: errors[0]?.message ?? "Provider error",
+  };
 }
 
 export class CloudflareDnsProvider implements DnsProvider {
   readonly id = "cloudflare" as const;
   readonly mode = "real" as const;
+  private readonly client;
 
-  async listDomains(): Promise<ProviderResult<Domain[]>> {
-    return unsupported("listDomains");
+  constructor(apiToken: string) {
+    this.client = createProviderHttpClient({
+      baseUrl: BASE_URL,
+      headers: { Authorization: `Bearer ${apiToken}` },
+    });
   }
 
-  async listRecords(_domainId: string): Promise<ProviderResult<DnsRecord[]>> {
-    return unsupported("listRecords");
+  async listDomains(): Promise<ProviderResult<Domain[]>> {
+    const result = await this.client.request<
+      CloudflareEnvelope<CloudflareZone[]>
+    >({ path: "/zones" });
+    if (!result.ok) return result;
+    if (!result.data.success) return envelopeError(result.data.errors);
+    return { ok: true, data: result.data.result.map(toDomain) };
+  }
+
+  async listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>> {
+    const result = await this.client.request<
+      CloudflareEnvelope<CloudflareDnsRecord[]>
+    >({ path: `/zones/${domainId}/dns_records` });
+    if (!result.ok) return result;
+    if (!result.data.success) return envelopeError(result.data.errors);
+    return { ok: true, data: result.data.result.map(toDnsRecord) };
   }
 
   async createRecord(
-    _domainId: string,
-    _input: DnsRecordInput,
+    domainId: string,
+    input: DnsRecordInput,
   ): Promise<ProviderResult<DnsRecord>> {
-    return unsupported("createRecord");
+    const result = await this.client.request<
+      CloudflareEnvelope<CloudflareDnsRecord>
+    >({
+      method: "POST",
+      path: `/zones/${domainId}/dns_records`,
+      body: {
+        type: input.type,
+        name: input.name,
+        content: input.value,
+        ttl: input.ttl,
+        ...(input.priority !== undefined ? { priority: input.priority } : {}),
+      },
+    });
+    if (!result.ok) return result;
+    if (!result.data.success) return envelopeError(result.data.errors);
+    return { ok: true, data: toDnsRecord(result.data.result) };
   }
 
   async updateRecord(
-    _domainId: string,
-    _recordId: string,
-    _input: DnsRecordPatch,
+    domainId: string,
+    recordId: string,
+    input: DnsRecordPatch,
   ): Promise<ProviderResult<DnsRecord>> {
-    return unsupported("updateRecord");
+    const body: Record<string, unknown> = {};
+    if (input.value !== undefined) body.content = input.value;
+    if (input.ttl !== undefined) body.ttl = input.ttl;
+    if (input.priority !== undefined) body.priority = input.priority;
+
+    const result = await this.client.request<
+      CloudflareEnvelope<CloudflareDnsRecord>
+    >({
+      method: "PATCH",
+      path: `/zones/${domainId}/dns_records/${recordId}`,
+      body,
+    });
+    if (!result.ok) return result;
+    if (!result.data.success) return envelopeError(result.data.errors);
+    return { ok: true, data: toDnsRecord(result.data.result) };
   }
 
   async deleteRecord(
-    _domainId: string,
-    _recordId: string,
+    domainId: string,
+    recordId: string,
   ): Promise<ProviderResult<void>> {
-    return unsupported("deleteRecord");
+    const result = await this.client.request<
+      CloudflareEnvelope<{ id: string }>
+    >({
+      method: "DELETE",
+      path: `/zones/${domainId}/dns_records/${recordId}`,
+    });
+    if (!result.ok) return result;
+    if (!result.data.success) return envelopeError(result.data.errors);
+    return { ok: true, data: undefined };
   }
 }

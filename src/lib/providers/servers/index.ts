@@ -4,7 +4,7 @@ import { MockServerProvider } from "./mock";
 
 export function getServerProvider(): ServerProvider {
   if (process.env.HCLOUD_TOKEN) {
-    return new HetznerServerProvider();
+    return new HetznerServerProvider(process.env.HCLOUD_TOKEN);
   }
   return new MockServerProvider();
 }

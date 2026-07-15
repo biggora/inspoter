@@ -10,7 +10,7 @@ import { GoDaddyDnsProvider } from "@/lib/providers/dns/godaddy";
 export function getDnsProviders(): DnsProvider[] {
   return [
     process.env.CLOUDFLARE_API_TOKEN
-      ? new CloudflareDnsProvider()
+      ? new CloudflareDnsProvider(process.env.CLOUDFLARE_API_TOKEN)
       : new MockDnsProvider("cloudflare"),
     process.env.HETZNER_DNS_TOKEN
       ? new HetznerDnsProvider()
