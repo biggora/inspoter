@@ -20,6 +20,40 @@ async function channelBelongsToWorkspace(
   );
 }
 
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator, workspace } = authResult;
+  const { id } = await params;
+
+  const body = await request.json().catch(() => null);
+  const content = typeof body?.content === "string" ? body.content.trim() : "";
+  if (!content) {
+    return jsonResponse(
+      { error: "Содержание сообщения не может быть пустым." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const result = await messagesService.createMessage(workspace.id, {
+      channelId: id,
+      content,
+      author: operator.username,
+    });
+    return jsonResponse(result, { status: 201 });
+  } catch (error) {
+    if (
+      error instanceof messagesService.ChannelNotFoundError
+    ) {
+      return jsonResponse({ error: error.message }, { status: 404 });
+    }
+    return toErrorResponse(error);
+  }
+}
+
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),

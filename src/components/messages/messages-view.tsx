@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
+import { sendMessage } from "@/components/messages/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -543,15 +545,23 @@ export function MessagesView() {
     setMobileNavOpen(false);
   }
 
-  function handleSendMessage() {
+  const router = useRouter();
+
+  const handleSendMessage = useCallback(async () => {
     const trimmed = messageInput.trim();
     if (!trimmed || !selectedChannelId) return;
-    setNotification({
-      message: "Демо-режим: сообщения только для чтения",
-      variant: "error",
-    });
-    setMessageInput("");
-  }
+    try {
+      await sendMessage(selectedChannelId, trimmed);
+      setMessageInput("");
+      router.refresh();
+    } catch (error) {
+      setNotification({
+        message:
+          error instanceof Error ? error.message : "Не удалось отправить сообщение",
+        variant: "error",
+      });
+    }
+  }, [messageInput, selectedChannelId, router]);
 
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -950,9 +960,6 @@ export function MessagesView() {
                     <i className="ri-send-plane-fill text-sm" aria-hidden />
                   </button>
                 </div>
-                <p className="mt-1.5 px-0.5 text-[10px] text-foreground-400">
-                  Демо-режим — сообщения только для чтения
-                </p>
               </div>
             </>
           )}

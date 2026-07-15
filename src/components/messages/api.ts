@@ -121,6 +121,16 @@ export const channelsApi = {
     request<void>(`/api/channels/${id}`, { method: "DELETE" }),
 };
 
+export function sendMessage(
+  channelId: string,
+  content: string,
+): Promise<{ id: string }> {
+  return request(`/api/channels/${channelId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
 export function fetchMessages(
   channelId: string,
   params: FetchMessagesParams,
