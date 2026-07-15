@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import type { Operator, Workspace } from "@/generated/prisma/client";
 import { getValidSession, readSessionCookie } from "@/lib/auth/session";
@@ -87,6 +88,43 @@ export async function requireAuth(): Promise<AuthContext> {
         activeWorkspaceOperatorId: operator.id,
       },
     });
+  }
+
+  return { operator, workspace };
+}
+
+// R2.1c (remediation-plan.md): browser API routes must check the
+// `X-Inspoter-Workspace` header against the session's active workspace.
+// This rejects stale-tab mutations — if the operator switches workspace in
+// tab 1, tab 2 still sends the old workspace id and gets a 409 instead of
+// silently mutating the wrong workspace. The header never selects
+// authority; requireAuth() above remains the sole source of the workspace.
+
+export class WorkspaceContextRequiredError extends Error {
+  constructor() {
+    super("X-Inspoter-Workspace header is required");
+    this.name = "WorkspaceContextRequiredError";
+  }
+}
+
+export class WorkspaceContextStaleError extends Error {
+  constructor() {
+    super("Workspace context is stale — please refresh");
+    this.name = "WorkspaceContextStaleError";
+  }
+}
+
+export async function requireAuthWithWorkspaceHeader(
+  request: NextRequest,
+): Promise<AuthContext> {
+  const { operator, workspace } = await requireAuth();
+
+  const headerValue = request.headers.get("x-inspoter-workspace");
+  if (!headerValue) {
+    throw new WorkspaceContextRequiredError();
+  }
+  if (headerValue !== workspace.id) {
+    throw new WorkspaceContextStaleError();
   }
 
   return { operator, workspace };

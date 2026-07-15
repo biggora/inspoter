@@ -5,6 +5,10 @@
 // dialog's own form state (Simplicity First).
 
 import type { Workspace, WorkspaceMember } from "@/generated/prisma/client";
+import {
+  getActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
 
 export class ApiError extends Error {
   fieldErrors?: Record<string, string>;
@@ -24,7 +28,11 @@ interface ZodIssueLike {
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "",
+      ...(init?.headers ?? {}),
+    },
   });
 
   if (!res.ok) {

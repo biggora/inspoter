@@ -3,6 +3,11 @@
 // entries have `receivedAt` as an ISO string, hence a dedicated DTO rather
 // than reusing the generated Prisma `MailItem` type.
 
+import {
+  getActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
+
 export interface MailItemDto {
   id: string;
   sender: string;
@@ -32,7 +37,9 @@ export async function fetchMail(
   if (params.query) searchParams.set("query", params.query);
   if (params.sort) searchParams.set("sort", params.sort);
 
-  const res = await fetch(`/api/mail?${searchParams}`);
+  const res = await fetch(`/api/mail?${searchParams}`, {
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+  });
   if (!res.ok) {
     throw new Error("Couldn't load mail. Try again.");
   }
@@ -44,7 +51,9 @@ export async function fetchMail(
 // expand/collapse detail. Provided for API completeness / direct-link
 // scenarios against GET /api/mail/[id].
 export async function fetchMailById(id: string): Promise<MailItemDto> {
-  const res = await fetch(`/api/mail/${id}`);
+  const res = await fetch(`/api/mail/${id}`, {
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+  });
   if (!res.ok) {
     throw new Error("Couldn't load mail. Try again.");
   }

@@ -1,12 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as serversService from "@/lib/services/servers";
+import { toErrorResponse } from "@/lib/api/errors";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
   const { id } = await params;
   const result = await serversService.getServer(id);
   if (!result.ok) {

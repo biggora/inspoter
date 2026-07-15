@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as alertsService from "@/lib/services/alerts";
 import { toErrorResponse } from "@/lib/api/errors";
 
@@ -13,7 +13,11 @@ interface RouteContext {
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const { workspace } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -34,8 +38,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const { workspace } = await requireAuth();
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { id } = await params;
 
   try {

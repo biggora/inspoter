@@ -4,6 +4,11 @@
 // ISO string, hence dedicated DTOs rather than reusing generated Prisma
 // types.
 
+import {
+  getActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
+
 export interface AlertCategoryDto {
   id: string;
   name: string;
@@ -50,7 +55,11 @@ interface ZodIssueLike {
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "",
+      ...(init?.headers ?? {}),
+    },
   });
 
   if (!res.ok) {

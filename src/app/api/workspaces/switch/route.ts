@@ -1,10 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { db } from "@/lib/db";
 import { readSessionCookie, switchWorkspace } from "@/lib/auth/session";
+import { toErrorResponse } from "@/lib/api/errors";
 
 export async function POST(request: NextRequest) {
-  const { operator } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
 
   const body = await request.json().catch(() => null);
   const workspaceId = body?.workspaceId;

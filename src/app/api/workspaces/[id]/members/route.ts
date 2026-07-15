@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { addMemberSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
@@ -8,8 +8,12 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  const { operator } = await requireAuth();
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => mapWorkspaceServiceError(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
   const { id } = await params;
 
   try {
@@ -22,7 +26,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const { operator } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => mapWorkspaceServiceError(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);

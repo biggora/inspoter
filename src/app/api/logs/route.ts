@@ -1,9 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as logsService from "@/lib/services/logs";
+import { toErrorResponse } from "@/lib/api/errors";
 
 export async function GET(request: NextRequest) {
-  const { workspace } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const searchParams = request.nextUrl.searchParams;
 
   const sortParam = searchParams.get("sort");

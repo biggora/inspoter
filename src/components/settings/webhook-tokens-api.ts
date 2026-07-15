@@ -2,6 +2,11 @@
 // src/app/api/webhook-tokens/**). Mirrors src/components/workspace/api.ts.
 // JSON-serialized entries have date fields as ISO strings.
 
+import {
+  getActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
+
 export interface WebhookTokenDto {
   id: string;
   name: string;
@@ -35,7 +40,11 @@ interface ZodIssueLike {
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "",
+      ...(init?.headers ?? {}),
+    },
   });
 
   if (!res.ok) {

@@ -3,6 +3,11 @@
 // as an ISO string (not a `Date`), hence the dedicated DTO rather than
 // reusing the generated Prisma `LogEntry` type.
 
+import {
+  getActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
+
 export interface LogEntryDto {
   id: string;
   level: string;
@@ -34,7 +39,9 @@ export async function fetchLogs(
   if (params.query) searchParams.set("query", params.query);
   if (params.sort) searchParams.set("sort", params.sort);
 
-  const res = await fetch(`/api/logs?${searchParams}`);
+  const res = await fetch(`/api/logs?${searchParams}`, {
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+  });
   if (!res.ok) {
     throw new Error("Couldn't load logs. Try again.");
   }

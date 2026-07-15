@@ -1,13 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as mailService from "@/lib/services/mail";
+import { toErrorResponse } from "@/lib/api/errors";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  const { workspace } = await requireAuth();
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { id } = await params;
 
   const item = await mailService.getById(id, workspace.id);

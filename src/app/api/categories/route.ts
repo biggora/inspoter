@@ -1,11 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { categorySchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 
 export async function POST(request: NextRequest) {
-  const { workspace } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = categorySchema.safeParse(body);

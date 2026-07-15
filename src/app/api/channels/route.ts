@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
 
@@ -20,7 +20,11 @@ async function categoryBelongsToWorkspace(
 }
 
 export async function POST(request: NextRequest) {
-  const { workspace } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = createChannelSchema.safeParse(body);

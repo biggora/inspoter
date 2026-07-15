@@ -1,17 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { createWorkspaceSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 
-export async function GET() {
-  const { operator } = await requireAuth();
+export async function GET(request: NextRequest) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => mapWorkspaceServiceError(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
   const workspaces = await workspacesService.listForOperator(operator.id);
   return NextResponse.json(workspaces);
 }
 
 export async function POST(request: NextRequest) {
-  const { operator } = await requireAuth();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => mapWorkspaceServiceError(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = createWorkspaceSchema.safeParse(body);

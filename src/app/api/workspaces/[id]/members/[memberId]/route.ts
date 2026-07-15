@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/dal";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 
@@ -7,8 +7,12 @@ interface RouteContext {
   params: Promise<{ id: string; memberId: string }>;
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const { operator } = await requireAuth();
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => mapWorkspaceServiceError(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+  const { operator } = authResult;
   const { id, memberId } = await params;
 
   try {
