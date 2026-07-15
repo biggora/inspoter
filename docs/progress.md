@@ -135,7 +135,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 | R4.5 | Onboarding пустых состояний | frontend-dev | DONE | Empty states with next-step hints for all 7 sections; webhook curl snippets; commit 4ef429e |
 | R4.6 | README + deploy-документация | technical-writer | DONE | Russian README.md with quick-start, env contract, provider keys, dev commands; commit 0113a8f |
 | R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | DONE | Full CI after all Phase 2-4 changes: lint 0 errors, typecheck clean, 321 unit + 38 e2e = 359 green on fresh DB; 2 consecutive full CI passes |
-| R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | PENDING | Requires real provider API keys (CLOUDFLARE_API_TOKEN, HCLOUD_TOKEN, etc.) to verify AC-REAL-* |
+| R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | DONE_WITH_CONCERNS | Live smoke: Cloudflare REAL (1 zone cenufiltrs.lv), Hetzner Cloud REAL (1 server cf-stage running), GoDaddy 401 (key issue — requires user investigation), Hetzner DNS MOCK (no separate DNS token). AC-REAL-CF/HC PASS; AC-REAL-GD/HD PENDING |
 | R5.3 | Финальное демо пользователю и явная приёмка | coordinator + пользователь | PENDING | Awaiting user demo session |
 
 ## Remediation ledger
