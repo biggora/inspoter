@@ -394,7 +394,7 @@ describe("Q13 zero-guess plan skeleton", () => {
       "orphan disposition action must be attach or delete",
     );
 
-    const duplicateOnly = clone(skeleton);
+    const duplicateOnly = clone(skeleton) as JsonRecord;
     duplicateOnly.plan.orphans = [
       {
         action: "delete",
@@ -1061,17 +1061,16 @@ describe("Q13 repair strict CLI", () => {
   });
 
   it("prefers flags and supports the documented environment fallbacks", () => {
-    expect(
-      parseCliArgs(
-        ["inspect", "--database-url", "flag-db", "--out", "plan.json"],
-        { DATABASE_URL: "env-db" },
-      ).databaseUrl,
-    ).toBe("flag-db");
+    const inspectResult = parseCliArgs(
+      ["inspect", "--database-url", "flag-db", "--out", "plan.json"],
+      { DATABASE_URL: "env-db" } as unknown as NodeJS.ProcessEnv,
+    ) as JsonRecord;
+    expect(inspectResult.databaseUrl).toBe("flag-db");
     expect(
       parseCliArgs(["preflight", "--manifest", "plan.json"], {
         DATABASE_URL: "env-db",
         Q13_REPAIR_PUBLIC_KEY: "env-public-key.pem",
-      }),
+      } as unknown as NodeJS.ProcessEnv),
     ).toEqual({
       command: "preflight",
       databaseUrl: "env-db",
@@ -1107,7 +1106,7 @@ describe("Q13 repair strict CLI", () => {
       .mockImplementation(() => true);
     try {
       await writeFile(manifestPath, JSON.stringify(skeleton), "utf8");
-      await main(["canonicalize", "--manifest", manifestPath], {});
+      await main(["canonicalize", "--manifest", manifestPath], {} as NodeJS.ProcessEnv);
       expect(output).toHaveBeenCalledWith(`${signedPayload(skeleton)}\n`);
     } finally {
       output.mockRestore();
@@ -1127,7 +1126,7 @@ describe("Q13 repair strict CLI", () => {
           "--public-key",
           "must-not-read.pem",
         ],
-        {},
+        {} as NodeJS.ProcessEnv,
       ),
     ).rejects.toThrow("Q13_MAINTENANCE_MODE must equal 1");
   });

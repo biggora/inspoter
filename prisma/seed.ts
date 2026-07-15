@@ -68,7 +68,7 @@ async function main() {
         const membershipId = randomUUID();
         await client.query(
           'INSERT INTO "WorkspaceMember" (id, "workspaceId", "operatorId", role, "joinedAt") VALUES ($1, $2, $3, $4, now())',
-          [membershipId, workspaceId, operatorId, "owner"],
+          [membershipId, workspaceId, operatorId, "OWNER"],
         );
         console.log(`Seed: created default workspace for existing operator.`);
       } else {
@@ -115,7 +115,7 @@ async function main() {
     const membershipId = randomUUID();
     await client.query(
       'INSERT INTO "WorkspaceMember" (id, "workspaceId", "operatorId", role, "joinedAt") VALUES ($1, $2, $3, $4, now())',
-      [membershipId, workspaceId, id, "owner"],
+      [membershipId, workspaceId, id, "OWNER"],
     );
     console.log(
       `Seed: created default workspace "${slug}" for operator "${username}".`,

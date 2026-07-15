@@ -17,11 +17,19 @@ export async function checkIdempotency(
 
 export async function recordIdempotency(
   tokenId: string,
+  workspaceId: string,
   key: string,
   targetType: string,
   targetId: string,
 ): Promise<void> {
   await db.idempotencyKey.create({
-    data: { tokenId, key, targetType, targetId },
+    data: {
+      tokenId,
+      workspaceId,
+      tokenWorkspaceId: workspaceId,
+      key,
+      targetType,
+      targetId,
+    },
   });
 }

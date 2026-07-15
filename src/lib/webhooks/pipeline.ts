@@ -187,7 +187,7 @@ export async function processWebhook(
     // request with the same key already recorded first, this insert fails
     // and we simply leave it unrecorded — the entry created above still
     // stands, matching AC-WH-010's at-least-once fallback under races.
-    await recordIdempotency(token.id, idempotencyKey, type, result.id).catch(
+    await recordIdempotency(token.id, token.workspaceId, idempotencyKey, type, result.id).catch(
       () => {},
     );
   }

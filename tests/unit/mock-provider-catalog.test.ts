@@ -135,7 +135,7 @@ describe("canonical mock provider catalog", () => {
 
   it("produces the exact 13 unique workspace-scoped binding identities", () => {
     const identities = getBindingRows(sourceCatalog).map(
-      ({ provider, resourceType, key }) =>
+      ({ provider, resourceType, key }: { provider: string; resourceType: string; key: string }) =>
         `${provider}|mock:v1|${resourceType}|MOCK|mock:v1:workspace-1:${provider}:${key}`,
     );
 

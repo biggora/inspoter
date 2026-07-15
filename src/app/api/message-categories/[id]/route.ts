@@ -12,9 +12,8 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-// messagesService.renameCategory/deleteCategory take no workspaceId (unlike
-// alertsService/bookmarksService), so workspace ownership is verified here
-// against the caller's own workspace before mutating.
+// Category workspace ownership is verified here before mutating,
+// in addition to the workspace CHECK constraint enforced at the DB layer.
 async function categoryBelongsToWorkspace(
   workspaceId: string,
   categoryId: string,
@@ -38,7 +37,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const category = await messagesService.renameCategory(id, parsed.data.name);
+    const category = await messagesService.renameCategory(
+      id,
+      workspace.id,
+      parsed.data.name,
+    );
     return NextResponse.json(category);
   } catch (error) {
     return toErrorResponse(error);
@@ -54,7 +57,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    await messagesService.deleteCategory(id);
+    await messagesService.deleteCategory(id, workspace.id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     return toErrorResponse(error);

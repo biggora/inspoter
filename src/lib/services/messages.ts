@@ -63,31 +63,50 @@ export async function createCategory(
 
 export async function renameCategory(
   id: string,
+  workspaceId: string,
   name: string,
 ): Promise<MessageCategory> {
-  return db.messageCategory.update({ where: { id }, data: { name } });
+  return db.messageCategory.update({
+    where: { id, workspaceId },
+    data: { name },
+  });
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  await db.messageCategory.delete({ where: { id } });
+export async function deleteCategory(
+  id: string,
+  workspaceId: string,
+): Promise<void> {
+  await db.messageCategory.delete({ where: { id, workspaceId } });
 }
 
 export async function createChannel(
+  workspaceId: string,
   categoryId: string,
   name: string,
 ): Promise<Channel> {
-  return db.channel.create({ data: { name, messageCategoryId: categoryId } });
+  return db.channel.create({
+    data: {
+      name,
+      workspaceId,
+      messageCategoryId: categoryId,
+      messageCategoryWorkspaceId: workspaceId,
+    },
+  });
 }
 
 export async function renameChannel(
   id: string,
+  workspaceId: string,
   name: string,
 ): Promise<Channel> {
-  return db.channel.update({ where: { id }, data: { name } });
+  return db.channel.update({ where: { id, workspaceId }, data: { name } });
 }
 
-export async function deleteChannel(id: string): Promise<void> {
-  await db.channel.delete({ where: { id } });
+export async function deleteChannel(
+  id: string,
+  workspaceId: string,
+): Promise<void> {
+  await db.channel.delete({ where: { id, workspaceId } });
 }
 
 export async function createMessage(
@@ -103,7 +122,9 @@ export async function createMessage(
   }
   const message = await db.message.create({
     data: {
+      workspaceId,
       channelId: input.channelId,
+      channelWorkspaceId: workspaceId,
       content: input.content,
       author: input.author ?? null,
     },
@@ -119,13 +140,14 @@ export class ChannelNotFoundError extends Error {
 }
 
 export async function listMessages(
+  workspaceId: string,
   channelId: string,
   params: ListMessagesParams,
 ): Promise<ListMessagesResult> {
   const pageSize = params.pageSize ?? env.LIST_PAGE_SIZE;
   const sort = params.sort ?? "desc";
 
-  const where: Prisma.MessageWhereInput = { channelId };
+  const where: Prisma.MessageWhereInput = { workspaceId, channelId };
 
   const cursor = params.cursor ? decodeCursor(params.cursor) : null;
   if (cursor) {

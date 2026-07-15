@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // Pre-existing reference material outside this app's scope (not touched by scaffolding).
     "specs/**",
     "docs/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

@@ -50,7 +50,7 @@ export async function createWorkspace(
       name: input.name,
       slug,
       members: {
-        create: { operatorId, role: "owner" },
+        create: { operatorId, role: "OWNER" },
       },
     },
   });
@@ -111,7 +111,7 @@ export async function addMember(
   }
 
   return db.workspaceMember.create({
-    data: { workspaceId, operatorId: operator.id, role: "member" },
+    data: { workspaceId, operatorId: operator.id, role: "MEMBER" },
   });
 }
 

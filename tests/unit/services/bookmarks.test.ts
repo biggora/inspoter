@@ -41,7 +41,7 @@ describe("AC-BM-001/012: createCategory + list()", () => {
     const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-devtools`,
     });
-    const bookmark = await bookmarksService.createBookmark({
+    const bookmark = await bookmarksService.createBookmark(workspaceId, {
       name: "Grafana",
       url: "https://grafana.example.com",
       categoryId: category.id,
@@ -74,7 +74,7 @@ describe("AC-BM-003/004: deleteCategory cascade", () => {
     const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-cascade`,
     });
-    const bookmark = await bookmarksService.createBookmark({
+    const bookmark = await bookmarksService.createBookmark(workspaceId, {
       name: "Proxmox",
       url: "https://proxmox.example.com",
       categoryId: category.id,
@@ -98,7 +98,7 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
     const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-create-bookmark`,
     });
-    const bookmark = await bookmarksService.createBookmark({
+    const bookmark = await bookmarksService.createBookmark(workspaceId, {
       name: "pfSense",
       url: "https://pfsense.example.com",
       categoryId: category.id,
@@ -114,16 +114,20 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
     const categoryB = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-cat-b`,
     });
-    const bookmark = await bookmarksService.createBookmark({
+    const bookmark = await bookmarksService.createBookmark(workspaceId, {
       name: "GitHub",
       url: "https://github.com",
       categoryId: categoryA.id,
     });
 
-    const updated = await bookmarksService.updateBookmark(bookmark.id, {
-      name: "GitHub (work)",
-      categoryId: categoryB.id,
-    });
+    const updated = await bookmarksService.updateBookmark(
+      bookmark.id,
+      workspaceId,
+      {
+        name: "GitHub (work)",
+        categoryId: categoryB.id,
+      },
+    );
 
     expect(updated.name).toBe("GitHub (work)");
     expect(updated.categoryId).toBe(categoryB.id);
@@ -133,13 +137,13 @@ describe("AC-BM-006/009/010: bookmark CRUD", () => {
     const category = await bookmarksService.createCategory(workspaceId, {
       name: `${NAME_PREFIX}-delete-bookmark`,
     });
-    const bookmark = await bookmarksService.createBookmark({
+    const bookmark = await bookmarksService.createBookmark(workspaceId, {
       name: "Temp",
       url: "https://temp.example.com",
       categoryId: category.id,
     });
 
-    await bookmarksService.deleteBookmark(bookmark.id);
+    await bookmarksService.deleteBookmark(bookmark.id, workspaceId);
 
     const remaining = await db.bookmark.findMany({
       where: { id: bookmark.id },

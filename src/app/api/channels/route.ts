@@ -9,8 +9,8 @@ const createChannelSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
 });
 
-// messagesService.createChannel takes no workspaceId, so the target
-// category's workspace ownership is verified here before creating.
+// Category workspace ownership is verified here before creating,
+// in addition to the workspace CHECK constraint enforced at the DB layer.
 async function categoryBelongsToWorkspace(
   workspaceId: string,
   categoryId: string,
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const channel = await messagesService.createChannel(
+      workspace.id,
       parsed.data.categoryId,
       parsed.data.name,
     );

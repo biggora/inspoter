@@ -9,7 +9,7 @@ interface RouteContext {
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { workspace } = await requireAuth();
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -19,7 +19,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const bookmark = await bookmarksService.updateBookmark(id, parsed.data);
+    const bookmark = await bookmarksService.updateBookmark(
+      id,
+      workspace.id,
+      parsed.data,
+    );
     return NextResponse.json(bookmark);
   } catch (error) {
     return toErrorResponse(error);
@@ -27,11 +31,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { workspace } = await requireAuth();
   const { id } = await params;
 
   try {
-    await bookmarksService.deleteBookmark(id);
+    await bookmarksService.deleteBookmark(id, workspace.id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     return toErrorResponse(error);

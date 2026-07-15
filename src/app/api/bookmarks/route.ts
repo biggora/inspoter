@@ -5,7 +5,7 @@ import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 
 export async function POST(request: NextRequest) {
-  await requireAuth();
+  const { workspace } = await requireAuth();
 
   const body = await request.json().catch(() => null);
   const parsed = bookmarkSchema.safeParse(body);
@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const bookmark = await bookmarksService.createBookmark(parsed.data);
+    const bookmark = await bookmarksService.createBookmark(
+      workspace.id,
+      parsed.data,
+    );
     return NextResponse.json(bookmark, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

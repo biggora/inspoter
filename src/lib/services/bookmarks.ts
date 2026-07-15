@@ -63,25 +63,29 @@ export async function deleteCategory(
 }
 
 export async function createBookmark(
+  workspaceId: string,
   input: CreateBookmarkInput,
 ): Promise<Bookmark> {
   return db.bookmark.create({
     data: {
+      workspaceId,
       name: input.name,
       url: input.url,
       icon: input.icon ?? null,
       description: input.description ?? null,
       categoryId: input.categoryId,
+      categoryWorkspaceId: workspaceId,
     },
   });
 }
 
 export async function updateBookmark(
   id: string,
+  workspaceId: string,
   input: UpdateBookmarkInput,
 ): Promise<Bookmark> {
   return db.bookmark.update({
-    where: { id },
+    where: { id, workspaceId },
     data: {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.url !== undefined ? { url: input.url } : {}),
@@ -90,12 +94,15 @@ export async function updateBookmark(
         ? { description: input.description }
         : {}),
       ...(input.categoryId !== undefined
-        ? { categoryId: input.categoryId }
+        ? { categoryId: input.categoryId, categoryWorkspaceId: workspaceId }
         : {}),
     },
   });
 }
 
-export async function deleteBookmark(id: string): Promise<void> {
-  await db.bookmark.delete({ where: { id } });
+export async function deleteBookmark(
+  id: string,
+  workspaceId: string,
+): Promise<void> {
+  await db.bookmark.delete({ where: { id, workspaceId } });
 }

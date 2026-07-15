@@ -12,8 +12,8 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-// messagesService.renameChannel/deleteChannel take no workspaceId, so
-// workspace ownership is verified here before mutating.
+// Channel workspace ownership is verified here before mutating,
+// in addition to the workspace CHECK constraint enforced at the DB layer.
 async function channelBelongsToWorkspace(
   workspaceId: string,
   channelId: string,
@@ -39,7 +39,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const channel = await messagesService.renameChannel(id, parsed.data.name);
+    const channel = await messagesService.renameChannel(
+      id,
+      workspace.id,
+      parsed.data.name,
+    );
     return NextResponse.json(channel);
   } catch (error) {
     return toErrorResponse(error);
@@ -55,7 +59,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    await messagesService.deleteChannel(id);
+    await messagesService.deleteChannel(id, workspace.id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     return toErrorResponse(error);

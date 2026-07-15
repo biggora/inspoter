@@ -6,8 +6,8 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-// messagesService.listMessages takes no workspaceId, so channel ownership
-// is verified here before listing.
+// Channel workspace ownership is verified here before listing,
+// in addition to the workspace CHECK constraint enforced at the DB layer.
 async function channelBelongsToWorkspace(
   workspaceId: string,
   channelId: string,
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const sort =
     sortParam === "asc" ? "asc" : sortParam === "desc" ? "desc" : undefined;
 
-  const result = await messagesService.listMessages(id, {
+  const result = await messagesService.listMessages(workspace.id, id, {
     cursor: sp.get("cursor") ?? undefined,
     sort,
   });

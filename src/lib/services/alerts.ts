@@ -73,7 +73,9 @@ export async function create(
 
   const entry = await db.alert.create({
     data: {
+      workspaceId,
       alertCategoryId,
+      alertCategoryWorkspaceId: alertCategoryId ? workspaceId : null,
       severity: input.severity,
       source: input.source,
       message: input.message,

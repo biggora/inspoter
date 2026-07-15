@@ -84,10 +84,14 @@ export async function clearSessionCookie(): Promise<void> {
 
 export async function switchWorkspace(
   sessionId: string,
+  operatorId: string,
   workspaceId: string,
 ): Promise<void> {
   await db.session.update({
     where: { id: sessionId },
-    data: { activeWorkspaceId: workspaceId },
+    data: {
+      activeWorkspaceId: workspaceId,
+      activeWorkspaceOperatorId: operatorId,
+    },
   });
 }

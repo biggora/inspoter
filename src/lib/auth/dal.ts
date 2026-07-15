@@ -82,7 +82,10 @@ export async function requireAuth(): Promise<AuthContext> {
     // Persist for next request
     await db.session.update({
       where: { id: session.id },
-      data: { activeWorkspaceId: workspace.id },
+      data: {
+        activeWorkspaceId: workspace.id,
+        activeWorkspaceOperatorId: operator.id,
+      },
     });
   }
 

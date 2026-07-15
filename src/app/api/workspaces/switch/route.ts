@@ -32,6 +32,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No session" }, { status: 401 });
   }
 
-  await switchWorkspace(sessionId, workspaceId);
+  await switchWorkspace(sessionId, operator.id, workspaceId);
   return NextResponse.json({ ok: true });
 }

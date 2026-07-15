@@ -60,7 +60,7 @@ export async function login(formData: FormData): Promise<LoginResult> {
     orderBy: { joinedAt: "asc" },
   });
   if (membership) {
-    await switchWorkspace(session.id, membership.workspaceId);
+    await switchWorkspace(session.id, operator.id, membership.workspaceId);
   }
 
   return { ok: true };
