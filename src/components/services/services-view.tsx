@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Activity, Globe, Loader2, Network, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Service } from "@/generated/prisma/client";
 import { servicesApi } from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
@@ -110,22 +111,17 @@ export function ServicesView({
       </div>
 
       {services.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-background-200 bg-background-50 px-6 py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-secondary-100 flex items-center justify-center">
-            <i className="ri-pulse-line text-2xl text-secondary-600"></i>
-          </div>
-          <h2 className="font-heading text-lg font-semibold text-foreground-900">
-            Нет сервисов
-          </h2>
-          <p className="max-w-sm text-sm text-foreground-500">
-            Добавьте первый сервис — HTTP(S)-эндпоинт, TCP-порт или хост для
-            проверки доступности — чтобы начать отслеживать его статус.
-          </p>
-          <Button onClick={() => setFormState({ mode: "create" })}>
-            <Plus aria-hidden className="size-4" />
-            Создать сервис
-          </Button>
-        </div>
+        <EmptyState
+          icon="ri-pulse-line"
+          title="Нет сервисов"
+          description="Добавьте первый сервис — HTTP(S)-эндпоинт, TCP-порт или хост для проверки доступности — чтобы начать отслеживать его статус."
+          action={
+            <Button onClick={() => setFormState({ mode: "create" })}>
+              <Plus aria-hidden className="size-4" />
+              Создать сервис
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map((service) => (

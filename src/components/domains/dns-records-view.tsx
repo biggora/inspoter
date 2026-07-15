@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -146,11 +147,10 @@ export function DnsRecordsView({
           <Skeleton className="h-8 w-full" />
         </div>
       ) : records.length === 0 && !error ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            Для этого домена пока нет DNS-записей.
-          </p>
-        </div>
+        <EmptyState
+          icon="ri-file-list-3-line"
+          description="Для этого домена пока нет DNS-записей."
+        />
       ) : records.length > 0 ? (
         <Table>
           <TableHeader>

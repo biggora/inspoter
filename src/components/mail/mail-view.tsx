@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -196,26 +197,21 @@ export function MailView() {
         </div>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-            <p className="text-sm text-muted-foreground">
-              Нет писем, соответствующих текущим фильтрам.
-            </p>
-          </div>
+          <EmptyState description="Нет писем, соответствующих текущим фильтрам." />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Входящая почта пока отсутствует
-            </p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Отправьте первое письмо через webhook:
-            </p>
-            <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-muted p-4 text-left text-xs">
-              {`curl -X POST http://your-host/api/webhooks/mail \\
+          <EmptyState
+            icon="ri-mail-line"
+            title="Входящая почта пока отсутствует"
+            description="Отправьте первое письмо через webhook:"
+            action={
+              <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
+                {`curl -X POST http://your-host/api/webhooks/mail \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"sender":"noreply@example.com","subject":"Test","body":"Hello"}'`}
-            </pre>
-          </div>
+              </pre>
+            }
+          />
         )
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">

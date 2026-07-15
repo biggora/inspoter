@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -185,13 +186,10 @@ export function WebhookTokensView() {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : tokens.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            Webhook-токенов пока нет. Создайте токен, чтобы внешние системы
-            могли отправлять почту, сообщения, логи и оповещения в это
-            рабочее пространство.
-          </p>
-        </div>
+        <EmptyState
+          icon="ri-links-line"
+          description="Webhook-токенов пока нет. Создайте токен, чтобы внешние системы могли отправлять почту, сообщения, логи и оповещения в это рабочее пространство."
+        />
       ) : (
         <Table>
           <TableHeader>

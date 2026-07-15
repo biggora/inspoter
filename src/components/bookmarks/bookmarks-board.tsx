@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Bookmark, Category } from "@/generated/prisma/client";
@@ -31,8 +32,6 @@ import { CategoryDialog, type CategoryDialogState } from "./category-dialog";
 import { CategorySection } from "./category-section";
 import { DeleteBookmarkDialog } from "./delete-bookmark-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
-import { EmptyState } from "./empty-state";
-import { NoResults } from "./no-results";
 
 // Case-insensitive substring match against name/description/url, using the
 // Russian locale collation to match this project's Russian-only-UI
@@ -437,10 +436,27 @@ export function BookmarksBoard({
 
       {categories.length === 0 ? (
         <EmptyState
-          onCreateCategory={() => setCategoryDialog({ mode: "create" })}
+          icon="ri-bookmark-line"
+          title="Нет закладок"
+          description="Создайте категорию, чтобы начать добавлять закладки."
+          action={
+            <Button onClick={() => setCategoryDialog({ mode: "create" })}>
+              <Plus aria-hidden className="size-4" />
+              Создать категорию
+            </Button>
+          }
         />
       ) : isSearching && filteredCategories.length === 0 ? (
-        <NoResults query={trimmedQuery} onClear={() => setQuery("")} />
+        <EmptyState
+          icon="ri-file-search-line"
+          title="Ничего не найдено"
+          description={`По запросу «${trimmedQuery}» закладок не найдено. Попробуйте изменить запрос или сбросить поиск.`}
+          action={
+            <Button variant="outline" onClick={() => setQuery("")}>
+              Сбросить поиск
+            </Button>
+          }
+        />
       ) : (
         <DndContext
           sensors={sensors}

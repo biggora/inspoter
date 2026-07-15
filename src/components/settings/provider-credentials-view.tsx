@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,12 +105,10 @@ export function ProviderCredentialsView() {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : credentials.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            Провайдеры не настроены. Добавьте API-ключи для подключения к
-            Cloudflare, Hetzner или GoDaddy.
-          </p>
-        </div>
+        <EmptyState
+          icon="ri-key-2-line"
+          description="Провайдеры не настроены. Добавьте API-ключи для подключения к Cloudflare, Hetzner или GoDaddy."
+        />
       ) : (
         <Table>
           <TableHeader>
