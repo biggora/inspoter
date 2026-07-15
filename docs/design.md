@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.1
+**Version:** v2.2
 **Status:** Draft Q-13 amendment — independent doc-review pending
 **Owner:** UI/UX Designer
-**Date:** 2026-07-14
+**Date:** 2026-07-15
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.1 (D-21/Q-13), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -26,7 +26,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 ### 0.1 Binding exceptions to the Q-3 inputs
 
 - Q-1: all operator-visible UI is Russian under the finite allowlist in §3.
-- Q-2: the required experience is light theme only. Dark theme and a theme switcher are deferred.
+- Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
 - Q-5: Mail remains read-only; no compose, reply, forward, delete, or mailbox polling UI.
 - Q-6: Servers permits inventory/status plus start, stop, and restart only.
@@ -170,7 +170,7 @@ After success, navigate to /bookmarks. Invalid credentials preserve the username
 
 ### 4.2 Shell
 
-The shared protected shell contains the 256/64px sidebar, 56px top bar, workspace switcher, seven-section navigation, separated Settings link, page title/context action, operator menu, and Russian logout action.
+The shared protected shell contains the 256/64px sidebar, 56px top bar, workspace switcher, seven-section navigation, separated Settings link, page title/context action, operator menu, and Russian logout action. The workspace switcher sits in the sidebar header; the top bar's right side hosts the theme switcher (v2.2, §0.1 Q-2) and the operator menu — an avatar-initial-plus-username trigger opening a dropdown with the operator's username, a fixed "Оператор" label, and the Russian logout action.
 
 Workspace switching updates all seven sections, Settings, webhook tokens, selected detail, local provider-resource bindings, mock state, caches, and cursors without a full-page reload. A switch aborts prior requests, discards late responses, clears the previous workspace's selected binding/detail and client state, remounts the keyed workspace boundary, and refetches destination content. The switcher shows pending, failure/retry, and empty-membership handling. The top bar action belongs to the current page and collapses to a labeled or icon-plus-label mobile control without losing its accessible name.
 
@@ -381,11 +381,16 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Active webhook token utility                | AC-WH-008..009                                                        |
 | Observable ingest without added surface     | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
 
-## Appendix A — deferred dark tokens, nonnormative
+## Appendix A — dark theme tokens, activated v2.2
 
-Dark-token values present in specs/inspot-design/ are retained only as future reference. They do not authorize dark-theme implementation, a theme switcher, extra acceptance checks, or altered light-theme decisions in this iteration. Any activation requires a new approved product decision and a versioned update to this specification.
+Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.2 — 2026-07-15
+
+- Activated dark theme and a manual theme switcher (superseding the Q-2 deferral and Appendix A's prior "deferred" status) per an approved product decision: the top bar was missing both the theme switcher and the operator identity/logout affordance that the prototype and this spec's own §4.2 already called for. Implemented with `next-themes` (class strategy) against the dark tokens already mirrored in src/app/inspot-tokens.css.
+- Clarified §4.2 Shell: the operator menu (avatar-initial + username, dropdown with username/"Оператор"/logout) and the theme switcher live in the top bar's right side; the workspace switcher remains in the sidebar header. The sidebar footer's standalone username/logout affordance is removed as duplicative.
 
 ### v2.0 R1.5 addendum — 2026-07-14
 

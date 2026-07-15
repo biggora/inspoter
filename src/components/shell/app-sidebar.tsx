@@ -8,7 +8,6 @@ import { setActiveWorkspaceId } from "@/lib/client/active-workspace";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -18,7 +17,6 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
-import { LogoutButton } from "./logout-button";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 // AC-SHELL-001/002/004 (design.md §3.2). Single <nav> landmark hosting the
@@ -28,11 +26,9 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 // markup needed.
 
 export function AppSidebar({
-  username,
   workspaceName,
   workspaceId,
 }: {
-  username: string;
   workspaceName: string;
   workspaceId: string;
 }) {
@@ -136,14 +132,6 @@ export function AppSidebar({
           </SidebarGroup>
         </nav>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="flex items-center justify-between gap-2 px-1 py-1 group-data-[collapsible=icon]:justify-center">
-          <span className="min-w-0 truncate text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            {username}
-          </span>
-          <LogoutButton />
-        </div>
-      </SidebarFooter>
     </Sidebar>
   );
 }
