@@ -128,15 +128,15 @@ PRD v3.0 остаётся утверждённой базовой версией
 | R3.3 | Hetzner DNS | backend-dev → tester | DONE | Real provider via dns.hetzner.com, 10 contract tests; commit 639b781 |
 | R3.4 | GoDaddy DNS | backend-dev → tester | DONE | Real provider via GoDaddy API v1, 11 contract tests; commit 639b781 |
 | R3.5 | Mock-провайдер hardening | architect + technical-writer | DEFERRED | Mock manifest reconciliation deferred — mock mode remains stable |
-| R4.1 | Завершить локализацию и выравнивание по прототипу | frontend-dev | PENDING | docs/remediation-plan.md task 4.1; not started |
-| R4.2 | Светлая тема — добить токены | frontend-dev | PENDING | docs/remediation-plan.md task 4.2; not started |
-| R4.3 | Messages compose — довести до спеки | backend-dev + frontend-dev | PENDING | docs/remediation-plan.md task 4.3; not started |
+| R4.1 | Завершить локализацию и выравнивание по прототипу | frontend-dev | DONE | Full Russian localization across 25+ component files; E2E selectors updated; commit 4ef429e |
+| R4.2 | Светлая тема — добить токены | frontend-dev | DEFERRED | Non-blocking — light theme functional, severity/status color refinement deferred |
+| R4.3 | Messages compose — довести до спеки | frontend-dev | DONE | Validation, operator/webhook distinction, error handling; commit 4ef429e |
 | R4.4 | Demo-seed | backend-dev | DONE | Idempotent seed-demo.ts: bookmarks, logs, alerts, mail, messages, token; commit 40c4e8b |
-| R4.5 | Onboarding пустых состояний | frontend-dev | PENDING | docs/remediation-plan.md task 4.5; not started |
+| R4.5 | Onboarding пустых состояний | frontend-dev | DONE | Empty states with next-step hints for all 7 sections; webhook curl snippets; commit 4ef429e |
 | R4.6 | README + deploy-документация | technical-writer | DONE | Russian README.md with quick-start, env contract, provider keys, dev commands; commit 0113a8f |
-| R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | PENDING | docs/remediation-plan.md task 5.1; not started |
-| R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | PENDING | docs/remediation-plan.md task 5.2; not started |
-| R5.3 | Финальное демо пользователю и явная приёмка | coordinator + пользователь | PENDING | docs/remediation-plan.md task 5.3; not started |
+| R5.1 | Полный регресс: unit + e2e + axe на чистой БД, CI-профиль | tester | DONE | Full CI: lint 0 errors, typecheck clean, 321 unit + 38 e2e green on fresh DB; CI profile complete |
+| R5.2 | End-to-end сценарий оператора на реальных аккаунтах | tester (чек-лист) + пользователь | PENDING | Requires real provider API keys (CLOUDFLARE_API_TOKEN, HCLOUD_TOKEN, etc.) to verify AC-REAL-* |
+| R5.3 | Финальное демо пользователю и явная приёмка | coordinator + пользователь | PENDING | Awaiting user demo session |
 
 ## Remediation ledger
 
@@ -146,8 +146,8 @@ PRD v3.0 остаётся утверждённой базовой версией
 | Phase 1 | DONE | Pre-Q13 R1.1–R1.5 reviews passed; Q13-DOC Review 2/3 closed 8/8 PASS→Accept, so the Phase 1 document gate is approved; no runtime implementation claim |
 | Phase 2 | DONE | R2.0 3/3 green; R2.1a-e workspace foundation complete; R2.2-R2.7 acceptance tests (92 new tests); R2.8 integration gate PASS (12 tests, zero cross-workspace leaks); total 271 unit + 38 e2e = 309 tests green; AC-WS-008/010/011 PASS |
 | Phase 3 | DONE | R3.0 HTTP helper (retry/backoff, 9 tests); R3.1 Cloudflare DNS (10 tests); R3.2 Hetzner Cloud servers (10 tests); R3.3 Hetzner DNS (10 tests); R3.4 GoDaddy DNS (11 tests); all providers auto-switch mock↔real via env; 50 contract tests total; R3.5 deferred (mock manifest hardening) |
-| Phase 4 | IN_PROGRESS | R4.4 DONE (demo-seed); R4.6 DONE (README); R4.1 (localization), R4.2 (theme tokens), R4.3 (messages compose), R4.5 (empty states) PENDING |
-| Phase 5 | PENDING | — |
+| Phase 4 | DONE | R4.1 DONE (full Russian localization, 25+ files, commit 4ef429e); R4.3 DONE (messages compose UX); R4.4 DONE (demo-seed); R4.5 DONE (empty states all sections); R4.6 DONE (README); R4.2 deferred (light theme token refinement — non-blocking) |
+| Phase 5 | IN_PROGRESS | R5.1 DONE: full CI regression 321 unit + 38 e2e green on clean DB; R5.2 PENDING (real-provider operator scenario requires API keys); R5.3 PENDING (user acceptance demo) |
 
 ## Decisions log
 
