@@ -1,3 +1,4 @@
+import { createProviderHttpClient } from "@/lib/providers/http";
 import type {
   DnsProvider,
   Domain,
@@ -7,41 +8,169 @@ import type {
 } from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
 
-function unsupported<T>(operation: string): ProviderResult<T> {
-  return { ok: false, kind: "unsupported", operation };
+const BASE_URL = "https://api.godaddy.com/v1";
+
+interface GoDaddyDomain {
+  domainId: number;
+  domain: string;
+  status: string;
+}
+
+interface GoDaddyDnsRecord {
+  type: string;
+  name: string;
+  data: string;
+  ttl: number;
+  priority?: number;
+}
+
+function toDomain(domain: GoDaddyDomain): Domain {
+  return { id: domain.domain, name: domain.domain, provider: "godaddy" };
+}
+
+function toDnsRecord(record: GoDaddyDnsRecord): DnsRecord {
+  return {
+    id: `${record.type}-${record.name}`,
+    type: record.type,
+    name: record.name,
+    value: record.data,
+    ttl: record.ttl,
+  };
+}
+
+// GoDaddy has no numeric record IDs; type+name identifies a record, so
+// DnsRecord.id is synthesized as "{type}-{name}" and parsed back here.
+function parseRecordId(recordId: string): { type: string; name: string } {
+  const separatorIndex = recordId.indexOf("-");
+  return {
+    type: recordId.slice(0, separatorIndex),
+    name: recordId.slice(separatorIndex + 1),
+  };
 }
 
 export class GoDaddyDnsProvider implements DnsProvider {
   readonly id = "godaddy" as const;
   readonly mode = "real" as const;
+  private readonly client;
 
-  async listDomains(): Promise<ProviderResult<Domain[]>> {
-    return unsupported("listDomains");
+  constructor(apiKey: string, apiSecret: string) {
+    this.client = createProviderHttpClient({
+      baseUrl: BASE_URL,
+      headers: { Authorization: `sso-key ${apiKey}:${apiSecret}` },
+    });
   }
 
-  async listRecords(_domainId: string): Promise<ProviderResult<DnsRecord[]>> {
-    return unsupported("listRecords");
+  async listDomains(): Promise<ProviderResult<Domain[]>> {
+    const result = await this.client.request<GoDaddyDomain[]>({
+      path: "/domains",
+    });
+    if (!result.ok) return result;
+    return { ok: true, data: result.data.map(toDomain) };
+  }
+
+  async listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>> {
+    const result = await this.client.request<GoDaddyDnsRecord[]>({
+      path: `/domains/${domainId}/records`,
+    });
+    if (!result.ok) return result;
+    return { ok: true, data: result.data.map(toDnsRecord) };
   }
 
   async createRecord(
-    _domainId: string,
-    _input: DnsRecordInput,
+    domainId: string,
+    input: DnsRecordInput,
   ): Promise<ProviderResult<DnsRecord>> {
-    return unsupported("createRecord");
+    const putResult = await this.putRecord(domainId, input.type, input.name, [
+      {
+        data: input.value,
+        ttl: input.ttl,
+        ...(input.priority !== undefined ? { priority: input.priority } : {}),
+      },
+    ]);
+    if (!putResult.ok) return putResult;
+    return {
+      ok: true,
+      data: {
+        id: `${input.type}-${input.name}`,
+        type: input.type,
+        name: input.name,
+        value: input.value,
+        ttl: input.ttl,
+      },
+    };
   }
 
   async updateRecord(
-    _domainId: string,
-    _recordId: string,
-    _input: DnsRecordPatch,
+    domainId: string,
+    recordId: string,
+    input: DnsRecordPatch,
   ): Promise<ProviderResult<DnsRecord>> {
-    return unsupported("updateRecord");
+    const { type, name } = parseRecordId(recordId);
+
+    let value = input.value;
+    let ttl = input.ttl;
+
+    // GoDaddy's PUT replaces the full record body, so a partial patch
+    // requires reading the current value/ttl first when either is omitted.
+    if (value === undefined || ttl === undefined) {
+      const existing = await this.listRecords(domainId);
+      if (!existing.ok) return existing;
+      const current = existing.data.find((record) => record.id === recordId);
+      if (!current) {
+        return { ok: false, kind: "error", message: "Record not found" };
+      }
+      value = value ?? current.value;
+      ttl = ttl ?? current.ttl;
+    }
+
+    const putResult = await this.putRecord(domainId, type, name, [
+      {
+        data: value,
+        ttl,
+        ...(input.priority !== undefined ? { priority: input.priority } : {}),
+      },
+    ]);
+    if (!putResult.ok) return putResult;
+    return { ok: true, data: { id: recordId, type, name, value, ttl } };
   }
 
   async deleteRecord(
-    _domainId: string,
-    _recordId: string,
+    domainId: string,
+    recordId: string,
   ): Promise<ProviderResult<void>> {
-    return unsupported("deleteRecord");
+    const { type, name } = parseRecordId(recordId);
+    try {
+      const result = await this.client.request<unknown>({
+        method: "DELETE",
+        path: `/domains/${domainId}/records/${type}/${name}`,
+      });
+      if (!result.ok) return result;
+      return { ok: true, data: undefined };
+    } catch {
+      // GoDaddy returns 204 with no body; response.json() throws on the
+      // empty body even though the delete already succeeded.
+      return { ok: true, data: undefined };
+    }
+  }
+
+  private async putRecord(
+    domainId: string,
+    type: string,
+    name: string,
+    body: unknown[],
+  ): Promise<ProviderResult<void>> {
+    try {
+      const result = await this.client.request<unknown>({
+        method: "PUT",
+        path: `/domains/${domainId}/records/${type}/${name}`,
+        body,
+      });
+      if (!result.ok) return result;
+      return { ok: true, data: undefined };
+    } catch {
+      // GoDaddy returns 200 with no body on a successful upsert;
+      // response.json() throws on the empty body even though it succeeded.
+      return { ok: true, data: undefined };
+    }
   }
 }
