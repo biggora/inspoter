@@ -147,7 +147,7 @@ export function ProviderCredentialDialog({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={providerId}>Провайдер</Label>
             <Select
-              value={provider === "" ? undefined : provider}
+              value={provider || ""}
               onValueChange={(value) => setProvider(value as ProviderType)}
               disabled={mode === "edit"}
             >
