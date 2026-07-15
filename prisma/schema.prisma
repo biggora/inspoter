@@ -63,6 +63,7 @@ model Workspace {
   webhookTokens     WebhookToken[]
   idempotencyKeys   IdempotencyKey[]
   providerBindings  ProviderResourceBinding[]
+  credentials       ProviderCredential[]
 }
 
 model WorkspaceMember {
@@ -297,4 +298,31 @@ model ProviderResourceBinding {
   @@unique([provider, accountKey, resourceType, mode, remoteId])
   @@index([workspaceId, resourceType, provider, mode])
   @@index([operationState, operationLeaseExpiresAt])
+}
+
+// --- Provider credentials (encrypted, workspace-scoped) ---
+enum ProviderType {
+  CLOUDFLARE_DNS
+  HETZNER_DNS
+  HETZNER_CLOUD
+  GODADDY_DNS
+}
+
+model ProviderCredential {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider      ProviderType
+  label         String
+  encryptedData String
+  iv            String
+  authTag       String
+  maskedHint    String
+  isValid       Boolean?
+  lastCheckedAt DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
 }
