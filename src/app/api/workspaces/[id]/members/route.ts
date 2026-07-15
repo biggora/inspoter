@@ -2,22 +2,27 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/dal";
 import { addMemberSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
-import { toErrorResponse } from "@/lib/api/errors";
+import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { operator } = await requireAuth();
   const { id } = await params;
 
-  const members = await workspacesService.listMembers(id);
-  return NextResponse.json(members);
+  try {
+    await workspacesService.assertMembership(id, operator.id);
+    const members = await workspacesService.listMembers(id);
+    return NextResponse.json(members);
+  } catch (error) {
+    return mapWorkspaceServiceError(error);
+  }
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { operator } = await requireAuth();
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -27,9 +32,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const member = await workspacesService.addMember(id, parsed.data);
+    const member = await workspacesService.addMember(
+      id,
+      parsed.data,
+      operator.id,
+    );
     return NextResponse.json(member, { status: 201 });
   } catch (error) {
-    return toErrorResponse(error);
+    return mapWorkspaceServiceError(error);
   }
 }

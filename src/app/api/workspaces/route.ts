@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/dal";
 import { createWorkspaceSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
-import { toErrorResponse } from "@/lib/api/errors";
+import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 
 export async function GET() {
   const { operator } = await requireAuth();
@@ -26,6 +26,6 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(workspace, { status: 201 });
   } catch (error) {
-    return toErrorResponse(error);
+    return mapWorkspaceServiceError(error);
   }
 }

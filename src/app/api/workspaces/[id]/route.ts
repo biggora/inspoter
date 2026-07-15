@@ -2,14 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/dal";
 import { updateWorkspaceSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
-import { toErrorResponse } from "@/lib/api/errors";
+import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { operator } = await requireAuth();
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -19,21 +19,25 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const workspace = await workspacesService.updateWorkspace(id, parsed.data);
+    const workspace = await workspacesService.updateWorkspace(
+      id,
+      operator.id,
+      parsed.data,
+    );
     return NextResponse.json(workspace);
   } catch (error) {
-    return toErrorResponse(error);
+    return mapWorkspaceServiceError(error);
   }
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  await requireAuth();
+  const { operator } = await requireAuth();
   const { id } = await params;
 
   try {
-    await workspacesService.deleteWorkspace(id);
+    await workspacesService.deleteWorkspace(id, operator.id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    return toErrorResponse(error);
+    return mapWorkspaceServiceError(error);
   }
 }
