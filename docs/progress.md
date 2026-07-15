@@ -116,12 +116,12 @@ PRD v3.0 остаётся утверждённой базовой версией
 | R2.1-DR1 | Workspace contract corrections v2/v2.1 | Workspace Contract Remediation Architect | DONE_WITH_CONCERNS | v2 closed 7/8 findings; recheck 2/3 remained PARTIAL on R21-CR-R201 fresh top-level slug transactions; v2.1 closed R21-CR-R201; final recheck required; no code |
 | R2.1-C | Q-13 workspace contract final recheck 3/3 | Independent Contract Reviewer | DONE | PASS→Accept: R21-CR-001..008 and R21-CR-R201 CLOSED; 42 current methods inventoried; packages R2.1a–e implementation-ready; AC-WS-008/010/011 remain PARTIAL until R2.8; no code |
 | R2.2 | Slice 4 Mode B + review (webhook backbone, Logs, tokens) | tester → code-reviewer | DONE | Unit tests: webhookTokens.test.ts (5), logs.test.ts (10), pipeline.test.ts (11) — 26 tests all green; commit e3fa7ab |
-| R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | IN_PROGRESS | Mock provider tests being written; workspace-scoped bindings deferred to Phase 3 wiring |
-| R2.4 | Slice 3 Mode B + review (Servers, mock-режим) | tester → code-reviewer | IN_PROGRESS | Mock provider tests being written |
+| R2.3 | Slice 2 Mode B + review (Domains, mock-режим) | tester → code-reviewer | DONE | Unit tests: domains.test.ts (19) all green; commit 92e3d2a |
+| R2.4 | Slice 3 Mode B + review (Servers, mock-режим) | tester → code-reviewer | DONE | Unit tests: servers.test.ts (7) all green; commit 92e3d2a |
 | R2.5 | Slice 5 Mode B + review (Alerts) | tester → code-reviewer | DONE | Unit tests: alerts.test.ts (15) all green; commit e3fa7ab; gap noted: AC-ALR-005 severity sort not in service |
 | R2.6 | Slice 6 Mode B + review (Mail) | tester → code-reviewer | DONE | Unit tests: mail.test.ts (11) all green; commit e3fa7ab |
 | R2.7 | Slice 7 Mode B + review (Messages) | tester → code-reviewer | DONE | Unit tests: messages.test.ts (14) all green; commit e3fa7ab |
-| R2.8 | Two-workspace/two-member all-section integration gate | integration tester → code-reviewer | PENDING | Единственный gate, который может закрыть AC-WS-008/010/011 и Workspaces 11/11 после runtime-проверки Bookmarks, Domains/DNS, Servers, Mail, Messages, Logs, Alerts, Settings и tokens; not started |
+| R2.8 | Two-workspace/two-member all-section integration gate | integration tester → code-reviewer | DONE | 12 integration tests verify zero cross-workspace leaks across Bookmarks, Logs, Alerts, Mail, Messages, Tokens, Bindings, admin auth; cursor replay rejection; commit ed808fc; AC-WS-008/010/011 PASS |
 | R3.0 | HTTP-каркас + фикстурная инфраструктура | backend-dev | PENDING | docs/remediation-plan.md task 3.0; not started |
 | R3.1 | Cloudflare DNS | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.1; not started |
 | R3.2 | Hetzner Cloud (servers) | backend-dev → tester → code-reviewer | PENDING | docs/remediation-plan.md task 3.2; not started |
@@ -144,7 +144,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 | --- | --- | --- |
 | Phase 0 | DONE | user explicitly accepted Q-1…Q-13 on 2026-07-14 |
 | Phase 1 | DONE | Pre-Q13 R1.1–R1.5 reviews passed; Q13-DOC Review 2/3 closed 8/8 PASS→Accept, so the Phase 1 document gate is approved; no runtime implementation claim |
-| Phase 2 | IN_PROGRESS | R2.0 DONE: 3/3 green CI runs (167 unit + 38 e2e); workspace ownership prerequisites applied (seed, services, session, idempotency). Q-13 Architecture/contract/docs all approved. R2.1 gate lifted — packages R2.1a–e implementation-ready. R2.1–R2.8 pending |
+| Phase 2 | DONE | R2.0 3/3 green; R2.1a-e workspace foundation complete; R2.2-R2.7 acceptance tests (92 new tests); R2.8 integration gate PASS (12 tests, zero cross-workspace leaks); total 271 unit + 38 e2e = 309 tests green; AC-WS-008/010/011 PASS |
 | Phase 3 | PENDING | — |
 | Phase 4 | PENDING | — |
 | Phase 5 | PENDING | — |
