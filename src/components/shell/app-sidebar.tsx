@@ -48,7 +48,7 @@ export function AppSidebar({
   setActiveWorkspaceId(workspaceId);
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" data-workspace-id={workspaceId}>
       <SidebarHeader className="gap-3">
         <div
           role="img"
