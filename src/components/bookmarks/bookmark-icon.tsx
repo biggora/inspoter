@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 // AC-BM-011: renders the configured icon when set; otherwise a deterministic
 // fallback (initials tile with token-derived tint) — never a broken image.
 // `icon` is a plain reference value per PRD A-2/OQ-8 (emoji, short icon-name
@@ -36,16 +40,41 @@ function getInitials(name: string): string {
     .join("");
 }
 
+// AC-BM-015/016: an explicit `color` token overrides the deterministic
+// hash-derived tone below with the matching brand family. Keys mirror
+// bookmarkColorTokens (src/lib/validation/bookmarks.ts).
+const COLOR_TOKEN_TONE_CLASSES: Record<string, string> = {
+  primary: "bg-primary-100 text-primary-700",
+  accent: "bg-accent-100 text-accent-700",
+  secondary: "bg-secondary-100 text-secondary-700",
+};
+
 export function BookmarkIcon({
   icon,
   name,
+  color,
 }: {
   icon?: string | null;
   name: string;
+  color?: string | null;
 }) {
   const trimmedIcon = icon?.trim();
+  const isImage = Boolean(trimmedIcon && isImageReference(trimmedIcon));
 
-  if (trimmedIcon && isImageReference(trimmedIcon)) {
+  // A failed image load (e.g. a suggested favicon URL 404ing or timing out)
+  // falls back to the same deterministic tile as "no icon set" — reset via
+  // React's "adjust state while rendering on prop change" idiom (mirrors
+  // bookmark-dialog.tsx's prevState pattern) rather than an effect, so a new
+  // `icon` value (different bookmark, or a newly picked favicon) always gets
+  // a fresh attempt to load.
+  const [imageFailed, setImageFailed] = useState(false);
+  const [prevIcon, setPrevIcon] = useState(icon);
+  if (icon !== prevIcon) {
+    setPrevIcon(icon);
+    setImageFailed(false);
+  }
+
+  if (trimmedIcon && isImage && !imageFailed) {
     // Arbitrary operator-supplied external hosts; next/image would require
     // per-host remotePatterns config in next.config.ts, out of scope here.
     return (
@@ -54,6 +83,7 @@ export function BookmarkIcon({
         src={trimmedIcon}
         alt=""
         className="size-10 shrink-0 rounded-lg object-cover"
+        onError={() => setImageFailed(true)}
       />
     );
   }
@@ -63,9 +93,11 @@ export function BookmarkIcon({
     "bg-accent-100 text-accent-700",
     "bg-secondary-100 text-secondary-700",
   ] as const;
-  const toneClass = toneClasses[hashValue(name) % toneClasses.length];
+  const toneClass =
+    (color && COLOR_TOKEN_TONE_CLASSES[color]) ||
+    toneClasses[hashValue(name) % toneClasses.length];
 
-  if (trimmedIcon) {
+  if (trimmedIcon && !isImage) {
     return (
       <span
         aria-hidden

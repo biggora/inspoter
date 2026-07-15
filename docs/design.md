@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.2
-**Status:** Draft Q-13 amendment — independent doc-review pending
+**Version:** v2.7
+**Status:** Draft Bookmarks nested-category-groups amendment (AC-BM-029..034) — independent doc-review pending; v2.6/v2.5/v2.4/v2.3 (Bookmarks) and v2.2 (dark theme + theme switcher) amendments otherwise unaffected
 **Owner:** UI/UX Designer
 **Date:** 2026-07-15
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.1 (D-21/Q-13), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.6 (Bookmarks nested-category-groups amendment), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -15,7 +15,7 @@ This document is the executable visual and interaction contract for remediation 
 
 Precedence, highest first:
 
-1. docs/prd.md v3.1 governs product scope, acceptance criteria, explicit Q decisions, and D-21/Q-13.
+1. docs/prd.md v3.2 governs product scope, acceptance criteria, explicit Q decisions, and D-21/Q-13.
 2. specs/inspot-design/ governs tokens, fonts, components, icon family, density, and motion.
 3. specs/prototype/ governs demonstrated geometry and composition when it does not conflict with items 1–2.
 4. specs/ui.md governs routes, flows, responsive transformations, and shared states, subject to the exceptions below.
@@ -205,21 +205,37 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 ## 5.1 Bookmarks
 
-**Route and scope:** /bookmarks; active-workspace content. Trace: AC-BM-001..014, AC-WS-010..011.
+**Route and scope:** /bookmarks; active-workspace content. Trace: AC-BM-001..034, AC-WS-010..011.
 
-**Layout/content:** page header plus primary Добавить закладку action; category sections with name, count, category menu, and bookmark grid. Each card shows an outline Remix icon or deterministic non-emoji fallback, name, description when present, and domain/URL context. Empty description must not reserve a blank block.
+**Layout/content:** page header plus primary Добавить закладку action; below it, a labeled search input (visible only once at least one category exists) filters the loaded categories/bookmarks client-side; category sections with name, count, category menu, and bookmark grid. Each card shows an outline Remix icon or deterministic non-emoji fallback, name, description when present, and domain/URL context. Empty description must not reserve a blank block. A bookmark may optionally carry one of three brand accent-color tones (applied to its icon tile in place of the deterministic fallback tone); an accessible swatch picker in the create/edit form includes a "no color" option that reverts to the fallback. A category may also act as a group containing one level of nested subcategories — see §5.1.1.
 
-**Actions:** create/rename/delete category; create/edit/move/delete bookmark; confirmed destructive actions; activating a bookmark opens its valid HTTP/HTTPS URL in a new tab. Forms validate required name and URL before submit.
+**Actions:** create/rename/delete category; create/edit/move/delete bookmark; confirmed destructive actions; activating a bookmark opens its valid HTTP/HTTPS URL in a new tab; filter the visible bookmarks by a client-only, case-insensitive text query matched against name, description, and URL, with a one-click action to clear the query and restore the full list. Forms validate required name and URL before submit. A category or bookmark can be reordered via a dedicated drag handle, by pointer drag or by keyboard (focus the handle, pick up, move, drop); dragging a bookmark across categories both repositions and reassigns it. In the create/edit form, an optional favicon-suggest control queries a fixed third-party favicon service using only the entered URL's hostname and, on success, populates the icon field with the suggestion (still editable/clearable before submit); on failure it leaves the icon field unchanged and shows a non-blocking notice. The category create/edit form also carries a "Родительская категория" select for assigning/clearing one level of subcategory nesting — see §5.1.1.
 
-**States:** matched skeleton; first-category empty state; explicit initial-load error with Повторить; local form validation; local pending; success toast; mutation failure without removing confirmed cards. A no-results state appears only if a filter is later present.
+**States:** matched skeleton; first-category empty state (no categories at all); explicit initial-load error with Повторить; local form validation; local pending; success toast; mutation failure without removing confirmed cards; distinct no-results state when an active search query matches zero bookmarks (separate from the first-category empty state, with a "Сбросить поиск" action that clears the query). The search input itself is only rendered once at least one category exists.
 
-**Mobile:** one-column category and card stack at 375px; category actions remain visible and operable; create/edit dialogs become sheets; long URLs wrap or truncate without body overflow.
+**Mobile:** one-column category and card stack at 375px; category actions remain visible and operable; the search input remains visible above the fold at both 375px and 1440px without scrolling; create/edit dialogs become sheets; long URLs wrap or truncate without body overflow. Nested subcategory sections stack in the same single-column flow — see §5.1.1.
 
-**Accessibility:** category headings structure the page; card link and edit/menu controls are separate focus stops; destructive dialogs trap/restore focus; fallback icon has no redundant spoken text.
+**Accessibility:** category headings structure the page; card link and edit/menu controls are separate focus stops; destructive dialogs trap/restore focus; fallback icon has no redundant spoken text; the search input has a real associated `<label>` ("Поиск закладок"); an `aria-live="polite"` `role="status"` region announces the filtered result count (e.g. "Найдено 3 закладки" / "Ничего не найдено") while a query is active and stays silent when the query is empty. Each category and bookmark exposes a separate, keyboard-operable drag-handle focus stop (distinct from the card link and the action-menu trigger) with a non-generic Russian accessible name; drag handles are inert (no pointer or keyboard operation) while a search query is active, since reordering a filtered subset would corrupt the true order of hidden items. Subcategory headings are one rank below their parent category's heading — see §5.1.1.
 
-**Acceptance:** CRUD and cascade behavior satisfy AC-BM-001..010; icon/fallback satisfies AC-BM-011 without decorative emoji; grouping/new-tab behavior satisfies AC-BM-012..014; Russian-copy, Remix-only, 375px, and 1440px checks succeed; initial fetch failure exposes a working retry.
+**Acceptance:** CRUD and cascade behavior satisfy AC-BM-001..010; icon/fallback satisfies AC-BM-011 without decorative emoji; grouping/new-tab behavior satisfies AC-BM-012..014; optional accent-color selection, tile rendering, clear-to-fallback, and non-color-only swatch names satisfy AC-BM-015..018; client-only search filtering, the no-results state with its clear action, and the no-search-input-when-empty rule satisfy AC-BM-019..021; drag-and-drop reordering of categories and of bookmarks within and across categories, including full keyboard operability, satisfies AC-BM-022..025; opt-in favicon suggestion sourced from a fixed third-party service and the broken-icon-URL fallback (never a broken image) satisfy AC-BM-026..028; one level of nested category groups, its parent-select constraints, and cascade-delete behavior satisfy AC-BM-029..034 (see §5.1.1); Russian-copy, Remix-only, 375px, and 1440px checks succeed; initial fetch failure exposes a working retry.
 
-**Exclusions:** automatic favicon fetching, drag-and-drop ordering, bulk actions, sharing controls, and decorative emoji.
+**Exclusions:** bulk actions, sharing controls, decorative emoji, and more than one level of category nesting (a subcategory can never itself have subcategories).
+
+### 5.1.1 Nested category groups (Phase 4)
+
+A category may optionally act as a group containing one level of subcategories (group → subcategory → bookmarks); a subcategory can never itself contain further subcategories — nesting is capped at exactly one level, enforced server-side and mirrored client-side.
+
+**Layout and heading hierarchy:** a subcategory renders inside its parent category's own section, after the parent's own direct bookmark grid, under its own heading one rank below the parent's — the parent category heading is `<h2>`, each subcategory heading is `<h3>` — with its own Добавить action, its own rename/delete menu, and its own bookmark grid. No heading level is skipped between a parent and its subcategory.
+
+**Reparenting:** assigning or clearing a subcategory's parent happens only through the category create/edit form's "Родительская категория" native select, which defaults to "— Нет (группа верхнего уровня) —" (top-level, no parent). A subcategory is never itself offered as a parent option (only top-level categories are eligible parents). A top-level category that already has one or more subcategories remains a normal, selectable parent option when creating or editing a *different* category — the depth cap only restricts the category being edited: if it already has subcategories of its own, its own parent-category field is disabled (with an explanatory note) so it cannot be turned into someone else's subcategory, which would otherwise create a three-level chain.
+
+**Drag-and-drop interaction:** subcategories are not drag-reorderable in this phase (no drag handle on a subcategory heading); reordering/reparenting a subcategory happens only via the parent-select above. Bookmarks nested inside a subcategory remain individually draggable/movable by pointer or keyboard exactly like any other category's bookmarks, including moves across the top-level/subcategory boundary.
+
+**Cascade delete:** deleting a category that has subcategories warns with the combined count — its own direct bookmark count, its subcategory count, and their nested bookmark count — and confirming cascades to remove the category, its subcategories, and all bookmarks at both levels, leaving no orphans.
+
+**Mobile:** nested subcategory sections stack in the same single-column flow as top-level categories at 375px, with a visible left indent and top divider distinguishing a subcategory's block from its parent's own content immediately above it; the extra nesting level introduces no additional horizontal scrolling or body overflow at either 375px or 1440px.
+
+**Acceptance:** AC-BM-029..034.
 
 ## 5.2 Domains
 
@@ -386,6 +402,26 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.7 — 2026-07-15 (Bookmarks nested category groups amendment, Phase 4)
+
+- Added new §5.1.1 documenting one level of nested category groups (group → subcategory → bookmarks): the `<h2>`/`<h3>` heading hierarchy, the "Родительская категория" parent-select and its constraints (a subcategory is never offered as a parent; a category with existing subcategories cannot itself become a subcategory but remains a valid parent choice for others), the non-drag-reorderable subcategory heading with fully draggable nested bookmarks, the combined cascade-delete warning, and mobile stacking behavior. Updated the §5.1 trace/acceptance lines to AC-BM-001..034 and the Exclusions line to note the one-level nesting cap. This is newly documented scope, not a reversal of a prior exclusion. See AC-BM-029..034.
+
+### v2.6 — 2026-07-15 (Bookmarks favicon-suggest amendment, Phase 3)
+
+- §5.1 Bookmarks: documented the opt-in favicon-suggest control (populates the icon field from a fixed third-party service keyed on the bookmark URL's hostname, with a non-blocking failure notice on error) and the broken-icon-URL fallback to the deterministic tile; removed "automatic favicon fetching" from Exclusions since the exclusion no longer holds. See AC-BM-026..028.
+
+### v2.5 — 2026-07-15 (Bookmarks drag-and-drop reordering amendment)
+
+- §5.1 Bookmarks: documented drag-handle-based reordering, by pointer or keyboard, for categories and for bookmarks both within and across categories (cross-category drag repositions and reassigns the bookmark). Updated Actions, Accessibility (a separate keyboard-operable drag-handle focus stop with a non-generic Russian accessible name, inert while a search query is active), the acceptance/trace lines to AC-BM-001..025, and removed drag-and-drop ordering from Exclusions.
+
+### v2.4 — 2026-07-15 (Bookmarks search/filter amendment)
+
+- §5.1 Bookmarks: documented the client-only search input (labeled "Поиск закладок", visible only once at least one category exists), its case-insensitive name/description/URL substring filtering, the distinct no-results state with a "Сбросить поиск" clear action, and the `role="status"` live-region result-count announcement. Updated the acceptance/trace lines to AC-BM-001..021.
+
+### v2.3 — 2026-07-15 (Bookmarks accent-color amendment)
+
+- §5.1 Bookmarks: documented the optional per-bookmark accent color (one of three brand tone tokens), its icon-tile rendering, the accessible swatch picker with a "no color" clear option, and updated the acceptance/trace lines to AC-BM-001..018.
 
 ### v2.2 — 2026-07-15
 

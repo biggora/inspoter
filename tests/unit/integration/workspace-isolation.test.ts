@@ -80,6 +80,52 @@ describe("AC-WS-008/010/011: Bookmarks isolation", () => {
     expect(wsAGrouped.some((c) => c.id === category.id)).toBe(true);
   });
 
+  it("createCategory in workspace A rejects a parentCategoryId belonging to workspace B, with no partial write", async () => {
+    const categoryB = await bookmarksService.createCategory(workspaceB.id, {
+      name: `bm-cross-parent-b-${RUN_ID}`,
+    });
+
+    await expect(
+      bookmarksService.createCategory(workspaceA.id, {
+        name: `bm-cross-parent-a-create-${RUN_ID}`,
+        parentCategoryId: categoryB.id,
+      }),
+    ).rejects.toThrow(bookmarksService.CategoryHierarchyValidationError);
+
+    const wsAGrouped = await bookmarksService.list(workspaceA.id);
+    expect(
+      wsAGrouped.some(
+        (c) => c.name === `bm-cross-parent-a-create-${RUN_ID}`,
+      ),
+    ).toBe(false);
+    const created = await db.category.findFirst({
+      where: { name: `bm-cross-parent-a-create-${RUN_ID}` },
+    });
+    expect(created).toBeNull();
+  });
+
+  it("renameCategory in workspace A rejects a parentCategoryId belonging to workspace B, with no partial write", async () => {
+    const categoryB = await bookmarksService.createCategory(workspaceB.id, {
+      name: `bm-cross-parent-b-rename-${RUN_ID}`,
+    });
+    const categoryA = await bookmarksService.createCategory(workspaceA.id, {
+      name: `bm-cross-parent-a-rename-${RUN_ID}`,
+    });
+
+    await expect(
+      bookmarksService.renameCategory(categoryA.id, workspaceA.id, {
+        name: categoryA.name,
+        parentCategoryId: categoryB.id,
+      }),
+    ).rejects.toThrow(bookmarksService.CategoryHierarchyValidationError);
+
+    const unchanged = await db.category.findUnique({
+      where: { id: categoryA.id },
+    });
+    expect(unchanged?.parentCategoryId).toBeNull();
+    expect(unchanged?.name).toBe(`bm-cross-parent-a-rename-${RUN_ID}`);
+  });
+
   it("creating a bookmark in workspace B against workspace A's categoryId fails the FK constraint", async () => {
     const categoryA = await bookmarksService.createCategory(workspaceA.id, {
       name: `bm-cross-cat-${RUN_ID}`,
@@ -92,6 +138,89 @@ describe("AC-WS-008/010/011: Bookmarks isolation", () => {
         categoryId: categoryA.id,
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe("Bookmarks reorder isolation", () => {
+  it("reorderCategories rejects a workspace-B category id and leaves workspace A's category positions unchanged", async () => {
+    const categoryA1 = await bookmarksService.createCategory(workspaceA.id, {
+      name: `bm-reorder-cat-a1-${RUN_ID}`,
+    });
+    const categoryA2 = await bookmarksService.createCategory(workspaceA.id, {
+      name: `bm-reorder-cat-a2-${RUN_ID}`,
+    });
+    // Throwaway category in workspace B, purely to get a real (but
+    // foreign) id for the rejected order array below.
+    const categoryB = await bookmarksService.createCategory(workspaceB.id, {
+      name: `bm-reorder-cat-b-${RUN_ID}`,
+    });
+
+    const before = await bookmarksService.list(workspaceA.id);
+    const positionBeforeA1 = before.find((c) => c.id === categoryA1.id)
+      ?.position;
+    const positionBeforeA2 = before.find((c) => c.id === categoryA2.id)
+      ?.position;
+    expect(positionBeforeA1).toBeDefined();
+    expect(positionBeforeA2).toBeDefined();
+
+    await expect(
+      bookmarksService.reorderCategories(workspaceA.id, [
+        categoryA2.id,
+        categoryB.id,
+        categoryA1.id,
+      ]),
+    ).rejects.toThrow(bookmarksService.BookmarkReorderValidationError);
+
+    const after = await bookmarksService.list(workspaceA.id);
+    expect(after.find((c) => c.id === categoryA1.id)?.position).toBe(
+      positionBeforeA1,
+    );
+    expect(after.find((c) => c.id === categoryA2.id)?.position).toBe(
+      positionBeforeA2,
+    );
+  });
+
+  it("reorderBookmarks rejects a workspace-B bookmark id and leaves workspace A's bookmark position/categoryId unchanged", async () => {
+    const categoryA = await bookmarksService.createCategory(workspaceA.id, {
+      name: `bm-reorder-bcat-a-${RUN_ID}`,
+    });
+    const bookmarkA = await bookmarksService.createBookmark(workspaceA.id, {
+      name: "Reorder A",
+      url: "https://reorder-a.example.com",
+      categoryId: categoryA.id,
+    });
+    // Throwaway category + bookmark in workspace B, purely to get a real
+    // (but foreign) bookmark id for the rejected payload below.
+    const categoryB = await bookmarksService.createCategory(workspaceB.id, {
+      name: `bm-reorder-bcat-b-${RUN_ID}`,
+    });
+    const bookmarkB = await bookmarksService.createBookmark(workspaceB.id, {
+      name: "Reorder B",
+      url: "https://reorder-b.example.com",
+      categoryId: categoryB.id,
+    });
+
+    const before = await bookmarksService.list(workspaceA.id);
+    const beforeBookmarkA = before
+      .find((c) => c.id === categoryA.id)
+      ?.bookmarks.find((b) => b.id === bookmarkA.id);
+    expect(beforeBookmarkA).toBeDefined();
+
+    await expect(
+      bookmarksService.reorderBookmarks(workspaceA.id, [
+        {
+          categoryId: categoryA.id,
+          bookmarkIds: [bookmarkA.id, bookmarkB.id],
+        },
+      ]),
+    ).rejects.toThrow(bookmarksService.BookmarkReorderValidationError);
+
+    const after = await bookmarksService.list(workspaceA.id);
+    const afterBookmarkA = after
+      .find((c) => c.id === categoryA.id)
+      ?.bookmarks.find((b) => b.id === bookmarkA.id);
+    expect(afterBookmarkA?.position).toBe(beforeBookmarkA?.position);
+    expect(afterBookmarkA?.categoryId).toBe(categoryA.id);
   });
 });
 

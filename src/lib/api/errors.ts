@@ -4,6 +4,7 @@ import {
   WorkspaceContextRequiredError,
   WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
+import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
 import { jsonResponse } from "@/lib/api/response";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
@@ -26,6 +27,9 @@ export function toErrorResponse(error: unknown): NextResponse {
       { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
       { status: 409 },
     );
+  }
+  if (error instanceof CategoryHierarchyValidationError) {
+    return jsonResponse({ error: error.message }, { status: 400 });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2003") {
