@@ -82,17 +82,22 @@ model WorkspaceMember {
 
 // --- Bookmarks (FR-BM-001..003, Slice 1) ---
 model Category {
-  id          String     @id @default(cuid())
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name        String
-  position    Int        @default(0)
-  bookmarks   Bookmark[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                        String     @id @default(cuid())
+  workspaceId               String
+  workspace                 Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                      String
+  position                  Int        @default(0)
+  bookmarks                 Bookmark[]
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  parentCategoryId          String?
+  parentCategoryWorkspaceId String?
+  parentCategory            Category?  @relation("CategoryParent", fields: [parentCategoryId, parentCategoryWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  childCategories           Category[] @relation("CategoryParent")
 
   @@unique([id, workspaceId])
   @@index([workspaceId, position, id])
+  @@index([workspaceId, parentCategoryId, position, id])
 }
 
 model Bookmark {
@@ -105,6 +110,7 @@ model Bookmark {
   name                String
   url                 String
   icon                String? // reference value (A-2 / OQ-8): emoji | icon-name | URL
+  color               String? // optional accent tone token: primary | accent | secondary (AC-BM-015..018)
   description         String?
   position            Int       @default(0)
   createdAt           DateTime  @default(now())

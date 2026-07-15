@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Bookmark } from "@/generated/prisma/client";
-import { ApiError, bookmarksApi } from "./api";
+import { ApiError, bookmarkFaviconApi, bookmarksApi } from "./api";
+import { ColorPicker } from "./color-picker";
 import { isValidHttpUrl } from "./validation";
 
 export type BookmarkDialogState =
@@ -55,10 +56,12 @@ export function BookmarkDialog({
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [icon, setIcon] = useState("");
+  const [color, setColor] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
 
   const isEdit = state?.mode === "edit";
 
@@ -73,12 +76,14 @@ export function BookmarkDialog({
       setName(bookmark.name);
       setUrl(bookmark.url);
       setIcon(bookmark.icon ?? "");
+      setColor(bookmark.color ?? null);
       setDescription(bookmark.description ?? "");
       setCategory(bookmark.categoryId);
     } else if (state?.mode === "create") {
       setName("");
       setUrl("");
       setIcon("");
+      setColor(null);
       setDescription("");
       setCategory(state.categoryId);
     }
@@ -104,6 +109,7 @@ export function BookmarkDialog({
         name: trimmedName,
         url: trimmedUrl,
         icon: icon.trim() || null,
+        color,
         description: description.trim() || null,
         categoryId: category,
       };
@@ -131,6 +137,22 @@ export function BookmarkDialog({
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSuggestFavicon() {
+    setSuggesting(true);
+    try {
+      const result = await bookmarkFaviconApi.suggest(url.trim());
+      if (result.icon) {
+        setIcon(result.icon);
+      } else {
+        toast.error("Не удалось подобрать значок для этого URL.");
+      }
+    } catch {
+      toast.error("Не удалось подобрать значок для этого URL.");
+    } finally {
+      setSuggesting(false);
     }
   }
 
@@ -183,13 +205,26 @@ export function BookmarkDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={iconId}>Иконка (необязательно)</Label>
-            <Input
-              id={iconId}
-              value={icon}
-              onChange={(event) => setIcon(event.target.value)}
-              placeholder="Эмодзи, название иконки или URL изображения"
-            />
+            <div className="flex gap-2">
+              <Input
+                id={iconId}
+                value={icon}
+                onChange={(event) => setIcon(event.target.value)}
+                placeholder="Эмодзи, название иконки или URL изображения"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!isValidHttpUrl(url.trim()) || suggesting}
+                onClick={handleSuggestFavicon}
+              >
+                {suggesting ? "Подбор…" : "Подобрать"}
+              </Button>
+            </div>
           </div>
+
+          <ColorPicker value={color} onChange={setColor} />
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={descriptionId}>Описание (необязательно)</Label>

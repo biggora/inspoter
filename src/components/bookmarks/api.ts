@@ -68,23 +68,32 @@ export interface BookmarkInput {
   name: string;
   url: string;
   icon: string | null;
+  color: string | null;
   description: string | null;
   categoryId: string;
 }
 
 export const categoriesApi = {
-  create: (name: string) =>
+  // Phase 4: `parentCategoryId` is optional (omitted/null = top-level).
+  // `null` on rename explicitly clears an existing parent (promotes the
+  // category back to top-level) — see renameCategory in bookmarks.ts.
+  create: (name: string, parentCategoryId: string | null = null) =>
     request("/api/categories", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, parentCategoryId }),
     }),
-  rename: (id: string, name: string) =>
+  rename: (id: string, name: string, parentCategoryId: string | null = null) =>
     request(`/api/categories/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, parentCategoryId }),
     }),
   remove: (id: string) =>
     request(`/api/categories/${id}`, { method: "DELETE" }),
+  reorder: (order: string[]) =>
+    request("/api/categories/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ order }),
+    }),
 };
 
 export const bookmarksApi = {
@@ -96,4 +105,16 @@ export const bookmarksApi = {
       body: JSON.stringify(input),
     }),
   remove: (id: string) => request(`/api/bookmarks/${id}`, { method: "DELETE" }),
+  reorder: (categories: { categoryId: string; bookmarkIds: string[] }[]) =>
+    request("/api/bookmarks/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ categories }),
+    }),
+};
+
+export const bookmarkFaviconApi = {
+  suggest: (url: string) =>
+    request<{ icon: string | null }>(
+      `/api/bookmarks/favicon-suggest?url=${encodeURIComponent(url)}`,
+    ),
 };

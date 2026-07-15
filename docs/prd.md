@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.1
-**Status:** Draft v3.1 Q-13/D-21 amendment — independent Review 2 pending
+**Version:** v3.3
+**Status:** Draft v3.6 Bookmarks nested-category-groups amendment (AC-BM-029..034) — independent review pending; v3.5/v3.4/v3.3/v3.2 amendments otherwise unaffected
 **Owner:** Product Analyst
-**Date:** 2026-07-14
+**Date:** 2026-07-15
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -113,7 +113,7 @@ The visible UI is Russian-only under the finite allowlist in NFR-I18N-001 (Q-1).
 
 **FR-BM-002: Bookmark entries (CRUD)**
 
-- Description: Each bookmark is a link to a resource with an icon, name, description, and URL, belonging to a category.
+- Description: Each bookmark is a link to a resource with an icon, name, description, URL, and optional accent color, belonging to a category.
 - Priority: Must Have (Slice 1)
 - Acceptance Criteria:
   - **AC-BM-006** (Slice 1): Given an existing category, When the user creates a bookmark with a name, URL, optional icon, and optional description, Then the bookmark appears in that category's list without a full page reload.
@@ -122,6 +122,10 @@ The visible UI is Russian-only under the finite allowlist in NFR-I18N-001 (Q-1).
   - **AC-BM-009** (Slice 1): Given an existing bookmark, When the user edits its name, URL, icon, description, or category, Then the changes are persisted and reflected in the list.
   - **AC-BM-010** (Slice 1): Given an existing bookmark, When the user deletes it, Then it is removed from the category list without a full page reload.
   - **AC-BM-011** (Slice 1): Given a bookmark with an icon value, When the bookmark is rendered, Then the specified icon is displayed; When no icon is set, Then a deterministic fallback (e.g., derived from the name/URL) is displayed instead of a broken image.
+  - **AC-BM-015** (Slice 1): Given a bookmark-create or bookmark-edit form, When the operator picks one of the three available accent-color swatches, Then that color choice is submitted with the bookmark and persisted.
+  - **AC-BM-016** (Slice 1): Given a bookmark with an accent color set, When the bookmark is rendered, Then its icon tile uses that color's tone instead of the deterministic hash-based fallback tone.
+  - **AC-BM-017** (Slice 1): Given a bookmark with an accent color set, When the operator clears the color via the picker's "no color" option, Then the bookmark's icon tile reverts to the deterministic hash-based fallback tone used when no color was ever set.
+  - **AC-BM-018** (Slice 1): Given the accent-color picker, When it is inspected via assistive technology or operated via keyboard, Then each swatch exposes a non-color-only accessible name and is operable without a pointer.
 
 **FR-BM-003: Bookmark display and navigation**
 
@@ -131,6 +135,46 @@ The visible UI is Russian-only under the finite allowlist in NFR-I18N-001 (Q-1).
   - **AC-BM-012** (Slice 1): Given bookmarks exist across multiple categories, When the user views the Bookmarks section, Then bookmarks are displayed grouped under their category with name, icon, and description visible.
   - **AC-BM-013** (Slice 1): Given a displayed bookmark, When the user activates it, Then its URL opens in a new browser tab.
   - **AC-BM-014** (Slice 1): Given no categories and no bookmarks exist, When the user views the Bookmarks section, Then an empty-state prompt to create the first category/bookmark is shown (no error).
+
+**FR-BM-004: Bookmark search/filter**
+
+- Description: The operator can narrow the displayed bookmarks with a client-only, case-insensitive text search over the currently loaded categories; no new API route or schema change is required.
+- Priority: Must Have (Slice 1)
+- Acceptance Criteria:
+  - **AC-BM-019** (Slice 1): Given the Bookmarks section with at least one category, When the user types a query into the search input, Then only bookmarks whose name, description, or URL case-insensitively contain the query text remain visible, and any category left with zero matching bookmarks is hidden from the list.
+  - **AC-BM-020** (Slice 1): Given an active search query that matches no bookmarks, When the user views the result, Then a no-results state distinct from the first-category empty state (AC-BM-014) is shown, offering an action that clears the query and restores the full, unfiltered list.
+  - **AC-BM-021** (Slice 1): Given no categories exist, When the user views the Bookmarks section, Then no search input is rendered, since the first-category empty state (AC-BM-014) governs instead.
+
+**FR-BM-005: Drag-and-drop reordering**
+
+- Description: The operator can reorder categories and can reorder bookmarks within or across categories via a dedicated drag handle, using pointer drag or keyboard operation. Unlike FR-BM-004, this does introduce two new API routes (`PATCH /api/categories/reorder`, `PATCH /api/bookmarks/reorder`) and two new workspace-scoped service functions (`reorderCategories`, `reorderBookmarks`); no schema change is required, since a `position` field already existed on both models from an earlier fix.
+- Priority: Must Have (Slice 1)
+- Acceptance Criteria:
+  - **AC-BM-022** (Slice 1): Given multiple categories, When the user drags a category into a new position, Then the new category order is persisted and survives a reload.
+  - **AC-BM-023** (Slice 1): Given a category with multiple bookmarks, When the user drags a bookmark to a new position within that same category, Then the new bookmark order is persisted and survives a reload.
+  - **AC-BM-024** (Slice 1): Given a bookmark in category X and a target category Y, When the user drags the bookmark from X into Y at a given position, Then after a reload the bookmark appears in Y at that position, its category membership is updated accordingly, and the remaining bookmarks in X are correctly re-indexed with no gaps.
+  - **AC-BM-025** (Slice 1): Given a category or bookmark's drag handle, When the operator uses the keyboard alone (Tab to focus the handle, then pick up, move, and drop via keyboard), Then the reorder completes with no pointer input required.
+
+**FR-BM-006: Favicon suggestion**
+
+- Description: The operator can optionally populate a bookmark's icon field by fetching a favicon suggestion from a fixed, hardcoded third-party service (`https://www.google.com/s2/favicons?sz=64&domain=<hostname>`), keyed only on the hostname derived from the bookmark's own URL; the server never contacts the bookmark's own URL/host directly. This is triggered only by explicit operator action, never automatic or background fetching. The icon field remains a plain reference-value string, unchanged in nature from A-2.
+- Priority: Should Have (Slice 1)
+- Acceptance Criteria:
+  - **AC-BM-026** (Slice 1): Given a bookmark-create or bookmark-edit form with a valid http(s) URL entered, When the operator clicks the favicon-suggest control, Then a favicon suggestion is fetched from a fixed third-party service and populates the icon field, remaining editable/clearable before submit.
+  - **AC-BM-027** (Slice 1): Given a bookmark-create or bookmark-edit form, When the favicon suggestion cannot be resolved (invalid/unreachable URL, timeout, non-image response), Then the icon field is left unchanged and a non-blocking notice is shown.
+  - **AC-BM-028** (Slice 1): Given a bookmark whose icon value is an image URL that fails to load, When the bookmark is rendered, Then the deterministic fallback tile is displayed instead of a broken image (extends AC-BM-011's "never a broken image" guarantee to the load-failure case, not just the unset case).
+
+**FR-BM-007: Nested category groups**
+
+- Description: A category may optionally nest one level of subcategories (group → subcategory → bookmarks); a subcategory itself can never have further subcategories. This is the first self-referential relation in the schema (`Category.parentCategoryId` self-relation, additive migration, no change to existing top-level categories). Depth-cap and self-reference invariants are enforced server-side in the Bookmarks service and mirrored client-side in the category form so an operator is never offered a choice the server would reject.
+- Priority: Should Have (Slice 1)
+- Acceptance Criteria:
+  - **AC-BM-029** (Slice 1): Given an existing top-level category, When the operator creates a new category and selects it as the "Родительская категория", Then the new category is persisted as its subcategory and renders nested within the parent category's section.
+  - **AC-BM-030** (Slice 1): Given an existing subcategory, When the operator opens the category-create or category-edit form's parent-category select, Then that subcategory never appears as a selectable option (only top-level categories are offered as parents).
+  - **AC-BM-031** (Slice 1): Given a top-level category that already has at least one subcategory, When the operator edits that category, Then its own parent-category field is disabled and cannot be set to any value, since assigning it a parent would create a three-level chain; the same category remains a normal, selectable parent option when creating or editing a *different* category.
+  - **AC-BM-032** (Slice 1): Given a top-level category with both its own bookmarks and at least one subcategory (itself containing bookmarks), When the operator deletes that category, Then the delete-confirmation warning states the direct bookmark count, the subcategory count, and the nested bookmark count, and confirming the deletion cascades to remove the category, its subcategories, and all bookmarks at both levels, leaving no orphans.
+  - **AC-BM-033** (Slice 1): Given a subcategory containing bookmarks, When the Bookmarks section is rendered, Then those bookmarks display nested under their subcategory's own heading within the parent category's section, and remain individually reorderable/movable exactly like any other category's bookmarks.
+  - **AC-BM-034** (Slice 1): Given two workspaces, When an operator supplies a `parentCategoryId` that belongs to a category in a different workspace while creating or updating a category, Then the request is rejected and no partial write occurs.
 
 ---
 
@@ -442,7 +486,7 @@ Each provider selects its mode independently under AC-PROV-001..002: an absent c
 
 ## 5. User Stories
 
-- **US-1 (Bookmarks, Slice 1):** As a self-hosted operator, I want to organize my resource links into named categories with icons and descriptions, so that I have a single launchpad for the tools and services I use. → FR-BM-001..003
+- **US-1 (Bookmarks, Slice 1):** As a self-hosted operator, I want to organize my resource links into named categories with icons and descriptions, so that I have a single launchpad for the tools and services I use. → FR-BM-001..005
 - **US-2 (Shell, Slice 1):** As an operator, I want one dashboard with a nav for all my ops sections, so that I stop switching between many tools. → FR-SHELL-001
 - **US-3 (Auth, Slice 1):** As an operator, I want the dashboard to require login (a single operator seeded from env), so that my consolidated infrastructure view is not exposed publicly. → FR-AUTH-001
 - **US-4 (Domains):** As an operator, I want to view my domains and edit their DNS records across Cloudflare/Hetzner/GoDaddy from one place, so that I don't log into three registrar consoles. → FR-DOM-001..002
@@ -489,11 +533,11 @@ Confidence is categorical: `low` / `medium` / `high` / `unknown`.
 | ID  | Assumption / Uncertainty                                                                                                                    | Source / Evidence                                                     | Impact                    | Confidence | Owner     | Validation method                          |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------- | ---------- | --------- | ------------------------------------------ |
 | A-1 | Confirmed constraint: Mail is read-only; Logs supports view/filter/sort; Alerts supports view/organize/delete; compose/send and acknowledge/resolve remain out. | Q-5; Q-7 | Scope of Mail/Logs/Alerts | high | User | Verify FR-MAIL/FR-LOG/FR-ALR and absence of deferred actions |
-| A-2 | Bookmark "icon" is a reference (icon name/URL/emoji), not an uploaded image asset.                                                          | Dashy/Homarr parallel; simplest interpretation.                       | Bookmarks data model      | medium     | Architect | Confirm at Slice 1 design                  |
+| A-2 | Bookmark "icon" is a reference (icon name/URL/emoji), not an uploaded image asset.                                                          | Dashy/Homarr parallel; simplest interpretation. Favicon-suggest (A-6) populates this same reference-value field with a service URL; it does not change A-2's nature — the result is indistinguishable from a manually pasted icon URL. | Bookmarks data model      | medium     | Architect | Confirm at Slice 1 design                  |
 | A-3 | Data volumes are modest (self-hosted personal ops); tables in the low-100k-row range at most.                                               | Persona is single-user/small-team.                                    | NFR-PERF-002 targets      | medium     | User      | Confirm expected retention/volume          |
 | A-4 | Confirmed constraint: webhook tokens remain unscoped by event type and source in this iteration. | Q-9 | FR-WH-002 scope | high | User | Verify token behavior and responses against FR-WH-002 |
 | A-5 | Confirmed constraint: Mail, Messages, Logs, and Alerts have no automatic retention or expiry; records remain until an in-scope deletion occurs. | Q-10 | Storage growth | high | User | Verify no automatic deletion; accept R-5 |
-| A-6 | Icons/data for Bookmarks are entered by the operator; no automatic favicon fetching is required for MVP (fallback per AC-BM-011 suffices).  | Simplicity; not requested.                                            | Bookmarks FR              | medium     | User      | Confirm at Slice 1                         |
+| A-6 | Favicon suggestion for Bookmarks is opt-in only: an explicit operator action fetches a suggestion from a fixed, hardcoded third-party service (Google's public favicon endpoint) keyed on the bookmark URL's hostname; there is no automatic/background fetching of the bookmark's own host (fallback per AC-BM-011/AC-BM-028 covers load failures). | Simplicity; explicit operator action only; not a background crawl.    | Bookmarks FR              | medium     | User      | Confirm at Slice 1                         |
 | A-7 | Confirmed constraint: Servers covers inventory/configuration viewing, status, start, stop, and restart; lifecycle operations are excluded. | Q-6 | Servers scope | high | User | Verify FR-SRV-001..002; confirm lifecycle controls are absent |
 
 ### 6.3 Third-party & stakeholder dependencies
@@ -592,7 +636,7 @@ An all-at-once rollout would delay every provider until all credentials and acco
 | D-15 | Authenticated operators may post messages to existing channels with persisted and visible operator-vs-webhook attribution. | Q-4 | FR-MSG-003, AC-MSG-009..014 |
 | D-16 | Servers is limited to inventory/status and start/stop/restart. | Q-6 | FR-SRV-001..002 |
 | D-17 | Webhook tokens remain unscoped and automatic retention remains disabled; R-5 is accepted. | Q-9; Q-10 | FR-WH-002, A-4, A-5, R-5 |
-| D-18 | Real providers enable incrementally in Q-11 order. Release accounting is 100 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 117 unique criteria. Each AC-REAL is PASS when its provider is enabled or NOT_ENABLED/N/A when disabled. GoDaddy still requires AC-REAL-GD-001..004 PASS or evidenced account/API ineligibility plus a dated explicit user exclusion; missing credentials alone never qualify. | Q-11; `docs/remediation-plan.md` §5 task 3.4 | FR-PROV-001, FR-REAL-001, §12 |
+| D-18 | Real providers enable incrementally in Q-11 order. Release accounting is 120 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 137 unique criteria. Each AC-REAL is PASS when its provider is enabled or NOT_ENABLED/N/A when disabled. GoDaddy still requires AC-REAL-GD-001..004 PASS or evidenced account/API ineligibility plus a dated explicit user exclusion; missing credentials alone never qualify. | Q-11; `docs/remediation-plan.md` §5 task 3.4 | FR-PROV-001, FR-REAL-001, §12 |
 | D-19 | Optional demo data covers all seven sections, is idempotent, and remains separated from production. | Q-12 | FR-DEMO-001 |
 | D-20 | **SUPERSEDED by D-21/Q-13.** Historical v3.0 limited workspace scope to database content and excluded Domains/Servers. It remains here only to preserve decision history and is non-normative. | Historical `docs/remediation-plan.md` task 3.5 | Superseded |
 | D-21 | Switching workspace changes every visible and operable content area, including Domains and Servers. Provider credentials remain deployment-scoped `.env` secrets; provider resources are exclusively assigned through local workspace bindings. Removing a binding or workspace never deletes the upstream resource. | Q-13 binding user decision, 2026-07-14 | FR-WS-001..003, FR-DOM-001..002, FR-SRV-001..002, FR-PROV-001, FR-REAL-001, NFR-SEC-004 |
@@ -638,7 +682,7 @@ Explicitly **not** part of this work (prevents scope creep):
 
 Measurable criteria the tester validates:
 
-- **M-1 (Slice 1 completeness):** 100% of Slice 1 AC-IDs (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014) pass automated/manual verification.
+- **M-1 (Slice 1 completeness):** 100% of Slice 1 AC-IDs (AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..034) pass automated/manual verification.
 - **M-2 (Bookmarks CRUD correctness):** All bookmark and category create/read/update/delete operations persist across a page reload and satisfy their ACs, including validation rejections (AC-BM-005/007/008).
 - **M-3 (Auth enforcement):** Zero dashboard routes are reachable unauthenticated (AC-AUTH-001) in a route-coverage test; the operator is bootstrapped from env (AC-AUTH-005); the webhook API is the only token-gated exception (AC-WH-001).
 - **M-4 (Webhook reliability):** Duplicate deliveries with an idempotency key produce exactly one entry (AC-WH-004); deliveries without a key are documented at-least-once (AC-WH-010); over-rate deliveries are throttled with 429 (AC-WH-005); invalid tokens/payloads/oversized bodies never create entries (AC-WH-001/002/011).
@@ -647,7 +691,7 @@ Measurable criteria the tester validates:
 - **M-7 (Deployability):** The documented Docker startup brings up app + PostgreSQL and serves the login screen (NFR-DEPLOY-001).
 - **M-8 (Accessibility baseline):** Slice 1 screens pass automated a11y checks with no critical violations (NFR-A11Y-001).
 - **M-9 (Operator messaging):** AC-MSG-009..014 pass, including attribution, whitespace rejection, missing-channel rejection, and failure-state verification.
-- **M-10 (Real-provider outcomes and accounting):** PRD v3 contains exactly 100 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 117 unique criteria. All 100 unconditional active criteria PASS. Each conditional AC-REAL is PASS when its provider is enabled or NOT_ENABLED/N/A when disabled. GoDaddy meets this metric only through AC-REAL-GD-001..004 PASS or evidenced account/API ineligibility plus a dated explicit user exclusion in `docs/progress.md`; missing credentials alone never qualify.
+- **M-10 (Real-provider outcomes and accounting):** PRD v3 contains exactly 120 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 137 unique criteria. All 120 unconditional active criteria PASS. Each conditional AC-REAL is PASS when its provider is enabled or NOT_ENABLED/N/A when disabled. GoDaddy meets this metric only through AC-REAL-GD-001..004 PASS or evidenced account/API ineligibility plus a dated explicit user exclusion in `docs/progress.md`; missing credentials alone never qualify.
 - **M-11 (Demo readiness):** AC-DEMO-001..003 pass on a fresh non-production environment and a repeat run.
 - **M-12 (Product acceptance):** All gates in §12 pass; technical green checks alone do not constitute product acceptance.
 - **M-13 (Workspace isolation):** R2.8 proves two workspaces and two members across Bookmarks, Domains/DNS, Servers, Mail, Messages, Logs, Alerts, Settings, and tokens; only then AC-WS-008/010/011 and the Workspaces family are recorded 11/11 PASS.
@@ -658,7 +702,7 @@ Measurable criteria the tester validates:
 
 The MVP is product-ready only when every gate below is complete:
 
-1. All 100 unconditional active PRD v3 acceptance criteria are recorded as PASS in the current test plan; the sole inactive criterion, AC-MSG-008, is recorded as INACTIVE under Q-8. Workspace facets may advance independently through R2.7, but AC-WS-008/010/011 and the Workspaces family close only after R2.8.
+1. All 114 unconditional active PRD v3 acceptance criteria are recorded as PASS in the current test plan; the sole inactive criterion, AC-MSG-008, is recorded as INACTIVE under Q-8. Workspace facets may advance independently through R2.7, but AC-WS-008/010/011 and the Workspaces family close only after R2.8.
 2. All 16 conditionally applicable AC-REAL criteria are recorded per provider: each is PASS when its provider is enabled or NOT_ENABLED/N/A when disabled. GoDaddy clears the release gate only when AC-REAL-GD-001..004 PASS against an enabled, API-eligible real account, or evidenced account/API ineligibility is accompanied by a dated explicit user decision in `docs/progress.md` that excludes GoDaddy. Missing GoDaddy credentials alone never satisfy the gate or constitute exclusion evidence.
 3. The operator's end-to-end real-account checklist is completed and signed, covering real DNS data and a confirmed create, update, and delete sequence for each enabled DNS provider, plus real server state and a confirmed power action when Hetzner Cloud is enabled.
 4. The final user demo is completed and the user explicitly records acceptance; any requested corrections reopen this gate.
@@ -686,11 +730,11 @@ No v3 requirement is gated by an unresolved product question. Q-1…Q-13 are con
 
 ## Appendix B — AC-ID index and source traceability
 
-All IDs are stable and must not be renumbered, reused, or transferred. v3 has exactly **100 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 117 unique criteria**:
+All IDs are stable and must not be renumbered, reused, or transferred. v3 has exactly **120 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 137 unique criteria**:
 
 - Shell: AC-SHELL-001..004
 - Auth: AC-AUTH-001..005
-- Bookmarks: AC-BM-001..014
+- Bookmarks: AC-BM-001..034
 - Domains: AC-DOM-001..009
 - Servers: AC-SRV-001..008
 - Mail: AC-MAIL-001..006
@@ -709,7 +753,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3 has ex
 | --- | --- | --- |
 | FR-SHELL-001 | `docs/idea.md`; `specs/ui.md` general shell | Active; seven-section navigation preserved |
 | FR-AUTH-001 | `docs/progress.md` Decisions log 2026-07-12; `specs/ui.md` login | Active; bootstrap and invite-only behavior preserved |
-| FR-BM-001..003 | `docs/idea.md` Bookmarks; `specs/ui.md` Bookmarks | Active |
+| FR-BM-001..005 | `docs/idea.md` Bookmarks; `specs/ui.md` Bookmarks | Active |
 | FR-DOM-001..002 | `docs/idea.md` Domains; `specs/ui.md` Domains/DNS; Q-13 | Unconditional active; active-workspace bindings only; foreign bindings make zero provider calls |
 | FR-SRV-001..002 | `docs/idea.md` Servers; `specs/ui.md` Servers; Q-6; Q-13 | Unconditional active; lifecycle excluded; active-workspace bindings only |
 | FR-MAIL-001..002 | `docs/idea.md` Mail; `specs/ui.md` Mail; Q-5 | Active; read-only and webhook ingest |
@@ -743,6 +787,31 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.6 — 2026-07-15 (Bookmarks nested category groups amendment, Phase 4)
+
+- Added FR-BM-007 and AC-BM-029..034 for one level of nested category grouping (group → subcategory → bookmarks), backed by an additive self-relation migration on `Category` (`parentCategoryId`/`parentCategoryWorkspaceId`, first self-referential relation in the schema), server-side depth-cap/self-reference/existing-children validation, and client-side mirroring of the same rules in the category form. Accounting updated to 120 unconditional active + 16 conditional AC-REAL + 1 inactive = 137 unique criteria.
+- No existing FR or AC ID was renumbered, reused, or retired.
+
+### v3.5 — 2026-07-15 (Bookmarks favicon-suggest amendment, Phase 3)
+
+- Added FR-BM-006 and AC-BM-026..028 for an opt-in favicon suggestion sourced from a fixed third-party service, plus a broken-icon-URL fallback fix. Accounting updated to 114 unconditional active + 16 conditional AC-REAL + 1 inactive = 131 unique criteria.
+- No existing FR or AC ID was renumbered, reused, or retired.
+
+### v3.4 — 2026-07-15 (Bookmarks drag-and-drop reordering amendment, Phase 2)
+
+- Added FR-BM-005 and AC-BM-022..025 for drag-and-drop reordering of categories and of bookmarks within/across categories, backed by two new API routes (`PATCH /api/categories/reorder`, `PATCH /api/bookmarks/reorder`) and two new workspace-scoped service functions; no schema change (position fields already existed). Accounting updated to 111 unconditional active + 16 conditional AC-REAL + 1 inactive = 128 unique criteria.
+- No existing FR or AC ID was renumbered, reused, or retired.
+
+### v3.3 — 2026-07-15 (Bookmarks search/filter amendment, Phase 1)
+
+- Added FR-BM-004 and AC-BM-019..021 for a client-only, case-insensitive bookmark search over name/description/URL, its distinct no-results state with a clear-search action, and the no-search-input-when-empty rule. No API route, service function, or schema change was introduced. Accounting updated to 107 unconditional active + 16 conditional AC-REAL + 1 inactive = 124 unique criteria.
+- No existing FR or AC ID was renumbered, reused, or retired.
+
+### v3.2 — 2026-07-15 (Bookmarks accent-color amendment, Phase 0)
+
+- Added AC-BM-015..018 under FR-BM-002 for an optional per-bookmark accent color (one of three brand tone tokens) applied to the icon tile, an accessible clear-to-fallback control, and non-color-only swatch names. Accounting updated to 104 unconditional active + 16 conditional AC-REAL + 1 inactive = 121 unique criteria.
+- No existing FR or AC ID was renumbered, reused, or retired.
 
 ### v3.1 — 2026-07-14 (Q-13 all-content workspace amendment)
 
