@@ -53,14 +53,14 @@ function toServer(server: HetznerServer): Server {
   return {
     id: String(server.id),
     name: server.name,
-    type: server.server_type.description,
+    type: server.server_type?.description ?? "",
     status: toServerStatus(server.status),
-    ip: server.public_net.ipv4?.ip ?? "",
-    cpu: `${server.server_type.cores} vCPU`,
-    ram: `${server.server_type.memory} GB`,
-    disk: `${server.server_type.disk} GB`,
+    ip: server.public_net?.ipv4?.ip ?? "",
+    cpu: `${server.server_type?.cores ?? "?"} vCPU`,
+    ram: `${server.server_type?.memory ?? "?"} GB`,
+    disk: `${server.server_type?.disk ?? "?"} GB`,
     os: server.image?.description ?? "Unknown",
-    location: server.datacenter.name,
+    location: server.datacenter?.name ?? "",
   };
 }
 
