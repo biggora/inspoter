@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -242,26 +243,21 @@ export function LogsView() {
         </div>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-            <p className="text-sm text-muted-foreground">
-              Нет записей журнала, соответствующих текущим фильтрам.
-            </p>
-          </div>
+          <EmptyState description="Нет записей журнала, соответствующих текущим фильтрам." />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Логи пока отсутствуют
-            </p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Отправьте первый лог через webhook:
-            </p>
-            <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-muted p-4 text-left text-xs">
-              {`curl -X POST http://your-host/api/webhooks/log \\
+          <EmptyState
+            icon="ri-file-list-3-line"
+            title="Логи пока отсутствуют"
+            description="Отправьте первый лог через webhook:"
+            action={
+              <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
+                {`curl -X POST http://your-host/api/webhooks/log \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"level":"info","source":"test","message":"Hello"}'`}
-            </pre>
-          </div>
+              </pre>
+            }
+          />
         )
       ) : (
         <Table>

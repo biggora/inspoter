@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { fetchServers, getServer, powerAction, type ServerDto, type ServersByProviderDto } from "./api";
 
@@ -206,25 +207,23 @@ export function ServersView() {
   if (pageState === "error") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
-        <div className="text-center max-w-sm animate-scale-in">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-100 flex items-center justify-center">
-            <i className="ri-cloud-off-line text-2xl text-primary-600"></i>
-          </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
-            Hetzner недоступен
-          </h3>
-          <p className="text-sm text-foreground-500 mb-6">
-            Не удалось получить данные о серверах. Проверьте подключение или
-            попробуйте позже.
-          </p>
-          <button
-            onClick={load}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary-500 text-sm font-semibold text-background-50 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-          >
-            <i className="ri-refresh-line w-5 h-5 flex items-center justify-center"></i>
-            Повторить
-          </button>
-        </div>
+        <EmptyState
+          bordered={false}
+          tone="danger"
+          icon="ri-cloud-off-line"
+          title="Hetzner недоступен"
+          description="Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже."
+          className="max-w-sm animate-scale-in"
+          action={
+            <button
+              onClick={load}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary-500 text-sm font-semibold text-background-50 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <i className="ri-refresh-line w-5 h-5 flex items-center justify-center"></i>
+              Повторить
+            </button>
+          }
+        />
       </div>
     );
   }
@@ -232,18 +231,13 @@ export function ServersView() {
   if (pageState === "empty") {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
-        <div className="text-center max-w-sm animate-scale-in">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-secondary-100 flex items-center justify-center">
-            <i className="ri-server-line text-2xl text-secondary-600"></i>
-          </div>
-          <h3 className="font-heading text-lg font-semibold text-foreground-900 mb-2">
-            Нет серверов
-          </h3>
-          <p className="text-sm text-foreground-500">
-            В вашем аккаунте Hetzner пока нет активных VPS. Создайте сервер
-            через панель Hetzner, и он появится здесь.
-          </p>
-        </div>
+        <EmptyState
+          bordered={false}
+          icon="ri-server-line"
+          title="Нет серверов"
+          description="В вашем аккаунте Hetzner пока нет активных VPS. Создайте сервер через панель Hetzner, и он появится здесь."
+          className="max-w-sm animate-scale-in"
+        />
       </div>
     );
   }

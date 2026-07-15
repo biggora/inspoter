@@ -6,6 +6,7 @@ import { SortableContext, rectSortingStrategy, useSortable } from "@dnd-kit/sort
 import { CSS } from "@dnd-kit/utilities";
 
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -134,9 +135,13 @@ export function CategorySection({
         </div>
       </div>
       {category.bookmarks.length === 0 ? (
-        <p className="text-xs text-foreground-400 py-3">
-          Нет закладок в этой категории
-        </p>
+        <EmptyState
+          size="xs"
+          align="start"
+          bordered={false}
+          description="Нет закладок в этой категории"
+          className="py-3"
+        />
       ) : (
         <SortableContext items={bookmarkIds} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -250,9 +255,13 @@ function SubcategorySection({
         </div>
       </div>
       {subcategory.bookmarks.length === 0 ? (
-        <p className="text-xs text-foreground-400 py-3">
-          Нет закладок в этой категории
-        </p>
+        <EmptyState
+          size="xs"
+          align="start"
+          bordered={false}
+          description="Нет закладок в этой категории"
+          className="py-3"
+        />
       ) : (
         <SortableContext items={bookmarkIds} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

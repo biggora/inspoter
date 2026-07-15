@@ -7,6 +7,7 @@ import { TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table,
   TableBody,
@@ -110,17 +111,15 @@ export function DomainsView({ providers }: DomainsViewProps) {
       )}
 
       {domains.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm font-medium text-foreground">
-            {erroredProviders.length > 0
+        <EmptyState
+          icon="ri-global-line"
+          title={
+            erroredProviders.length > 0
               ? "Нет доменов от исправных провайдеров"
-              : "Доменов пока нет"}
-          </p>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Домены появятся автоматически при подключении DNS-провайдера в
-            настройках.
-          </p>
-        </div>
+              : "Доменов пока нет"
+          }
+          description="Домены появятся автоматически при подключении DNS-провайдера в настройках."
+        />
       ) : (
         <Table>
           <TableHeader>
