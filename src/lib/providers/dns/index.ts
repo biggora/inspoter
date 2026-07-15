@@ -12,8 +12,8 @@ export function getDnsProviders(): DnsProvider[] {
     process.env.CLOUDFLARE_API_TOKEN
       ? new CloudflareDnsProvider(process.env.CLOUDFLARE_API_TOKEN)
       : new MockDnsProvider("cloudflare"),
-    (process.env.HETZNER_DNS_TOKEN || process.env.HETZNER_API_TOKEN)
-      ? new HetznerDnsProvider((process.env.HETZNER_DNS_TOKEN || process.env.HETZNER_API_TOKEN)!)
+    process.env.HETZNER_DNS_TOKEN
+      ? new HetznerDnsProvider(process.env.HETZNER_DNS_TOKEN)
       : new MockDnsProvider("hetzner"),
     process.env.GODADDY_API_KEY && process.env.GODADDY_API_SECRET
       ? new GoDaddyDnsProvider(
