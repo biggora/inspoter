@@ -5,7 +5,7 @@ import { DomainsView } from "@/components/domains/domains-view";
 export const dynamic = "force-dynamic";
 
 export default async function DomainsPage() {
-  await requireAuth();
-  const providers = await domainsService.listDomains();
+  const { workspace } = await requireAuth();
+  const providers = await domainsService.listDomains(workspace.id);
   return <DomainsView providers={providers} />;
 }

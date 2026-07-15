@@ -15,6 +15,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { providerId, domainId, recordId } = await params;
 
   const body = await request.json().catch(() => null);
@@ -24,6 +25,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const result = await domainsService.updateRecord(
+    workspace.id,
     providerId,
     domainId,
     recordId,
@@ -37,9 +39,11 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { providerId, domainId, recordId } = await params;
 
   const result = await domainsService.deleteRecord(
+    workspace.id,
     providerId,
     domainId,
     recordId,

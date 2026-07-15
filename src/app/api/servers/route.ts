@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const result = await serversService.listServers();
+  const { workspace } = authResult;
+  const result = await serversService.listServers(workspace.id);
   if (!result.ok) {
     return jsonResponse(
       {

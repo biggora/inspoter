@@ -12,8 +12,9 @@ export async function GET(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { id } = await params;
-  const result = await serversService.getServer(id);
+  const result = await serversService.getServer(workspace.id, id);
   if (!result.ok) {
     return jsonResponse(
       {

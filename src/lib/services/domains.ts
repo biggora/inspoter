@@ -1,4 +1,4 @@
-import { getDnsProviders } from "@/lib/providers/dns";
+import { getDnsProvidersForWorkspace } from "@/lib/providers/dns";
 import type {
   Domain,
   DnsProvider,
@@ -19,8 +19,10 @@ export interface DomainsByProvider {
   error: string | null;
 }
 
-export async function listDomains(): Promise<DomainsByProvider[]> {
-  const providers = getDnsProviders();
+export async function listDomains(
+  workspaceId: string,
+): Promise<DomainsByProvider[]> {
+  const providers = await getDnsProvidersForWorkspace(workspaceId);
   const settled = await Promise.allSettled(
     providers.map((provider) => provider.listDomains()),
   );
@@ -56,10 +58,12 @@ export async function listDomains(): Promise<DomainsByProvider[]> {
   });
 }
 
-function findProvider(providerId: string): DnsProvider | null {
-  return (
-    getDnsProviders().find((provider) => provider.id === providerId) ?? null
-  );
+async function findProvider(
+  workspaceId: string,
+  providerId: string,
+): Promise<DnsProvider | null> {
+  const providers = await getDnsProvidersForWorkspace(workspaceId);
+  return providers.find((provider) => provider.id === providerId) ?? null;
 }
 
 function unsupportedProviderResult<T>(providerId: string): ProviderResult<T> {
@@ -71,41 +75,45 @@ function unsupportedProviderResult<T>(providerId: string): ProviderResult<T> {
 }
 
 export async function listRecords(
+  workspaceId: string,
   providerId: string,
   domainId: string,
 ): Promise<ProviderResult<DnsRecord[]>> {
-  const provider = findProvider(providerId);
+  const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
   return provider.listRecords(domainId);
 }
 
 export async function createRecord(
+  workspaceId: string,
   providerId: string,
   domainId: string,
   input: DnsRecordInput,
 ): Promise<ProviderResult<DnsRecord>> {
-  const provider = findProvider(providerId);
+  const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
   return provider.createRecord(domainId, input);
 }
 
 export async function updateRecord(
+  workspaceId: string,
   providerId: string,
   domainId: string,
   recordId: string,
   input: DnsRecordPatch,
 ): Promise<ProviderResult<DnsRecord>> {
-  const provider = findProvider(providerId);
+  const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
   return provider.updateRecord(domainId, recordId, input);
 }
 
 export async function deleteRecord(
+  workspaceId: string,
   providerId: string,
   domainId: string,
   recordId: string,
 ): Promise<ProviderResult<void>> {
-  const provider = findProvider(providerId);
+  const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
   return provider.deleteRecord(domainId, recordId);
 }

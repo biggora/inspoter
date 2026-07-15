@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const providers = await domainsService.listDomains();
+  const { workspace } = authResult;
+  const providers = await domainsService.listDomains(workspace.id);
   return jsonResponse(providers);
 }

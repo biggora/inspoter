@@ -5,9 +5,11 @@ import { MockDnsProvider } from "@/lib/providers/dns/mock";
 // Domains service (architecture.md §4.4, AC-DOM-*, AC-PROV-*) — mock
 // providers use module-global in-memory state, no database involved.
 
+const WORKSPACE_ID = "test-workspace";
+
 describe("listDomains()", () => {
   it("AC-DOM-002: returns deterministic mock domains grouped by provider with mode 'mock' and no error", async () => {
-    const results = await domainsService.listDomains();
+    const results = await domainsService.listDomains(WORKSPACE_ID);
 
     expect(results).toHaveLength(3);
     const byProvider = Object.fromEntries(
@@ -42,7 +44,7 @@ describe("listDomains()", () => {
       .spyOn(MockDnsProvider.prototype, "listDomains")
       .mockRejectedValueOnce(new Error("network unreachable"));
 
-    const results = await domainsService.listDomains();
+    const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
     const byProvider = Object.fromEntries(
@@ -70,7 +72,7 @@ describe("listDomains()", () => {
         message: "auth failed",
       });
 
-    const results = await domainsService.listDomains();
+    const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
     const cloudflareResult = results.find((r) => r.providerId === "cloudflare");
@@ -91,7 +93,7 @@ describe("listDomains()", () => {
         operation: "listDomains",
       });
 
-    const results = await domainsService.listDomains();
+    const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
     const cloudflareResult = results.find((r) => r.providerId === "cloudflare");
@@ -103,6 +105,7 @@ describe("listDomains()", () => {
 describe("unknown provider handling", () => {
   it("listRecords returns an error result for an unknown provider id", async () => {
     const result = await domainsService.listRecords(
+      WORKSPACE_ID,
       "unknown-provider",
       "any-domain",
     );
@@ -115,6 +118,7 @@ describe("unknown provider handling", () => {
 
   it("createRecord returns an error result for an unknown provider id", async () => {
     const result = await domainsService.createRecord(
+      WORKSPACE_ID,
       "unknown-provider",
       "any-domain",
       { type: "A", name: "@", value: "1.2.3.4", ttl: 60 },
@@ -128,6 +132,7 @@ describe("unknown provider handling", () => {
 
   it("updateRecord returns an error result for an unknown provider id", async () => {
     const result = await domainsService.updateRecord(
+      WORKSPACE_ID,
       "unknown-provider",
       "any-domain",
       "any-record",
@@ -142,6 +147,7 @@ describe("unknown provider handling", () => {
 
   it("deleteRecord returns an error result for an unknown provider id", async () => {
     const result = await domainsService.deleteRecord(
+      WORKSPACE_ID,
       "unknown-provider",
       "any-domain",
       "any-record",
@@ -157,6 +163,7 @@ describe("unknown provider handling", () => {
 describe("listRecords()", () => {
   it("AC-DOM-004: returns records with type, name, value, and ttl for a known domain", async () => {
     const result = await domainsService.listRecords(
+      WORKSPACE_ID,
       "cloudflare",
       "cf-example-com",
     );
@@ -183,6 +190,7 @@ describe("listRecords()", () => {
 
   it("returns 'Domain not found' for a domain id that does not exist under the provider", async () => {
     const result = await domainsService.listRecords(
+      WORKSPACE_ID,
       "cloudflare",
       "does-not-exist",
     );
@@ -198,6 +206,7 @@ describe("createRecord()", () => {
   it("AC-DOM-005: creates a record and it appears in the domain's record list", async () => {
     const input = { type: "A", name: "api", value: "192.0.2.99", ttl: 120 };
     const created = await domainsService.createRecord(
+      WORKSPACE_ID,
       "cloudflare",
       "cf-example-dev",
       input,
@@ -208,6 +217,7 @@ describe("createRecord()", () => {
     expect(created.data).toMatchObject(input);
 
     const listed = await domainsService.listRecords(
+      WORKSPACE_ID,
       "cloudflare",
       "cf-example-dev",
     );
@@ -219,6 +229,7 @@ describe("createRecord()", () => {
 
   it("returns 'Domain not found' when creating a record under an unknown domain", async () => {
     const result = await domainsService.createRecord(
+      WORKSPACE_ID,
       "cloudflare",
       "does-not-exist",
       { type: "A", name: "x", value: "1.2.3.4", ttl: 60 },
@@ -234,6 +245,7 @@ describe("createRecord()", () => {
 describe("updateRecord()", () => {
   it("AC-DOM-006: updates value and ttl of an existing record", async () => {
     const result = await domainsService.updateRecord(
+      WORKSPACE_ID,
       "hetzner",
       "hz-example-de",
       "hz-rec-1",
@@ -249,12 +261,17 @@ describe("updateRecord()", () => {
   });
 
   it("leaves fields not included in the patch unchanged", async () => {
-    const before = await domainsService.listRecords("hetzner", "hz-example-de");
+    const before = await domainsService.listRecords(
+      WORKSPACE_ID,
+      "hetzner",
+      "hz-example-de",
+    );
     if (!before.ok) throw new Error("expected ok result");
     const mxRecord = before.data.find((r) => r.id === "hz-rec-2");
     expect(mxRecord).toBeDefined();
 
     const result = await domainsService.updateRecord(
+      WORKSPACE_ID,
       "hetzner",
       "hz-example-de",
       "hz-rec-2",
@@ -268,6 +285,7 @@ describe("updateRecord()", () => {
 
   it("returns 'Record not found' for an unknown record id under a known domain", async () => {
     const result = await domainsService.updateRecord(
+      WORKSPACE_ID,
       "hetzner",
       "hz-myserver-net",
       "does-not-exist",
@@ -282,6 +300,7 @@ describe("updateRecord()", () => {
 
   it("returns 'Record not found' for an unknown domain id (mock provider does not distinguish missing domain from missing record on update)", async () => {
     const result = await domainsService.updateRecord(
+      WORKSPACE_ID,
       "hetzner",
       "does-not-exist",
       "hz-rec-1",
@@ -298,19 +317,25 @@ describe("updateRecord()", () => {
 describe("deleteRecord()", () => {
   it("AC-DOM-007: removes a record so it no longer appears in the domain's record list", async () => {
     const result = await domainsService.deleteRecord(
+      WORKSPACE_ID,
       "godaddy",
       "gd-shop-io",
       "gd-rec-3",
     );
     expect(result).toEqual({ ok: true, data: undefined });
 
-    const listed = await domainsService.listRecords("godaddy", "gd-shop-io");
+    const listed = await domainsService.listRecords(
+      WORKSPACE_ID,
+      "godaddy",
+      "gd-shop-io",
+    );
     if (!listed.ok) throw new Error("expected ok result");
     expect(listed.data).toHaveLength(0);
   });
 
   it("returns 'Record not found' for an unknown record id under a known domain", async () => {
     const result = await domainsService.deleteRecord(
+      WORKSPACE_ID,
       "godaddy",
       "gd-blog-app",
       "does-not-exist",
@@ -324,6 +349,7 @@ describe("deleteRecord()", () => {
 
   it("returns 'Domain not found' for an unknown domain id", async () => {
     const result = await domainsService.deleteRecord(
+      WORKSPACE_ID,
       "godaddy",
       "does-not-exist",
       "gd-rec-4",

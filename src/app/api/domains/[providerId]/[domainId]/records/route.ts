@@ -15,9 +15,14 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { providerId, domainId } = await params;
 
-  const result = await domainsService.listRecords(providerId, domainId);
+  const result = await domainsService.listRecords(
+    workspace.id,
+    providerId,
+    domainId,
+  );
   return providerResultResponse(result);
 }
 
@@ -26,6 +31,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { providerId, domainId } = await params;
 
   const body = await request.json().catch(() => null);
@@ -35,6 +41,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   const result = await domainsService.createRecord(
+    workspace.id,
     providerId,
     domainId,
     parsed.data,

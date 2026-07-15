@@ -17,6 +17,7 @@ export async function POST(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { workspace } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -25,7 +26,11 @@ export async function POST(
     return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const result = await serversService.power(id, parsed.data.action);
+  const result = await serversService.power(
+    workspace.id,
+    id,
+    parsed.data.action,
+  );
   if (!result.ok) {
     const status = result.kind === "error" ? 502 : 501;
     return jsonResponse(
