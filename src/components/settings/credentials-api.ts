@@ -6,12 +6,9 @@ import {
   getActiveWorkspaceId,
   WORKSPACE_HEADER_NAME,
 } from "@/lib/client/active-workspace";
+import type { ProviderType } from "@/generated/prisma/client";
 
-export type ProviderType =
-  | "CLOUDFLARE_DNS"
-  | "HETZNER_DNS"
-  | "HETZNER_CLOUD"
-  | "GODADDY_DNS";
+export type { ProviderType };
 
 export interface CredentialDto {
   id: string;
@@ -91,11 +88,16 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const credentialsApi = {
   list: () => request<CredentialDto[]>("/api/credentials"),
-  upsert: (input: UpsertCredentialInput) =>
+  create: (input: UpsertCredentialInput) =>
     request<CredentialDto>("/api/credentials", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  remove: (provider: ProviderType) =>
-    request<void>(`/api/credentials/${provider}`, { method: "DELETE" }),
+  update: (id: string, input: UpsertCredentialInput) =>
+    request<CredentialDto>(`/api/credentials/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string) =>
+    request<void>(`/api/credentials/${id}`, { method: "DELETE" }),
 };

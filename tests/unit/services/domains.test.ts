@@ -16,23 +16,23 @@ describe("listDomains()", () => {
       results.map((r) => [r.providerId, r]),
     );
 
-    expect(byProvider.cloudflare.mode).toBe("mock");
-    expect(byProvider.cloudflare.error).toBeNull();
-    expect(byProvider.cloudflare.domains.map((d) => d.id)).toEqual([
+    expect(byProvider["mock-cloudflare"].mode).toBe("mock");
+    expect(byProvider["mock-cloudflare"].error).toBeNull();
+    expect(byProvider["mock-cloudflare"].domains.map((d) => d.id)).toEqual([
       "cf-example-com",
       "cf-example-dev",
     ]);
 
-    expect(byProvider.hetzner.mode).toBe("mock");
-    expect(byProvider.hetzner.error).toBeNull();
-    expect(byProvider.hetzner.domains.map((d) => d.id)).toEqual([
+    expect(byProvider["mock-hetzner"].mode).toBe("mock");
+    expect(byProvider["mock-hetzner"].error).toBeNull();
+    expect(byProvider["mock-hetzner"].domains.map((d) => d.id)).toEqual([
       "hz-example-de",
       "hz-myserver-net",
     ]);
 
-    expect(byProvider.godaddy.mode).toBe("mock");
-    expect(byProvider.godaddy.error).toBeNull();
-    expect(byProvider.godaddy.domains.map((d) => d.id)).toEqual([
+    expect(byProvider["mock-godaddy"].mode).toBe("mock");
+    expect(byProvider["mock-godaddy"].error).toBeNull();
+    expect(byProvider["mock-godaddy"].domains.map((d) => d.id)).toEqual([
       "gd-mysite-com",
       "gd-shop-io",
       "gd-blog-app",
@@ -51,16 +51,16 @@ describe("listDomains()", () => {
       results.map((r) => [r.providerId, r]),
     );
 
-    expect(byProvider.cloudflare).toEqual({
-      providerId: "cloudflare",
+    expect(byProvider["mock-cloudflare"]).toEqual({
+      providerId: "mock-cloudflare",
       mode: "mock",
       domains: [],
       error: "Error: network unreachable",
     });
-    expect(byProvider.hetzner.error).toBeNull();
-    expect(byProvider.hetzner.domains.length).toBeGreaterThan(0);
-    expect(byProvider.godaddy.error).toBeNull();
-    expect(byProvider.godaddy.domains.length).toBeGreaterThan(0);
+    expect(byProvider["mock-hetzner"].error).toBeNull();
+    expect(byProvider["mock-hetzner"].domains.length).toBeGreaterThan(0);
+    expect(byProvider["mock-godaddy"].error).toBeNull();
+    expect(byProvider["mock-godaddy"].domains.length).toBeGreaterThan(0);
   });
 
   it("maps a provider ok:false 'error' result to a providerId-scoped error message", async () => {
@@ -75,9 +75,9 @@ describe("listDomains()", () => {
     const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
-    const cloudflareResult = results.find((r) => r.providerId === "cloudflare");
+    const cloudflareResult = results.find((r) => r.providerId === "mock-cloudflare");
     expect(cloudflareResult).toEqual({
-      providerId: "cloudflare",
+      providerId: "mock-cloudflare",
       mode: "mock",
       domains: [],
       error: "auth failed",
@@ -96,7 +96,7 @@ describe("listDomains()", () => {
     const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
-    const cloudflareResult = results.find((r) => r.providerId === "cloudflare");
+    const cloudflareResult = results.find((r) => r.providerId === "mock-cloudflare");
     expect(cloudflareResult?.error).toBe("Operation not supported: listDomains");
     expect(cloudflareResult?.domains).toEqual([]);
   });
@@ -164,7 +164,7 @@ describe("listRecords()", () => {
   it("AC-DOM-004: returns records with type, name, value, and ttl for a known domain", async () => {
     const result = await domainsService.listRecords(
       WORKSPACE_ID,
-      "cloudflare",
+      "mock-cloudflare",
       "cf-example-com",
     );
     if (!result.ok) throw new Error("expected ok result");
@@ -191,7 +191,7 @@ describe("listRecords()", () => {
   it("returns 'Domain not found' for a domain id that does not exist under the provider", async () => {
     const result = await domainsService.listRecords(
       WORKSPACE_ID,
-      "cloudflare",
+      "mock-cloudflare",
       "does-not-exist",
     );
     expect(result).toEqual({
@@ -207,18 +207,18 @@ describe("createRecord()", () => {
     const input = { type: "A", name: "api", value: "192.0.2.99", ttl: 120 };
     const created = await domainsService.createRecord(
       WORKSPACE_ID,
-      "cloudflare",
+      "mock-cloudflare",
       "cf-example-dev",
       input,
     );
     if (!created.ok) throw new Error("expected ok result");
 
-    expect(created.data.id).toMatch(/^cloudflare-mock-rec-\d+$/);
+    expect(created.data.id).toMatch(/^mock-cloudflare-mock-rec-\d+$/);
     expect(created.data).toMatchObject(input);
 
     const listed = await domainsService.listRecords(
       WORKSPACE_ID,
-      "cloudflare",
+      "mock-cloudflare",
       "cf-example-dev",
     );
     if (!listed.ok) throw new Error("expected ok result");
@@ -230,7 +230,7 @@ describe("createRecord()", () => {
   it("returns 'Domain not found' when creating a record under an unknown domain", async () => {
     const result = await domainsService.createRecord(
       WORKSPACE_ID,
-      "cloudflare",
+      "mock-cloudflare",
       "does-not-exist",
       { type: "A", name: "x", value: "1.2.3.4", ttl: 60 },
     );
@@ -246,7 +246,7 @@ describe("updateRecord()", () => {
   it("AC-DOM-006: updates value and ttl of an existing record", async () => {
     const result = await domainsService.updateRecord(
       WORKSPACE_ID,
-      "hetzner",
+      "mock-hetzner",
       "hz-example-de",
       "hz-rec-1",
       { value: "203.0.113.250", ttl: 900 },
@@ -263,7 +263,7 @@ describe("updateRecord()", () => {
   it("leaves fields not included in the patch unchanged", async () => {
     const before = await domainsService.listRecords(
       WORKSPACE_ID,
-      "hetzner",
+      "mock-hetzner",
       "hz-example-de",
     );
     if (!before.ok) throw new Error("expected ok result");
@@ -272,7 +272,7 @@ describe("updateRecord()", () => {
 
     const result = await domainsService.updateRecord(
       WORKSPACE_ID,
-      "hetzner",
+      "mock-hetzner",
       "hz-example-de",
       "hz-rec-2",
       { ttl: 1800 },
@@ -286,7 +286,7 @@ describe("updateRecord()", () => {
   it("returns 'Record not found' for an unknown record id under a known domain", async () => {
     const result = await domainsService.updateRecord(
       WORKSPACE_ID,
-      "hetzner",
+      "mock-hetzner",
       "hz-myserver-net",
       "does-not-exist",
       { ttl: 300 },
@@ -301,7 +301,7 @@ describe("updateRecord()", () => {
   it("returns 'Record not found' for an unknown domain id (mock provider does not distinguish missing domain from missing record on update)", async () => {
     const result = await domainsService.updateRecord(
       WORKSPACE_ID,
-      "hetzner",
+      "mock-hetzner",
       "does-not-exist",
       "hz-rec-1",
       { ttl: 300 },
@@ -318,7 +318,7 @@ describe("deleteRecord()", () => {
   it("AC-DOM-007: removes a record so it no longer appears in the domain's record list", async () => {
     const result = await domainsService.deleteRecord(
       WORKSPACE_ID,
-      "godaddy",
+      "mock-godaddy",
       "gd-shop-io",
       "gd-rec-3",
     );
@@ -326,7 +326,7 @@ describe("deleteRecord()", () => {
 
     const listed = await domainsService.listRecords(
       WORKSPACE_ID,
-      "godaddy",
+      "mock-godaddy",
       "gd-shop-io",
     );
     if (!listed.ok) throw new Error("expected ok result");
@@ -336,7 +336,7 @@ describe("deleteRecord()", () => {
   it("returns 'Record not found' for an unknown record id under a known domain", async () => {
     const result = await domainsService.deleteRecord(
       WORKSPACE_ID,
-      "godaddy",
+      "mock-godaddy",
       "gd-blog-app",
       "does-not-exist",
     );
@@ -350,7 +350,7 @@ describe("deleteRecord()", () => {
   it("returns 'Domain not found' for an unknown domain id", async () => {
     const result = await domainsService.deleteRecord(
       WORKSPACE_ID,
-      "godaddy",
+      "mock-godaddy",
       "does-not-exist",
       "gd-rec-4",
     );

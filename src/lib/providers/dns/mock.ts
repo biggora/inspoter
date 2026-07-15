@@ -16,7 +16,9 @@ interface MockState {
   records: Map<string, DnsRecord[]>;
 }
 
-const seeds: Record<DnsProvider["id"], MockState> = {
+const EMPTY_STATE: MockState = { domains: [], records: new Map() };
+
+const seeds: Record<"cloudflare" | "hetzner" | "godaddy", MockState> = {
   cloudflare: {
     domains: [
       { id: "cf-example-com", name: "example.com", provider: "cloudflare" },
@@ -164,11 +166,20 @@ let recordCounter = 0;
 
 export class MockDnsProvider implements DnsProvider {
   readonly mode = "mock" as const;
+  readonly id: string;
+  readonly providerType: string;
+  readonly label: string;
 
-  constructor(readonly id: DnsProvider["id"]) {}
+  constructor(id: string, providerType: string, label: string) {
+    this.id = id;
+    this.providerType = providerType;
+    this.label = label;
+  }
 
   private state(): MockState {
-    return seeds[this.id];
+    return (
+      seeds[this.providerType as keyof typeof seeds] ?? EMPTY_STATE
+    );
   }
 
   async listDomains(): Promise<ProviderResult<Domain[]>> {

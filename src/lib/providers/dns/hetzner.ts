@@ -38,11 +38,15 @@ function toDnsRecord(record: HetznerRecord): DnsRecord {
 }
 
 export class HetznerDnsProvider implements DnsProvider {
-  readonly id = "hetzner" as const;
+  readonly id: string;
+  readonly providerType = "hetzner";
+  readonly label: string;
   readonly mode = "real" as const;
   private readonly client;
 
-  constructor(apiToken: string) {
+  constructor(id: string, label: string, apiToken: string) {
+    this.id = id;
+    this.label = label;
     this.client = createProviderHttpClient({
       baseUrl: BASE_URL,
       headers: { "Auth-API-Token": apiToken },

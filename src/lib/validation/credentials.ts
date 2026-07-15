@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ProviderType } from "@/generated/prisma/client";
 import type { CredentialData } from "@/lib/crypto/credentials";
 
 // Zod schemas for the provider credentials API — single source of input
@@ -47,5 +46,3 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
       };
   }
 }
-
-export const providerParamSchema = z.nativeEnum(ProviderType);

@@ -15,86 +15,105 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
+import {
   ApiError,
   credentialsApi,
   type CredentialDto,
   type ProviderType,
+  type UpsertCredentialInput,
 } from "./credentials-api";
 
-export interface ProviderDefinition {
-  provider: ProviderType;
-  name: string;
-  defaultLabel: string;
-  secretKind: "token" | "godaddy";
-}
+const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
+  DNS: "DNS",
+  HOSTING: "Хостинг",
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  apiToken: "API-токен",
+  apiKey: "API-ключ",
+  apiSecret: "API-секрет",
+};
+
+const PROVIDER_OPTIONS = (
+  Object.keys(PROVIDER_REGISTRY) as ProviderType[]
+).map((provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }));
 
 interface ProviderCredentialDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  provider: ProviderDefinition;
+  mode: "create" | "edit";
   existing: CredentialDto | null;
   onSaved: () => void;
 }
 
+// Settings > Providers — create/edit dialog. Provider type is fixed once a
+// credential exists (dropdown disabled in edit mode); secret fields are
+// rendered dynamically from PROVIDER_REGISTRY[provider].fields and always
+// start empty in edit mode since secrets never round-trip from the server.
 export function ProviderCredentialDialog({
   open,
   onOpenChange,
-  provider,
+  mode,
   existing,
   onSaved,
 }: ProviderCredentialDialogProps) {
   // Rendered only while a dialog is open (see provider-credentials-view.tsx's
-  // `dialogProvider && (...)` guard), so it fully remounts on each open —
-  // these initial values don't need to be re-synced via an effect.
-  const [label, setLabel] = useState(existing?.label ?? provider.defaultLabel);
-  const [apiToken, setApiToken] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [apiSecret, setApiSecret] = useState("");
+  // guard), so it fully remounts on each open — these initial values don't
+  // need to be re-synced via an effect.
+  const [provider, setProvider] = useState<ProviderType | "">(
+    mode === "edit" ? existing!.provider : "",
+  );
+  const [label, setLabel] = useState(existing?.label ?? "");
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const labelId = useId();
-  const tokenId = useId();
-  const apiKeyId = useId();
-  const apiSecretId = useId();
+  const providerId = useId();
+  const fieldBaseId = useId();
+
+  const activeFields = provider ? PROVIDER_REGISTRY[provider].fields : [];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!provider) {
+      setError("Выберите провайдера.");
+      return;
+    }
     const trimmedLabel = label.trim();
     if (!trimmedLabel) {
       setError("Название обязательно.");
       return;
     }
+    for (const field of activeFields) {
+      if (!secrets[field]?.trim()) {
+        setError(`Поле «${FIELD_LABELS[field] ?? field}» обязательно.`);
+        return;
+      }
+    }
+
+    const payload = {
+      provider,
+      label: trimmedLabel,
+      ...Object.fromEntries(
+        activeFields.map((field) => [field, secrets[field].trim()]),
+      ),
+    } as UpsertCredentialInput;
 
     setSubmitting(true);
     setError(null);
     try {
-      if (provider.secretKind === "godaddy") {
-        if (!apiKey.trim() || !apiSecret.trim()) {
-          setError("API-ключ и API-секрет обязательны.");
-          setSubmitting(false);
-          return;
-        }
-        await credentialsApi.upsert({
-          provider: "GODADDY_DNS",
-          label: trimmedLabel,
-          apiKey: apiKey.trim(),
-          apiSecret: apiSecret.trim(),
-        });
+      if (mode === "create") {
+        await credentialsApi.create(payload);
       } else {
-        if (!apiToken.trim()) {
-          setError("API-токен обязателен.");
-          setSubmitting(false);
-          return;
-        }
-        await credentialsApi.upsert({
-          provider: provider.provider as
-            | "CLOUDFLARE_DNS"
-            | "HETZNER_DNS"
-            | "HETZNER_CLOUD",
-          label: trimmedLabel,
-          apiToken: apiToken.trim(),
-        });
+        await credentialsApi.update(existing!.id, payload);
       }
       toast.success("Учётные данные сохранены.");
       onOpenChange(false);
@@ -114,7 +133,11 @@ export function ProviderCredentialDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Настроить {provider.name}</DialogTitle>
+          <DialogTitle>
+            {mode === "create"
+              ? "Добавить провайдера"
+              : `Изменить «${existing?.label}»`}
+          </DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
@@ -122,50 +145,55 @@ export function ProviderCredentialDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-1.5">
+            <Label htmlFor={providerId}>Провайдер</Label>
+            <Select
+              value={provider === "" ? undefined : provider}
+              onValueChange={(value) => setProvider(value as ProviderType)}
+              disabled={mode === "edit"}
+            >
+              <SelectTrigger id={providerId} className="w-full">
+                <SelectValue placeholder="Выберите провайдера" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDER_OPTIONS.map((option) => (
+                  <SelectItem key={option.provider} value={option.provider}>
+                    {option.label} ({CATEGORY_LABELS[option.category]})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor={labelId}>Название</Label>
             <Input
               id={labelId}
               value={label}
               onChange={(event) => setLabel(event.target.value)}
-              autoFocus
+              placeholder='например, "Основной аккаунт"'
+              autoFocus={mode === "edit"}
             />
           </div>
 
-          {provider.secretKind === "godaddy" ? (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={apiKeyId}>API-ключ</Label>
-                <Input
-                  id={apiKeyId}
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={apiSecretId}>API-секрет</Label>
-                <Input
-                  id={apiSecretId}
-                  type="password"
-                  value={apiSecret}
-                  onChange={(event) => setApiSecret(event.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={tokenId}>API-токен</Label>
+          {activeFields.map((field) => (
+            <div key={field} className="flex flex-col gap-1.5">
+              <Label htmlFor={`${fieldBaseId}-${field}`}>
+                {FIELD_LABELS[field] ?? field}
+              </Label>
               <Input
-                id={tokenId}
+                id={`${fieldBaseId}-${field}`}
                 type="password"
-                value={apiToken}
-                onChange={(event) => setApiToken(event.target.value)}
+                value={secrets[field] ?? ""}
+                onChange={(event) =>
+                  setSecrets((prev) => ({
+                    ...prev,
+                    [field]: event.target.value,
+                  }))
+                }
                 autoComplete="off"
               />
             </div>
-          )}
+          ))}
 
           {error && <p className="text-sm text-(--error-text)">{error}</p>}
 

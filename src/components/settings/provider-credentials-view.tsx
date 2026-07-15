@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,53 +15,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { credentialsApi, type CredentialDto } from "./credentials-api";
 import {
-  ProviderCredentialDialog,
-  type ProviderDefinition,
-} from "./provider-credential-dialog";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
+import { credentialsApi, type CredentialDto } from "./credentials-api";
+import { ProviderCredentialDialog } from "./provider-credential-dialog";
 
-const PROVIDERS: ProviderDefinition[] = [
-  {
-    provider: "CLOUDFLARE_DNS",
-    name: "Cloudflare DNS",
-    defaultLabel: "Cloudflare DNS",
-    secretKind: "token",
-  },
-  {
-    provider: "HETZNER_DNS",
-    name: "Hetzner DNS",
-    defaultLabel: "Hetzner DNS",
-    secretKind: "token",
-  },
-  {
-    provider: "HETZNER_CLOUD",
-    name: "Hetzner Cloud",
-    defaultLabel: "Hetzner Cloud",
-    secretKind: "token",
-  },
-  {
-    provider: "GODADDY_DNS",
-    name: "GoDaddy DNS",
-    defaultLabel: "GoDaddy DNS",
-    secretKind: "godaddy",
-  },
-];
+const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
+  DNS: "DNS",
+  HOSTING: "Хостинг",
+};
 
-// Settings > Providers — API credential list + configure/delete per provider.
-// Client-fetched (no server-component data hand-off) since secrets must
-// never round-trip through a server-rendered prop, matching
+type DialogState = { mode: "create" } | { mode: "edit"; credential: CredentialDto };
+
+// Settings > Providers — dynamic list of all configured credentials
+// (multiple accounts per provider type allowed) + add/edit/delete. Client-
+// fetched (no server-component data hand-off) since secrets must never
+// round-trip through a server-rendered prop, matching
 // src/components/settings/webhook-tokens-view.tsx.
 export function ProviderCredentialsView() {
   const [credentials, setCredentials] = useState<CredentialDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [dialogProvider, setDialogProvider] =
-    useState<ProviderDefinition | null>(null);
+  const [dialogState, setDialogState] = useState<DialogState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CredentialDto | null>(
     null,
   );
@@ -88,12 +72,12 @@ export function ProviderCredentialsView() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await credentialsApi.remove(deleteTarget.provider);
-      toast.success("Учётные данные удалены.");
+      await credentialsApi.remove(deleteTarget.id);
+      toast.success("Провайдер удалён.");
       setDeleteTarget(null);
       load();
     } catch {
-      toast.error("Не удалось удалить учётные данные. Попробуйте снова.");
+      toast.error("Не удалось удалить провайдера. Попробуйте снова.");
     } finally {
       setDeleting(false);
     }
@@ -101,96 +85,95 @@ export function ProviderCredentialsView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">
-        Настройки — Провайдеры
-      </h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold text-foreground">
+          Провайдеры
+        </h1>
+        <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
+          <Plus aria-hidden className="size-4" />
+          Добавить провайдер
+        </Button>
+      </div>
 
       {error && <p className="text-sm text-(--error-text)">{error}</p>}
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      ) : credentials.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            Провайдеры не настроены. Добавьте API-ключи для подключения к
+            Cloudflare, Hetzner или GoDaddy.
+          </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {PROVIDERS.map((provider) => {
-            const credential =
-              credentials.find((c) => c.provider === provider.provider) ??
-              null;
-            return (
-              <div
-                key={provider.provider}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <KeyRound className="size-5 text-muted-foreground" />
-                  <p className="font-medium text-foreground">
-                    {provider.name}
-                  </p>
-                </div>
-
-                {credential ? (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground">
-                        {credential.label}
-                      </p>
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {credential.maskedHint}
-                      </span>
-                    </div>
-                    {credential.isValid !== null && (
-                      <Badge
-                        className={cn(
-                          "w-fit",
-                          credential.isValid
-                            ? "bg-(--success-bg) text-(--success-text)"
-                            : "bg-(--error-bg) text-(--error-text)",
-                        )}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Провайдер</TableHead>
+              <TableHead>Название</TableHead>
+              <TableHead>Ключ</TableHead>
+              <TableHead>Категория</TableHead>
+              <TableHead className="text-right">Действия</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {credentials.map((credential) => {
+              const meta = PROVIDER_REGISTRY[credential.provider];
+              return (
+                <TableRow key={credential.id}>
+                  <TableCell className="font-medium text-foreground">
+                    {meta.label}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {credential.label}
+                  </TableCell>
+                  <TableCell className="font-mono text-muted-foreground">
+                    {credential.maskedHint}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {CATEGORY_LABELS[meta.category]}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Изменить"
+                        onClick={() =>
+                          setDialogState({ mode: "edit", credential })
+                        }
                       >
-                        {credential.isValid ? "Действителен" : "Недействителен"}
-                      </Badge>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Не настроен</p>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDialogProvider(provider)}
-                  >
-                    {credential ? "Изменить" : "Настроить"}
-                  </Button>
-                  {credential && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteTarget(credential)}
-                    >
-                      Удалить
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                        <Pencil aria-hidden className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Удалить"
+                        onClick={() => setDeleteTarget(credential)}
+                      >
+                        <Trash2 aria-hidden className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       )}
 
-      {dialogProvider && (
+      {dialogState && (
         <ProviderCredentialDialog
-          open={dialogProvider !== null}
-          onOpenChange={(open) => !open && setDialogProvider(null)}
-          provider={dialogProvider}
+          open={dialogState !== null}
+          onOpenChange={(open) => !open && setDialogState(null)}
+          mode={dialogState.mode}
           existing={
-            credentials.find((c) => c.provider === dialogProvider.provider) ??
-            null
+            dialogState.mode === "edit" ? dialogState.credential : null
           }
           onSaved={load}
         />
@@ -203,11 +186,11 @@ export function ProviderCredentialsView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Удалить учётные данные «{deleteTarget?.label}»?
+              Удалить провайдер «{deleteTarget?.label}»?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Все операции, использующие эти учётные данные, перестанут
-              работать. Это действие нельзя отменить.
+              Связанные домены и серверы потеряют доступ к этому аккаунту.
+              Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

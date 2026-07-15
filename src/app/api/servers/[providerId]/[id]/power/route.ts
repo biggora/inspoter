@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { z } from "zod";
 import * as serversService from "@/lib/services/servers";
+import { providerResultResponse } from "@/lib/api/provider-result";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 
@@ -9,16 +10,17 @@ const powerSchema = z.object({
   action: z.enum(["start", "stop", "restart"]),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+interface RouteContext {
+  params: Promise<{ providerId: string; id: string }>;
+}
+
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
   const { workspace } = authResult;
-  const { id } = await params;
+  const { providerId, id } = await params;
 
   const body = await request.json().catch(() => null);
   const parsed = powerSchema.safeParse(body);
@@ -28,21 +30,12 @@ export async function POST(
 
   const result = await serversService.power(
     workspace.id,
+    providerId,
     id,
     parsed.data.action,
   );
-  if (!result.ok) {
-    const status = result.kind === "error" ? 502 : 501;
-    return jsonResponse(
-      {
-        error:
-          result.kind === "error"
-            ? result.message
-            : `Unsupported: ${result.operation}`,
-      },
-      { status },
-    );
+  if (result.ok) {
+    return jsonResponse({ ok: true }, { status: 200 });
   }
-
-  return jsonResponse({ ok: true }, { status: 200 });
+  return providerResultResponse(result);
 }

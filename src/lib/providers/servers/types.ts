@@ -17,7 +17,9 @@ export interface Server {
 }
 
 export interface ServerProvider {
-  readonly id: "hetzner";
+  readonly id: string;
+  readonly providerType: string;
+  readonly label: string;
   readonly mode: "real" | "mock";
   listServers(): Promise<ProviderResult<Server[]>>;
   getServer(id: string): Promise<ProviderResult<Server>>;

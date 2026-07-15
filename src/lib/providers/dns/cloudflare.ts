@@ -59,11 +59,15 @@ function envelopeError<T>(errors: CloudflareError[]): ProviderResult<T> {
 }
 
 export class CloudflareDnsProvider implements DnsProvider {
-  readonly id = "cloudflare" as const;
+  readonly id: string;
+  readonly providerType = "cloudflare";
+  readonly label: string;
   readonly mode = "real" as const;
   private readonly client;
 
-  constructor(apiToken: string) {
+  constructor(id: string, label: string, apiToken: string) {
+    this.id = id;
+    this.label = label;
     this.client = createProviderHttpClient({
       baseUrl: BASE_URL,
       headers: { Authorization: `Bearer ${apiToken}` },

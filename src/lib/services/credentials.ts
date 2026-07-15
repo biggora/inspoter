@@ -11,10 +11,12 @@ import {
 // Workspace-scoped provider credential service (encrypted at rest,
 // architecture.md provider credentials slice). The sole sanctioned Prisma
 // caller for the ProviderCredential model outside the auth DAL.
+// Multiple credentials per provider are allowed per workspace; each
+// credential is identified by its own id.
 
 export class CredentialNotFoundError extends Error {
-  constructor(workspaceId: string, provider: ProviderType) {
-    super(`Credential not found for provider ${provider} in workspace ${workspaceId}`);
+  constructor(id: string) {
+    super(`Credential not found: ${id}`);
     this.name = "CredentialNotFoundError";
   }
 }
@@ -47,6 +49,11 @@ export interface CredentialSummary {
   updatedAt: Date;
 }
 
+export type DecryptedCredential = CredentialData & {
+  id: string;
+  label: string;
+};
+
 interface CredentialRecord {
   id: string;
   provider: ProviderType;
@@ -77,6 +84,21 @@ function computeMaskedHint(data: CredentialData): string {
     : maskSecret(data.apiToken);
 }
 
+function decryptRow(row: {
+  id: string;
+  label: string;
+  encryptedData: string;
+  iv: string;
+  authTag: string;
+}): DecryptedCredential {
+  const data = decrypt({
+    encryptedData: row.encryptedData,
+    iv: row.iv,
+    authTag: row.authTag,
+  });
+  return { ...data, id: row.id, label: row.label };
+}
+
 export async function listCredentials(
   workspaceId: string,
 ): Promise<CredentialSummary[]> {
@@ -87,12 +109,29 @@ export async function listCredentials(
   return credentials.map(toSummary);
 }
 
-export async function getDecryptedCredential(
+export async function getDecryptedCredentials(
   workspaceId: string,
-  provider: ProviderType,
-): Promise<CredentialData | null> {
-  const credential = await db.providerCredential.findUnique({
-    where: { workspaceId_provider: { workspaceId, provider } },
+  provider?: ProviderType,
+): Promise<DecryptedCredential[]> {
+  const credentials = await db.providerCredential.findMany({
+    where: { workspaceId, ...(provider ? { provider } : {}) },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!credentials.length) return [];
+
+  if (!isEncryptionConfigured()) {
+    throw new EncryptionNotConfiguredError();
+  }
+
+  return credentials.map(decryptRow);
+}
+
+export async function getDecryptedCredentialById(
+  id: string,
+  workspaceId: string,
+): Promise<DecryptedCredential | null> {
+  const credential = await db.providerCredential.findFirst({
+    where: { id, workspaceId },
   });
   if (!credential) return null;
 
@@ -100,14 +139,10 @@ export async function getDecryptedCredential(
     throw new EncryptionNotConfiguredError();
   }
 
-  return decrypt({
-    encryptedData: credential.encryptedData,
-    iv: credential.iv,
-    authTag: credential.authTag,
-  });
+  return decryptRow(credential);
 }
 
-export async function upsertCredential(
+export async function createCredential(
   workspaceId: string,
   provider: ProviderType,
   label: string,
@@ -120,9 +155,8 @@ export async function upsertCredential(
   const encrypted = encrypt(data);
   const maskedHint = computeMaskedHint(data);
 
-  const credential = await db.providerCredential.upsert({
-    where: { workspaceId_provider: { workspaceId, provider } },
-    create: {
+  const credential = await db.providerCredential.create({
+    data: {
       workspaceId,
       provider,
       label,
@@ -131,7 +165,34 @@ export async function upsertCredential(
       authTag: encrypted.authTag,
       maskedHint,
     },
-    update: {
+  });
+
+  return toSummary(credential);
+}
+
+export async function updateCredential(
+  id: string,
+  workspaceId: string,
+  label: string,
+  data: CredentialData,
+): Promise<CredentialSummary> {
+  if (!isEncryptionConfigured()) {
+    throw new EncryptionNotConfiguredError();
+  }
+
+  const existing = await db.providerCredential.findFirst({
+    where: { id, workspaceId },
+  });
+  if (!existing) {
+    throw new CredentialNotFoundError(id);
+  }
+
+  const encrypted = encrypt(data);
+  const maskedHint = computeMaskedHint(data);
+
+  const credential = await db.providerCredential.update({
+    where: { id },
+    data: {
       label,
       encryptedData: encrypted.encryptedData,
       iv: encrypted.iv,
@@ -144,14 +205,14 @@ export async function upsertCredential(
 }
 
 export async function deleteCredential(
+  id: string,
   workspaceId: string,
-  provider: ProviderType,
 ): Promise<void> {
-  const credential = await db.providerCredential.findUnique({
-    where: { workspaceId_provider: { workspaceId, provider } },
+  const credential = await db.providerCredential.findFirst({
+    where: { id, workspaceId },
   });
   if (!credential) {
-    throw new CredentialNotFoundError(workspaceId, provider);
+    throw new CredentialNotFoundError(id);
   }
   await db.providerCredential.delete({ where: { id: credential.id } });
 }

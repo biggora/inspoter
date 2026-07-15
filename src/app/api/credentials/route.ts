@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await credentialsService.requireWorkspaceOwner(workspace.id, operator.id);
-    const credential = await credentialsService.upsertCredential(
+    const credential = await credentialsService.createCredential(
       workspace.id,
       parsed.data.provider,
       parsed.data.label,

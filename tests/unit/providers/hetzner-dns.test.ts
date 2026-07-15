@@ -27,7 +27,7 @@ describe("HetznerDnsProvider", () => {
       .mockResolvedValueOnce(jsonResponse(200, { zones: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     await provider.listDomains();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -51,7 +51,7 @@ describe("HetznerDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -79,7 +79,7 @@ describe("HetznerDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const result = await provider.listRecords("zone-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe("HetznerDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const result = await provider.createRecord("zone-1", {
       type: "A",
       name: "www",
@@ -168,7 +168,7 @@ describe("HetznerDnsProvider", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const result = await provider.updateRecord("zone-1", "rec-1", {
       value: "192.0.2.99",
     });
@@ -208,7 +208,7 @@ describe("HetznerDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("bad-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "bad-token");
     const result = await provider.updateRecord("zone-1", "rec-1", {
       value: "192.0.2.99",
     });
@@ -225,7 +225,7 @@ describe("HetznerDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(emptyResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const result = await provider.deleteRecord("zone-1", "rec-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe("HetznerDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("bad-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "bad-token");
     const result = await provider.deleteRecord("zone-1", "rec-1");
 
     expect(result).toEqual({
@@ -253,7 +253,7 @@ describe("HetznerDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("bad-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "bad-token");
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -268,7 +268,7 @@ describe("HetznerDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerDnsProvider("test-token");
+    const provider = new HetznerDnsProvider("test-id", "Test Hetzner DNS", "test-token");
     const promise = provider.listDomains();
 
     await vi.advanceTimersByTimeAsync(1000);

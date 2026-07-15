@@ -49,11 +49,15 @@ function parseRecordId(recordId: string): { type: string; name: string } {
 }
 
 export class GoDaddyDnsProvider implements DnsProvider {
-  readonly id = "godaddy" as const;
+  readonly id: string;
+  readonly providerType = "godaddy";
+  readonly label: string;
   readonly mode = "real" as const;
   private readonly client;
 
-  constructor(apiKey: string, apiSecret: string) {
+  constructor(id: string, label: string, apiKey: string, apiSecret: string) {
+    this.id = id;
+    this.label = label;
     this.client = createProviderHttpClient({
       baseUrl: BASE_URL,
       headers: { Authorization: `sso-key ${apiKey}:${apiSecret}` },

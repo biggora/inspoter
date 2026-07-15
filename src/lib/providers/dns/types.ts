@@ -32,7 +32,9 @@ export interface DnsRecordPatch {
 }
 
 export interface DnsProvider {
-  readonly id: "cloudflare" | "hetzner" | "godaddy";
+  readonly id: string;
+  readonly providerType: string;
+  readonly label: string;
   readonly mode: "real" | "mock";
   listDomains(): Promise<ProviderResult<Domain[]>>;
   listRecords(domainId: string): Promise<ProviderResult<DnsRecord[]>>;

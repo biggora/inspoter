@@ -92,8 +92,16 @@ function resolveStatus(id: string, base: ServerStatus): ServerStatus {
 }
 
 export class MockServerProvider implements ServerProvider {
-  readonly id = "hetzner" as const;
   readonly mode = "mock" as const;
+  readonly id: string;
+  readonly providerType: string;
+  readonly label: string;
+
+  constructor(id: string, providerType: string, label: string) {
+    this.id = id;
+    this.providerType = providerType;
+    this.label = label;
+  }
 
   async listServers(): Promise<ProviderResult<Server[]>> {
     const servers = mockServers.map((s) => ({
