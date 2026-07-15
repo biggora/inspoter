@@ -4,6 +4,7 @@ import * as domainsService from "@/lib/services/domains";
 import { dnsRecordPatchSchema } from "@/lib/validation/dns";
 import { providerResultResponse } from "@/lib/api/provider-result";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ providerId: string; domainId: string; recordId: string }>;
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const body = await request.json().catch(() => null);
   const parsed = dnsRecordPatchSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   const result = await domainsService.updateRecord(

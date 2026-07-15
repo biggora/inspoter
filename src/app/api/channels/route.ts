@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 const createChannelSchema = z.object({
   categoryId: z.string().min(1, "categoryId is required"),
@@ -29,13 +30,13 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const parsed = createChannelSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   if (
     !(await categoryBelongsToWorkspace(workspace.id, parsed.data.categoryId))
   ) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Referenced resource does not exist." },
       { status: 400 },
     );
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       parsed.data.categoryId,
       parsed.data.name,
     );
-    return NextResponse.json(channel, { status: 201 });
+    return jsonResponse(channel, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);
   }

@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { createWorkspaceSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const { operator } = authResult;
   const workspaces = await workspacesService.listForOperator(operator.id);
-  return NextResponse.json(workspaces);
+  return jsonResponse(workspaces);
 }
 
 export async function POST(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const parsed = createWorkspaceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       operator.id,
       parsed.data,
     );
-    return NextResponse.json(workspace, { status: 201 });
+    return jsonResponse(workspace, { status: 201 });
   } catch (error) {
     return mapWorkspaceServiceError(error);
   }

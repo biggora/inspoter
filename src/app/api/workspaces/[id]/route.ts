@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { updateWorkspaceSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
+import { emptyResponse, jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const body = await request.json().catch(() => null);
   const parsed = updateWorkspaceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   try {
@@ -28,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       operator.id,
       parsed.data,
     );
-    return NextResponse.json(workspace);
+    return jsonResponse(workspace);
   } catch (error) {
     return mapWorkspaceServiceError(error);
   }
@@ -44,7 +45,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   try {
     await workspacesService.deleteWorkspace(id, operator.id);
-    return new NextResponse(null, { status: 204 });
+    return emptyResponse();
   } catch (error) {
     return mapWorkspaceServiceError(error);
   }

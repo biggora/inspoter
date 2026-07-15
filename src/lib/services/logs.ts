@@ -28,12 +28,20 @@ export interface ListLogsResult {
 }
 
 interface Cursor {
+  w: string;
   t: string;
   id: string;
 }
 
-function encodeCursor(entry: Pick<LogEntry, "timestamp" | "id">): string {
-  const cursor: Cursor = { t: entry.timestamp.toISOString(), id: entry.id };
+function encodeCursor(
+  workspaceId: string,
+  entry: Pick<LogEntry, "timestamp" | "id">,
+): string {
+  const cursor: Cursor = {
+    w: workspaceId,
+    t: entry.timestamp.toISOString(),
+    id: entry.id,
+  };
   return Buffer.from(JSON.stringify(cursor)).toString("base64url");
 }
 
@@ -42,8 +50,12 @@ function decodeCursor(cursor: string): Cursor | null {
     const parsed = JSON.parse(
       Buffer.from(cursor, "base64url").toString("utf-8"),
     ) as Partial<Cursor>;
-    if (typeof parsed.t === "string" && typeof parsed.id === "string") {
-      return { t: parsed.t, id: parsed.id };
+    if (
+      typeof parsed.w === "string" &&
+      typeof parsed.t === "string" &&
+      typeof parsed.id === "string"
+    ) {
+      return { w: parsed.w, t: parsed.t, id: parsed.id };
     }
     return null;
   } catch {
@@ -81,7 +93,8 @@ export async function list(
     where.message = { contains: params.query, mode: "insensitive" };
   }
 
-  const cursor = params.cursor ? decodeCursor(params.cursor) : null;
+  const decoded = params.cursor ? decodeCursor(params.cursor) : null;
+  const cursor = decoded && decoded.w === workspaceId ? decoded : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
     where.OR =
@@ -104,7 +117,9 @@ export async function list(
 
   const hasMore = rows.length > pageSize;
   const items = hasMore ? rows.slice(0, pageSize) : rows;
-  const nextCursor = hasMore ? encodeCursor(items[items.length - 1]) : null;
+  const nextCursor = hasMore
+    ? encodeCursor(workspaceId, items[items.length - 1])
+    : null;
 
   return { items, nextCursor };
 }

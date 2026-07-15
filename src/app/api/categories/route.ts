@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { categorySchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const parsed = categorySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       workspace.id,
       parsed.data,
     );
-    return NextResponse.json(
+    return jsonResponse(
       { id: category.id, name: category.name },
       { status: 201 },
     );

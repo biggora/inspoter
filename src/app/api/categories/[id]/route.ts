@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { categoryUpdateSchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
+import { emptyResponse, jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const body = await request.json().catch(() => null);
   const parsed = categoryUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   try {
@@ -28,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       workspace.id,
       parsed.data,
     );
-    return NextResponse.json({ id: category.id, name: category.name });
+    return jsonResponse({ id: category.id, name: category.name });
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -44,7 +45,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   try {
     await bookmarksService.deleteCategory(id, workspace.id);
-    return new NextResponse(null, { status: 204 });
+    return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);
   }

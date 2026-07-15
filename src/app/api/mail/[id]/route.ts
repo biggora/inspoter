@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as mailService from "@/lib/services/mail";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   const item = await mailService.getById(id, workspace.id);
   if (!item) {
-    return NextResponse.json({ error: "Resource not found." }, { status: 404 });
+    return jsonResponse({ error: "Resource not found." }, { status: 404 });
   }
-  return NextResponse.json(item);
+  return jsonResponse(item);
 }

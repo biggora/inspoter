@@ -31,13 +31,21 @@ export interface ListAlertsResult {
 }
 
 interface Cursor {
+  w: string;
   t: string;
   id: string;
 }
 
-function encodeCursor(entry: Pick<Alert, "timestamp" | "id">): string {
+function encodeCursor(
+  workspaceId: string,
+  entry: Pick<Alert, "timestamp" | "id">,
+): string {
   return Buffer.from(
-    JSON.stringify({ t: entry.timestamp.toISOString(), id: entry.id }),
+    JSON.stringify({
+      w: workspaceId,
+      t: entry.timestamp.toISOString(),
+      id: entry.id,
+    }),
   ).toString("base64url");
 }
 
@@ -46,8 +54,10 @@ function decodeCursor(cursor: string): Cursor | null {
     const p = JSON.parse(
       Buffer.from(cursor, "base64url").toString("utf-8"),
     ) as Partial<Cursor>;
-    return typeof p.t === "string" && typeof p.id === "string"
-      ? { t: p.t, id: p.id }
+    return typeof p.w === "string" &&
+      typeof p.t === "string" &&
+      typeof p.id === "string"
+      ? { w: p.w, t: p.t, id: p.id }
       : null;
   } catch {
     return null;
@@ -101,7 +111,8 @@ export async function list(
   if (params.query)
     where.message = { contains: params.query, mode: "insensitive" };
 
-  const cursor = params.cursor ? decodeCursor(params.cursor) : null;
+  const decoded = params.cursor ? decodeCursor(params.cursor) : null;
+  const cursor = decoded && decoded.w === workspaceId ? decoded : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
     where.OR =
@@ -125,7 +136,9 @@ export async function list(
 
   const hasMore = rows.length > pageSize;
   const items = hasMore ? rows.slice(0, pageSize) : rows;
-  const nextCursor = hasMore ? encodeCursor(items[items.length - 1]) : null;
+  const nextCursor = hasMore
+    ? encodeCursor(workspaceId, items[items.length - 1])
+    : null;
 
   return { items, nextCursor };
 }

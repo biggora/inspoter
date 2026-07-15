@@ -4,6 +4,7 @@ import {
   WorkspaceContextRequiredError,
   WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
+import { jsonResponse } from "@/lib/api/response";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
 // minor #4). Without this, a nonexistent categoryId on bookmark create
@@ -15,26 +16,26 @@ import {
 
 export function toErrorResponse(error: unknown): NextResponse {
   if (error instanceof WorkspaceContextRequiredError) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "WORKSPACE_CONTEXT_REQUIRED", message: error.message },
       { status: 400 },
     );
   }
   if (error instanceof WorkspaceContextStaleError) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
       { status: 409 },
     );
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2003") {
-      return NextResponse.json(
+      return jsonResponse(
         { error: "Referenced resource does not exist." },
         { status: 400 },
       );
     }
     if (error.code === "P2025") {
-      return NextResponse.json(
+      return jsonResponse(
         { error: "Resource not found." },
         { status: 404 },
       );

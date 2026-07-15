@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { db } from "@/lib/db";
 import { readSessionCookie, switchWorkspace } from "@/lib/auth/session";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const workspaceId = body?.workspaceId;
   if (!workspaceId || typeof workspaceId !== "string") {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "workspaceId is required" },
       { status: 400 },
     );
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     },
   });
   if (!membership) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Not a member of this workspace" },
       { status: 403 },
     );
@@ -34,9 +35,9 @@ export async function POST(request: NextRequest) {
 
   const sessionId = await readSessionCookie();
   if (!sessionId) {
-    return NextResponse.json({ error: "No session" }, { status: 401 });
+    return jsonResponse({ error: "No session" }, { status: 401 });
   }
 
   await switchWorkspace(sessionId, operator.id, workspaceId);
-  return NextResponse.json({ ok: true });
+  return jsonResponse({ ok: true });
 }

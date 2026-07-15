@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as serversService from "@/lib/services/servers";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const result = await serversService.listServers();
   if (!result.ok) {
-    return NextResponse.json(
+    return jsonResponse(
       {
         error:
           result.kind === "error"
@@ -20,5 +21,5 @@ export async function GET(request: NextRequest) {
       { status: 502 },
     );
   }
-  return NextResponse.json(result.data);
+  return jsonResponse(result.data);
 }

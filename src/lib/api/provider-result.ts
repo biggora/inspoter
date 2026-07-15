@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
 import type { ProviderResult } from "@/lib/providers/result";
+import { emptyResponse, jsonResponse } from "@/lib/api/response";
 
 // Maps a ProviderResult<T> to an HTTP response (AC-DOM-009, AC-PROV-003) —
 // shared by the domains route handlers so provider failures/unsupported
@@ -11,15 +12,15 @@ export function providerResultResponse<T>(
 ): NextResponse {
   if (result.ok) {
     if (result.data === undefined) {
-      return new NextResponse(null, { status: 204 });
+      return emptyResponse(204);
     }
-    return NextResponse.json(result.data, { status: successStatus });
+    return jsonResponse(result.data, { status: successStatus });
   }
   if (result.kind === "unsupported") {
-    return NextResponse.json(
+    return jsonResponse(
       { error: `Operation not supported by provider: ${result.operation}` },
       { status: 501 },
     );
   }
-  return NextResponse.json({ error: result.message }, { status: 502 });
+  return jsonResponse({ error: result.message }, { status: 502 });
 }

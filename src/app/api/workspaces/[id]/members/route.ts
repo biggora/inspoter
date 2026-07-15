@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { addMemberSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     await workspacesService.assertMembership(id, operator.id);
     const members = await workspacesService.listMembers(id);
-    return NextResponse.json(members);
+    return jsonResponse(members);
   } catch (error) {
     return mapWorkspaceServiceError(error);
   }
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const body = await request.json().catch(() => null);
   const parsed = addMemberSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
   try {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       parsed.data,
       operator.id,
     );
-    return NextResponse.json(member, { status: 201 });
+    return jsonResponse(member, { status: 201 });
   } catch (error) {
     return mapWorkspaceServiceError(error);
   }

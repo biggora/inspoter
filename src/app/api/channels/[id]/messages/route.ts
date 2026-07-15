@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
 
   if (!(await channelBelongsToWorkspace(workspace.id, id))) {
-    return NextResponse.json({ error: "Resource not found." }, { status: 404 });
+    return jsonResponse({ error: "Resource not found." }, { status: 404 });
   }
 
   const sp = request.nextUrl.searchParams;
@@ -40,5 +41,5 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     cursor: sp.get("cursor") ?? undefined,
     sort,
   });
-  return NextResponse.json(result);
+  return jsonResponse(result);
 }

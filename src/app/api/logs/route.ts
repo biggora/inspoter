@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as logsService from "@/lib/services/logs";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -30,5 +31,5 @@ export async function GET(request: NextRequest) {
     sort,
   });
 
-  return NextResponse.json(result);
+  return jsonResponse(result);
 }
