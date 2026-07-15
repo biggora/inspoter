@@ -4,11 +4,13 @@ export interface NavItem {
   icon: string;
 }
 
-// AC-SHELL-001: the seven PRD sections, in design.md §3.2.1 order.
+// AC-SHELL-001: the seven PRD sections plus Services (Uptime Kuma-style
+// monitoring, additive), in design.md §3.2.1 order.
 export const SECTION_NAV_ITEMS: NavItem[] = [
   { href: "/bookmarks", label: "Закладки", icon: "ri-bookmark-line" },
   { href: "/domains", label: "Домены", icon: "ri-global-line" },
   { href: "/servers", label: "Серверы", icon: "ri-server-line" },
+  { href: "/services", label: "Сервисы", icon: "ri-pulse-line" },
   { href: "/mail", label: "Почта", icon: "ri-mail-line" },
   { href: "/messages", label: "Сообщения", icon: "ri-message-2-line" },
   { href: "/logs", label: "Логи", icon: "ri-file-list-3-line" },
