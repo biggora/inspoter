@@ -3,10 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 // Optimistic auth proxy (architecture.md §5.3, ADR-003). Cheap
 // cookie-presence check only — no DB work here; the authoritative check is
 // requireOperator() in src/lib/auth/dal.ts. Matcher excludes /login,
-// /api/webhooks/:path* (AC-AUTH-001 exception, NFR-SEC-001, C-2), and static
-// assets. Renamed from middleware.ts to proxy.ts for Next.js 16 (the
-// `middleware` file/export convention is deprecated); proxy runs on the
-// Node.js runtime, which is sufficient for this cookie-only redirect.
+// /api/webhooks/:path* (AC-AUTH-001 exception, NFR-SEC-001, C-2),
+// /api/auth/authentik/:path* (Authentik login-initiation/callback — reached
+// before any session cookie exists), and static assets. Renamed from
+// middleware.ts to proxy.ts for Next.js 16 (the `middleware` file/export
+// convention is deprecated); proxy runs on the Node.js runtime, which is
+// sufficient for this cookie-only redirect.
 
 const SESSION_COOKIE_NAME = "session";
 
@@ -20,5 +22,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/webhooks|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!login|api/auth/authentik|api/webhooks|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

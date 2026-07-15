@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { sanitizeNextPath } from "@/lib/auth/redirect";
 import { login } from "./actions";
 
 function localizeLoginError(error: string) {
@@ -23,19 +25,40 @@ function localizeLoginError(error: string) {
   return "Не удалось выполнить вход. Проверьте данные и повторите попытку.";
 }
 
+function localizeAuthentikError(error: string) {
+  if (error === "authentik_state") {
+    return "Истекло время ожидания входа через Authentik. Попробуйте снова.";
+  }
+
+  return "Не удалось выполнить вход через Authentik. Попробуйте снова.";
+}
+
 // AC-AUTH-002/003 UI (design.md §3.1). Client Component: owns form state,
 // the empty-field submit-disable (design's narrow, documented exception to
 // "submit is never silently disabled" — see §3.1 rationale), and the generic
 // error banner. Calls the `login` Server Action (src/app/login/actions.ts,
 // backend-dev-owned) directly rather than via `useActionState`, since the
 // frozen contract's signature is `login(formData)` (single arg, no prevState).
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({
+  next,
+  authentikEnabled = false,
+  authentikError,
+}: {
+  next?: string;
+  authentikEnabled?: boolean;
+  authentikError?: string;
+}) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    authentikError ? localizeAuthentikError(authentikError) : null,
+  );
   const [submitting, setSubmitting] = useState(false);
+  const authentikHref = `/api/auth/authentik/login${
+    next ? `?next=${encodeURIComponent(next)}` : ""
+  }`;
 
   const canSubmit =
     username.trim().length > 0 && password.length > 0 && !submitting;
@@ -52,8 +75,7 @@ export function LoginForm({ next }: { next?: string }) {
       formData.set("password", password);
       const result = await login(formData);
       if (result.ok) {
-        const target = next && next.startsWith("/") ? next : "/bookmarks";
-        router.push(target);
+        router.push(sanitizeNextPath(next));
         router.refresh();
       } else {
         setError(localizeLoginError(result.error));
@@ -138,6 +160,25 @@ export function LoginForm({ next }: { next?: string }) {
             )}
           </Button>
         </form>
+
+        {authentikEnabled && (
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">или</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <a
+              href={authentikHref}
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "w-full",
+              )}
+            >
+              Войти через Authentik
+            </a>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -61,3 +61,61 @@ describe("AC-AUTH-005: operator env bootstrap contract", () => {
     ).toBe("salt:hash");
   });
 });
+
+// Authentik SSO env vars are optional as a group (absent = disabled), matching
+// the existing DNS/server-provider-credential convention — but partial
+// configuration is a startup error, same fail-fast spirit as the operator
+// bootstrap contract above.
+describe("Authentik SSO env contract", () => {
+  const baseOverrides = {
+    OPERATOR_USERNAME: "operator",
+    OPERATOR_PASSWORD_HASH: "salt:hash",
+    OPERATOR_PASSWORD: undefined,
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it("parses successfully with all four AUTHENTIK_* vars absent (disabled)", async () => {
+    const { env, authentikEnabled } = await loadEnvWith({
+      ...baseOverrides,
+      AUTHENTIK_ISSUER: undefined,
+      AUTHENTIK_CLIENT_ID: undefined,
+      AUTHENTIK_CLIENT_SECRET: undefined,
+      AUTHENTIK_REDIRECT_URI: undefined,
+    });
+    expect(authentikEnabled).toBe(false);
+    expect(
+      (env as unknown as { AUTHENTIK_ISSUER?: string }).AUTHENTIK_ISSUER,
+    ).toBeUndefined();
+  });
+
+  it("parses successfully with all four AUTHENTIK_* vars present (enabled)", async () => {
+    const { authentikEnabled } = await loadEnvWith({
+      ...baseOverrides,
+      AUTHENTIK_ISSUER: "https://auth.example.com/application/o/inspoter/",
+      AUTHENTIK_CLIENT_ID: "client-id",
+      AUTHENTIK_CLIENT_SECRET: "client-secret",
+      AUTHENTIK_REDIRECT_URI:
+        "https://dashboard.example.com/api/auth/authentik/callback",
+    });
+    expect(authentikEnabled).toBe(true);
+  });
+
+  it("fails fast when only some AUTHENTIK_* vars are set", async () => {
+    await expect(
+      loadEnvWith({
+        ...baseOverrides,
+        AUTHENTIK_ISSUER: "https://auth.example.com/application/o/inspoter/",
+        AUTHENTIK_CLIENT_ID: undefined,
+        AUTHENTIK_CLIENT_SECRET: undefined,
+        AUTHENTIK_REDIRECT_URI: undefined,
+      }),
+    ).rejects.toThrow();
+  });
+});

@@ -25,6 +25,11 @@ const envSchema = z
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     OPERATOR_PASSWORD_HASH: z.string().min(1).optional(),
     OPERATOR_PASSWORD: z.string().min(1).optional(),
+    // --- Authentik SSO (third-party auth, optional — absent = disabled) ---
+    AUTHENTIK_ISSUER: z.string().url().optional(),
+    AUTHENTIK_CLIENT_ID: z.string().min(1).optional(),
+    AUTHENTIK_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTHENTIK_REDIRECT_URI: z.string().url().optional(),
   })
   .refine(
     (data) =>
@@ -33,6 +38,23 @@ const envSchema = z
       message:
         "Exactly one of OPERATOR_PASSWORD_HASH or OPERATOR_PASSWORD is required",
       path: ["OPERATOR_PASSWORD_HASH"],
+    },
+  )
+  .refine(
+    (data) => {
+      const values = [
+        data.AUTHENTIK_ISSUER,
+        data.AUTHENTIK_CLIENT_ID,
+        data.AUTHENTIK_CLIENT_SECRET,
+        data.AUTHENTIK_REDIRECT_URI,
+      ];
+      const present = values.filter(Boolean).length;
+      return present === 0 || present === values.length;
+    },
+    {
+      message:
+        "AUTHENTIK_ISSUER, AUTHENTIK_CLIENT_ID, AUTHENTIK_CLIENT_SECRET, and AUTHENTIK_REDIRECT_URI must all be set together, or all omitted (Authentik login disabled)",
+      path: ["AUTHENTIK_ISSUER"],
     },
   );
 
@@ -58,3 +80,7 @@ function loadEnv() {
 }
 
 export const env = loadEnv();
+
+// True when all four AUTHENTIK_* vars are configured (see refine above —
+// they're validated as an all-or-nothing group, so checking one is enough).
+export const authentikEnabled = Boolean(env.AUTHENTIK_ISSUER);

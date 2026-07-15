@@ -95,3 +95,22 @@ export async function switchWorkspace(
     },
   });
 }
+
+// Shared by the password-login Server Action and the Authentik callback
+// route: attaches the operator's first workspace membership (by joinedAt) to
+// the freshly-created session, if any exists. Returns whether a workspace was
+// found and attached, so callers can route operators with zero memberships to
+// a "no workspace yet" landing page instead of the dashboard.
+export async function establishInitialWorkspace(
+  sessionId: string,
+  operatorId: string,
+): Promise<boolean> {
+  const membership = await db.workspaceMember.findFirst({
+    where: { operatorId },
+    orderBy: { joinedAt: "asc" },
+  });
+  if (!membership) return false;
+
+  await switchWorkspace(sessionId, operatorId, membership.workspaceId);
+  return true;
+}
