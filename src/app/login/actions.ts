@@ -2,14 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { findOperatorByUsername } from "@/lib/auth/dal";
-import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import {
   clearSessionCookie,
   createSession,
   deleteSession,
+  establishInitialWorkspace,
   readSessionCookie,
-  switchWorkspace,
 } from "@/lib/auth/session";
 
 // Login/logout Server Actions — frozen contract (plan.md §5.1, §5.3 Step 6).
@@ -48,20 +47,23 @@ export async function login(formData: FormData): Promise<LoginResult> {
     return { ok: false, error: "Invalid username or password." };
   }
 
+  // Authentik-only accounts (auto-provisioned on first SSO login) have no
+  // password. Still run the dummy-hash comparison so the response timing
+  // matches the wrong-password case — otherwise an attacker could tell
+  // "this username is Authentik-only" apart from "wrong password" by how
+  // fast the rejection comes back.
+  if (!operator.passwordHash) {
+    await verifyPassword(password, DUMMY_PASSWORD_HASH);
+    return { ok: false, error: "Invalid username or password." };
+  }
+
   const valid = await verifyPassword(password, operator.passwordHash);
   if (!valid) {
     return { ok: false, error: "Invalid username or password." };
   }
 
   const session = await createSession(operator.id);
-
-  const membership = await db.workspaceMember.findFirst({
-    where: { operatorId: operator.id },
-    orderBy: { joinedAt: "asc" },
-  });
-  if (membership) {
-    await switchWorkspace(session.id, operator.id, membership.workspaceId);
-  }
+  await establishInitialWorkspace(session.id, operator.id);
 
   return { ok: true };
 }

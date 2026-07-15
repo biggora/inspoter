@@ -21,12 +21,34 @@ enum WorkspaceRole {
 }
 
 model Operator {
-  id           String            @id @default(cuid())
-  username     String            @unique
-  passwordHash String // scrypt hash; never returned (NFR-SEC-002)
-  createdAt    DateTime          @default(now())
-  sessions     Session[]
-  memberships  WorkspaceMember[]
+  id                 String             @id @default(cuid())
+  username           String             @unique
+  passwordHash       String? // scrypt hash; never returned (NFR-SEC-002). Null for Authentik-only accounts (no password set).
+  email              String? // last-seen email claim from an external identity provider; display-only, never unique (an IdP email can change/be reused)
+  createdAt          DateTime           @default(now())
+  sessions           Session[]
+  memberships        WorkspaceMember[]
+  externalIdentities ExternalIdentity[]
+}
+
+// --- Third-party auth (Authentik OIDC, first of possibly several IdPs) ---
+enum ExternalIdentityProvider {
+  AUTHENTIK
+}
+
+model ExternalIdentity {
+  id          String                   @id @default(cuid())
+  provider    ExternalIdentityProvider
+  subject     String // OIDC `sub` claim — the actual linking key (never email)
+  operatorId  String
+  operator    Operator                 @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  email       String? // last-seen `email` claim; display/debug only, never used to match identity
+  lastLoginAt DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([provider, subject])
+  @@index([operatorId])
 }
 
 model Session {
