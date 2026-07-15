@@ -5,7 +5,29 @@ import {
   WORKSPACE_HEADER_NAME,
 } from "@/lib/client/active-workspace";
 
-export async function fetchServers() {
+export interface ServerDto {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  ip: string;
+  cpu: string;
+  ram: string;
+  disk: string;
+  os: string;
+  location: string;
+}
+
+export interface ServersByProviderDto {
+  providerId: string;
+  providerType: string;
+  label: string;
+  mode: string;
+  servers: ServerDto[];
+  error: string | null;
+}
+
+export async function fetchServers(): Promise<ServersByProviderDto[]> {
   const res = await fetch("/api/servers", {
     headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
   });
@@ -13,8 +35,8 @@ export async function fetchServers() {
   return res.json();
 }
 
-export async function getServer(id: string) {
-  const res = await fetch(`/api/servers/${id}`, {
+export async function getServer(providerId: string, id: string): Promise<ServerDto> {
+  const res = await fetch(`/api/servers/${providerId}/${id}`, {
     headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
   });
   if (!res.ok) throw new Error("Failed to fetch server");
@@ -22,10 +44,11 @@ export async function getServer(id: string) {
 }
 
 export async function powerAction(
+  providerId: string,
   id: string,
   action: "start" | "stop" | "restart",
 ) {
-  const res = await fetch(`/api/servers/${id}/power`, {
+  const res = await fetch(`/api/servers/${providerId}/${id}/power`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

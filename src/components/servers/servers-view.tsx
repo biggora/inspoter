@@ -2,20 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerStatus } from "@/lib/providers/servers/types";
-import { fetchServers, getServer, powerAction } from "./api";
+import { fetchServers, getServer, powerAction, type ServerDto, type ServersByProviderDto } from "./api";
 
-interface Server {
-  id: string;
-  name: string;
-  type: string;
-  status: ServerStatus;
-  ip: string;
-  cpu: string;
-  ram: string;
-  disk: string;
-  os: string;
-  location: string;
-}
+type Server = Omit<ServerDto, "status"> & { providerId: string; status: ServerStatus };
 
 type PowerActionType = "start" | "stop" | "restart";
 
@@ -62,9 +51,15 @@ export function ServersView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchServers();
-      setServers(data);
-      setLoadError(null);
+      const groups: ServersByProviderDto[] = await fetchServers();
+      const flat: Server[] = [];
+      const errors: string[] = [];
+      for (const g of groups) {
+        if (g.error) errors.push(`${g.label}: ${g.error}`);
+        for (const s of g.servers) flat.push({ ...s, status: s.status as ServerStatus, providerId: g.providerId });
+      }
+      setServers(flat);
+      setLoadError(errors.length ? errors.join("; ") : null);
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Не удалось загрузить серверы",
@@ -112,7 +107,7 @@ export function ServersView() {
       );
 
       try {
-        await powerAction(server.id, action);
+        await powerAction(server.providerId, server.id, action);
       } catch (err) {
         setServers((prev) =>
           prev.map((s) =>
@@ -134,7 +129,8 @@ export function ServersView() {
 
       const interval = setInterval(async () => {
         try {
-          const updated = await getServer(server.id);
+          const raw = await getServer(server.providerId, server.id);
+          const updated = { ...raw, providerId: server.providerId } as Server;
           setServers((prev) =>
             prev.map((s) => (s.id === server.id ? updated : s)),
           );
@@ -165,7 +161,7 @@ export function ServersView() {
 
   const pageState: PageState = loading
     ? "loading"
-    : loadError
+    : servers.length === 0 && loadError
       ? "error"
       : servers.length === 0
         ? "empty"
