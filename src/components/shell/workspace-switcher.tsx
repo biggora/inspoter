@@ -59,7 +59,7 @@ export function WorkspaceSwitcher({
         if (!cancelled) setWorkspaces(data);
       })
       .catch(() => {
-        if (!cancelled) toast.error("Couldn't load workspaces.");
+        if (!cancelled) toast.error("Не удалось загрузить рабочие пространства.");
       });
     return () => {
       cancelled = true;
@@ -73,7 +73,7 @@ export function WorkspaceSwitcher({
       await workspacesApi.switchTo(workspaceId);
       router.refresh();
     } catch {
-      toast.error("Couldn't switch workspace. Try again.");
+      toast.error("Не удалось переключить рабочее пространство. Попробуйте снова.");
     } finally {
       setSwitchingId(null);
     }
@@ -89,7 +89,7 @@ export function WorkspaceSwitcher({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Workspace name is required.");
+      setError("Название рабочего пространства обязательно.");
       return;
     }
 
@@ -97,7 +97,7 @@ export function WorkspaceSwitcher({
     setError(null);
     try {
       const workspace = await workspacesApi.create(trimmed);
-      toast.success("Workspace created.");
+      toast.success("Рабочее пространство создано.");
       setCreateOpen(false);
       await handleSwitch(workspace.id);
     } catch (err) {
@@ -105,7 +105,9 @@ export function WorkspaceSwitcher({
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't create workspace.",
+          err instanceof ApiError
+            ? err.message
+            : "Не удалось создать рабочее пространство.",
         );
       }
     } finally {
@@ -136,7 +138,7 @@ export function WorkspaceSwitcher({
         >
           {workspaces === null ? (
             <div className="px-1.5 py-1 text-sm text-muted-foreground">
-              Loading…
+              Загрузка…
             </div>
           ) : (
             workspaces.map((workspace) => (
@@ -157,7 +159,7 @@ export function WorkspaceSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={openCreate}>
             <Plus aria-hidden className="size-4" />
-            Create workspace
+            Создать рабочее пространство
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -165,7 +167,7 @@ export function WorkspaceSwitcher({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create workspace</DialogTitle>
+            <DialogTitle>Создать рабочее пространство</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate}
@@ -173,7 +175,7 @@ export function WorkspaceSwitcher({
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={nameId}>Name</Label>
+              <Label htmlFor={nameId}>Название</Label>
               <Input
                 id={nameId}
                 value={name}
@@ -186,10 +188,10 @@ export function WorkspaceSwitcher({
             </div>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" type="button" />}>
-                Cancel
+                Отмена
               </DialogClose>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating…" : "Create"}
+                {submitting ? "Создание…" : "Создать"}
               </Button>
             </DialogFooter>
           </form>

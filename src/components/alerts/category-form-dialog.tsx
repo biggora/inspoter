@@ -51,7 +51,7 @@ export function CategoryFormDialog({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Category name is required.");
+      setError("Название категории обязательно.");
       return;
     }
 
@@ -60,10 +60,10 @@ export function CategoryFormDialog({
     try {
       if (state?.mode === "edit") {
         await alertCategoriesApi.rename(state.category.id, trimmed);
-        toast.success("Category renamed.");
+        toast.success("Категория переименована.");
       } else {
         await alertCategoriesApi.create(trimmed);
-        toast.success("Category created.");
+        toast.success("Категория создана.");
       }
       onSaved();
     } catch (err) {
@@ -73,7 +73,7 @@ export function CategoryFormDialog({
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Couldn't save category. Try again.",
+            : "Не удалось сохранить категорию. Попробуйте снова.",
         );
       }
     } finally {
@@ -86,7 +86,7 @@ export function CategoryFormDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Rename category" : "New category"}
+            {isEdit ? "Переименовать категорию" : "Новая категория"}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -95,7 +95,7 @@ export function CategoryFormDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Name</Label>
+            <Label htmlFor={nameId}>Название</Label>
             <Input
               id={nameId}
               value={name}
@@ -113,16 +113,16 @@ export function CategoryFormDialog({
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Cancel
+              Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit
                 ? submitting
-                  ? "Saving…"
-                  : "Save"
+                  ? "Сохранение…"
+                  : "Сохранить"
                 : submitting
-                  ? "Creating…"
-                  : "Create"}
+                  ? "Создание…"
+                  : "Создать"}
             </Button>
           </DialogFooter>
         </form>

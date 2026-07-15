@@ -56,7 +56,7 @@ test("AC-AUTH-004: logout invalidates the session and subsequent requests redire
   await login(page);
   await expect(page).toHaveURL(/\/bookmarks/);
 
-  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await page.getByRole("button", { name: "Выйти", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 
   await page.goto("/bookmarks");

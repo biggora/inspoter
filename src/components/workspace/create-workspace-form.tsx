@@ -25,7 +25,7 @@ export function CreateWorkspaceForm() {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Workspace name is required.");
+      setError("Название рабочего пространства обязательно.");
       return;
     }
 
@@ -34,7 +34,7 @@ export function CreateWorkspaceForm() {
     try {
       const workspace = await workspacesApi.create(trimmed);
       await workspacesApi.switchTo(workspace.id);
-      toast.success("Workspace created.");
+      toast.success("Рабочее пространство создано.");
       setName("");
       router.refresh();
     } catch (err) {
@@ -42,7 +42,9 @@ export function CreateWorkspaceForm() {
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't create workspace.",
+          err instanceof ApiError
+            ? err.message
+            : "Не удалось создать рабочее пространство.",
         );
       }
     } finally {
@@ -57,7 +59,7 @@ export function CreateWorkspaceForm() {
       className="flex flex-col gap-3 sm:flex-row sm:items-end"
     >
       <div className="flex flex-1 flex-col gap-1.5">
-        <Label htmlFor={nameId}>New workspace name</Label>
+        <Label htmlFor={nameId}>Название нового рабочего пространства</Label>
         <Input
           id={nameId}
           value={name}
@@ -68,7 +70,7 @@ export function CreateWorkspaceForm() {
         {error && <p className="text-sm text-(--error-text)">{error}</p>}
       </div>
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Creating…" : "Create workspace"}
+        {submitting ? "Создание…" : "Создать рабочее пространство"}
       </Button>
     </form>
   );

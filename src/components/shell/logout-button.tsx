@@ -21,7 +21,7 @@ export function LogoutButton() {
       type="button"
       variant="ghost"
       size="icon-sm"
-      aria-label="Log out"
+      aria-label="Выйти"
       disabled={isPending}
       onClick={() => startTransition(() => logout())}
     >

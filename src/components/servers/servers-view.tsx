@@ -67,7 +67,7 @@ export function ServersView() {
       setLoadError(null);
     } catch (err) {
       setLoadError(
-        err instanceof Error ? err.message : "Failed to load servers",
+        err instanceof Error ? err.message : "Не удалось загрузить серверы",
       );
     } finally {
       setLoading(false);
@@ -312,32 +312,32 @@ const statusConfig: Record<
   { label: string; color: string; dotColor: string }
 > = {
   running: {
-    label: "Running",
+    label: "Работает",
     color: "bg-accent-100 text-accent-700",
     dotColor: "bg-accent-500",
   },
   stopped: {
-    label: "Stopped",
+    label: "Остановлен",
     color: "bg-secondary-100 text-secondary-700",
     dotColor: "bg-secondary-400",
   },
   starting: {
-    label: "Starting…",
+    label: "Запуск…",
     color: "bg-primary-100 text-primary-700",
     dotColor: "bg-primary-400",
   },
   stopping: {
-    label: "Stopping…",
+    label: "Остановка…",
     color: "bg-primary-100 text-primary-700",
     dotColor: "bg-primary-400",
   },
   restarting: {
-    label: "Restarting…",
+    label: "Перезапуск…",
     color: "bg-primary-100 text-primary-700",
     dotColor: "bg-primary-400",
   },
   unknown: {
-    label: "Unknown",
+    label: "Неизвестно",
     color: "bg-secondary-100 text-secondary-700",
     dotColor: "bg-secondary-400",
   },
@@ -357,7 +357,7 @@ function getAvailableActions(server: Server): CardAction[] {
       return [
         {
           action: "restart",
-          label: "Restart",
+          label: "Перезапустить",
           icon: "ri-restart-line",
           confirmTitle: `Перезапустить «${server.name}»?`,
           confirmText:
@@ -365,7 +365,7 @@ function getAvailableActions(server: Server): CardAction[] {
         },
         {
           action: "stop",
-          label: "Stop",
+          label: "Остановить",
           icon: "ri-stop-circle-line",
           confirmTitle: `Остановить «${server.name}»?`,
           confirmText: "Сервер будет остановлен и станет недоступен.",
@@ -376,7 +376,7 @@ function getAvailableActions(server: Server): CardAction[] {
       return [
         {
           action: "start",
-          label: "Start",
+          label: "Запустить",
           icon: "ri-play-circle-line",
           confirmTitle: `Запустить «${server.name}»?`,
           confirmText:
@@ -446,19 +446,19 @@ function ServerCard({
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Disk</span>
+          <span className="text-foreground-500">Диск</span>
           <span className="text-foreground-800 font-medium">
             {server.disk}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">OS</span>
+          <span className="text-foreground-500">ОС</span>
           <span className="text-foreground-800 font-medium">
             {server.os}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Location</span>
+          <span className="text-foreground-500">Расположение</span>
           <span className="text-foreground-800 font-medium">
             {server.location}
           </span>

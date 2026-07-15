@@ -121,7 +121,7 @@ export function DnsRecordDialog({
     const nextErrors: FieldErrors = {};
 
     if (state.mode === "create" && !trimmedName) {
-      nextErrors.name = "Name is required";
+      nextErrors.name = "Название обязательно";
     }
     const valueError = validateRecordValue(type, trimmedValue);
     if (valueError) nextErrors.value = valueError;
@@ -143,7 +143,7 @@ export function DnsRecordDialog({
           ttl: Number(ttl),
           ...(isMx ? { priority: Number(priority) } : {}),
         });
-        toast.success("DNS record updated.");
+        toast.success("DNS-запись обновлена.");
       } else {
         await createRecord(state.providerId, state.domainId, {
           type,
@@ -152,7 +152,7 @@ export function DnsRecordDialog({
           ttl: Number(ttl),
           ...(isMx ? { priority: Number(priority) } : {}),
         });
-        toast.success("DNS record created.");
+        toast.success("DNS-запись создана.");
       }
       onSaved();
     } catch (err) {
@@ -171,7 +171,7 @@ export function DnsRecordDialog({
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Couldn't save DNS record. Try again.",
+            : "Не удалось сохранить DNS-запись. Попробуйте снова.",
         );
       }
     } finally {
@@ -184,7 +184,7 @@ export function DnsRecordDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Edit DNS record" : "Add DNS record"}
+            {isEdit ? "Изменить DNS-запись" : "Добавить DNS-запись"}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -193,7 +193,7 @@ export function DnsRecordDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={typeFieldId}>Type</Label>
+            <Label htmlFor={typeFieldId}>Тип</Label>
             <Select
               value={type}
               onValueChange={(next) => setType(next as DnsRecordType)}
@@ -214,7 +214,7 @@ export function DnsRecordDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Name</Label>
+            <Label htmlFor={nameId}>Название</Label>
             <Input
               id={nameId}
               value={name}
@@ -223,7 +223,7 @@ export function DnsRecordDialog({
               aria-required="true"
               aria-invalid={errors.name ? true : undefined}
               aria-describedby={errors.name ? nameErrorId : undefined}
-              placeholder="@ or subdomain"
+              placeholder="@ или поддомен"
               autoFocus={!isEdit}
               className="font-mono"
             />
@@ -235,7 +235,7 @@ export function DnsRecordDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={valueId}>Value</Label>
+            <Label htmlFor={valueId}>Значение</Label>
             <Input
               id={valueId}
               value={value}
@@ -254,7 +254,7 @@ export function DnsRecordDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ttlId}>TTL (seconds)</Label>
+            <Label htmlFor={ttlId}>TTL (секунды)</Label>
             <Input
               id={ttlId}
               type="number"
@@ -275,7 +275,7 @@ export function DnsRecordDialog({
 
           {isMx && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={priorityId}>Priority</Label>
+              <Label htmlFor={priorityId}>Приоритет</Label>
               <Input
                 id={priorityId}
                 type="number"
@@ -297,16 +297,16 @@ export function DnsRecordDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Cancel
+              Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit
                 ? submitting
-                  ? "Saving…"
-                  : "Save changes"
+                  ? "Сохранение…"
+                  : "Сохранить изменения"
                 : submitting
-                  ? "Creating…"
-                  : "Create"}
+                  ? "Создание…"
+                  : "Создать"}
             </Button>
           </DialogFooter>
         </form>

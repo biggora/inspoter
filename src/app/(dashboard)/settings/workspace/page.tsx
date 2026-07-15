@@ -25,12 +25,12 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Workspace</h1>
+      <h1 className="text-xl font-semibold text-foreground">Рабочее пространство</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Workspace name</CardTitle>
-          <CardDescription>Rename the current workspace.</CardDescription>
+          <CardTitle>Название рабочего пространства</CardTitle>
+          <CardDescription>Переименовать текущее рабочее пространство.</CardDescription>
         </CardHeader>
         <CardContent>
           <RenameWorkspaceForm
@@ -42,9 +42,9 @@ export default async function WorkspaceSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Members</CardTitle>
+          <CardTitle>Участники</CardTitle>
           <CardDescription>
-            Operators with access to this workspace.
+            Операторы с доступом к этому рабочему пространству.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -55,9 +55,9 @@ export default async function WorkspaceSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Create new workspace</CardTitle>
+          <CardTitle>Создать новое рабочее пространство</CardTitle>
           <CardDescription>
-            Start a fresh, empty workspace and switch into it.
+            Начните новое пустое рабочее пространство и переключитесь на него.
           </CardDescription>
         </CardHeader>
         <CardContent>

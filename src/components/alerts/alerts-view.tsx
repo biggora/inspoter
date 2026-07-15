@@ -37,16 +37,16 @@ import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
 
 const SEVERITY_ITEMS: Record<string, string> = {
-  all: "All severities",
-  info: "Info",
-  warning: "Warning",
-  error: "Error",
-  critical: "Critical",
+  all: "Все уровни",
+  info: "Информация",
+  warning: "Предупреждение",
+  error: "Ошибка",
+  critical: "Критическая",
 };
 
 const SORT_ITEMS: Record<string, string> = {
-  desc: "Newest first",
-  asc: "Oldest first",
+  desc: "Сначала новые",
+  asc: "Сначала старые",
 };
 
 function formatTimestamp(iso: string): string {
@@ -135,7 +135,7 @@ export function AlertsView() {
         setItems(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled) setError("Couldn't load alerts. Try again.");
+        if (!cancelled) setError("Не удалось загрузить оповещения. Попробуйте снова.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -193,14 +193,17 @@ export function AlertsView() {
   }
 
   const categoryItems: Record<string, string> = {
-    all: "All categories",
+    all: "Все категории",
     ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
   };
+
+  const hasActiveFilters =
+    query !== "" || categoryId !== "all" || severity !== "all";
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Alerts</h1>
+        <h1 className="text-xl font-semibold text-foreground">Оповещения</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -208,14 +211,14 @@ export function AlertsView() {
             onClick={() => setManageOpen(true)}
           >
             <Settings2 aria-hidden className="size-4" />
-            Manage categories
+            Управление категориями
           </Button>
           <Button
             size="sm"
             onClick={() => setCategoryDialog({ mode: "create" })}
           >
             <Plus aria-hidden className="size-4" />
-            New category
+            Новая категория
           </Button>
         </div>
       </div>
@@ -224,8 +227,8 @@ export function AlertsView() {
         <Input
           value={searchInput}
           onChange={(event) => handleSearchChange(event.target.value)}
-          placeholder="Search message..."
-          aria-label="Search alert messages"
+          placeholder="Поиск по сообщению..."
+          aria-label="Поиск по сообщениям оповещений"
           className="sm:max-w-xs"
         />
         <Select
@@ -233,7 +236,7 @@ export function AlertsView() {
           onValueChange={(v) => handleCategoryChange(v as string)}
           items={categoryItems}
         >
-          <SelectTrigger size="sm" aria-label="Filter by category">
+          <SelectTrigger size="sm" aria-label="Фильтр по категории">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -249,7 +252,7 @@ export function AlertsView() {
           onValueChange={(v) => handleSeverityChange(v as string)}
           items={SEVERITY_ITEMS}
         >
-          <SelectTrigger size="sm" aria-label="Filter by severity">
+          <SelectTrigger size="sm" aria-label="Фильтр по уровню важности">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -265,7 +268,7 @@ export function AlertsView() {
           onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
           items={SORT_ITEMS}
         >
-          <SelectTrigger size="sm" aria-label="Sort order">
+          <SelectTrigger size="sm" aria-label="Порядок сортировки">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -294,20 +297,37 @@ export function AlertsView() {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            No alerts match the current filters.
-          </p>
-        </div>
+        hasActiveFilters ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm text-muted-foreground">
+              Нет алертов, соответствующих текущим фильтрам.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">
+              Алерты пока отсутствуют
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Отправьте первый алерт через webhook:
+            </p>
+            <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-muted p-4 text-left text-xs">
+              {`curl -X POST http://your-host/api/webhooks/alert \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"category":"deploy","severity":"warning","source":"test","message":"Hello"}'`}
+            </pre>
+          </div>
+        )
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Severity</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Message</TableHead>
-              <TableHead>Time</TableHead>
+              <TableHead>Уровень</TableHead>
+              <TableHead>Категория</TableHead>
+              <TableHead>Источник</TableHead>
+              <TableHead>Сообщение</TableHead>
+              <TableHead>Время</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -317,7 +337,7 @@ export function AlertsView() {
                   <SeverityBadge severity={alert.severity} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {alert.alertCategory?.name ?? "Uncategorized"}
+                  {alert.alertCategory?.name ?? "Без категории"}
                 </TableCell>
                 <TableCell className="font-mono">{alert.source}</TableCell>
                 <TableCell className="max-w-md truncate font-mono">
@@ -340,10 +360,10 @@ export function AlertsView() {
           disabled={pageIndex === 0 || loading}
         >
           <ChevronLeft aria-hidden className="size-4" />
-          Previous
+          Назад
         </Button>
         <span className="text-sm text-muted-foreground">
-          Page {pageIndex + 1}
+          Страница {pageIndex + 1}
         </span>
         <Button
           variant="outline"
@@ -351,7 +371,7 @@ export function AlertsView() {
           onClick={handleNext}
           disabled={!nextCursor || loading}
         >
-          Next
+          Далее
           <ChevronRight aria-hidden className="size-4" />
         </Button>
       </div>

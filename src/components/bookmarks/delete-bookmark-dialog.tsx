@@ -35,10 +35,10 @@ export function DeleteBookmarkDialog({
     setSubmitting(true);
     try {
       await bookmarksApi.remove(bookmark.id);
-      toast.success("Bookmark deleted.");
+      toast.success("Закладка удалена.");
       onDeleted();
     } catch {
-      toast.error("Couldn't delete bookmark. Try again.");
+      toast.error("Не удалось удалить закладку. Попробуйте снова.");
     } finally {
       setSubmitting(false);
     }
@@ -49,20 +49,20 @@ export function DeleteBookmarkDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Delete &ldquo;{bookmark?.name}&rdquo;?
+            Удалить «{bookmark?.name}»?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This bookmark will be permanently removed.
+            Эта закладка будет удалена без возможности восстановления.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Deleting…" : "Delete"}
+            {submitting ? "Удаление…" : "Удалить"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

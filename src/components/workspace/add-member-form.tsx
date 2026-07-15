@@ -33,7 +33,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
     event.preventDefault();
     const trimmedUsername = username.trim();
     if (!trimmedUsername) {
-      setErrors({ username: "Username is required." });
+      setErrors({ username: "Имя пользователя обязательно." });
       return;
     }
 
@@ -44,7 +44,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         username: trimmedUsername,
         password: password.trim() || undefined,
       });
-      toast.success("Member added.");
+      toast.success("Участник добавлен.");
       setUsername("");
       setPassword("");
       router.refresh();
@@ -60,7 +60,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         });
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't add member.",
+          err instanceof ApiError ? err.message : "Не удалось добавить участника.",
         );
       }
     } finally {
@@ -75,7 +75,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
       className="flex flex-col gap-3 sm:flex-row sm:items-end"
     >
       <div className="flex flex-1 flex-col gap-1.5">
-        <Label htmlFor={usernameId}>Username</Label>
+        <Label htmlFor={usernameId}>Имя пользователя</Label>
         <Input
           id={usernameId}
           value={username}
@@ -88,7 +88,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
-        <Label htmlFor={passwordId}>Password (only if new user)</Label>
+        <Label htmlFor={passwordId}>Пароль (только для нового пользователя)</Label>
         <Input
           id={passwordId}
           type="password"
@@ -101,7 +101,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         )}
       </div>
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Adding…" : "Add member"}
+        {submitting ? "Добавление…" : "Добавить участника"}
       </Button>
     </form>
   );

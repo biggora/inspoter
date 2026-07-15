@@ -41,11 +41,11 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
     setSubmitting(true);
     try {
       await workspacesApi.removeMember(workspaceId, removeTarget.id);
-      toast.success("Member removed.");
+      toast.success("Участник удалён.");
       setRemoveTarget(null);
       router.refresh();
     } catch {
-      toast.error("Couldn't remove member. Try again.");
+      toast.error("Не удалось удалить участника. Попробуйте снова.");
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +71,7 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`Remove ${member.operator.username}`}
+              aria-label={`Удалить ${member.operator.username}`}
               onClick={() => setRemoveTarget(member)}
               disabled={members.length <= 1}
             >
@@ -88,20 +88,20 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove &ldquo;{removeTarget?.operator.username}&rdquo;?
+              Удалить «{removeTarget?.operator.username}»?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This member will lose access to the workspace.
+              Этот участник потеряет доступ к рабочему пространству.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleConfirmRemove}
               disabled={submitting}
             >
-              {submitting ? "Removing…" : "Remove"}
+              {submitting ? "Удаление…" : "Удалить"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

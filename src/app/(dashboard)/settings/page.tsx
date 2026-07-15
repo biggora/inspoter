@@ -4,7 +4,7 @@ import { Building2, Webhook } from "lucide-react";
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <h1 className="text-2xl font-bold">Настройки</h1>
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/settings/workspace"
@@ -12,9 +12,10 @@ export default function SettingsPage() {
         >
           <Building2 className="size-5 text-muted-foreground" />
           <div>
-            <p className="font-medium">Workspace</p>
+            <p className="font-medium">Рабочее пространство</p>
             <p className="text-sm text-muted-foreground">
-              Manage workspace name, members, and create new workspaces
+              Управление названием рабочего пространства, участниками и
+              создание новых пространств
             </p>
           </div>
         </Link>
@@ -24,10 +25,10 @@ export default function SettingsPage() {
         >
           <Webhook className="size-5 text-muted-foreground" />
           <div>
-            <p className="font-medium">Webhooks</p>
+            <p className="font-medium">Webhook-токены</p>
             <p className="text-sm text-muted-foreground">
-              Manage tokens for external systems pushing mail, messages, logs,
-              and alerts
+              Управление токенами для внешних систем, отправляющих почту,
+              сообщения, логи и оповещения
             </p>
           </div>
         </Link>

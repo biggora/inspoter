@@ -90,10 +90,10 @@ export function BookmarkDialog({
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     const nextErrors: FieldErrors = {};
-    if (!trimmedName) nextErrors.name = "Bookmark name is required.";
-    if (!trimmedUrl) nextErrors.url = "URL is required.";
+    if (!trimmedName) nextErrors.name = "Название закладки обязательно.";
+    if (!trimmedUrl) nextErrors.url = "URL обязателен.";
     else if (!isValidHttpUrl(trimmedUrl)) {
-      nextErrors.url = "Enter a valid http:// or https:// URL.";
+      nextErrors.url = "Введите корректный URL, начинающийся с http:// или https://.";
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -109,10 +109,10 @@ export function BookmarkDialog({
       };
       if (state?.mode === "edit") {
         await bookmarksApi.update(state.bookmark.id, payload);
-        toast.success("Bookmark updated.");
+        toast.success("Закладка обновлена.");
       } else {
         await bookmarksApi.create(payload);
-        toast.success("Bookmark created.");
+        toast.success("Закладка создана.");
       }
       onSaved();
     } catch (err) {
@@ -126,7 +126,7 @@ export function BookmarkDialog({
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Couldn't save bookmark. Try again.",
+            : "Не удалось сохранить закладку. Попробуйте снова.",
         );
       }
     } finally {
@@ -138,7 +138,7 @@ export function BookmarkDialog({
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit bookmark" : "New bookmark"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Редактировать закладку" : "Новая закладка"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
@@ -146,7 +146,7 @@ export function BookmarkDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Name</Label>
+            <Label htmlFor={nameId}>Название</Label>
             <Input
               id={nameId}
               value={name}
@@ -182,17 +182,17 @@ export function BookmarkDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={iconId}>Icon (optional)</Label>
+            <Label htmlFor={iconId}>Иконка (необязательно)</Label>
             <Input
               id={iconId}
               value={icon}
               onChange={(event) => setIcon(event.target.value)}
-              placeholder="Emoji, icon name, or image URL"
+              placeholder="Эмодзи, название иконки или URL изображения"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={descriptionId}>Description (optional)</Label>
+            <Label htmlFor={descriptionId}>Описание (необязательно)</Label>
             <Textarea
               id={descriptionId}
               value={description}
@@ -202,7 +202,7 @@ export function BookmarkDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={categoryFieldId}>Category</Label>
+            <Label htmlFor={categoryFieldId}>Категория</Label>
             <select
               id={categoryFieldId}
               value={category}
@@ -220,16 +220,16 @@ export function BookmarkDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Cancel
+              Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit
                 ? submitting
-                  ? "Saving…"
-                  : "Save changes"
+                  ? "Сохранение…"
+                  : "Сохранить изменения"
                 : submitting
-                  ? "Creating…"
-                  : "Create"}
+                  ? "Создание…"
+                  : "Создать"}
             </Button>
           </DialogFooter>
         </form>

@@ -22,6 +22,16 @@ interface DeleteCategoryDialogProps {
   onDeleted: () => void;
 }
 
+function bookmarkWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return "закладка";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "закладки";
+  }
+  return "закладок";
+}
+
 // AC-BM-003/004 (design.md §3.3.3): warns of cascade before any request
 // fires; copy is dynamic on the category's current bookmark count.
 export function DeleteCategoryDialog({
@@ -39,12 +49,12 @@ export function DeleteCategoryDialog({
       await categoriesApi.remove(category.id);
       toast.success(
         count > 0
-          ? `Category and ${count} bookmark${count === 1 ? "" : "s"} deleted.`
-          : "Category deleted.",
+          ? `Категория и ${count} ${bookmarkWord(count)} внутри неё удалены.`
+          : "Категория удалена.",
       );
       onDeleted();
     } catch {
-      toast.error("Couldn't delete category. Try again.");
+      toast.error("Не удалось удалить категорию. Попробуйте снова.");
     } finally {
       setSubmitting(false);
     }
@@ -55,22 +65,22 @@ export function DeleteCategoryDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Delete &ldquo;{category?.name}&rdquo;?
+            Удалить «{category?.name}»?
           </AlertDialogTitle>
           <AlertDialogDescription>
             {count > 0
-              ? `This category contains ${count} bookmark${count === 1 ? "" : "s"}. Deleting it will also delete all bookmarks inside it. This cannot be undone.`
-              : "This category is empty. Deleting it cannot be undone."}
+              ? `В этой категории ${count} ${bookmarkWord(count)}. При удалении категории также будут удалены все закладки внутри неё. Это действие нельзя отменить.`
+              : "Эта категория пуста. Это действие нельзя отменить."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Deleting…" : "Delete category"}
+            {submitting ? "Удаление…" : "Удалить категорию"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -36,10 +36,10 @@ export function DeleteCategoryDialog({
     setSubmitting(true);
     try {
       await alertCategoriesApi.remove(category.id);
-      toast.success("Category deleted.");
+      toast.success("Категория удалена.");
       onDeleted();
     } catch {
-      toast.error("Couldn't delete category. Try again.");
+      toast.error("Не удалось удалить категорию. Попробуйте снова.");
     } finally {
       setSubmitting(false);
     }
@@ -50,21 +50,21 @@ export function DeleteCategoryDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Delete &ldquo;{category?.name}&rdquo;?
+            Удалить «{category?.name}»?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Alerts in this category will be uncategorized. This cannot be
-            undone.
+            Оповещения из этой категории останутся без категории. Это
+            действие нельзя отменить.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Deleting…" : "Delete category"}
+            {submitting ? "Удаление…" : "Удалить категорию"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

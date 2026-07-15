@@ -32,7 +32,7 @@ export function RenameWorkspaceForm({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Workspace name is required.");
+      setError("Название рабочего пространства обязательно.");
       return;
     }
 
@@ -40,14 +40,16 @@ export function RenameWorkspaceForm({
     setError(null);
     try {
       await workspacesApi.rename(workspaceId, trimmed);
-      toast.success("Workspace renamed.");
+      toast.success("Рабочее пространство переименовано.");
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Couldn't rename workspace.",
+          err instanceof ApiError
+            ? err.message
+            : "Не удалось переименовать рабочее пространство.",
         );
       }
     } finally {
@@ -58,7 +60,7 @@ export function RenameWorkspaceForm({
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={nameId}>Workspace name</Label>
+        <Label htmlFor={nameId}>Название рабочего пространства</Label>
         <Input
           id={nameId}
           value={name}
@@ -73,7 +75,7 @@ export function RenameWorkspaceForm({
           type="submit"
           disabled={submitting || name.trim() === currentName}
         >
-          {submitting ? "Saving…" : "Save changes"}
+          {submitting ? "Сохранение…" : "Сохранить изменения"}
         </Button>
       </div>
     </form>

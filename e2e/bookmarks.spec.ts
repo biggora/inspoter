@@ -28,7 +28,7 @@ async function createCategory(
   await page
     .getByRole("button", { name: "Новая категория", exact: true })
     .click();
-  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByLabel("Название", { exact: true }).fill(name);
 
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -37,7 +37,7 @@ async function createCategory(
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
   const response = await responsePromise;
 
   const body: unknown = await response.json();
@@ -76,9 +76,9 @@ async function createBookmark(
   await categorySection(page, categoryName)
     .getByRole("button", { name: "Добавить", exact: true })
     .click();
-  await page.getByLabel("Name", { exact: true }).fill(fields.name);
+  await page.getByLabel("Название", { exact: true }).fill(fields.name);
   await page.getByLabel("URL", { exact: true }).fill(fields.url);
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
   await expect(
     categorySection(page, categoryName).getByRole("article", {
       name: fields.name,
@@ -114,8 +114,8 @@ test("AC-BM-005: submitting an empty category name shows a validation error and 
   await page
     .getByRole("button", { name: "Новая категория", exact: true })
     .click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(page.getByText("Category name is required.")).toBeVisible();
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await expect(page.getByText("Название категории обязательно.")).toBeVisible();
   await expect(categoryRegions(page)).toHaveCount(0);
 });
 
@@ -136,8 +136,8 @@ test("AC-BM-002: renaming a category persists and displays the new name", async 
   await page
     .getByRole("menuitem", { name: "Переименовать категорию", exact: true })
     .click();
-  await page.getByLabel("Name", { exact: true }).fill(newName);
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByLabel("Название", { exact: true }).fill(newName);
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
 
   await expect(categorySection(page, newName)).toBeVisible();
   await expect(categorySection(page, oldName)).toHaveCount(0);
@@ -167,10 +167,10 @@ test("AC-BM-007: bookmark create without name/url shows a validation error, noth
 
   const category = categorySection(page, categoryName);
   await category.getByRole("button", { name: "Добавить", exact: true }).click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
 
-  await expect(page.getByText("Bookmark name is required.")).toBeVisible();
-  await expect(page.getByText("URL is required.")).toBeVisible();
+  await expect(page.getByText("Название закладки обязательно.")).toBeVisible();
+  await expect(page.getByText("URL обязателен.")).toBeVisible();
   await expect(category.getByRole("article")).toHaveCount(0);
 
   await page.goto("/bookmarks");
@@ -189,12 +189,12 @@ test("AC-BM-008: an invalid (non-http/https) URL shows a validation error and is
 
   const category = categorySection(page, categoryName);
   await category.getByRole("button", { name: "Добавить", exact: true }).click();
-  await page.getByLabel("Name", { exact: true }).fill(bookmarkName);
+  await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
   await page.getByLabel("URL", { exact: true }).fill("not-a-url");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
 
   await expect(
-    page.getByText("Enter a valid http:// or https:// URL."),
+    page.getByText("Введите корректный URL, начинающийся с http:// или https://."),
   ).toBeVisible();
   await expect(
     category.getByRole("article", { name: bookmarkName, exact: true }),
@@ -237,12 +237,14 @@ test("AC-BM-009: editing a bookmark persists name/url/category changes", async (
     })
     .click();
   await page.getByRole("menuitem", { name: "Изменить", exact: true }).click();
-  await page.getByLabel("Name", { exact: true }).fill(editedName);
+  await page.getByLabel("Название", { exact: true }).fill(editedName);
   await page.getByLabel("URL", { exact: true }).fill(editedUrl);
   await page
-    .getByLabel("Category", { exact: true })
+    .getByLabel("Категория", { exact: true })
     .selectOption({ label: targetCategory });
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить изменения", exact: true })
+    .click();
 
   const editedArticle = categorySection(page, targetCategory).getByRole(
     "article",
@@ -279,7 +281,7 @@ test("AC-BM-010: deleting a bookmark removes it from the list without a full rel
     })
     .click();
   await page.getByRole("menuitem", { name: "Удалить", exact: true }).click();
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Удалить", exact: true }).click();
 
   await expect(bookmarkArticle(page, bookmarkName)).toHaveCount(0);
 });
@@ -387,9 +389,9 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
   await page
     .getByRole("menuitem", { name: "Удалить категорию", exact: true })
     .click();
-  await expect(page.getByText(/contains 1 bookmark/i)).toBeVisible();
+  await expect(page.getByText(/в этой категории 1 закладка/i)).toBeVisible();
   await page
-    .getByRole("button", { name: "Delete category", exact: true })
+    .getByRole("button", { name: "Удалить категорию", exact: true })
     .click();
 
   await expect(categorySection(page, categoryName)).toHaveCount(0);

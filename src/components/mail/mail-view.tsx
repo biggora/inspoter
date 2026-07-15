@@ -17,8 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMail, type MailItemDto } from "./api";
 
 const SORT_ITEMS: Record<string, string> = {
-  desc: "Newest first",
-  asc: "Oldest first",
+  desc: "Сначала новые",
+  asc: "Сначала старые",
 };
 
 function formatTimestamp(iso: string): string {
@@ -79,7 +79,7 @@ export function MailView() {
         setItems(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled) setError("Couldn't load mail. Try again.");
+        if (!cancelled) setError("Не удалось загрузить почту. Попробуйте снова.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -115,6 +115,8 @@ export function MailView() {
     setPageIndex((prev) => Math.max(0, prev - 1));
   }
 
+  const hasActiveFilters = query !== "";
+
   const selected = items.find((item) => item.id === selectedId) ?? null;
 
   if (selected) {
@@ -127,14 +129,14 @@ export function MailView() {
           onClick={() => setSelectedId(null)}
         >
           <ArrowLeft aria-hidden className="size-4" />
-          Back to Mail
+          Назад к почте
         </Button>
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-foreground">
             {selected.subject}
           </h1>
           <p className="text-sm text-muted-foreground">
-            From <span className="font-mono">{selected.sender}</span> ·{" "}
+            От <span className="font-mono">{selected.sender}</span> ·{" "}
             {formatTimestamp(selected.receivedAt)}
           </p>
         </div>
@@ -149,14 +151,14 @@ export function MailView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Mail</h1>
+      <h1 className="text-xl font-semibold text-foreground">Почта</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <Input
           value={searchInput}
           onChange={(event) => handleSearchChange(event.target.value)}
-          placeholder="Search subject/sender..."
-          aria-label="Search mail"
+          placeholder="Поиск по теме/отправителю..."
+          aria-label="Поиск по почте"
           className="sm:max-w-xs"
         />
         <Select
@@ -164,7 +166,7 @@ export function MailView() {
           onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
           items={SORT_ITEMS}
         >
-          <SelectTrigger size="sm" aria-label="Sort order">
+          <SelectTrigger size="sm" aria-label="Порядок сортировки">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -193,11 +195,28 @@ export function MailView() {
           <Skeleton className="h-10 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            No mail matches the current filters.
-          </p>
-        </div>
+        hasActiveFilters ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm text-muted-foreground">
+              Нет писем, соответствующих текущим фильтрам.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">
+              Входящая почта пока отсутствует
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Отправьте первое письмо через webhook:
+            </p>
+            <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-muted p-4 text-left text-xs">
+              {`curl -X POST http://your-host/api/webhooks/mail \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sender":"noreply@example.com","subject":"Test","body":"Hello"}'`}
+            </pre>
+          </div>
+        )
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
           {items.map((item) => (
@@ -232,10 +251,10 @@ export function MailView() {
           disabled={pageIndex === 0 || loading}
         >
           <ChevronLeft aria-hidden className="size-4" />
-          Previous
+          Назад
         </Button>
         <span className="text-sm text-muted-foreground">
-          Page {pageIndex + 1}
+          Страница {pageIndex + 1}
         </span>
         <Button
           variant="outline"
@@ -243,7 +262,7 @@ export function MailView() {
           onClick={handleNext}
           disabled={!nextCursor || loading}
         >
-          Next
+          Далее
           <ChevronRight aria-hidden className="size-4" />
         </Button>
       </div>

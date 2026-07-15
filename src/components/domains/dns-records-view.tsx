@@ -73,7 +73,7 @@ export function DnsRecordsView({
         setError(
           err instanceof ApiError
             ? err.message
-            : "Couldn't load DNS records. Try again.",
+            : "Не удалось загрузить DNS-записи. Попробуйте снова.",
         );
       })
       .finally(() => setLoading(false));
@@ -88,14 +88,14 @@ export function DnsRecordsView({
     setDeleting(true);
     try {
       await deleteRecord(providerId, domainId, deleteTarget.id);
-      toast.success("DNS record deleted.");
+      toast.success("DNS-запись удалена.");
       setDeleteTarget(null);
       load();
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Couldn't delete DNS record. Try again.",
+          : "Не удалось удалить DNS-запись. Попробуйте снова.",
       );
     } finally {
       setDeleting(false);
@@ -106,7 +106,7 @@ export function DnsRecordsView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav
-          aria-label="Breadcrumb"
+          aria-label="Хлебные крошки"
           className="flex items-center gap-1.5 text-sm"
         >
           <button
@@ -115,7 +115,7 @@ export function DnsRecordsView({
             className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft aria-hidden className="size-4" />
-            Domains
+            Домены
           </button>
           <span className="text-muted-foreground">/</span>
           <span className="font-mono text-foreground">{domainName}</span>
@@ -127,7 +127,7 @@ export function DnsRecordsView({
           }
         >
           <Plus aria-hidden className="size-4" />
-          Add record
+          Добавить запись
         </Button>
       </div>
 
@@ -148,18 +148,18 @@ export function DnsRecordsView({
       ) : records.length === 0 && !error ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            No DNS records for this domain yet.
+            Для этого домена пока нет DNS-записей.
           </p>
         </div>
       ) : records.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Value</TableHead>
+              <TableHead>Тип</TableHead>
+              <TableHead>Название</TableHead>
+              <TableHead>Значение</TableHead>
               <TableHead>TTL</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -183,14 +183,14 @@ export function DnsRecordsView({
                         })
                       }
                     >
-                      Edit
+                      Изменить
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() => setDeleteTarget(record)}
                     >
-                      Delete
+                      Удалить
                     </Button>
                   </div>
                 </TableCell>
@@ -216,21 +216,21 @@ export function DnsRecordsView({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete this {deleteTarget?.type} record?
+              Удалить эту запись {deleteTarget?.type}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove &ldquo;{deleteTarget?.name}&rdquo; from{" "}
-              {domainName}. This action cannot be undone.
+              Запись «{deleteTarget?.name}» будет удалена из домена{" "}
+              {domainName}. Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={deleting}
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? "Удаление…" : "Удалить"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -35,11 +35,11 @@ export function ManageCategoriesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Manage categories</DialogTitle>
+          <DialogTitle>Управление категориями</DialogTitle>
         </DialogHeader>
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No categories yet. Create one to organize alerts.
+            Категорий пока нет. Создайте категорию, чтобы упорядочить оповещения.
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
@@ -56,7 +56,7 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Rename ${category.name}`}
+                    aria-label={`Переименовать ${category.name}`}
                     onClick={() => onRename(category)}
                   >
                     <Pencil aria-hidden className="size-3.5" />
@@ -65,7 +65,7 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Delete ${category.name}`}
+                    aria-label={`Удалить ${category.name}`}
                     onClick={() => onDelete(category)}
                   >
                     <Trash2 aria-hidden className="size-3.5" />
@@ -77,7 +77,7 @@ export function ManageCategoriesDialog({
         )}
         <DialogFooter>
           <DialogClose render={<Button variant="outline" type="button" />}>
-            Close
+            Закрыть
           </DialogClose>
         </DialogFooter>
       </DialogContent>

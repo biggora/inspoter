@@ -75,7 +75,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Domains</h1>
+      <h1 className="text-xl font-semibold text-foreground">Домены</h1>
 
       {erroredProviders.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -102,7 +102,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                 onClick={handleRetry}
                 disabled={isRetrying}
               >
-                {isRetrying ? "Retrying…" : "Retry"}
+                {isRetrying ? "Повтор…" : "Повторить"}
               </Button>
             </Alert>
           ))}
@@ -111,19 +111,23 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
       {domains.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm font-medium text-foreground">
             {erroredProviders.length > 0
-              ? "No domains from healthy providers."
-              : "No domains found."}
+              ? "Нет доменов от исправных провайдеров"
+              : "Доменов пока нет"}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Домены появятся автоматически при подключении DNS-провайдера в
+            настройках.
           </p>
         </div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Domain</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Домен</TableHead>
+              <TableHead>Провайдер</TableHead>
+              <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -147,7 +151,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                       })
                     }
                   >
-                    View DNS
+                    Просмотр DNS
                   </Button>
                 </TableCell>
               </TableRow>

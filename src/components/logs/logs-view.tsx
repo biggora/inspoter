@@ -27,16 +27,16 @@ import { cn } from "@/lib/utils";
 import { fetchLogs, type LogEntryDto } from "./api";
 
 const LEVEL_ITEMS: Record<string, string> = {
-  all: "All levels",
-  info: "Info",
-  warning: "Warning",
-  error: "Error",
-  critical: "Critical",
+  all: "Все уровни",
+  info: "Информация",
+  warning: "Предупреждение",
+  error: "Ошибка",
+  critical: "Критическая",
 };
 
 const SORT_ITEMS: Record<string, string> = {
-  desc: "Newest first",
-  asc: "Oldest first",
+  desc: "Сначала новые",
+  asc: "Сначала старые",
 };
 
 // §2.5 severity scale (design.md) — unmapped level strings fall back to the
@@ -135,7 +135,7 @@ export function LogsView() {
         });
       })
       .catch(() => {
-        if (!cancelled) setError("Couldn't load logs. Try again.");
+        if (!cancelled) setError("Не удалось загрузить логи. Попробуйте снова.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -156,20 +156,23 @@ export function LogsView() {
   }
 
   const sourceItems: Record<string, string> = {
-    all: "All sources",
+    all: "Все источники",
     ...Object.fromEntries(knownSources.map((value) => [value, value])),
   };
 
+  const hasActiveFilters =
+    query !== "" || level !== "all" || source !== "all";
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Logs</h1>
+      <h1 className="text-xl font-semibold text-foreground">Логи</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search message..."
-          aria-label="Search log messages"
+          placeholder="Поиск по сообщению..."
+          aria-label="Поиск по сообщениям журнала"
           className="sm:max-w-xs"
         />
         <Select
@@ -177,7 +180,7 @@ export function LogsView() {
           onValueChange={(v) => setLevel(v as string)}
           items={LEVEL_ITEMS}
         >
-          <SelectTrigger size="sm" aria-label="Filter by level">
+          <SelectTrigger size="sm" aria-label="Фильтр по уровню">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -193,7 +196,7 @@ export function LogsView() {
           onValueChange={(v) => setSource(v as string)}
           items={sourceItems}
         >
-          <SelectTrigger size="sm" aria-label="Filter by source">
+          <SelectTrigger size="sm" aria-label="Фильтр по источнику">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -209,7 +212,7 @@ export function LogsView() {
           onValueChange={(v) => setSort(v as "asc" | "desc")}
           items={SORT_ITEMS}
         >
-          <SelectTrigger size="sm" aria-label="Sort order">
+          <SelectTrigger size="sm" aria-label="Порядок сортировки">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -238,19 +241,36 @@ export function LogsView() {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            No log entries match the current filters.
-          </p>
-        </div>
+        hasActiveFilters ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm text-muted-foreground">
+              Нет записей журнала, соответствующих текущим фильтрам.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">
+              Логи пока отсутствуют
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Отправьте первый лог через webhook:
+            </p>
+            <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-muted p-4 text-left text-xs">
+              {`curl -X POST http://your-host/api/webhooks/log \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"level":"info","source":"test","message":"Hello"}'`}
+            </pre>
+          </div>
+        )
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Message</TableHead>
+              <TableHead>Время</TableHead>
+              <TableHead>Уровень</TableHead>
+              <TableHead>Источник</TableHead>
+              <TableHead>Сообщение</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -308,10 +328,10 @@ export function LogsView() {
           disabled={pageIndex === 0 || loading}
         >
           <ChevronLeft aria-hidden className="size-4" />
-          Previous
+          Назад
         </Button>
         <span className="text-sm text-muted-foreground">
-          Page {pageIndex + 1}
+          Страница {pageIndex + 1}
         </span>
         <Button
           variant="outline"
@@ -319,7 +339,7 @@ export function LogsView() {
           onClick={handleNext}
           disabled={!nextCursor || loading}
         >
-          Next
+          Далее
           <ChevronRight aria-hidden className="size-4" />
         </Button>
       </div>

@@ -11,7 +11,7 @@ export function AddBookmarkCard({ onClick }: { onClick: () => void }) {
       className="flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground outline-none transition-colors hover:border-(--border-active) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Plus aria-hidden className="size-4" />
-      <span>Add bookmark</span>
+      <span>Добавить закладку</span>
     </button>
   );
 }

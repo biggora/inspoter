@@ -31,36 +31,36 @@ export function validateRecordValue(
   type: DnsRecordType,
   value: string,
 ): string | null {
-  if (!value.trim()) return "Value is required";
+  if (!value.trim()) return "Значение обязательно";
   if (type === "A" && !ipv4Regex.test(value)) {
-    return "A record value must be a valid IPv4 address";
+    return "Значение записи A должно быть корректным IPv4-адресом";
   }
   if (type === "AAAA" && !ipv6Regex.test(value)) {
-    return "AAAA record value must be a valid IPv6 address";
+    return "Значение записи AAAA должно быть корректным IPv6-адресом";
   }
   if ((type === "CNAME" || type === "NS") && !hostnameRegex.test(value)) {
-    return `${type} record value must be a valid hostname`;
+    return `Значение записи ${type} должно быть корректным именем хоста`;
   }
   if (type === "MX" && !hostnameRegex.test(value)) {
-    return "MX record value must be a valid mail-server hostname";
+    return "Значение записи MX должно быть корректным именем почтового сервера";
   }
   return null;
 }
 
 export function validateTtl(ttl: string): string | null {
-  if (!ttl.trim()) return "TTL is required";
+  if (!ttl.trim()) return "TTL обязателен";
   const parsed = Number(ttl);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    return "TTL must be a positive integer";
+    return "TTL должен быть положительным целым числом";
   }
   return null;
 }
 
 export function validatePriority(priority: string): string | null {
-  if (!priority.trim()) return "MX record requires a numeric priority";
+  if (!priority.trim()) return "Для записи MX требуется числовой приоритет";
   const parsed = Number(priority);
   if (!Number.isInteger(parsed) || parsed < 0) {
-    return "Priority must be a non-negative integer";
+    return "Приоритет должен быть неотрицательным целым числом";
   }
   return null;
 }

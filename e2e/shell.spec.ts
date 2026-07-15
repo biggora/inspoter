@@ -52,7 +52,7 @@ const IMPLEMENTED_SECTIONS = [
   {
     path: "/domains",
     label: "Домены",
-    readiness: { role: "heading", name: "Domains" },
+    readiness: { role: "heading", name: "Домены" },
   },
   {
     path: "/servers",
@@ -62,7 +62,7 @@ const IMPLEMENTED_SECTIONS = [
   {
     path: "/mail",
     label: "Почта",
-    readiness: { role: "heading", name: "Mail" },
+    readiness: { role: "heading", name: "Почта" },
   },
   {
     path: "/messages",
@@ -72,19 +72,19 @@ const IMPLEMENTED_SECTIONS = [
   {
     path: "/logs",
     label: "Логи",
-    readiness: { role: "heading", name: "Logs" },
+    readiness: { role: "heading", name: "Логи" },
   },
   {
     path: "/alerts",
     label: "Оповещения",
-    readiness: { role: "heading", name: "Alerts" },
+    readiness: { role: "heading", name: "Оповещения" },
   },
 ] as const;
 
 const SETTINGS_ROUTE = {
   path: "/settings",
   label: "Настройки",
-  readiness: { role: "heading", name: "Settings" },
+  readiness: { role: "heading", name: "Настройки" },
 } as const;
 
 test.describe("AC-SHELL-003: implemented sections render through the active shell", () => {
