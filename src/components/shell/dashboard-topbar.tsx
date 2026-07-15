@@ -20,6 +20,7 @@ export function DashboardTopbar({ username }: { username: string }) {
       "/logs": "Логи",
       "/domains": "Домены",
       "/servers": "Серверы",
+      "/services": "Сервисы",
       "/mail": "Почта",
       "/messages": "Сообщения",
       "/alerts": "Оповещения",

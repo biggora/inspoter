@@ -21,6 +21,7 @@ const envSchema = z
     WEBHOOK_RATE_LIMIT: z.coerce.number().int().positive().default(120),
     WEBHOOK_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().positive().default(65_536),
+    SERVICE_SCHEDULER_TICK_MS: z.coerce.number().int().positive().default(15000),
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     OPERATOR_PASSWORD_HASH: z.string().min(1).optional(),
     OPERATOR_PASSWORD: z.string().min(1).optional(),

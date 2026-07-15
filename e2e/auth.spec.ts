@@ -15,6 +15,7 @@ const DASHBOARD_ROUTES = [
   "/bookmarks",
   "/domains",
   "/servers",
+  "/services",
   "/mail",
   "/messages",
   "/logs",

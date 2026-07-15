@@ -64,6 +64,8 @@ model Workspace {
   idempotencyKeys   IdempotencyKey[]
   providerBindings  ProviderResourceBinding[]
   credentials       ProviderCredential[]
+  services          Service[]
+  serviceChecks     ServiceCheck[]
 }
 
 model WorkspaceMember {
@@ -221,6 +223,65 @@ model Alert {
   @@index([workspaceId, alertCategoryId, timestamp, id]) // filter by category (AC-ALR-004)
   @@index([workspaceId, severity, timestamp, id]) // filter by severity (AC-ALR-004)
   @@index([workspaceId, source, timestamp, id]) // filter by source (AC-ALR-004)
+}
+
+// --- Services (uptime monitoring) ---
+enum MonitorType {
+  HTTP
+  TCP
+  PING
+}
+
+enum ServiceStatus {
+  PENDING
+  UP
+  DOWN
+}
+
+model Service {
+  id                  String         @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  monitorType         MonitorType
+  url                 String? // HTTP(S)
+  host                String? // TCP, PING
+  port                Int? // TCP required; PING optional (default 80 at check time)
+  expectedStatusCodes String? // HTTP only, e.g. "200-299"
+  intervalSeconds     Int            @default(60)
+  timeoutMs           Int            @default(5000)
+  retries             Int            @default(1) // consecutive failures before flipping to DOWN
+  isActive            Boolean        @default(true)
+  currentStatus       ServiceStatus  @default(PENDING)
+  consecutiveFailures Int            @default(0)
+  lastCheckedAt       DateTime?
+  lastResponseTimeMs  Int?
+  lastMessage         String?
+  nextCheckAt         DateTime       @default(now())
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  checks              ServiceCheck[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, name])
+  @@index([isActive, nextCheckAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
+}
+
+model ServiceCheck {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  serviceId          String
+  serviceWorkspaceId String
+  service            Service       @relation(fields: [serviceId, serviceWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  status             ServiceStatus // UP | DOWN, never PENDING
+  responseTimeMs     Int?
+  message            String?
+  checkedAt          DateTime      @default(now())
+  createdAt          DateTime      @default(now())
+
+  @@index([workspaceId, serviceId, checkedAt, id]) // keyset pagination, mirrors LogEntry/Alert style
 }
 
 // --- Webhook (FR-WH-001..002) ---
