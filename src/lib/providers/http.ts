@@ -91,7 +91,9 @@ export function createProviderHttpClient(
         };
       }
 
-      const data = (await response.json()) as T;
+      const text = await response.text();
+      if (!text) return { ok: true, data: undefined as T };
+      const data = JSON.parse(text) as T;
       return { ok: true, data };
     }
 
