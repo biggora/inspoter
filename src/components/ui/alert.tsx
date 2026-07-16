@@ -10,7 +10,16 @@ const alertVariants = cva(
       variant: {
         default: "bg-card text-card-foreground",
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-(--error-border) bg-(--error-bg) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) *:[svg]:text-(--error-text)",
+        info: "border-(--info-border) bg-(--info-bg) text-(--info-text) *:data-[slot=alert-description]:text-(--info-text) *:[svg]:text-(--info-text)",
+        success:
+          "border-(--success-border) bg-(--success-bg) text-(--success-text) *:data-[slot=alert-description]:text-(--success-text) *:[svg]:text-(--success-text)",
+        warning:
+          "border-(--warning-border) bg-(--warning-bg) text-(--warning-text) *:data-[slot=alert-description]:text-(--warning-text) *:[svg]:text-(--warning-text)",
+        error:
+          "border-(--error-border) bg-(--error-bg) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) *:[svg]:text-(--error-text)",
+        critical:
+          "border-(--critical-border) bg-(--critical-bg) text-(--critical-text) *:data-[slot=alert-description]:text-(--critical-text) *:[svg]:text-(--critical-text)",
       },
     },
     defaultVariants: {

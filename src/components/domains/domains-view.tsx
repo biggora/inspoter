@@ -84,14 +84,12 @@ export function DomainsView({ providers }: DomainsViewProps) {
           {erroredProviders.map((provider) => (
             <Alert
               key={provider.providerId}
-              className="flex flex-row items-center justify-between gap-4 border-(--error-bg) bg-(--error-bg)"
+              variant="error"
+              className="flex flex-row items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
-                <TriangleAlert
-                  aria-hidden
-                  className="size-4 shrink-0 text-(--error-text)"
-                />
-                <AlertDescription className="text-(--error-text)">
+                <TriangleAlert aria-hidden className="size-4 shrink-0" />
+                <AlertDescription>
                   <span className="font-medium">
                     {providerLabel(provider.providerId)}
                   </span>{" "}

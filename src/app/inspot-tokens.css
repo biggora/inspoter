@@ -102,6 +102,40 @@
   --status-warn: oklch(var(--amber-500));
   --status-danger: oklch(var(--primary-500));
   --status-idle: oklch(var(--secondary-400));
+
+  /* Feedback: quiet, border-defined surfaces for system messages. */
+  --success-bg: oklch(var(--accent-50));
+  --success-border: oklch(var(--accent-200));
+  --success-text: oklch(var(--accent-700));
+  --info-bg: oklch(var(--secondary-50));
+  --info-border: oklch(var(--secondary-200));
+  --info-text: oklch(var(--secondary-700));
+  --warning-bg: oklch(0.96 0.04 85);
+  --warning-border: oklch(0.84 0.10 75);
+  --warning-text: oklch(var(--amber-700));
+  --error-bg: oklch(var(--primary-50));
+  --error-border: oklch(var(--primary-200));
+  --error-text: oklch(var(--primary-700));
+  --critical-bg: oklch(0.94 0.04 27);
+  --critical-border: oklch(var(--red-500));
+  --critical-text: oklch(var(--red-700));
+
+  /* Sonner bridge tokens prevent its public variables from self-referencing. */
+  --feedback-success-bg: var(--success-bg);
+  --feedback-success-border: var(--success-border);
+  --feedback-success-text: var(--success-text);
+  --feedback-info-bg: var(--info-bg);
+  --feedback-info-border: var(--info-border);
+  --feedback-info-text: var(--info-text);
+  --feedback-warning-bg: var(--warning-bg);
+  --feedback-warning-border: var(--warning-border);
+  --feedback-warning-text: var(--warning-text);
+  --feedback-error-bg: var(--error-bg);
+  --feedback-error-border: var(--error-border);
+  --feedback-error-text: var(--error-text);
+  --feedback-critical-bg: var(--critical-bg);
+  --feedback-critical-border: var(--critical-border);
+  --feedback-critical-text: var(--critical-text);
 }
 
 /* --------------------------------------------------------------------------
@@ -167,6 +201,40 @@
   --secondary-800: 0.82 0.022 85; /* @kind color */
   --secondary-900: 0.90 0.016 85; /* @kind color */
   --secondary-950: 0.96 0.012 85; /* @kind color */
+
+  /* Feedback: quiet, border-defined surfaces for system messages. */
+  --success-bg: oklch(var(--accent-100));
+  --success-border: oklch(var(--accent-400));
+  --success-text: oklch(var(--accent-800));
+  --info-bg: oklch(var(--secondary-100));
+  --info-border: oklch(var(--secondary-400));
+  --info-text: oklch(var(--secondary-800));
+  --warning-bg: oklch(0.22 0.07 75);
+  --warning-border: oklch(0.55 0.14 65);
+  --warning-text: oklch(0.84 0.12 80);
+  --error-bg: oklch(var(--primary-100));
+  --error-border: oklch(var(--primary-400));
+  --error-text: oklch(var(--primary-800));
+  --critical-bg: oklch(0.22 0.07 27);
+  --critical-border: oklch(var(--red-500));
+  --critical-text: oklch(0.80 0.12 27);
+
+  /* Sonner bridge tokens prevent its public variables from self-referencing. */
+  --feedback-success-bg: var(--success-bg);
+  --feedback-success-border: var(--success-border);
+  --feedback-success-text: var(--success-text);
+  --feedback-info-bg: var(--info-bg);
+  --feedback-info-border: var(--info-border);
+  --feedback-info-text: var(--info-text);
+  --feedback-warning-bg: var(--warning-bg);
+  --feedback-warning-border: var(--warning-border);
+  --feedback-warning-text: var(--warning-text);
+  --feedback-error-bg: var(--error-bg);
+  --feedback-error-border: var(--error-border);
+  --feedback-error-text: var(--error-text);
+  --feedback-critical-bg: var(--critical-bg);
+  --feedback-critical-border: var(--critical-border);
+  --feedback-critical-text: var(--critical-text);
 }
 
 /* ==========================================================================

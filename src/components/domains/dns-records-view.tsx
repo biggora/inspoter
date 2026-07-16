@@ -123,10 +123,8 @@ export function DnsRecordsView({
       />
 
       {error && (
-        <Alert className="border-(--error-bg) bg-(--error-bg)">
-          <AlertDescription className="text-(--error-text)">
-            {error}
-          </AlertDescription>
+        <Alert variant="error">
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
