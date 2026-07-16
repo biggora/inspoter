@@ -9,17 +9,17 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "bg-card text-card-foreground",
-        info: "bg-(--info-bg) border-(--info-border) text-(--info-text) *:data-[slot=alert-description]:text-(--info-text) [&>svg]:text-(--info-text)",
+        info: "border-(--info-border) bg-(--info-bg) text-(--info-text) *:data-[slot=alert-description]:text-(--info-text) *:[svg]:text-(--info-text)",
         success:
-          "bg-(--success-bg) border-(--success-border) text-(--success-text) *:data-[slot=alert-description]:text-(--success-text) [&>svg]:text-(--success-text)",
+          "border-(--success-border) bg-(--success-bg) text-(--success-text) *:data-[slot=alert-description]:text-(--success-text) *:[svg]:text-(--success-text)",
         warning:
-          "bg-(--warning-bg) border-(--warning-border) text-(--warning-text) *:data-[slot=alert-description]:text-(--warning-text) [&>svg]:text-(--warning-text)",
+          "border-(--warning-border) bg-(--warning-bg) text-(--warning-text) *:data-[slot=alert-description]:text-(--warning-text) *:[svg]:text-(--warning-text)",
         error:
-          "bg-(--error-bg) border-(--error-border) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) [&>svg]:text-(--error-text)",
+          "border-(--error-border) bg-(--error-bg) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) *:[svg]:text-(--error-text)",
         critical:
-          "bg-(--critical-bg) border-(--critical-border) text-(--critical-text) *:data-[slot=alert-description]:text-(--critical-text) [&>svg]:text-(--critical-text)",
+          "border-(--critical-border) bg-(--critical-bg) text-(--critical-text) *:data-[slot=alert-description]:text-(--critical-text) *:[svg]:text-(--critical-text)",
         destructive:
-          "bg-(--error-bg) border-(--error-border) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) [&>svg]:text-(--error-text)",
+          "border-(--error-border) bg-(--error-bg) text-(--error-text) *:data-[slot=alert-description]:text-(--error-text) *:[svg]:text-(--error-text)",
       },
     },
     defaultVariants: {

@@ -124,9 +124,7 @@ export function DnsRecordsView({
 
       {error && (
         <Alert variant="error">
-          <AlertDescription>
-            {error}
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 

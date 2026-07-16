@@ -88,10 +88,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
               className="flex flex-row items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
-                <TriangleAlert
-                  aria-hidden
-                  className="size-4 shrink-0"
-                />
+                <TriangleAlert aria-hidden className="size-4 shrink-0" />
                 <AlertDescription>
                   <span className="font-medium">
                     {providerLabel(provider.providerId)}

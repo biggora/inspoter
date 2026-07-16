@@ -176,9 +176,7 @@ export function MailView() {
 
       {error && (
         <Alert variant="error">
-          <AlertDescription>
-            {error}
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 

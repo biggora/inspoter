@@ -42,12 +42,13 @@ const SORT_ITEMS: Record<string, string> = {
 };
 
 // §2.5 severity scale (design.md) — unmapped level strings fall back to the
-// muted tier rather than guessing.
+// muted tier rather than guessing; critical stays distinct from error.
 const LEVEL_STYLES: Record<string, string> = {
-  info: "bg-(--info-bg) text-(--info-text)",
-  warning: "bg-(--warning-bg) text-(--warning-text)",
-  error: "bg-(--error-bg) text-(--error-text)",
-  critical: "bg-(--critical-bg) text-(--critical-text)",
+  info: "border-(--info-border) bg-(--info-bg) text-(--info-text)",
+  warning: "border-(--warning-border) bg-(--warning-bg) text-(--warning-text)",
+  error: "border-(--error-border) bg-(--error-bg) text-(--error-text)",
+  critical:
+    "border-(--critical-border) bg-(--critical-bg) text-(--critical-text)",
 };
 
 function LevelBadge({ level }: { level: string }) {
@@ -229,9 +230,7 @@ export function LogsView() {
 
       {error && (
         <Alert variant="error">
-          <AlertDescription>
-            {error}
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
