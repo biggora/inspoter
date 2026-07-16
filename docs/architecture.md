@@ -51,48 +51,48 @@ flowchart LR
 
 ### 1.1 Architectural layers
 
-| Label | Layer | Current responsibility |
-| --- | --- | --- |
-| CURRENT | `src/app`, `src/components` | App Router layouts/pages, Server Components, interactive Client Components, login actions, REST handlers |
-| CURRENT | `src/lib/auth` | Cookie/session primitives and authoritative operator/workspace resolution |
-| CURRENT / GAP | `src/lib/services` | Database-content workspace operations; provider orchestration currently omits workspace bindings |
-| CURRENT | `src/lib/webhooks` | Public ingest pipeline, dispatch, rate limiting, idempotency lookup/record |
-| CURRENT | `src/lib/providers` | DNS/server contracts, factories, deterministic mocks, incomplete real-mode classes |
-| CURRENT | `src/lib/db.ts`, Prisma | Prisma client and persisted PostgreSQL state |
-| GAP | Cross-layer Prisma imports | Five runtime callers outside the intended service/Auth-DAL rule remain; §4.4 lists them |
-| TARGET (Phase 3) | `src/lib/config/providers.ts`, `src/lib/providers/http.ts` | Central server-only provider configuration and thin injected HTTP behavior; both paths are absent now |
+| Label            | Layer                                                      | Current responsibility                                                                                   |
+| ---------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| CURRENT          | `src/app`, `src/components`                                | App Router layouts/pages, Server Components, interactive Client Components, login actions, REST handlers |
+| CURRENT          | `src/lib/auth`                                             | Cookie/session primitives and authoritative operator/workspace resolution                                |
+| CURRENT / GAP    | `src/lib/services`                                         | Database-content workspace operations; provider orchestration currently omits workspace bindings         |
+| CURRENT          | `src/lib/webhooks`                                         | Public ingest pipeline, dispatch, rate limiting, idempotency lookup/record                               |
+| CURRENT          | `src/lib/providers`                                        | DNS/server contracts, factories, deterministic mocks, incomplete real-mode classes                       |
+| CURRENT          | `src/lib/db.ts`, Prisma                                    | Prisma client and persisted PostgreSQL state                                                             |
+| GAP              | Cross-layer Prisma imports                                 | Five runtime callers outside the intended service/Auth-DAL rule remain; §4.4 lists them                  |
+| TARGET (Phase 3) | `src/lib/config/providers.ts`, `src/lib/providers/http.ts` | Central server-only provider configuration and thin injected HTTP behavior; both paths are absent now    |
 
 ## 2. Technology and deployment
 
 ### 2.1 Exact current stack
 
-| Label | Component | Declared | Resolved / runtime contract | Evidence |
-| --- | --- | --- | --- | --- |
-| CURRENT | Next.js | `16.2.10` | `16.2.10` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | React / React DOM | `19.1.0` | `19.1.0` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Prisma CLI / client / PG adapter | `^7.8.0` | `7.8.0` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | `pg` | `^8.22.0` | `8.22.0` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Zod | `^4.4.3` | `4.4.3` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Tailwind CSS | `^4` | `4.3.2` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | TypeScript | `^5` | `5.9.3` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Vitest | `^4.1.10` | `4.1.10` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Playwright | `^1.61.1` | `1.61.1` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | ESLint | `^9` | `9.39.5` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Package manager | `pnpm@11.12.0` | lockfile format `9.0` | `package.json`, `pnpm-lock.yaml` |
-| CURRENT | Application image | — | `node:24-slim` in all Docker stages | `Dockerfile` |
-| CURRENT | Database image | — | `postgres:16` | `docker-compose.yml` |
+| Label   | Component                        | Declared       | Resolved / runtime contract         | Evidence                         |
+| ------- | -------------------------------- | -------------- | ----------------------------------- | -------------------------------- |
+| CURRENT | Next.js                          | `16.2.10`      | `16.2.10`                           | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | React / React DOM                | `19.1.0`       | `19.1.0`                            | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Prisma CLI / client / PG adapter | `^7.8.0`       | `7.8.0`                             | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | `pg`                             | `^8.22.0`      | `8.22.0`                            | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Zod                              | `^4.4.3`       | `4.4.3`                             | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Tailwind CSS                     | `^4`           | `4.3.2`                             | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | TypeScript                       | `^5`           | `5.9.3`                             | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Vitest                           | `^4.1.10`      | `4.1.10`                            | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Playwright                       | `^1.61.1`      | `1.61.1`                            | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | ESLint                           | `^9`           | `9.39.5`                            | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Package manager                  | `pnpm@11.12.0` | lockfile format `9.0`               | `package.json`, `pnpm-lock.yaml` |
+| CURRENT | Application image                | —              | `node:24-slim` in all Docker stages | `Dockerfile`                     |
+| CURRENT | Database image                   | —              | `postgres:16`                       | `docker-compose.yml`             |
 
 **CURRENT:** A developer workstation may use Node 22, but workstation Node is not a deployment contract. The Docker contract is `node:24-slim`.
 
 ### 2.2 Deployment gaps
 
-| Label | Finding | Required disposition |
-| --- | --- | --- |
-| CURRENT | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `pnpm run start`. | Preserve unless deployment validation changes the contract. |
-| CURRENT / PENDING REVALIDATION | Docker, CI, and Playwright use Node 24, Corepack, `pnpm@11.12.0`, and `pnpm-lock.yaml`; dependency installation is frozen-lockfile, and Playwright starts the built application. | R2.0 implementation is complete; only the three-run `R2.0-G` runtime integration gate remains pending. |
-| GAP | `docker-compose.yml` does not pass `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`, `GODADDY_API_SECRET`, or `HCLOUD_TOKEN` to the application container. | TARGET (Phase 3): wire optional provider variables without values or secrets in source control. |
-| CURRENT | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup. |
-| GAP | Base env validation does not validate provider credentials or complete credential sets. | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration. |
+| Label                          | Finding                                                                                                                                                                                     | Required disposition                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| CURRENT                        | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `pnpm run start`.                                      | Preserve unless deployment validation changes the contract.                                            |
+| CURRENT / PENDING REVALIDATION | Docker, CI, and Playwright use Node 24, Corepack, `pnpm@11.12.0`, and `pnpm-lock.yaml`; dependency installation is frozen-lockfile, and Playwright starts the built application.            | R2.0 implementation is complete; only the three-run `R2.0-G` runtime integration gate remains pending. |
+| GAP                            | `docker-compose.yml` does not pass `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`, `GODADDY_API_SECRET`, or `HCLOUD_TOKEN` to the application container.                    | TARGET (Phase 3): wire optional provider variables without values or secrets in source control.        |
+| CURRENT                        | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup.                                                                            |
+| GAP                            | Base env validation does not validate provider credentials or complete credential sets.                                                                                                     | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration.    |
 
 ## 3. App Router and presentation boundary
 
@@ -100,37 +100,37 @@ flowchart LR
 
 **CURRENT:** The application contains 12 `page.tsx` files. The `(dashboard)` route group does not add a URL segment.
 
-| Label | URL | File | Boundary and data source |
-| --- | --- | --- | --- |
-| CURRENT | `/` | `src/app/page.tsx` | Server Component; redirects to `/bookmarks` |
-| CURRENT | `/login` | `src/app/login/page.tsx` | Server Component; awaits `searchParams`, renders Client `LoginForm` |
-| CURRENT | `/bookmarks` | `src/app/(dashboard)/bookmarks/page.tsx` | Server Component; `requireAuth()` plus workspace-scoped service read |
-| CURRENT | `/domains` | `src/app/(dashboard)/domains/page.tsx` | Server Component; `requireAuth()` plus provider aggregation |
-| CURRENT | `/servers` | `src/app/(dashboard)/servers/page.tsx` | Authenticated Server Component shell; Client view fetches API |
-| CURRENT | `/mail` | `src/app/(dashboard)/mail/page.tsx` | Authenticated Server Component shell; Client view fetches API |
-| CURRENT | `/messages` | `src/app/(dashboard)/messages/page.tsx` | Authenticated Server Component shell; Client view fetches API |
-| CURRENT | `/logs` | `src/app/(dashboard)/logs/page.tsx` | Authenticated Server Component shell; Client view fetches API |
-| CURRENT | `/alerts` | `src/app/(dashboard)/alerts/page.tsx` | Authenticated Server Component shell; Client view fetches API |
-| CURRENT | `/settings` | `src/app/(dashboard)/settings/page.tsx` | Server Component under authenticated dashboard layout; links to active settings destinations |
-| CURRENT | `/settings/workspace` | `src/app/(dashboard)/settings/workspace/page.tsx` | Server Component; workspace/member service read, Client mutation forms |
-| CURRENT | `/settings/webhooks` | `src/app/(dashboard)/settings/webhooks/page.tsx` | Authenticated Server Component shell; Client token management |
+| Label   | URL                   | File                                              | Boundary and data source                                                                     |
+| ------- | --------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| CURRENT | `/`                   | `src/app/page.tsx`                                | Server Component; redirects to `/bookmarks`                                                  |
+| CURRENT | `/login`              | `src/app/login/page.tsx`                          | Server Component; awaits `searchParams`, renders Client `LoginForm`                          |
+| CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`          | Server Component; `requireAuth()` plus workspace-scoped service read                         |
+| CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`            | Server Component; `requireAuth()` plus provider aggregation                                  |
+| CURRENT | `/servers`            | `src/app/(dashboard)/servers/page.tsx`            | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`               | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/messages`           | `src/app/(dashboard)/messages/page.tsx`           | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/logs`               | `src/app/(dashboard)/logs/page.tsx`               | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/alerts`             | `src/app/(dashboard)/alerts/page.tsx`             | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/settings`           | `src/app/(dashboard)/settings/page.tsx`           | Server Component under authenticated dashboard layout; links to active settings destinations |
+| CURRENT | `/settings/workspace` | `src/app/(dashboard)/settings/workspace/page.tsx` | Server Component; workspace/member service read, Client mutation forms                       |
+| CURRENT | `/settings/webhooks`  | `src/app/(dashboard)/settings/webhooks/page.tsx`  | Authenticated Server Component shell; Client token management                                |
 
 ### 3.2 Complete current route-handler families
 
 **CURRENT:** `src/app/api` contains 29 `route.ts` files and 42 exported handlers: 14 GET, 12 POST, 7 PATCH, and 9 DELETE.
 
-| Label | Family | Current URL patterns and methods | Files / handlers |
-| --- | --- | --- | --- |
-| CURRENT | Workspaces | `GET,POST /api/workspaces`; `PATCH,DELETE /api/workspaces/[id]`; `GET,POST /api/workspaces/[id]/members`; `DELETE /api/workspaces/[id]/members/[memberId]`; `POST /api/workspaces/switch` | 5 / 8 |
-| CURRENT | Bookmark categories and bookmarks | `POST /api/categories`; `PATCH,DELETE /api/categories/[id]`; `POST /api/bookmarks`; `PATCH,DELETE /api/bookmarks/[id]` | 4 / 6 |
-| CURRENT | Domains and DNS records | `GET /api/domains`; `GET,POST /api/domains/[providerId]/[domainId]/records`; `PATCH,DELETE /api/domains/[providerId]/[domainId]/records/[recordId]` | 3 / 5 |
-| CURRENT | Servers and power | `GET /api/servers`; `GET /api/servers/[id]`; `POST /api/servers/[id]/power` | 3 / 3 |
-| CURRENT | Mail | `GET /api/mail`; `GET /api/mail/[id]` | 2 / 2 |
-| CURRENT | Message categories, channels, messages | `GET,POST /api/message-categories`; `PATCH,DELETE /api/message-categories/[id]`; `POST /api/channels`; `PATCH,DELETE /api/channels/[id]`; `GET /api/channels/[id]/messages` | 5 / 8 |
-| CURRENT | Logs | `GET /api/logs` | 1 / 1 |
-| CURRENT | Alerts and alert categories | `GET /api/alerts`; `GET,POST /api/alert-categories`; `PATCH,DELETE /api/alert-categories/[id]` | 3 / 5 |
-| CURRENT | Webhook tokens | `GET,POST /api/webhook-tokens`; `DELETE /api/webhook-tokens/[id]` | 2 / 3 |
-| CURRENT | Public webhook ingest | `POST /api/webhooks/[type]` | 1 / 1 |
+| Label   | Family                                 | Current URL patterns and methods                                                                                                                                                          | Files / handlers |
+| ------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| CURRENT | Workspaces                             | `GET,POST /api/workspaces`; `PATCH,DELETE /api/workspaces/[id]`; `GET,POST /api/workspaces/[id]/members`; `DELETE /api/workspaces/[id]/members/[memberId]`; `POST /api/workspaces/switch` | 5 / 8            |
+| CURRENT | Bookmark categories and bookmarks      | `POST /api/categories`; `PATCH,DELETE /api/categories/[id]`; `POST /api/bookmarks`; `PATCH,DELETE /api/bookmarks/[id]`                                                                    | 4 / 6            |
+| CURRENT | Domains and DNS records                | `GET /api/domains`; `GET,POST /api/domains/[providerId]/[domainId]/records`; `PATCH,DELETE /api/domains/[providerId]/[domainId]/records/[recordId]`                                       | 3 / 5            |
+| CURRENT | Servers and power                      | `GET /api/servers`; `GET /api/servers/[id]`; `POST /api/servers/[id]/power`                                                                                                               | 3 / 3            |
+| CURRENT | Mail                                   | `GET /api/mail`; `GET /api/mail/[id]`                                                                                                                                                     | 2 / 2            |
+| CURRENT | Message categories, channels, messages | `GET,POST /api/message-categories`; `PATCH,DELETE /api/message-categories/[id]`; `POST /api/channels`; `PATCH,DELETE /api/channels/[id]`; `GET /api/channels/[id]/messages`               | 5 / 8            |
+| CURRENT | Logs                                   | `GET /api/logs`                                                                                                                                                                           | 1 / 1            |
+| CURRENT | Alerts and alert categories            | `GET /api/alerts`; `GET,POST /api/alert-categories`; `PATCH,DELETE /api/alert-categories/[id]`                                                                                            | 3 / 5            |
+| CURRENT | Webhook tokens                         | `GET,POST /api/webhook-tokens`; `DELETE /api/webhook-tokens/[id]`                                                                                                                         | 2 / 3            |
+| CURRENT | Public webhook ingest                  | `POST /api/webhooks/[type]`                                                                                                                                                               | 1 / 1            |
 
 **GAP:** `src/app/api/channels/[id]/messages/route.ts` exports GET only. No authenticated human-message POST exists, so FR-MSG-003 and AC-MSG-009…014 are not implemented.
 
@@ -142,12 +142,12 @@ flowchart LR
 
 ### 3.3 Special files and navigation states
 
-| Label | Finding |
-| --- | --- |
-| CURRENT | `src/app/layout.tsx` is the root layout; `src/app/(dashboard)/layout.tsx` resolves auth/workspace and renders the shell. |
-| CURRENT | Only Bookmarks has route-level streaming UI: `src/app/(dashboard)/bookmarks/loading.tsx`. |
-| GAP | No `error.tsx`, `global-error.tsx`, or `not-found.tsx` exists under `src/app`. The other dashboard routes have no route-level loading boundary. |
-| TARGET (Phase 4) | Add route-appropriate loading, error/retry, and not-found boundaries where Design v2 requires them. Keep error details sanitized. |
+| Label            | Finding                                                                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| CURRENT          | `src/app/layout.tsx` is the root layout; `src/app/(dashboard)/layout.tsx` resolves auth/workspace and renders the shell.                        |
+| CURRENT          | Only Bookmarks has route-level streaming UI: `src/app/(dashboard)/bookmarks/loading.tsx`.                                                       |
+| GAP              | No `error.tsx`, `global-error.tsx`, or `not-found.tsx` exists under `src/app`. The other dashboard routes have no route-level loading boundary. |
+| TARGET (Phase 4) | Add route-appropriate loading, error/retry, and not-found boundaries where Design v2 requires them. Keep error details sanitized.               |
 
 ### 3.4 Server/Client boundaries, fetching, mutation, navigation
 
@@ -189,17 +189,17 @@ flowchart LR
 
 ### 4.2 Current ownership boundary and Q-13 replacement
 
-| Label | Data family | Ownership and persistence |
-| --- | --- | --- |
-| CURRENT | Auth and workspace | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace. |
-| CURRENT | Bookmarks | `Category.workspaceId` owns categories; `Bookmark` is a category child. |
-| CURRENT | Messages | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children. |
-| CURRENT | Mail and Logs | `MailItem.workspaceId` and `LogEntry.workspaceId` directly own rows. |
-| CURRENT | Alerts | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`. |
-| CURRENT | Webhook tokens | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership. |
-| CURRENT / GAP | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory. |
+| Label                | Data family         | Ownership and persistence                                                                                                                                                                                                                |
+| -------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CURRENT              | Auth and workspace  | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace.                                                                                                   |
+| CURRENT              | Bookmarks           | `Category.workspaceId` owns categories; `Bookmark` is a category child.                                                                                                                                                                  |
+| CURRENT              | Messages            | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children.                                                                                                                                                     |
+| CURRENT              | Mail and Logs       | `MailItem.workspaceId` and `LogEntry.workspaceId` directly own rows.                                                                                                                                                                     |
+| CURRENT              | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                      |
+| CURRENT              | Webhook tokens      | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership.                                                          |
+| CURRENT / GAP        | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                           |
 | TARGET (Q-13, R2.1e) | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access. |
-| TARGET (Q-13) | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets. |
+| TARGET (Q-13)        | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets.               |
 
 ### 4.3 Verified ownership gaps
 
@@ -223,11 +223,11 @@ flowchart LR
 
 **CURRENT:** Exactly 13 files under `src` import `@/lib/db`: seven service modules and six files outside `src/lib/services`.
 
-| Label | Group | Files |
-| --- | --- | --- |
-| CURRENT | Intended service callers | `services/alerts.ts`, `bookmarks.ts`, `logs.ts`, `mail.ts`, `messages.ts`, `webhookTokens.ts`, `workspaces.ts` |
-| CURRENT | Intended authoritative DAL | `src/lib/auth/dal.ts` |
-| GAP | Direct callers outside service/DAL rule | `src/app/login/actions.ts`, `src/app/api/workspaces/switch/route.ts`, `src/lib/auth/session.ts`, `src/lib/webhooks/idempotency.ts`, `src/lib/webhooks/pipeline.ts` |
+| Label   | Group                                   | Files                                                                                                                                                              |
+| ------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CURRENT | Intended service callers                | `services/alerts.ts`, `bookmarks.ts`, `logs.ts`, `mail.ts`, `messages.ts`, `webhookTokens.ts`, `workspaces.ts`                                                     |
+| CURRENT | Intended authoritative DAL              | `src/lib/auth/dal.ts`                                                                                                                                              |
+| GAP     | Direct callers outside service/DAL rule | `src/app/login/actions.ts`, `src/app/api/workspaces/switch/route.ts`, `src/lib/auth/session.ts`, `src/lib/webhooks/idempotency.ts`, `src/lib/webhooks/pipeline.ts` |
 
 **TARGET (Phase 2):** ADR-012 keeps services and the authoritative auth DAL as runtime Prisma entry points. Move membership lookup, session persistence, webhook token lookup, and idempotency persistence behind narrow service/DAL functions. `src/lib/db.ts` remains the only Prisma client constructor. `prisma/seed.ts` remains an operational bootstrap path, not a request-layer exception.
 
@@ -239,16 +239,16 @@ flowchart LR
 
 **TARGET (R2.1a/e):** The schema below is normative. The current 15-model schema and two committed migrations do not implement it.
 
-| Model | Required Q-13 ownership and relation |
-| --- | --- |
-| `WorkspaceMember` | Replace free-form/default role with `WorkspaceRole { OWNER, MEMBER }`; preserve `@@unique([workspaceId, operatorId])`. A workspace and operator must each retain at least one membership, and a workspace must retain at least one owner. |
-| `Session` | Add nullable `activeWorkspaceOperatorId`. Replace the direct `Session.activeWorkspaceId → Workspace.id` FK with composite `(activeWorkspaceId, activeWorkspaceOperatorId) → WorkspaceMember(workspaceId, operatorId) ON DELETE SET NULL`. SQL CHECK requires either both active fields NULL, or both non-NULL with `activeWorkspaceOperatorId = operatorId`; the application writes the authenticated `operatorId` shadow. |
-| `Category → Bookmark` | `Category` gains `@@unique([id, workspaceId])`. `Bookmark` gains required `workspaceId` and `categoryWorkspaceId`; CHECK `categoryWorkspaceId = workspaceId`; composite FK `(categoryId, categoryWorkspaceId) → Category(id, workspaceId) ON DELETE CASCADE`. |
-| `MessageCategory → Channel` | `MessageCategory` gains `@@unique([id, workspaceId])`. `Channel` gains required `workspaceId` and `messageCategoryWorkspaceId`; equality CHECK; composite parent FK with cascade. |
-| `Channel → Message` | `Channel` gains `@@unique([id, workspaceId])`. `Message` gains required `workspaceId` and `channelWorkspaceId`; equality CHECK; composite parent FK with cascade. |
-| `AlertCategory → Alert` | `AlertCategory` gains `@@unique([id, workspaceId])` and `@@unique([workspaceId, name])`. `Alert` gains required `workspaceId` and nullable `alertCategoryWorkspaceId`; composite `(alertCategoryId, alertCategoryWorkspaceId) → AlertCategory(id, workspaceId) ON DELETE SET NULL`. |
-| `WebhookToken → IdempotencyKey` | `WebhookToken` gains `@@unique([id, workspaceId])`. `IdempotencyKey` gains required `workspaceId` and `tokenWorkspaceId`; equality CHECK; composite parent FK with cascade. |
-| Existing roots | `Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, and `WebhookToken` retain required direct `workspaceId`. `Workspace` gains inverse relations for every direct owner, including all new children and provider bindings. |
+| Model                           | Required Q-13 ownership and relation                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WorkspaceMember`               | Replace free-form/default role with `WorkspaceRole { OWNER, MEMBER }`; preserve `@@unique([workspaceId, operatorId])`. A workspace and operator must each retain at least one membership, and a workspace must retain at least one owner.                                                                                                                                                                                  |
+| `Session`                       | Add nullable `activeWorkspaceOperatorId`. Replace the direct `Session.activeWorkspaceId → Workspace.id` FK with composite `(activeWorkspaceId, activeWorkspaceOperatorId) → WorkspaceMember(workspaceId, operatorId) ON DELETE SET NULL`. SQL CHECK requires either both active fields NULL, or both non-NULL with `activeWorkspaceOperatorId = operatorId`; the application writes the authenticated `operatorId` shadow. |
+| `Category → Bookmark`           | `Category` gains `@@unique([id, workspaceId])`. `Bookmark` gains required `workspaceId` and `categoryWorkspaceId`; CHECK `categoryWorkspaceId = workspaceId`; composite FK `(categoryId, categoryWorkspaceId) → Category(id, workspaceId) ON DELETE CASCADE`.                                                                                                                                                              |
+| `MessageCategory → Channel`     | `MessageCategory` gains `@@unique([id, workspaceId])`. `Channel` gains required `workspaceId` and `messageCategoryWorkspaceId`; equality CHECK; composite parent FK with cascade.                                                                                                                                                                                                                                          |
+| `Channel → Message`             | `Channel` gains `@@unique([id, workspaceId])`. `Message` gains required `workspaceId` and `channelWorkspaceId`; equality CHECK; composite parent FK with cascade.                                                                                                                                                                                                                                                          |
+| `AlertCategory → Alert`         | `AlertCategory` gains `@@unique([id, workspaceId])` and `@@unique([workspaceId, name])`. `Alert` gains required `workspaceId` and nullable `alertCategoryWorkspaceId`; composite `(alertCategoryId, alertCategoryWorkspaceId) → AlertCategory(id, workspaceId) ON DELETE SET NULL`.                                                                                                                                        |
+| `WebhookToken → IdempotencyKey` | `WebhookToken` gains `@@unique([id, workspaceId])`. `IdempotencyKey` gains required `workspaceId` and `tokenWorkspaceId`; equality CHECK; composite parent FK with cascade.                                                                                                                                                                                                                                                |
+| Existing roots                  | `Category`, `MessageCategory`, `MailItem`, `LogEntry`, `AlertCategory`, and `WebhookToken` retain required direct `workspaceId`. `Workspace` gains inverse relations for every direct owner, including all new children and provider bindings.                                                                                                                                                                             |
 
 The Alert optional-pair constraint is strict despite PostgreSQL `MATCH SIMPLE`:
 
@@ -270,13 +270,13 @@ Workspace-leading indexes are required on every scoped lookup path: category/chi
 
 **TARGET (R2.1e):** `ProviderResourceBinding` is local ownership/operation metadata, not a credential store or provider snapshot.
 
-| Field family | Contract |
-| --- | --- |
-| Identity | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, exact `ProviderResourceType` values `{DOMAIN, SERVER}` in `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace. |
-| Mock identity | `accountKey = 'mock:v1'`; `remoteId = 'mock:v1:<workspaceId>:<provider>:<key>'`. REAL rows cannot use a `mock:` prefix. No mutable module-global mock state remains. |
-| Identity validation | Application and SQL enforce UTF-8 bounds: `accountKey` 1–256 bytes, `remoteId` 1–512, `displayName` 1–512; values are trimmed and contain no control characters. Provider/resource-type pairs are restricted by CHECK. |
-| Operation lease | Exact fields are `operationState`, `operationId`, `operationKind`, `operationIntent`, `operationStartedAt`, `operationLeaseExpiresAt`, `lastReconciledAt`, and `version`. `operationState` is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`; `operationId` is unique. The CHECK treats `operationId`, `operationKind`, credential-free canonical `operationIntent`, `operationStartedAt`, and `operationLeaseExpiresAt` as one active-evidence group: all are NULL in `IDLE`, and all are non-NULL in `RUNNING` or `RECONCILE_REQUIRED`. `lastReconciledAt` is optional reconciliation metadata outside that group. Intent is at most 16 KiB and must never contain credentials. |
-| Indexes | Required indexes are unique `(id, workspaceId)`, workspace-leading `(workspaceId, resourceType, provider, mode)`, lease `(operationState, operationLeaseExpiresAt)`, and global identity unique `(provider, accountKey, resourceType, mode, remoteId)`. |
+| Field family        | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity            | Local `id`; required `workspaceId` with `ON DELETE RESTRICT`; `provider`, exact `ProviderResourceType` values `{DOMAIN, SERVER}` in `resourceType`, and `mode`; non-secret stable `accountKey`; stable provider `remoteId`; `displayName`; optimistic `version`. Global uniqueness is `(provider, accountKey, resourceType, mode, remoteId)`, which makes one remote resource exclusive to one workspace.                                                                                                                                                                                                                                                                     |
+| Mock identity       | `accountKey = 'mock:v1'`; `remoteId = 'mock:v1:<workspaceId>:<provider>:<key>'`. REAL rows cannot use a `mock:` prefix. No mutable module-global mock state remains.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Identity validation | Application and SQL enforce UTF-8 bounds: `accountKey` 1–256 bytes, `remoteId` 1–512, `displayName` 1–512; values are trimmed and contain no control characters. Provider/resource-type pairs are restricted by CHECK.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Operation lease     | Exact fields are `operationState`, `operationId`, `operationKind`, `operationIntent`, `operationStartedAt`, `operationLeaseExpiresAt`, `lastReconciledAt`, and `version`. `operationState` is `IDLE`, `RUNNING`, or `RECONCILE_REQUIRED`; `operationId` is unique. The CHECK treats `operationId`, `operationKind`, credential-free canonical `operationIntent`, `operationStartedAt`, and `operationLeaseExpiresAt` as one active-evidence group: all are NULL in `IDLE`, and all are non-NULL in `RUNNING` or `RECONCILE_REQUIRED`. `lastReconciledAt` is optional reconciliation metadata outside that group. Intent is at most 16 KiB and must never contain credentials. |
+| Indexes             | Required indexes are unique `(id, workspaceId)`, workspace-leading `(workspaceId, resourceType, provider, mode)`, lease `(operationState, operationLeaseExpiresAt)`, and global identity unique `(provider, accountKey, resourceType, mode, remoteId)`.                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 `Workspace` deletion first requires all bindings `IDLE`, then deletes local binding rows in a controlled transaction; it never sends provider delete calls. The Prisma relation remains `Restrict` so an accidental cascade cannot bypass this gate.
 
@@ -311,8 +311,8 @@ Production order is fixed: maintenance on → preflight → manifest repair → 
 The mandatory PostgreSQL 16 gate covers fresh replay, repaired replay, forced forward failure/retry, sentinel success/collision/zero-remnant checks, partial-null rejection, composite cascades/`SET NULL`, binding `RESTRICT`, identity length/control/prefix checks, lease-state checks, JSON↔SQL byte parity, Prisma validate/checksum, and zero provider/network access.
 
 **CURRENT:** `src/proxy.ts` is an optimistic redirect layer. It checks only whether the `session` cookie exists. It redirects missing-cookie requests to `/login?next=<pathname>` and excludes login, public webhooks, framework assets, and the favicon from its matcher. It performs no database authorization.
-## 5. Authentication, session, and proxy
 
+## 5. Authentication, session, and proxy
 
 **CURRENT:** `src/lib/auth/dal.ts` is authoritative. `requireOperator()` verifies a live database session and operator. `requireAuth()` additionally verifies `Session.activeWorkspaceId` membership; if invalid or unset, it selects the earliest membership and updates the session. Dashboard layout and authenticated Route Handlers use this server-side result.
 
@@ -408,11 +408,11 @@ sequenceDiagram
 
 **CURRENT:** Provider operations return exactly one of these `ProviderResult<T>` shapes:
 
-| Label | Shape | Current HTTP mapping |
-| --- | --- | --- |
-| CURRENT | `{ ok: true, data: T }` | configured success status; `undefined` data becomes 204 |
-| CURRENT | `{ ok: false, kind: "error", message: string }` | 502 |
-| CURRENT | `{ ok: false, kind: "unsupported", operation: string }` | 501 |
+| Label   | Shape                                                   | Current HTTP mapping                                    |
+| ------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| CURRENT | `{ ok: true, data: T }`                                 | configured success status; `undefined` data becomes 204 |
+| CURRENT | `{ ok: false, kind: "error", message: string }`         | 502                                                     |
+| CURRENT | `{ ok: false, kind: "unsupported", operation: string }` | 501                                                     |
 
 **CURRENT:** DNS factories return Cloudflare, Hetzner DNS, and GoDaddy providers. Server factory returns Hetzner Cloud. Missing credentials select deterministic process-local mocks. Present credentials select real-mode classes.
 
@@ -447,17 +447,17 @@ sequenceDiagram
 
 ### 7.4 Target result and HTTP mapping
 
-| Label | Target `ProviderResult` category | Route response |
-| --- | --- | --- |
-| TARGET (Phase 3) | success | operation-specific 2xx |
-| TARGET (Phase 3) | `auth` | 502; provider-account authentication is not operator authentication |
-| TARGET (Phase 3) | `rate_limit` | 429 plus sanitized `Retry-After` |
-| TARGET (Phase 3) | `not_found` | 404 |
-| TARGET (Phase 3) | `validation` | 422 |
-| TARGET (Phase 3) | `conflict` | 409 |
-| TARGET (Phase 3) | `upstream` or malformed response | 502 |
-| TARGET (Phase 3) | `timeout` | 504 |
-| TARGET (Phase 3) | `unsupported` | 501 |
+| Label            | Target `ProviderResult` category | Route response                                                      |
+| ---------------- | -------------------------------- | ------------------------------------------------------------------- |
+| TARGET (Phase 3) | success                          | operation-specific 2xx                                              |
+| TARGET (Phase 3) | `auth`                           | 502; provider-account authentication is not operator authentication |
+| TARGET (Phase 3) | `rate_limit`                     | 429 plus sanitized `Retry-After`                                    |
+| TARGET (Phase 3) | `not_found`                      | 404                                                                 |
+| TARGET (Phase 3) | `validation`                     | 422                                                                 |
+| TARGET (Phase 3) | `conflict`                       | 409                                                                 |
+| TARGET (Phase 3) | `upstream` or malformed response | 502                                                                 |
+| TARGET (Phase 3) | `timeout`                        | 504                                                                 |
+| TARGET (Phase 3) | `unsupported`                    | 501                                                                 |
 
 **TARGET (Phase 3):** Client responses expose a stable category and safe message, never upstream response bodies, credentials, authorization headers, or sensitive query values.
 
@@ -483,12 +483,12 @@ sequenceDiagram
 
 ### 7.7 Q-11 rollout
 
-| Label | Order | Provider | Exit evidence |
-| --- | --- | --- | --- |
-| TARGET (Phase 3.1) | 1 | Cloudflare DNS | list zones/records; create/update/delete confirmed by reread; AC-REAL-CF-001…004 |
-| TARGET (Phase 3.2) | 2 | Hetzner Cloud | list/status; start/stop/restart confirmed by polling; AC-REAL-HC-001…004 |
-| TARGET (Phase 3.3) | 3 | Hetzner DNS | list zones/records; mutations confirmed by reread; AC-REAL-HD-001…004 |
-| TARGET (Phase 3.4) | 4 | GoDaddy DNS | list domains/records; mutations confirmed by reread; AC-REAL-GD-001…004 or evidenced account/API ineligibility plus dated explicit user exclusion |
+| Label              | Order | Provider       | Exit evidence                                                                                                                                     |
+| ------------------ | ----- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TARGET (Phase 3.1) | 1     | Cloudflare DNS | list zones/records; create/update/delete confirmed by reread; AC-REAL-CF-001…004                                                                  |
+| TARGET (Phase 3.2) | 2     | Hetzner Cloud  | list/status; start/stop/restart confirmed by polling; AC-REAL-HC-001…004                                                                          |
+| TARGET (Phase 3.3) | 3     | Hetzner DNS    | list zones/records; mutations confirmed by reread; AC-REAL-HD-001…004                                                                             |
+| TARGET (Phase 3.4) | 4     | GoDaddy DNS    | list domains/records; mutations confirmed by reread; AC-REAL-GD-001…004 or evidenced account/API ineligibility plus dated explicit user exclusion |
 
 **TARGET (Phase 3):** Credentials arrive incrementally through `.env`. Missing credentials alone do not exclude GoDaddy or satisfy its release gate.
 
@@ -611,106 +611,106 @@ src/
 
 ## 10. Architecture decisions
 
-| ADR | Label | Decision |
-| --- | --- | --- |
-| ADR-001 | CURRENT / TARGET | Use one Next.js modular monolith and PostgreSQL. Q-13 adds binding/lease metadata, not credentials or provider snapshots. No queue, microservices, Redis dependency, vault, general provider SDK, or separate service. |
-| ADR-002 | CURRENT | Use database-backed opaque sessions and scrypt password verification. Logout invalidates the database session. |
-| ADR-003 | CURRENT | `src/proxy.ts` performs optimistic cookie-presence redirects; `requireOperator()` and `requireAuth()` are authoritative. Never authorize from proxy presence alone. |
-| ADR-004 | CURRENT / GAP / TARGET R2.1e | Domains, DNS records, and Servers are currently deployment-wide read-through DTOs. Q-13 adds exclusive local `ProviderResourceBinding` ownership; provider resources themselves remain upstream and are never mirrored as Prisma snapshots. |
-| ADR-005 | CURRENT | Use one public `POST /api/webhooks/[type]` pipeline for mail, message, log, and alert ingest. |
-| ADR-006 | CURRENT | Use a token-keyed in-process rate limiter while deployment remains one application process. |
-| ADR-007 | GAP | `@@unique([tokenId,key])` exists, but current check → dispatch → record is non-atomic. Atomic claim/dispatch semantics exist only as TARGET (Phase 2.2). |
-| ADR-008 | CURRENT | Providers return in-band `success`, generic `error`, or `unsupported`; Route Handlers map generic errors to 502 and unsupported to 501. |
-| ADR-009 | CURRENT | Use keyset pagination. Keep substring search as an explicit pagination-only fallback without a numeric latency guarantee. |
-| ADR-010 | CURRENT | Share Zod validation where contracts overlap; keep request-specific validation near its boundary. |
-| ADR-011 | CURRENT / TARGET R2.1a-c | Keep workspace out of URLs and resolve it from the session. Replace the direct Session→Workspace FK with a strict optional composite membership FK. Require `X-Inspoter-Workspace` only as a stale-context precondition after auth/membership, never as authority. |
-| ADR-012 | GAP | Intended runtime Prisma callers are services and the authoritative auth DAL. Five current exceptions are recorded in §4.4 and must move behind those boundaries. |
-| ADR-013 | CURRENT / TARGET R2.1a | Replace indirect child ownership with required direct `workspaceId`, compound parent FKs, equality CHECKs, and workspace-leading indexes. Alert uses a strict nullable composite category pair with `SET NULL`. |
-| ADR-014 | CURRENT | New operators join through workspace administration; public self-registration and extended RBAC remain out of scope. |
-| ADR-015 | TARGET (Phase 3) | Select each provider independently from a complete credential set. Absent selects zero-network mock; configured invalid/revoked returns typed auth; never fall back. |
-| ADR-016 | TARGET (Phase 3) | Centralize timeout, safe retry, `Retry-After`, decoding seams, and redaction in a thin injected HTTP boundary. |
-| ADR-017 | TARGET (Phase 3) | Expand provider failures to typed, sanitized categories and map them consistently as defined in §7.4. |
-| ADR-018 | CURRENT GAP / TARGET R2.1e | Current process-local mock state is shared and restart-ephemeral. Q-13 replaces it with manifest-derived workspace-exclusive mock bindings; only provider credentials remain deployment-global. |
-| ADR-019 | TARGET R2.1a | Repair historical columns under a full-coverage manifest before adding shadow columns; then apply one transactional forward migration. Fresh databases replay history, Q-13 forward, then transactional seed. |
-| ADR-020 | TARGET R2.1c-d | Apply auth → expected-workspace header → target authorization before business/cache/provider work; remount a keyed workspace boundary and never retry stale mutations. |
-| ADR-021 | TARGET R2.1e | Real and mock resources use exclusive global identity bindings. Local removal/deletion never deletes upstream resources. |
-| ADR-022 | TARGET R2.1e / R3.x | Execute provider I/O outside database transactions under durable lease/readback/CAS/reconciliation semantics. |
-| ADR-023 | TARGET R2.1a | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity. |
+| ADR     | Label                        | Decision                                                                                                                                                                                                                                                           |
+| ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ADR-001 | CURRENT / TARGET             | Use one Next.js modular monolith and PostgreSQL. Q-13 adds binding/lease metadata, not credentials or provider snapshots. No queue, microservices, Redis dependency, vault, general provider SDK, or separate service.                                             |
+| ADR-002 | CURRENT                      | Use database-backed opaque sessions and scrypt password verification. Logout invalidates the database session.                                                                                                                                                     |
+| ADR-003 | CURRENT                      | `src/proxy.ts` performs optimistic cookie-presence redirects; `requireOperator()` and `requireAuth()` are authoritative. Never authorize from proxy presence alone.                                                                                                |
+| ADR-004 | CURRENT / GAP / TARGET R2.1e | Domains, DNS records, and Servers are currently deployment-wide read-through DTOs. Q-13 adds exclusive local `ProviderResourceBinding` ownership; provider resources themselves remain upstream and are never mirrored as Prisma snapshots.                        |
+| ADR-005 | CURRENT                      | Use one public `POST /api/webhooks/[type]` pipeline for mail, message, log, and alert ingest.                                                                                                                                                                      |
+| ADR-006 | CURRENT                      | Use a token-keyed in-process rate limiter while deployment remains one application process.                                                                                                                                                                        |
+| ADR-007 | GAP                          | `@@unique([tokenId,key])` exists, but current check → dispatch → record is non-atomic. Atomic claim/dispatch semantics exist only as TARGET (Phase 2.2).                                                                                                           |
+| ADR-008 | CURRENT                      | Providers return in-band `success`, generic `error`, or `unsupported`; Route Handlers map generic errors to 502 and unsupported to 501.                                                                                                                            |
+| ADR-009 | CURRENT                      | Use keyset pagination. Keep substring search as an explicit pagination-only fallback without a numeric latency guarantee.                                                                                                                                          |
+| ADR-010 | CURRENT                      | Share Zod validation where contracts overlap; keep request-specific validation near its boundary.                                                                                                                                                                  |
+| ADR-011 | CURRENT / TARGET R2.1a-c     | Keep workspace out of URLs and resolve it from the session. Replace the direct Session→Workspace FK with a strict optional composite membership FK. Require `X-Inspoter-Workspace` only as a stale-context precondition after auth/membership, never as authority. |
+| ADR-012 | GAP                          | Intended runtime Prisma callers are services and the authoritative auth DAL. Five current exceptions are recorded in §4.4 and must move behind those boundaries.                                                                                                   |
+| ADR-013 | CURRENT / TARGET R2.1a       | Replace indirect child ownership with required direct `workspaceId`, compound parent FKs, equality CHECKs, and workspace-leading indexes. Alert uses a strict nullable composite category pair with `SET NULL`.                                                    |
+| ADR-014 | CURRENT                      | New operators join through workspace administration; public self-registration and extended RBAC remain out of scope.                                                                                                                                               |
+| ADR-015 | TARGET (Phase 3)             | Select each provider independently from a complete credential set. Absent selects zero-network mock; configured invalid/revoked returns typed auth; never fall back.                                                                                               |
+| ADR-016 | TARGET (Phase 3)             | Centralize timeout, safe retry, `Retry-After`, decoding seams, and redaction in a thin injected HTTP boundary.                                                                                                                                                     |
+| ADR-017 | TARGET (Phase 3)             | Expand provider failures to typed, sanitized categories and map them consistently as defined in §7.4.                                                                                                                                                              |
+| ADR-018 | CURRENT GAP / TARGET R2.1e   | Current process-local mock state is shared and restart-ephemeral. Q-13 replaces it with manifest-derived workspace-exclusive mock bindings; only provider credentials remain deployment-global.                                                                    |
+| ADR-019 | TARGET R2.1a                 | Repair historical columns under a full-coverage manifest before adding shadow columns; then apply one transactional forward migration. Fresh databases replay history, Q-13 forward, then transactional seed.                                                      |
+| ADR-020 | TARGET R2.1c-d               | Apply auth → expected-workspace header → target authorization before business/cache/provider work; remount a keyed workspace boundary and never retry stale mutations.                                                                                             |
+| ADR-021 | TARGET R2.1e                 | Real and mock resources use exclusive global identity bindings. Local removal/deletion never deletes upstream resources.                                                                                                                                           |
+| ADR-022 | TARGET R2.1e / R3.x          | Execute provider I/O outside database transactions under durable lease/readback/CAS/reconciliation semantics.                                                                                                                                                      |
+| ADR-023 | TARGET R2.1a                 | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity.                                                                                                                                                           |
 
 ## 11. Decision and requirement traceability
 
 ### 11.1 Accepted Q decisions
 
-| Decision | Label | Architectural consequence |
-| --- | --- | --- |
-| Q-1 | TARGET (Phase 4) | Visible UI is Russian-only under the PRD allowlist; current mixed copy remains a UI gap. |
-| Q-2 | CURRENT | Light theme is primary; dark theme and a switcher are deferred. |
-| Q-3 | TARGET (Phase 4) | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions. |
-| Q-4 | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only. |
-| Q-5 | CURRENT | Mail remains read-only. No compose/send route is planned for this iteration. |
-| Q-6 | CURRENT | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned. |
-| Q-7 | GAP / TARGET (Phase 2.5) | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded. |
-| Q-8 | CURRENT | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive. |
-| Q-9 | CURRENT | Webhook tokens are not restricted by event type/source; they remain workspace-owned. |
-| Q-10 | CURRENT | No automatic retention. Growth risk R-5 remains accepted. |
-| Q-11 | TARGET (Phase 3) | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials. |
-| Q-12 | TARGET (Phase 4.4) | Add an optional idempotent `db:seed:demo`, separate from production bootstrap. |
+| Decision | Label                          | Architectural consequence                                                                                          |
+| -------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Q-1      | TARGET (Phase 4)               | Visible UI is Russian-only under the PRD allowlist; current mixed copy remains a UI gap.                           |
+| Q-2      | CURRENT                        | Light theme is primary; dark theme and a switcher are deferred.                                                    |
+| Q-3      | TARGET (Phase 4)               | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions.    |
+| Q-4      | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only.  |
+| Q-5      | CURRENT                        | Mail remains read-only. No compose/send route is planned for this iteration.                                       |
+| Q-6      | CURRENT                        | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned.                 |
+| Q-7      | GAP / TARGET (Phase 2.5)       | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded. |
+| Q-8      | CURRENT                        | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive.                      |
+| Q-9      | CURRENT                        | Webhook tokens are not restricted by event type/source; they remain workspace-owned.                               |
+| Q-10     | CURRENT                        | No automatic retention. Growth risk R-5 remains accepted.                                                          |
+| Q-11     | TARGET (Phase 3)               | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials.               |
+| Q-12     | TARGET (Phase 4.4)             | Add an optional idempotent `db:seed:demo`, separate from production bootstrap.                                     |
 
 ### 11.2 Key normative traces
 
-| Requirement | CURRENT / GAP | TARGET and verification owner |
-| --- | --- | --- |
-| D-20 | **SUPERSEDED by Q-13/D-21.** The former Domains/Servers exception is historical and non-normative. | Preserve as history only. |
-| Q-13 / D-21 | Every section, provider binding, mock, cache, cursor, read, and mutation follows the active workspace. | R2.1a–e establishes the foundation; R2.2–R2.7 close facets; R2.8 proves the two-workspace/two-member all-section contract. |
-| FR-WS-001..003; AC-WS-003..007 | Workspace administration authenticates the caller but does not authorize the target workspace or owner role. | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests. |
-| AC-AUTH-001..003 | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values. | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths. |
-| Q-13 | TARGET (R2.1a–e, R2.2–R2.8) | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11. |
-| FR-MSG-003; AC-MSG-009…014 | No operator POST, explicit origin, or persisted operator attribution. | Phases 2.7 and 4.3: API, service, schema, UI, and failure-state tests. |
-| AC-ALR-008 | No alert delete route or UI action. | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent. |
-| FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported. | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection. |
-| NFR-SEC-002 | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete. | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures. |
-| PRD v3 / Design v2 | Approved normative inputs; implementation still has known UI and behavior deltas. | Phases 2–4; do not mark product complete before Phase 5 acceptance. |
+| Requirement                              | CURRENT / GAP                                                                                                                                               | TARGET and verification owner                                                                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-20                                     | **SUPERSEDED by Q-13/D-21.** The former Domains/Servers exception is historical and non-normative.                                                          | Preserve as history only.                                                                                                                            |
+| Q-13 / D-21                              | Every section, provider binding, mock, cache, cursor, read, and mutation follows the active workspace.                                                      | R2.1a–e establishes the foundation; R2.2–R2.7 close facets; R2.8 proves the two-workspace/two-member all-section contract.                           |
+| FR-WS-001..003; AC-WS-003..007           | Workspace administration authenticates the caller but does not authorize the target workspace or owner role.                                                | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests.                           |
+| AC-AUTH-001..003                         | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values.                                           | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths.                                          |
+| Q-13                                     | TARGET (R2.1a–e, R2.2–R2.8)                                                                                                                                 | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11. |
+| FR-MSG-003; AC-MSG-009…014               | No operator POST, explicit origin, or persisted operator attribution.                                                                                       | Phases 2.7 and 4.3: API, service, schema, UI, and failure-state tests.                                                                               |
+| AC-ALR-008                               | No alert delete route or UI action.                                                                                                                         | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent.                                                                            |
+| FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported.                                                                                            | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection.                                             |
+| NFR-SEC-002                              | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete. | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures.                                                    |
+| PRD v3 / Design v2                       | Approved normative inputs; implementation still has known UI and behavior deltas.                                                                           | Phases 2–4; do not mark product complete before Phase 5 acceptance.                                                                                  |
 
 ## 12. Residual risks and dependencies
 
-| Priority | Label | Risk / dependency | Required control |
-| --- | --- | --- | --- |
-| High | GAP | Concurrent same-key webhooks can duplicate effects. | Phase 2.2 atomic claim and concurrency tests. |
-| High | GAP | Bookmark child ids can cross workspace boundaries. | Phase 2.1 ownership predicates and isolation tests. |
-| High | GAP | Authenticated operators can target workspace-administration ids without target membership or owner authorization. | Phase 2.1 target-workspace predicates, owner checks, and isolation tests. |
-| High | GAP | Alert `SetNull` can erase the only workspace ownership path. | Phase 2.5 schema migration, legacy-null disposition, scoped delete/list tests. |
-| High | PENDING REVALIDATION | Node 24/Corepack/`pnpm@11.12.0`, frozen-lockfile Docker/CI, and the Playwright production-server command are implemented. | Complete the three-run `R2.0-G` runtime integration gate. |
-| High | GAP | Real-mode provider classes are stubs; configured credentials do not deliver real value. | Phase 3 AC-REAL implementation and evidence. |
-| Medium | GAP | Provider config is unvalidated, GoDaddy selection ignores the secret, and compose passes no provider variables. | Phase 3 complete-set validation and deployment wiring. |
-| Medium | GAP | The login `next` prefix check accepts protocol-relative or externally normalized targets. | Phase 2.1 same-origin normalization and malicious/valid target tests. |
-| High | GAP | Mock/provider inventory is deployment-wide and mutable mock state is shared across workspaces. | R2.1e bindings plus manifest-derived mock identity; two-workspace isolation and zero foreign-provider-call tests. |
-| Medium | GAP | Five runtime Prisma callers bypass the intended service/DAL boundary. | Phase 2 boundary cleanup with unchanged external contracts. |
-| Medium | GAP | Most routes lack App Router loading/error/not-found boundaries. | Phase 4 state implementation and accessibility tests. |
-| Accepted | CURRENT | No automatic retention; database growth risk R-5 remains. | Monitor storage operationally; do not invent retention without a new decision. |
-| Dependency | TARGET (Phase 3) | Real smoke tests require credentials and eligible accounts in Q-11 order. | Keep them optional outside normal CI; never expose secrets in artifacts. |
-| Dependency | TARGET (Phase 3.4) | GoDaddy account/API eligibility may block integration. | Require real evidence plus dated user exclusion; missing credentials alone are insufficient. |
-| Non-blocking | CURRENT | OQ-8 leaves uploaded bookmark assets undecided. | Preserve reference-value behavior; do not add an asset pipeline without a sourced requirement. |
-| High | TARGET risk | Historical ownership cannot be inferred safely from current data. | Maintenance manifest with digest/full coverage, explicit orphan/null dispositions, SERIALIZABLE repair, sentinel collision/zero-remnant checks. |
-| High | TARGET risk | Provider transport can fail after an upstream commit. | Durable lease, outside-transaction I/O, readback/CAS, read-only reconciliation; block active/unresolved bindings. |
-| High | TARGET risk | A stale browser tab can issue a mutation after workspace switch. | Required expected-workspace precondition, `409 WORKSPACE_CONTEXT_STALE`, keyed remount, mutation no-retry. |
+| Priority     | Label                | Risk / dependency                                                                                                         | Required control                                                                                                                                |
+| ------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| High         | GAP                  | Concurrent same-key webhooks can duplicate effects.                                                                       | Phase 2.2 atomic claim and concurrency tests.                                                                                                   |
+| High         | GAP                  | Bookmark child ids can cross workspace boundaries.                                                                        | Phase 2.1 ownership predicates and isolation tests.                                                                                             |
+| High         | GAP                  | Authenticated operators can target workspace-administration ids without target membership or owner authorization.         | Phase 2.1 target-workspace predicates, owner checks, and isolation tests.                                                                       |
+| High         | GAP                  | Alert `SetNull` can erase the only workspace ownership path.                                                              | Phase 2.5 schema migration, legacy-null disposition, scoped delete/list tests.                                                                  |
+| High         | PENDING REVALIDATION | Node 24/Corepack/`pnpm@11.12.0`, frozen-lockfile Docker/CI, and the Playwright production-server command are implemented. | Complete the three-run `R2.0-G` runtime integration gate.                                                                                       |
+| High         | GAP                  | Real-mode provider classes are stubs; configured credentials do not deliver real value.                                   | Phase 3 AC-REAL implementation and evidence.                                                                                                    |
+| Medium       | GAP                  | Provider config is unvalidated, GoDaddy selection ignores the secret, and compose passes no provider variables.           | Phase 3 complete-set validation and deployment wiring.                                                                                          |
+| Medium       | GAP                  | The login `next` prefix check accepts protocol-relative or externally normalized targets.                                 | Phase 2.1 same-origin normalization and malicious/valid target tests.                                                                           |
+| High         | GAP                  | Mock/provider inventory is deployment-wide and mutable mock state is shared across workspaces.                            | R2.1e bindings plus manifest-derived mock identity; two-workspace isolation and zero foreign-provider-call tests.                               |
+| Medium       | GAP                  | Five runtime Prisma callers bypass the intended service/DAL boundary.                                                     | Phase 2 boundary cleanup with unchanged external contracts.                                                                                     |
+| Medium       | GAP                  | Most routes lack App Router loading/error/not-found boundaries.                                                           | Phase 4 state implementation and accessibility tests.                                                                                           |
+| Accepted     | CURRENT              | No automatic retention; database growth risk R-5 remains.                                                                 | Monitor storage operationally; do not invent retention without a new decision.                                                                  |
+| Dependency   | TARGET (Phase 3)     | Real smoke tests require credentials and eligible accounts in Q-11 order.                                                 | Keep them optional outside normal CI; never expose secrets in artifacts.                                                                        |
+| Dependency   | TARGET (Phase 3.4)   | GoDaddy account/API eligibility may block integration.                                                                    | Require real evidence plus dated user exclusion; missing credentials alone are insufficient.                                                    |
+| Non-blocking | CURRENT              | OQ-8 leaves uploaded bookmark assets undecided.                                                                           | Preserve reference-value behavior; do not add an asset pipeline without a sourced requirement.                                                  |
+| High         | TARGET risk          | Historical ownership cannot be inferred safely from current data.                                                         | Maintenance manifest with digest/full coverage, explicit orphan/null dispositions, SERIALIZABLE repair, sentinel collision/zero-remnant checks. |
+| High         | TARGET risk          | Provider transport can fail after an upstream commit.                                                                     | Durable lease, outside-transaction I/O, readback/CAS, read-only reconciliation; block active/unresolved bindings.                               |
+| High         | TARGET risk          | A stale browser tab can issue a mutation after workspace switch.                                                          | Required expected-workspace precondition, `409 WORKSPACE_CONTEXT_STALE`, keyed remount, mutation no-retry.                                      |
 
 ## 13. Verification contract for this document
 
-| Label | Check |
-| --- | --- |
-| CURRENT | Stack values must match `package.json`, `pnpm-lock.yaml`, `Dockerfile`, `docker-compose.yml`, and `playwright.config.ts`. |
-| CURRENT | Page, route-file, handler, method, model, and database-importer counts must match the repository. |
-| CURRENT | Every current path in §§3 and 9 must exist. |
-| TARGET | Every absent future path must carry `TARGET (Phase N)` and `ABSENT`. |
-| GAP | Webhook atomicity, Bookmark ownership, workspace-administration authorization, login target validation, Alert ownership, human message POST, alert deletion, provider stubs, and deployment mismatch must remain visible until code and tests close them. |
-| TARGET | Phase 2.1 must prove membership-gated workspace reads, owner-only workspace mutations, non-disclosing foreign-id responses, and malicious/valid login-target handling. |
-| TARGET | Phase 3 retry, redaction, error mapping, readback/reconciliation, and Q-11 order must trace to FR-REAL/AC-REAL and NFR-SEC-002. |
-| CURRENT | Phase 1 remains in progress until ordinary doc review passes; Phases 2–5 remain pending. |
-| TARGET | Q-13 implementation must remove every superseded single-column child FK and prove the compound FK/CHECK/cascade/`SET NULL`/`RESTRICT` contract on PostgreSQL 16. |
-| TARGET | Existing-database repair must prove complete manifest coverage and reserved sentinel id plus `(workspaceId, reservedName)` collision checks; fresh and repaired histories must replay without editing old migrations. |
-| TARGET | `prisma validate`, migration checksums, and canonical JSON→SQL version/SHA/byte parity must pass; repair/migration must make zero provider/network calls. |
-| TARGET | Every session-authenticated browser API must test missing/malformed/matching/stale `X-Inspoter-Workspace` in the required ordering, including switch and workspace administration. |
-| TARGET | Provider binding tests must cover stable account identity, rotation, collision, claim, transfer, remove, delete, identity bounds, lease expiry/no-steal, ambiguous outcome, and reconciliation. |
-| TARGET | R2.1a–e and R2.2–R2.7 report only their facet evidence. Only R2.8 may report AC-WS-008/010/011 and the Workspaces family as PASS/11-of-11. |
-| TARGET | Real-provider identity/capability/reconciliation facts remain R3.x validation and must not be inferred from mock behavior. |
-| CURRENT | Q-13 is approved documentation target only; the current schema, APIs, provider mocks, and UI do not yet implement it. |
+| Label   | Check                                                                                                                                                                                                                                                     |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CURRENT | Stack values must match `package.json`, `pnpm-lock.yaml`, `Dockerfile`, `docker-compose.yml`, and `playwright.config.ts`.                                                                                                                                 |
+| CURRENT | Page, route-file, handler, method, model, and database-importer counts must match the repository.                                                                                                                                                         |
+| CURRENT | Every current path in §§3 and 9 must exist.                                                                                                                                                                                                               |
+| TARGET  | Every absent future path must carry `TARGET (Phase N)` and `ABSENT`.                                                                                                                                                                                      |
+| GAP     | Webhook atomicity, Bookmark ownership, workspace-administration authorization, login target validation, Alert ownership, human message POST, alert deletion, provider stubs, and deployment mismatch must remain visible until code and tests close them. |
+| TARGET  | Phase 2.1 must prove membership-gated workspace reads, owner-only workspace mutations, non-disclosing foreign-id responses, and malicious/valid login-target handling.                                                                                    |
+| TARGET  | Phase 3 retry, redaction, error mapping, readback/reconciliation, and Q-11 order must trace to FR-REAL/AC-REAL and NFR-SEC-002.                                                                                                                           |
+| CURRENT | Phase 1 remains in progress until ordinary doc review passes; Phases 2–5 remain pending.                                                                                                                                                                  |
+| TARGET  | Q-13 implementation must remove every superseded single-column child FK and prove the compound FK/CHECK/cascade/`SET NULL`/`RESTRICT` contract on PostgreSQL 16.                                                                                          |
+| TARGET  | Existing-database repair must prove complete manifest coverage and reserved sentinel id plus `(workspaceId, reservedName)` collision checks; fresh and repaired histories must replay without editing old migrations.                                     |
+| TARGET  | `prisma validate`, migration checksums, and canonical JSON→SQL version/SHA/byte parity must pass; repair/migration must make zero provider/network calls.                                                                                                 |
+| TARGET  | Every session-authenticated browser API must test missing/malformed/matching/stale `X-Inspoter-Workspace` in the required ordering, including switch and workspace administration.                                                                        |
+| TARGET  | Provider binding tests must cover stable account identity, rotation, collision, claim, transfer, remove, delete, identity bounds, lease expiry/no-steal, ambiguous outcome, and reconciliation.                                                           |
+| TARGET  | R2.1a–e and R2.2–R2.7 report only their facet evidence. Only R2.8 may report AC-WS-008/010/011 and the Workspaces family as PASS/11-of-11.                                                                                                                |
+| TARGET  | Real-provider identity/capability/reconciliation facts remain R3.x validation and must not be inferred from mock behavior.                                                                                                                                |
+| CURRENT | Q-13 is approved documentation target only; the current schema, APIs, provider mocks, and UI do not yet implement it.                                                                                                                                     |

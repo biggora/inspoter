@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
+import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -25,7 +25,10 @@ import {
   formatTarget,
   MONITOR_TYPE_LABELS,
 } from "./format";
-import { ServiceFormDialog, type ServiceFormDialogState } from "./service-form-dialog";
+import {
+  ServiceFormDialog,
+  type ServiceFormDialogState,
+} from "./service-form-dialog";
 import { ServiceStatusBadge } from "./service-status-badge";
 
 const POLL_INTERVAL_MS = 10000;
@@ -91,7 +94,8 @@ export function ServiceDetailView({
         setChecks(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled) setChecksError("Не удалось загрузить историю проверок.");
+        if (!cancelled)
+          setChecksError("Не удалось загрузить историю проверок.");
       } finally {
         if (!cancelled) setLoadingChecks(false);
       }
@@ -154,13 +158,7 @@ export function ServiceDetailView({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/services"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronLeft aria-hidden className="size-4" />
-        Назад к сервисам
-      </Link>
+      <PageHeader back={{ href: "/services", label: "Назад к сервисам" }} />
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
@@ -174,7 +172,10 @@ export function ServiceDetailView({
               </p>
             )}
           </div>
-          <ServiceStatusBadge status={service.currentStatus} className="shrink-0" />
+          <ServiceStatusBadge
+            status={service.currentStatus}
+            className="shrink-0"
+          />
         </div>
 
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -303,7 +304,9 @@ export function ServiceDetailView({
                     }`}
                     className={cn(
                       "h-8 min-w-[4px] flex-1 rounded-sm",
-                      check.status === "UP" ? "bg-accent-500" : "bg-primary-500",
+                      check.status === "UP"
+                        ? "bg-accent-500"
+                        : "bg-primary-500",
                     )}
                   />
                 ))}

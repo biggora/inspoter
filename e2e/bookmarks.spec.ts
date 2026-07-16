@@ -26,7 +26,9 @@ function bookmarkArticle(page: Page, bookmarkName: string) {
 function articleAriaLabels(section: Locator) {
   return section
     .getByRole("article")
-    .evaluateAll((elements) => elements.map((el) => el.getAttribute("aria-label")));
+    .evaluateAll((elements) =>
+      elements.map((el) => el.getAttribute("aria-label")),
+    );
 }
 
 // DOM order of top-level category `<section aria-labelledby>` headings.
@@ -303,7 +305,9 @@ test("AC-BM-008: an invalid (non-http/https) URL shows a validation error and is
   await page.getByRole("button", { name: "Создать", exact: true }).click();
 
   await expect(
-    page.getByText("Введите корректный URL, начинающийся с http:// или https://."),
+    page.getByText(
+      "Введите корректный URL, начинающийся с http:// или https://.",
+    ),
   ).toBeVisible();
   await expect(
     category.getByRole("article", { name: bookmarkName, exact: true }),
@@ -501,9 +505,7 @@ test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and
         exact: true,
       })
       .click();
-    await page
-      .getByRole("menuitem", { name: "Изменить", exact: true })
-      .click();
+    await page.getByRole("menuitem", { name: "Изменить", exact: true }).click();
   }
 
   // AC-BM-016: choosing a color renders that color's tone classes.
@@ -700,7 +702,9 @@ test("AC-BM-022..025: mouse-based reorder moves a category above its sibling and
   await createCategory(page, categoryA, testData.registerCategory);
   await createCategory(page, categoryB, testData.registerCategory);
 
-  await expect.poll(() => categoryHeadingNames(page)).toEqual([categoryA, categoryB]);
+  await expect
+    .poll(() => categoryHeadingNames(page))
+    .toEqual([categoryA, categoryB]);
 
   const sectionA = categorySection(page, categoryA);
   const handleB = categorySection(page, categoryB).getByRole("button", {
@@ -734,10 +738,14 @@ test("AC-BM-022..025: mouse-based reorder moves a category above its sibling and
   );
   expect(reorderResponse.status()).toBe(204);
 
-  await expect.poll(() => categoryHeadingNames(page)).toEqual([categoryB, categoryA]);
+  await expect
+    .poll(() => categoryHeadingNames(page))
+    .toEqual([categoryB, categoryA]);
 
   await page.reload();
-  await expect.poll(() => categoryHeadingNames(page)).toEqual([categoryB, categoryA]);
+  await expect
+    .poll(() => categoryHeadingNames(page))
+    .toEqual([categoryB, categoryA]);
 });
 
 test("AC-BM-022..025: an active search query disables the bookmark drag handle", async ({

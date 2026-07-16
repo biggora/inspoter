@@ -70,9 +70,7 @@ test("Bookmark dialog with the color picker open has zero critical accessibility
     exact: true,
   });
   await expect(category).toBeVisible();
-  await category
-    .getByRole("button", { name: "Добавить", exact: true })
-    .click();
+  await category.getByRole("button", { name: "Добавить", exact: true }).click();
   await expect(
     page.getByRole("radiogroup", { name: "Цвет", exact: true }),
   ).toBeVisible();
@@ -173,9 +171,7 @@ test("Bookmark drag handle, focused, has zero critical accessibility violations"
   await expect(category).toBeVisible();
 
   const bookmarkName = testData.name("A11y Drag Handle Bookmark");
-  await category
-    .getByRole("button", { name: "Добавить", exact: true })
-    .click();
+  await category.getByRole("button", { name: "Добавить", exact: true }).click();
   await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
   await page
     .getByLabel("URL", { exact: true })

@@ -68,7 +68,9 @@ function makeRequest(txnCookie?: string): NextRequest {
   return request;
 }
 
-function validTxn(overrides: Partial<Parameters<typeof encodeAuthentikTxn>[0]> = {}) {
+function validTxn(
+  overrides: Partial<Parameters<typeof encodeAuthentikTxn>[0]> = {},
+) {
   return encodeAuthentikTxn({
     state: "xyz",
     nonce: "nonce",

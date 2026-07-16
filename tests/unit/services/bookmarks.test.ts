@@ -512,10 +512,7 @@ describe("Category hierarchy (Phase 4)", () => {
 
     const foundA1 = grouped.find((c) => c.id === a1.id);
     const foundA2 = grouped.find((c) => c.id === a2.id);
-    expect(foundA1?.childCategories.map((c) => c.id)).toEqual([
-      b1.id,
-      b2.id,
-    ]);
+    expect(foundA1?.childCategories.map((c) => c.id)).toEqual([b1.id, b2.id]);
     expect(foundA2?.childCategories.map((c) => c.id)).toEqual([c1.id]);
 
     const foundB1 = foundA1?.childCategories.find((c) => c.id === b1.id);

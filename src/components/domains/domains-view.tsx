@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   Table,
   TableBody,
@@ -76,7 +77,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Домены</h1>
+      <PageHeader title="Домены" />
 
       {erroredProviders.length > 0 && (
         <div className="flex flex-col gap-2">

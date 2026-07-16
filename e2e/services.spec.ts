@@ -38,8 +38,7 @@ async function createHttpService(
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
-      url.pathname === "/api/services" &&
-      response.request().method() === "POST"
+      url.pathname === "/api/services" && response.request().method() === "POST"
     );
   });
   await page.getByRole("button", { name: "Создать", exact: true }).click();
@@ -54,7 +53,9 @@ async function createHttpService(
     typeof body.id !== "string" ||
     body.id.trim().length === 0
   ) {
-    throw new Error("Service POST response must contain a non-empty string id.");
+    throw new Error(
+      "Service POST response must contain a non-empty string id.",
+    );
   }
 
   await expect(serviceCard(page, fields.name)).toBeVisible();
@@ -79,7 +80,9 @@ async function deleteServiceViaApi(page: Page, id: string) {
     [`/api/services/${encodeURIComponent(id)}`, wsId] as const,
   );
   if (status !== 204 && status !== 404) {
-    throw new Error(`Service cleanup failed for ${id}: expected 204/404, received ${status}.`);
+    throw new Error(
+      `Service cleanup failed for ${id}: expected 204/404, received ${status}.`,
+    );
   }
 }
 
@@ -117,10 +120,7 @@ test("submitting the create form without a URL shows a validation error and crea
   await expect(serviceCard(page, name)).toHaveCount(0);
 });
 
-test("editing a service persists field changes", async ({
-  page,
-  testData,
-}) => {
+test("editing a service persists field changes", async ({ page, testData }) => {
   const originalName = testData.name("Editable Service");
   const editedName = testData.name("Editable Service Renamed");
   const url = testData.localUrl("/login");
@@ -130,7 +130,10 @@ test("editing a service persists field changes", async ({
     id = await createHttpService(page, { name: originalName, url });
 
     await serviceCard(page, originalName)
-      .getByRole("button", { name: `Редактировать «${originalName}»`, exact: true })
+      .getByRole("button", {
+        name: `Редактировать «${originalName}»`,
+        exact: true,
+      })
       .click();
     await page.getByLabel("Название", { exact: true }).fill(editedName);
 
@@ -166,7 +169,9 @@ test("the detail page renders the service configuration", async ({
     id = await createHttpService(page, { name, url });
 
     await page.goto(`/services/${id}`);
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name, exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("HTTP(S)", { exact: true })).toBeVisible();
     await expect(page.getByText(url, { exact: true })).toBeVisible();
   } finally {
@@ -201,7 +206,11 @@ test("'Проверить сейчас' on the detail page triggers the check-no
     expect(response.status()).toBe(200);
 
     const body: unknown = await response.json();
-    if (typeof body !== "object" || body === null || !("lastCheckedAt" in body)) {
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("lastCheckedAt" in body)
+    ) {
       throw new Error("check-now response must include lastCheckedAt.");
     }
     expect(body.lastCheckedAt).not.toBeNull();
@@ -223,7 +232,9 @@ test("deleting a service removes it from the list without a full reload", async 
   await serviceCard(page, name)
     .getByRole("button", { name: `Удалить «${name}»`, exact: true })
     .click();
-  await expect(page.getByText(`Удалить «${name}»?`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`Удалить «${name}»?`, { exact: true }),
+  ).toBeVisible();
 
   const responsePromise = page.waitForResponse((response) => {
     const respUrl = new URL(response.url());

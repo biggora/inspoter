@@ -27,7 +27,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, []));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     await provider.listDomains();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -49,7 +54,12 @@ describe("GoDaddyDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -70,7 +80,12 @@ describe("GoDaddyDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.listRecords("example.com");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -96,7 +111,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(emptyResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.createRecord("example.com", {
       type: "A",
       name: "www",
@@ -127,7 +147,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(emptyResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     await provider.createRecord("example.com", {
       type: "MX",
       name: "@",
@@ -157,7 +182,12 @@ describe("GoDaddyDnsProvider", () => {
       .mockResolvedValueOnce(emptyResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.updateRecord("example.com", "A-www", {
       value: "192.0.2.99",
     });
@@ -172,7 +202,13 @@ describe("GoDaddyDnsProvider", () => {
     );
     expect(result).toEqual({
       ok: true,
-      data: { id: "A-www", type: "A", name: "www", value: "192.0.2.99", ttl: 3600 },
+      data: {
+        id: "A-www",
+        type: "A",
+        name: "www",
+        value: "192.0.2.99",
+        ttl: 3600,
+      },
     });
   });
 
@@ -180,7 +216,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(emptyResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.updateRecord("example.com", "A-www", {
       value: "192.0.2.99",
       ttl: 600,
@@ -196,7 +237,13 @@ describe("GoDaddyDnsProvider", () => {
     );
     expect(result).toEqual({
       ok: true,
-      data: { id: "A-www", type: "A", name: "www", value: "192.0.2.99", ttl: 600 },
+      data: {
+        id: "A-www",
+        type: "A",
+        name: "www",
+        value: "192.0.2.99",
+        ttl: 600,
+      },
     });
   });
 
@@ -204,7 +251,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, []));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.updateRecord("example.com", "A-missing", {
       ttl: 600,
     });
@@ -220,7 +272,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(emptyResponse(204));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const result = await provider.deleteRecord("example.com", "CNAME-www");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -234,7 +291,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "bad-key", "bad-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "bad-key",
+      "bad-secret",
+    );
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -249,7 +311,12 @@ describe("GoDaddyDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoDaddyDnsProvider("test-id", "Test GoDaddy", "test-key", "test-secret");
+    const provider = new GoDaddyDnsProvider(
+      "test-id",
+      "Test GoDaddy",
+      "test-key",
+      "test-secret",
+    );
     const promise = provider.listDomains();
 
     await vi.advanceTimersByTimeAsync(1000);

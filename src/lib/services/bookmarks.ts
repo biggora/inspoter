@@ -154,10 +154,7 @@ export async function createCategory(
   input: CreateCategoryInput,
 ): Promise<Category> {
   if (input.parentCategoryId != null) {
-    await validateParentCategoryAssignment(
-      workspaceId,
-      input.parentCategoryId,
-    );
+    await validateParentCategoryAssignment(workspaceId, input.parentCategoryId);
   }
 
   const { _max } = await db.category.aggregate({

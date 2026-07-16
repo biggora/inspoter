@@ -27,8 +27,7 @@ import { ApiError, servicesApi, type MonitorTypeValue } from "./api";
 import { MONITOR_TYPE_LABELS } from "./format";
 
 export type ServiceFormDialogState =
-  | { mode: "create" }
-  | { mode: "edit"; service: Service };
+  { mode: "create" } | { mode: "edit"; service: Service };
 
 interface ServiceFormDialogProps {
   state: ServiceFormDialogState | null;
@@ -148,7 +147,8 @@ export function ServiceFormDialog({
     if (monitorType === "HTTP") {
       if (!trimmedUrl) nextErrors.url = "URL обязателен.";
       else if (!isValidHttpUrl(trimmedUrl)) {
-        nextErrors.url = "Введите корректный URL, начинающийся с http:// или https://.";
+        nextErrors.url =
+          "Введите корректный URL, начинающийся с http:// или https://.";
       }
     } else if (monitorType === "TCP") {
       if (!trimmedHost) nextErrors.host = "Хост обязателен.";
@@ -393,9 +393,7 @@ export function ServiceFormDialog({
                 aria-invalid={errors.retries ? true : undefined}
               />
               {errors.retries && (
-                <p className="text-sm text-(--error-text)">
-                  {errors.retries}
-                </p>
+                <p className="text-sm text-(--error-text)">{errors.retries}</p>
               )}
             </div>
           </div>

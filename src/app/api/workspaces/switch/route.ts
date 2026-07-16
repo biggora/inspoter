@@ -15,10 +15,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const workspaceId = body?.workspaceId;
   if (!workspaceId || typeof workspaceId !== "string") {
-    return jsonResponse(
-      { error: "workspaceId is required" },
-      { status: 400 },
-    );
+    return jsonResponse({ error: "workspaceId is required" }, { status: 400 });
   }
 
   const membership = await db.workspaceMember.findUnique({

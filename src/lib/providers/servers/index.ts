@@ -37,7 +37,11 @@ export async function getServerProvidersForWorkspace(
 
   if (!providers.length) {
     providers.push(
-      new MockServerProvider("mock-hetzner-cloud", "hetzner", "Hetzner Cloud Mock"),
+      new MockServerProvider(
+        "mock-hetzner-cloud",
+        "hetzner",
+        "Hetzner Cloud Mock",
+      ),
     );
   }
 

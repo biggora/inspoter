@@ -35,8 +35,7 @@ function isRetryableStatus(status: number): boolean {
 export function createProviderHttpClient(
   options: ProviderHttpClientOptions = {},
 ): ProviderHttpClient {
-  const { baseUrl = "", headers: baseHeaders = {}, timeout = 10_000 } =
-    options;
+  const { baseUrl = "", headers: baseHeaders = {}, timeout = 10_000 } = options;
 
   async function request<T>(
     reqOptions: ProviderHttpRequestOptions,

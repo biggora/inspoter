@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { OperatorMenu } from "./operator-menu";
+import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
+
+// Module-scope so it isn't recomputed on every render.
+const ALL_NAV_ITEMS = [...SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM];
 
 // Shared topbar (design.md §3.2.1/§3.2.2, §4.2). One trigger button doubles
 // as the desktop icon-rail collapse toggle and the mobile hamburger — the
@@ -14,17 +18,9 @@ import { OperatorMenu } from "./operator-menu";
 export function DashboardTopbar({ username }: { username: string }) {
   const pathname = usePathname();
   const title =
-    {
-      "/bookmarks": "Закладки",
-      "/settings": "Настройки",
-      "/logs": "Логи",
-      "/domains": "Домены",
-      "/servers": "Серверы",
-      "/services": "Сервисы",
-      "/mail": "Почта",
-      "/messages": "Сообщения",
-      "/alerts": "Оповещения",
-    }[pathname] ?? "Inspoter";
+    ALL_NAV_ITEMS.find(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
+    )?.label ?? "Inspoter";
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-4">

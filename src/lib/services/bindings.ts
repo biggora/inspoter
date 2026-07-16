@@ -81,7 +81,9 @@ function validateRealClaim(
   remoteId: string,
 ): string {
   if (!accountKey || accountKey.trim().length === 0) {
-    throw new BindingValidationError("accountKey is required for REAL bindings");
+    throw new BindingValidationError(
+      "accountKey is required for REAL bindings",
+    );
   }
   if (accountKey.startsWith(MOCK_PREFIX)) {
     throw new BindingValidationError(
@@ -89,7 +91,9 @@ function validateRealClaim(
     );
   }
   if (remoteId.startsWith(MOCK_PREFIX)) {
-    throw new BindingValidationError("REAL bindings cannot use a mock remoteId");
+    throw new BindingValidationError(
+      "REAL bindings cannot use a mock remoteId",
+    );
   }
   return accountKey;
 }
@@ -238,7 +242,10 @@ export async function completeLease(
   operationId: string,
 ): Promise<ProviderResourceBinding> {
   const existing = await getBinding(id, workspaceId);
-  if (existing.operationState !== "RUNNING" || existing.operationId !== operationId) {
+  if (
+    existing.operationState !== "RUNNING" ||
+    existing.operationId !== operationId
+  ) {
     throw new BindingLeaseConflictError(id);
   }
 
@@ -272,7 +279,10 @@ export async function failLease(
   operationId: string,
 ): Promise<ProviderResourceBinding> {
   const existing = await getBinding(id, workspaceId);
-  if (existing.operationState !== "RUNNING" || existing.operationId !== operationId) {
+  if (
+    existing.operationState !== "RUNNING" ||
+    existing.operationId !== operationId
+  ) {
     throw new BindingLeaseConflictError(id);
   }
 

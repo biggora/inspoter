@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -80,7 +81,8 @@ export function MailView() {
         setItems(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled) setError("Не удалось загрузить почту. Попробуйте снова.");
+        if (!cancelled)
+          setError("Не удалось загрузить почту. Попробуйте снова.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -123,24 +125,16 @@ export function MailView() {
   if (selected) {
     return (
       <div className="flex flex-col gap-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedId(null)}
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Назад к почте
-        </Button>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-foreground">
-            {selected.subject}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            От <span className="font-mono">{selected.sender}</span> ·{" "}
-            {formatTimestamp(selected.receivedAt)}
-          </p>
-        </div>
+        <PageHeader
+          back={{ onClick: () => setSelectedId(null), label: "Назад к почте" }}
+          title={selected.subject}
+          description={
+            <>
+              От <span className="font-mono">{selected.sender}</span> ·{" "}
+              {formatTimestamp(selected.receivedAt)}
+            </>
+          }
+        />
         <div className="rounded-lg border border-border bg-card p-4">
           <pre className="whitespace-pre-wrap break-words font-mono text-sm text-foreground">
             {selected.body}
@@ -152,33 +146,33 @@ export function MailView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Почта</h1>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          value={searchInput}
-          onChange={(event) => handleSearchChange(event.target.value)}
-          placeholder="Поиск по теме/отправителю..."
-          aria-label="Поиск по почте"
-          className="sm:max-w-xs"
-        />
-        <Select
-          value={sort}
-          onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
-          items={SORT_ITEMS}
-        >
-          <SelectTrigger size="sm" aria-label="Порядок сортировки">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SORT_ITEMS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader title="Почта">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Input
+            value={searchInput}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            placeholder="Поиск по теме/отправителю..."
+            aria-label="Поиск по почте"
+            className="sm:max-w-xs"
+          />
+          <Select
+            value={sort}
+            onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
+            items={SORT_ITEMS}
+          >
+            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PageHeader>
 
       {error && (
         <Alert className="border-(--error-bg) bg-(--error-bg)">

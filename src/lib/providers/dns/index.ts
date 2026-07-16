@@ -13,7 +13,8 @@ import * as credentialsService from "@/lib/services/credentials";
 export async function getDnsProvidersForWorkspace(
   workspaceId: string,
 ): Promise<DnsProvider[]> {
-  const allCreds = await credentialsService.getDecryptedCredentials(workspaceId);
+  const allCreds =
+    await credentialsService.getDecryptedCredentials(workspaceId);
   const providers: DnsProvider[] = [];
 
   for (const cred of allCreds) {
@@ -27,7 +28,12 @@ export async function getDnsProvidersForWorkspace(
       );
     } else if (cred.type === "GODADDY_DNS") {
       providers.push(
-        new GoDaddyDnsProvider(cred.id, cred.label, cred.apiKey, cred.apiSecret),
+        new GoDaddyDnsProvider(
+          cred.id,
+          cred.label,
+          cred.apiKey,
+          cred.apiSecret,
+        ),
       );
     }
   }

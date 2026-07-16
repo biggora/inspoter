@@ -60,7 +60,9 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         });
       } else {
         toast.error(
-          err instanceof ApiError ? err.message : "Не удалось добавить участника.",
+          err instanceof ApiError
+            ? err.message
+            : "Не удалось добавить участника.",
         );
       }
     } finally {
@@ -88,7 +90,9 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
-        <Label htmlFor={passwordId}>Пароль (только для нового пользователя)</Label>
+        <Label htmlFor={passwordId}>
+          Пароль (только для нового пользователя)
+        </Label>
         <Input
           id={passwordId}
           type="password"

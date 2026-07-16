@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
   SelectContent,
@@ -136,7 +137,8 @@ export function LogsView() {
         });
       })
       .catch(() => {
-        if (!cancelled) setError("Не удалось загрузить логи. Попробуйте снова.");
+        if (!cancelled)
+          setError("Не удалось загрузить логи. Попробуйте снова.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -161,70 +163,69 @@ export function LogsView() {
     ...Object.fromEntries(knownSources.map((value) => [value, value])),
   };
 
-  const hasActiveFilters =
-    query !== "" || level !== "all" || source !== "all";
+  const hasActiveFilters = query !== "" || level !== "all" || source !== "all";
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Логи</h1>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Поиск по сообщению..."
-          aria-label="Поиск по сообщениям журнала"
-          className="sm:max-w-xs"
-        />
-        <Select
-          value={level}
-          onValueChange={(v) => setLevel(v as string)}
-          items={LEVEL_ITEMS}
-        >
-          <SelectTrigger size="sm" aria-label="Фильтр по уровню">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(LEVEL_ITEMS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={source}
-          onValueChange={(v) => setSource(v as string)}
-          items={sourceItems}
-        >
-          <SelectTrigger size="sm" aria-label="Фильтр по источнику">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(sourceItems).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={sort}
-          onValueChange={(v) => setSort(v as "asc" | "desc")}
-          items={SORT_ITEMS}
-        >
-          <SelectTrigger size="sm" aria-label="Порядок сортировки">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SORT_ITEMS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader title="Логи">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Поиск по сообщению..."
+            aria-label="Поиск по сообщениям журнала"
+            className="sm:max-w-xs"
+          />
+          <Select
+            value={level}
+            onValueChange={(v) => setLevel(v as string)}
+            items={LEVEL_ITEMS}
+          >
+            <SelectTrigger size="sm" aria-label="Фильтр по уровню">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(LEVEL_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={source}
+            onValueChange={(v) => setSource(v as string)}
+            items={sourceItems}
+          >
+            <SelectTrigger size="sm" aria-label="Фильтр по источнику">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(sourceItems).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={sort}
+            onValueChange={(v) => setSort(v as "asc" | "desc")}
+            items={SORT_ITEMS}
+          >
+            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PageHeader>
 
       {error && (
         <Alert className="border-(--error-bg) bg-(--error-bg)">

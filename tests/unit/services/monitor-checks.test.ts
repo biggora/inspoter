@@ -36,13 +36,17 @@ beforeAll(async () => {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("ok");
   });
-  await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) =>
+    httpServer.listen(0, "127.0.0.1", resolve),
+  );
   httpPort = (httpServer.address() as AddressInfo).port;
 
   tcpServer = net.createServer((socket) => {
     socket.end();
   });
-  await new Promise<void>((resolve) => tcpServer.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) =>
+    tcpServer.listen(0, "127.0.0.1", resolve),
+  );
   tcpPort = (tcpServer.address() as AddressInfo).port;
 
   // A port nothing listens on, to trigger ECONNREFUSED deterministically:

@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
-import { upsertCredentialSchema, toCredentialData } from "@/lib/validation/credentials";
+import {
+  upsertCredentialSchema,
+  toCredentialData,
+} from "@/lib/validation/credentials";
 import * as credentialsService from "@/lib/services/credentials";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";

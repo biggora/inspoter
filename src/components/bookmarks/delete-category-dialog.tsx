@@ -97,9 +97,7 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Удалить «{category?.name}»?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Удалить «{category?.name}»?</AlertDialogTitle>
           <AlertDialogDescription>
             {subcategoryCount > 0
               ? `В этой категории ${directCount} ${bookmarkWord(directCount)} и ${subcategoryCount} ${subcategoryWord(subcategoryCount)} (в них ещё ${nestedBookmarkCount} ${bookmarkWord(nestedBookmarkCount)}). При удалении всё это будет удалено. Это действие нельзя отменить.`

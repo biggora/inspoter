@@ -98,7 +98,8 @@ export function BookmarkDialog({
     if (!trimmedName) nextErrors.name = "Название закладки обязательно.";
     if (!trimmedUrl) nextErrors.url = "URL обязателен.";
     else if (!isValidHttpUrl(trimmedUrl)) {
-      nextErrors.url = "Введите корректный URL, начинающийся с http:// или https://.";
+      nextErrors.url =
+        "Введите корректный URL, начинающийся с http:// или https://.";
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -160,7 +161,9 @@ export function BookmarkDialog({
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Редактировать закладку" : "Новая закладка"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Редактировать закладку" : "Новая закладка"}
+          </DialogTitle>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}

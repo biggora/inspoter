@@ -177,9 +177,7 @@ export class MockDnsProvider implements DnsProvider {
   }
 
   private state(): MockState {
-    return (
-      seeds[this.providerType as keyof typeof seeds] ?? EMPTY_STATE
-    );
+    return seeds[this.providerType as keyof typeof seeds] ?? EMPTY_STATE;
   }
 
   async listDomains(): Promise<ProviderResult<Domain[]>> {

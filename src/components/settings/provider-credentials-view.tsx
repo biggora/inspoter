@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -34,7 +35,8 @@ const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
   HOSTING: "Хостинг",
 };
 
-type DialogState = { mode: "create" } | { mode: "edit"; credential: CredentialDto };
+type DialogState =
+  { mode: "create" } | { mode: "edit"; credential: CredentialDto };
 
 // Settings > Providers — dynamic list of all configured credentials
 // (multiple accounts per provider type allowed) + add/edit/delete. Client-
@@ -47,9 +49,7 @@ export function ProviderCredentialsView() {
   const [error, setError] = useState<string | null>(null);
 
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CredentialDto | null>(
-    null,
-  );
+  const [deleteTarget, setDeleteTarget] = useState<CredentialDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   function load() {
@@ -86,15 +86,16 @@ export function ProviderCredentialsView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">
-          Провайдеры
-        </h1>
-        <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
-          <Plus aria-hidden className="size-4" />
-          Добавить провайдер
-        </Button>
-      </div>
+      <PageHeader
+        title="Провайдеры"
+        back={{ href: "/settings", label: "Назад к настройкам" }}
+        actions={
+          <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
+            <Plus aria-hidden className="size-4" />
+            Добавить провайдер
+          </Button>
+        }
+      />
 
       {error && <p className="text-sm text-(--error-text)">{error}</p>}
 
@@ -171,9 +172,7 @@ export function ProviderCredentialsView() {
           open={dialogState !== null}
           onOpenChange={(open) => !open && setDialogState(null)}
           mode={dialogState.mode}
-          existing={
-            dialogState.mode === "edit" ? dialogState.credential : null
-          }
+          existing={dialogState.mode === "edit" ? dialogState.credential : null}
           onSaved={load}
         />
       )}
@@ -188,8 +187,8 @@ export function ProviderCredentialsView() {
               Удалить провайдер «{deleteTarget?.label}»?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Связанные домены и серверы потеряют доступ к этому аккаунту.
-              Это действие нельзя отменить.
+              Связанные домены и серверы потеряют доступ к этому аккаунту. Это
+              действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

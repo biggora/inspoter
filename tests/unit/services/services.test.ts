@@ -33,9 +33,7 @@ afterAll(async () => {
     await db.workspace.delete({ where: { id: workspaceId } }).catch(() => {});
   }
   if (workspaceBId) {
-    await db.workspace
-      .delete({ where: { id: workspaceBId } })
-      .catch(() => {});
+    await db.workspace.delete({ where: { id: workspaceBId } }).catch(() => {});
   }
 });
 
@@ -97,7 +95,9 @@ describe("CRUD", () => {
     await servicesService.create(workspaceId, httpInput(nameB));
 
     const all = await servicesService.list(workspaceId);
-    const names = all.map((s) => s.name).filter((n) => n.startsWith(`${NAME_PREFIX}-crud-list-`));
+    const names = all
+      .map((s) => s.name)
+      .filter((n) => n.startsWith(`${NAME_PREFIX}-crud-list-`));
     expect(names).toEqual([...names].sort());
   });
 });
@@ -264,10 +264,11 @@ describe("applyCheckResult(): flip detection and Alert integration", () => {
       retries: 2,
     });
 
-    const afterFirstFailure = await servicesService.applyCheckResult(
-      created,
-      { ok: false, responseTimeMs: 5, message: "timeout" },
-    );
+    const afterFirstFailure = await servicesService.applyCheckResult(created, {
+      ok: false,
+      responseTimeMs: 5,
+      message: "timeout",
+    });
     expect(afterFirstFailure.currentStatus).toBe(ServiceStatus.PENDING);
     expect(afterFirstFailure.consecutiveFailures).toBe(1);
 

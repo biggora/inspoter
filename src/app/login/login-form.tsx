@@ -170,10 +170,7 @@ export function LoginForm({
             </div>
             <a
               href={authentikHref}
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "w-full",
-              )}
+              className={cn(buttonVariants({ variant: "outline" }), "w-full")}
             >
               Войти через Authentik
             </a>

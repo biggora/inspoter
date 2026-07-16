@@ -196,7 +196,9 @@ function Sidebar({
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Боковая панель</SheetTitle>
-            <SheetDescription>Отображает мобильную боковую панель.</SheetDescription>
+            <SheetDescription>
+              Отображает мобильную боковую панель.
+            </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>

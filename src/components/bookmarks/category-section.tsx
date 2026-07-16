@@ -2,7 +2,11 @@
 
 import { GripVertical, MoreVertical, Plus } from "lucide-react";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -31,7 +35,9 @@ interface CategorySectionProps {
   // select) so they get their own add/rename/delete actions but no drag
   // handle — see design note in bookmarks-board.tsx.
   onRenameSubcategory: (subcategory: Category) => void;
-  onDeleteSubcategory: (subcategory: Category & { bookmarks: Bookmark[] }) => void;
+  onDeleteSubcategory: (
+    subcategory: Category & { bookmarks: Bookmark[] },
+  ) => void;
   onAddBookmarkToSubcategory: (subcategoryId: string) => void;
 }
 

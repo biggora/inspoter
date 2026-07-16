@@ -121,7 +121,10 @@ describe("AC-WH-011: body limits", () => {
   it("rejects an oversized body with 413, no entry created", async () => {
     const before = await db.logEntry.count({ where: { workspaceId } });
     const oversized = "a".repeat(env.WEBHOOK_MAX_BODY_BYTES + 1000);
-    const request = buildRequest("log", { token: rawToken, rawBody: oversized });
+    const request = buildRequest("log", {
+      token: rawToken,
+      rawBody: oversized,
+    });
 
     const response = await processWebhook(request, "log");
 

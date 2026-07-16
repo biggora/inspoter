@@ -75,7 +75,9 @@ describe("listDomains()", () => {
     const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
-    const cloudflareResult = results.find((r) => r.providerId === "mock-cloudflare");
+    const cloudflareResult = results.find(
+      (r) => r.providerId === "mock-cloudflare",
+    );
     expect(cloudflareResult).toEqual({
       providerId: "mock-cloudflare",
       mode: "mock",
@@ -96,8 +98,12 @@ describe("listDomains()", () => {
     const results = await domainsService.listDomains(WORKSPACE_ID);
     spy.mockRestore();
 
-    const cloudflareResult = results.find((r) => r.providerId === "mock-cloudflare");
-    expect(cloudflareResult?.error).toBe("Operation not supported: listDomains");
+    const cloudflareResult = results.find(
+      (r) => r.providerId === "mock-cloudflare",
+    );
+    expect(cloudflareResult?.error).toBe(
+      "Operation not supported: listDomains",
+    );
     expect(cloudflareResult?.domains).toEqual([]);
   });
 });

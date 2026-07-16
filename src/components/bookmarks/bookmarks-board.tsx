@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useDeferredValue, useId, useMemo, useOptimistic, useState } from "react";
+import {
+  startTransition,
+  useDeferredValue,
+  useId,
+  useMemo,
+  useOptimistic,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
+import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -56,7 +64,8 @@ function pluralizeBookmarks(count: number): string {
 // Phase 4: a single node anywhere in the (exactly one level deep) category
 // tree — either a top-level category or one of its subcategories.
 // Subcategories never carry their own `childCategories`.
-type CategoryNode = CategoryWithBookmarks | (Category & { bookmarks: Bookmark[] });
+type CategoryNode =
+  CategoryWithBookmarks | (Category & { bookmarks: Bookmark[] });
 
 // Flat list of every node in the tree (top-level categories AND their
 // subcategories) — used wherever a bookmark/category must be found by id
@@ -100,7 +109,8 @@ function applyReorder(
   // `bookmarks` array.
   const bookmarkById = new Map<string, Bookmark>();
   for (const node of flattenCategories(state)) {
-    for (const bookmark of node.bookmarks) bookmarkById.set(bookmark.id, bookmark);
+    for (const bookmark of node.bookmarks)
+      bookmarkById.set(bookmark.id, bookmark);
   }
   const updates = new Map(
     action.categories.map((entry) => [entry.categoryId, entry.bookmarkIds]),
@@ -114,16 +124,18 @@ function applyReorder(
   ): Bookmark[] {
     const bookmarkIds = updates.get(containerId);
     if (!bookmarkIds) return currentBookmarks;
-    return bookmarkIds
-      .map((id) => bookmarkById.get(id))
-      .filter((bookmark): bookmark is Bookmark => Boolean(bookmark))
-      // Keep `bookmark.categoryId` consistent with its new optimistic
-      // container so any consumer reading it mid-flight isn't stale.
-      .map((bookmark) =>
-        bookmark.categoryId === containerId
-          ? bookmark
-          : { ...bookmark, categoryId: containerId },
-      );
+    return (
+      bookmarkIds
+        .map((id) => bookmarkById.get(id))
+        .filter((bookmark): bookmark is Bookmark => Boolean(bookmark))
+        // Keep `bookmark.categoryId` consistent with its new optimistic
+        // container so any consumer reading it mid-flight isn't stale.
+        .map((bookmark) =>
+          bookmark.categoryId === containerId
+            ? bookmark
+            : { ...bookmark, categoryId: containerId },
+        )
+    );
   }
 
   return state.map((category) => ({
@@ -183,7 +195,9 @@ export function BookmarksBoard({
   // than 4px before dnd-kit arms the drag.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   // Phase 4: a bookmark may be assigned to either a top-level group or a
@@ -368,7 +382,11 @@ export function BookmarksBoard({
         overData?.type === "bookmark"
           ? destIds.findIndex((id) => id === over.id)
           : destIds.length;
-      destIds.splice(insertAt === -1 ? destIds.length : insertAt, 0, String(active.id));
+      destIds.splice(
+        insertAt === -1 ? destIds.length : insertAt,
+        0,
+        String(active.id),
+      );
       payload = [
         { categoryId: sourceCategoryId, bookmarkIds: sourceIds },
         { categoryId: destinationCategoryId, bookmarkIds: destIds },
@@ -380,9 +398,7 @@ export function BookmarksBoard({
       try {
         await bookmarksApi.reorder(payload);
       } catch {
-        toast.error(
-          "Не удалось изменить порядок закладок. Попробуйте снова.",
-        );
+        toast.error("Не удалось изменить порядок закладок. Попробуйте снова.");
       }
       router.refresh();
     });
@@ -390,15 +406,15 @@ export function BookmarksBoard({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start gap-4">
-          <h1 className="sr-only">Закладки</h1>
+      <PageHeader
+        title="Закладки"
+        actions={
           <Button onClick={() => setCategoryDialog({ mode: "create" })}>
             <Plus aria-hidden className="size-4" />
             Новая категория
           </Button>
-        </div>
-
+        }
+      >
         {categories.length > 0 && (
           <div className="flex flex-col gap-1.5 max-w-sm">
             <Label htmlFor={searchId}>Поиск закладок</Label>
@@ -428,7 +444,7 @@ export function BookmarksBoard({
             </div>
           </div>
         )}
-      </div>
+      </PageHeader>
 
       <p role="status" aria-live="polite" className="sr-only">
         {liveRegionMessage}

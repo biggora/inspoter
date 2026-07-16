@@ -24,16 +24,19 @@ const emptyStateIconVariants = cva(
   },
 );
 
-const emptyStateTitleVariants = cva("font-heading font-semibold text-foreground-900", {
-  variants: {
-    size: {
-      default: "text-lg",
-      sm: "text-base",
-      xs: "text-base",
+const emptyStateTitleVariants = cva(
+  "font-heading font-semibold text-foreground-900",
+  {
+    variants: {
+      size: {
+        default: "text-lg",
+        sm: "text-base",
+        xs: "text-base",
+      },
     },
+    defaultVariants: { size: "default" },
   },
-  defaultVariants: { size: "default" },
-});
+);
 
 const emptyStateDescriptionVariants = cva("", {
   variants: {
@@ -74,7 +77,9 @@ export function EmptyState({
       data-slot="empty-state"
       className={cn(
         "flex flex-col gap-3",
-        align === "center" ? "items-center text-center" : "items-start text-left",
+        align === "center"
+          ? "items-center text-center"
+          : "items-start text-left",
         bordered &&
           "rounded-lg border border-background-200 bg-background-50 px-6 py-16",
         className,

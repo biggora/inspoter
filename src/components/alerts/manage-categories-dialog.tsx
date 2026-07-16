@@ -39,7 +39,8 @@ export function ManageCategoriesDialog({
         </DialogHeader>
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Категорий пока нет. Создайте категорию, чтобы упорядочить оповещения.
+            Категорий пока нет. Создайте категорию, чтобы упорядочить
+            оповещения.
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">

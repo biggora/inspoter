@@ -1106,7 +1106,10 @@ describe("Q13 repair strict CLI", () => {
       .mockImplementation(() => true);
     try {
       await writeFile(manifestPath, JSON.stringify(skeleton), "utf8");
-      await main(["canonicalize", "--manifest", manifestPath], {} as NodeJS.ProcessEnv);
+      await main(
+        ["canonicalize", "--manifest", manifestPath],
+        {} as NodeJS.ProcessEnv,
+      );
       expect(output).toHaveBeenCalledWith(`${signedPayload(skeleton)}\n`);
     } finally {
       output.mockRestore();

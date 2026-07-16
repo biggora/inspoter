@@ -86,7 +86,10 @@ async function findLinkedOperator(subject: string): Promise<{
 } | null> {
   const identity = await db.externalIdentity.findUnique({
     where: {
-      provider_subject: { provider: ExternalIdentityProvider.AUTHENTIK, subject },
+      provider_subject: {
+        provider: ExternalIdentityProvider.AUTHENTIK,
+        subject,
+      },
     },
     include: { operator: true },
   });

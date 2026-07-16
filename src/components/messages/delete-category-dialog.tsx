@@ -49,9 +49,7 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Удалить «{category?.name}»?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Удалить «{category?.name}»?</AlertDialogTitle>
           <AlertDialogDescription>
             Каналы этой категории будут удалены. Это действие необратимо.
           </AlertDialogDescription>

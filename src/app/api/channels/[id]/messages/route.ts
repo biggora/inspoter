@@ -45,9 +45,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(result, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof messagesService.ChannelNotFoundError
-    ) {
+    if (error instanceof messagesService.ChannelNotFoundError) {
       return jsonResponse({ error: error.message }, { status: 404 });
     }
     return toErrorResponse(error);

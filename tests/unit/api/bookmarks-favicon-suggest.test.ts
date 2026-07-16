@@ -56,18 +56,16 @@ afterEach(() => {
 
 describe("buildFaviconSuggestUrl", () => {
   it("builds the fixed Google favicon-inference URL for a plain hostname", async () => {
-    const { buildFaviconSuggestUrl } = await import(
-      "@/app/api/bookmarks/favicon-suggest/route"
-    );
+    const { buildFaviconSuggestUrl } =
+      await import("@/app/api/bookmarks/favicon-suggest/route");
     expect(buildFaviconSuggestUrl("github.com")).toBe(
       "https://www.google.com/s2/favicons?sz=64&domain=github.com",
     );
   });
 
   it("URL-encodes special characters in the hostname", async () => {
-    const { buildFaviconSuggestUrl } = await import(
-      "@/app/api/bookmarks/favicon-suggest/route"
-    );
+    const { buildFaviconSuggestUrl } =
+      await import("@/app/api/bookmarks/favicon-suggest/route");
     const hostname = "münchen.example.com";
     expect(buildFaviconSuggestUrl(hostname)).toBe(
       `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`,
@@ -105,9 +103,8 @@ describe("GET /api/bookmarks/favicon-suggest", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(imageResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { GET, buildFaviconSuggestUrl } = await import(
-      "@/app/api/bookmarks/favicon-suggest/route"
-    );
+    const { GET, buildFaviconSuggestUrl } =
+      await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(
       makeRequest(encodeURIComponent("https://github.com/some/path")),
     );

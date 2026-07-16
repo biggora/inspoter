@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
   SelectContent,
@@ -136,7 +137,8 @@ export function AlertsView() {
         setItems(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled) setError("Не удалось загрузить оповещения. Попробуйте снова.");
+        if (!cancelled)
+          setError("Не удалось загрузить оповещения. Попробуйте снова.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -203,84 +205,86 @@ export function AlertsView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Оповещения</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setManageOpen(true)}
+      <PageHeader
+        title="Оповещения"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setManageOpen(true)}
+            >
+              <Settings2 aria-hidden className="size-4" />
+              Управление категориями
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setCategoryDialog({ mode: "create" })}
+            >
+              <Plus aria-hidden className="size-4" />
+              Новая категория
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Input
+            value={searchInput}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            placeholder="Поиск по сообщению..."
+            aria-label="Поиск по сообщениям оповещений"
+            className="sm:max-w-xs"
+          />
+          <Select
+            value={categoryId}
+            onValueChange={(v) => handleCategoryChange(v as string)}
+            items={categoryItems}
           >
-            <Settings2 aria-hidden className="size-4" />
-            Управление категориями
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setCategoryDialog({ mode: "create" })}
+            <SelectTrigger size="sm" aria-label="Фильтр по категории">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(categoryItems).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={severity}
+            onValueChange={(v) => handleSeverityChange(v as string)}
+            items={SEVERITY_ITEMS}
           >
-            <Plus aria-hidden className="size-4" />
-            Новая категория
-          </Button>
+            <SelectTrigger size="sm" aria-label="Фильтр по уровню важности">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SEVERITY_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={sort}
+            onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
+            items={SORT_ITEMS}
+          >
+            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          value={searchInput}
-          onChange={(event) => handleSearchChange(event.target.value)}
-          placeholder="Поиск по сообщению..."
-          aria-label="Поиск по сообщениям оповещений"
-          className="sm:max-w-xs"
-        />
-        <Select
-          value={categoryId}
-          onValueChange={(v) => handleCategoryChange(v as string)}
-          items={categoryItems}
-        >
-          <SelectTrigger size="sm" aria-label="Фильтр по категории">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(categoryItems).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={severity}
-          onValueChange={(v) => handleSeverityChange(v as string)}
-          items={SEVERITY_ITEMS}
-        >
-          <SelectTrigger size="sm" aria-label="Фильтр по уровню важности">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SEVERITY_ITEMS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={sort}
-          onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
-          items={SORT_ITEMS}
-        >
-          <SelectTrigger size="sm" aria-label="Порядок сортировки">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SORT_ITEMS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      </PageHeader>
 
       {error && (
         <Alert className="border-(--error-bg) bg-(--error-bg)">

@@ -7,6 +7,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { PageHeader } from "@/components/shell/page-header";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
 import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
 import { MembersSection } from "@/components/workspace/members-section";
@@ -25,12 +26,14 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-foreground">Рабочее пространство</h1>
+      <PageHeader title="Рабочее пространство" />
 
       <Card>
         <CardHeader>
           <CardTitle>Название рабочего пространства</CardTitle>
-          <CardDescription>Переименовать текущее рабочее пространство.</CardDescription>
+          <CardDescription>
+            Переименовать текущее рабочее пространство.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <RenameWorkspaceForm

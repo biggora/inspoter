@@ -81,7 +81,11 @@ describe("createCredential + getDecryptedCredentials", () => {
       workspaceId,
       "GODADDY_DNS",
       `${NAME_PREFIX}-godaddy`,
-      { type: "GODADDY_DNS", apiKey: "gd-key-value", apiSecret: "gd-secret-value" },
+      {
+        type: "GODADDY_DNS",
+        apiKey: "gd-key-value",
+        apiSecret: "gd-secret-value",
+      },
     );
 
     const decrypted = await credentialsService.getDecryptedCredentials(

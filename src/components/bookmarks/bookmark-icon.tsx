@@ -25,19 +25,13 @@ function hashValue(input: string): number {
 }
 
 function getInitials(name: string): string {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const words = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
 
   if (words.length === 0) {
     return "?";
   }
 
-  return words
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
+  return words.map((word) => word.charAt(0).toUpperCase()).join("");
 }
 
 // AC-BM-015/016: an explicit `color` token overrides the deterministic

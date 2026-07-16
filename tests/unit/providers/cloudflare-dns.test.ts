@@ -26,7 +26,11 @@ describe("CloudflareDnsProvider", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     await provider.listDomains();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -52,7 +56,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -82,7 +90,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.listRecords("zone-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -119,7 +131,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.createRecord("zone-1", {
       type: "A",
       name: "www",
@@ -141,7 +157,13 @@ describe("CloudflareDnsProvider", () => {
     );
     expect(result).toEqual({
       ok: true,
-      data: { id: "rec-new", type: "A", name: "www", value: "192.0.2.20", ttl: 300 },
+      data: {
+        id: "rec-new",
+        type: "A",
+        name: "www",
+        value: "192.0.2.20",
+        ttl: 300,
+      },
     });
   });
 
@@ -162,7 +184,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     await provider.createRecord("zone-1", {
       type: "MX",
       name: "@",
@@ -201,7 +227,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.updateRecord("zone-1", "rec-1", {
       value: "192.0.2.99",
     });
@@ -235,7 +265,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.deleteRecord("zone-1", "rec-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -249,7 +283,11 @@ describe("CloudflareDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "bad-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "bad-token",
+    );
     const result = await provider.listDomains();
 
     expect(result).toEqual({
@@ -269,7 +307,11 @@ describe("CloudflareDnsProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const result = await provider.listRecords("bad-zone");
 
     expect(result).toEqual({
@@ -284,7 +326,11 @@ describe("CloudflareDnsProvider", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new CloudflareDnsProvider("test-id", "Test Cloudflare", "test-token");
+    const provider = new CloudflareDnsProvider(
+      "test-id",
+      "Test Cloudflare",
+      "test-token",
+    );
     const promise = provider.listDomains();
 
     await vi.advanceTimersByTimeAsync(1000);

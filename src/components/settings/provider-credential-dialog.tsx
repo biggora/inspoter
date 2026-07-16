@@ -41,9 +41,9 @@ const FIELD_LABELS: Record<string, string> = {
   apiSecret: "API-секрет",
 };
 
-const PROVIDER_OPTIONS = (
-  Object.keys(PROVIDER_REGISTRY) as ProviderType[]
-).map((provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }));
+const PROVIDER_OPTIONS = (Object.keys(PROVIDER_REGISTRY) as ProviderType[]).map(
+  (provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }),
+);
 
 interface ProviderCredentialDialogProps {
   open: boolean;

@@ -48,9 +48,7 @@ export function DeleteChannelDialog({
     <AlertDialog open={channel !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Удалить #{channel?.name}?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Удалить #{channel?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
             Сообщения этого канала будут удалены. Это действие необратимо.
           </AlertDialogDescription>

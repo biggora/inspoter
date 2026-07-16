@@ -29,14 +29,11 @@ describe("credential encryption", () => {
     vi.unstubAllEnvs();
   });
 
-  it.each(SAMPLES)(
-    "round-trips $type data through encrypt/decrypt",
-    (data) => {
-      const payload = encrypt(data);
-      const decrypted = decrypt(payload);
-      expect(decrypted).toEqual(data);
-    },
-  );
+  it.each(SAMPLES)("round-trips $type data through encrypt/decrypt", (data) => {
+    const payload = encrypt(data);
+    const decrypted = decrypt(payload);
+    expect(decrypted).toEqual(data);
+  });
 
   it("produces different ciphertexts for the same data on each call", () => {
     const data: CredentialData = {

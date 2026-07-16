@@ -59,7 +59,8 @@ export function WorkspaceSwitcher({
         if (!cancelled) setWorkspaces(data);
       })
       .catch(() => {
-        if (!cancelled) toast.error("Не удалось загрузить рабочие пространства.");
+        if (!cancelled)
+          toast.error("Не удалось загрузить рабочие пространства.");
       });
     return () => {
       cancelled = true;
@@ -73,7 +74,9 @@ export function WorkspaceSwitcher({
       await workspacesApi.switchTo(workspaceId);
       router.refresh();
     } catch {
-      toast.error("Не удалось переключить рабочее пространство. Попробуйте снова.");
+      toast.error(
+        "Не удалось переключить рабочее пространство. Попробуйте снова.",
+      );
     } finally {
       setSwitchingId(null);
     }

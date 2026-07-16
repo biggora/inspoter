@@ -32,9 +32,7 @@ afterAll(async () => {
     await db.workspace.delete({ where: { id: workspaceId } }).catch(() => {});
   }
   if (workspaceBId) {
-    await db.workspace
-      .delete({ where: { id: workspaceBId } })
-      .catch(() => {});
+    await db.workspace.delete({ where: { id: workspaceBId } }).catch(() => {});
   }
 });
 

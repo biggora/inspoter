@@ -27,7 +27,9 @@ function parseStatusCodeSpec(spec: string): Array<[number, number]> {
 }
 
 function statusMatchesSpec(status: number, spec: string): boolean {
-  return parseStatusCodeSpec(spec).some(([lo, hi]) => status >= lo && status <= hi);
+  return parseStatusCodeSpec(spec).some(
+    ([lo, hi]) => status >= lo && status <= hi,
+  );
 }
 
 export async function checkHttp(params: {
@@ -35,7 +37,8 @@ export async function checkHttp(params: {
   timeoutMs: number;
   expectedStatusCodes?: string | null;
 }): Promise<CheckOutcome> {
-  const spec = params.expectedStatusCodes?.trim() || DEFAULT_EXPECTED_STATUS_CODES;
+  const spec =
+    params.expectedStatusCodes?.trim() || DEFAULT_EXPECTED_STATUS_CODES;
   const start = performance.now();
   try {
     const response = await fetch(params.url, {
@@ -85,7 +88,10 @@ export function checkTcp(params: {
     };
 
     socket.once("connect", () => {
-      finish({ ok: true, responseTimeMs: Math.round(performance.now() - start) });
+      finish({
+        ok: true,
+        responseTimeMs: Math.round(performance.now() - start),
+      });
     });
     socket.once("timeout", () => {
       finish({
@@ -121,7 +127,11 @@ export function checkPing(params: {
   return new Promise((resolve) => {
     const start = performance.now();
     let settled = false;
-    const socket = net.createConnection({ host: params.host, port, timeout: params.timeoutMs });
+    const socket = net.createConnection({
+      host: params.host,
+      port,
+      timeout: params.timeoutMs,
+    });
 
     const finish = (outcome: CheckOutcome) => {
       if (settled) return;
@@ -131,7 +141,10 @@ export function checkPing(params: {
     };
 
     socket.once("connect", () => {
-      finish({ ok: true, responseTimeMs: Math.round(performance.now() - start) });
+      finish({
+        ok: true,
+        responseTimeMs: Math.round(performance.now() - start),
+      });
     });
     socket.once("timeout", () => {
       finish({
@@ -155,13 +168,22 @@ export function checkPing(params: {
 export async function runCheck(
   service: Pick<
     Service,
-    "monitorType" | "url" | "host" | "port" | "timeoutMs" | "expectedStatusCodes"
+    | "monitorType"
+    | "url"
+    | "host"
+    | "port"
+    | "timeoutMs"
+    | "expectedStatusCodes"
   >,
 ): Promise<CheckOutcome> {
   switch (service.monitorType) {
     case MonitorType.HTTP:
       if (!service.url) {
-        return { ok: false, responseTimeMs: 0, message: "Service is missing a URL" };
+        return {
+          ok: false,
+          responseTimeMs: 0,
+          message: "Service is missing a URL",
+        };
       }
       return checkHttp({
         url: service.url,
@@ -170,12 +192,24 @@ export async function runCheck(
       });
     case MonitorType.TCP:
       if (!service.host || !service.port) {
-        return { ok: false, responseTimeMs: 0, message: "Service is missing host/port" };
+        return {
+          ok: false,
+          responseTimeMs: 0,
+          message: "Service is missing host/port",
+        };
       }
-      return checkTcp({ host: service.host, port: service.port, timeoutMs: service.timeoutMs });
+      return checkTcp({
+        host: service.host,
+        port: service.port,
+        timeoutMs: service.timeoutMs,
+      });
     case MonitorType.PING:
       if (!service.host) {
-        return { ok: false, responseTimeMs: 0, message: "Service is missing a host" };
+        return {
+          ok: false,
+          responseTimeMs: 0,
+          message: "Service is missing a host",
+        };
       }
       return checkPing({
         host: service.host,

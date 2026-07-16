@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { Check, Copy, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -92,7 +93,9 @@ export function WebhookTokensView() {
         setTokens(data);
         setError(null);
       })
-      .catch(() => setError("Не удалось загрузить webhook-токены. Попробуйте снова."))
+      .catch(() =>
+        setError("Не удалось загрузить webhook-токены. Попробуйте снова."),
+      )
       .finally(() => setLoading(false));
   }
 
@@ -167,15 +170,16 @@ export function WebhookTokensView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">
-          Настройки — Webhook-токены
-        </h1>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus aria-hidden className="size-4" />
-          Новый токен
-        </Button>
-      </div>
+      <PageHeader
+        title="Webhook-токены"
+        back={{ href: "/settings", label: "Назад к настройкам" }}
+        actions={
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus aria-hidden className="size-4" />
+            Новый токен
+          </Button>
+        }
+      />
 
       {error && <p className="text-sm text-(--error-text)">{error}</p>}
 

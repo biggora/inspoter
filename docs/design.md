@@ -38,13 +38,13 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 
 This inventory classifies evidence. It does not change the precedence above, the approved PRD, or the §0.1 exceptions.
 
-| Source | Role |
-| --- | --- |
-| specs/ui.md | Q-3 routes, flows, responsive transformations, and shared states, subject to PRD exceptions. |
-| specs/prototype/ | Working-prototype geometry and composition. |
-| specs/inspot-design/ | Tokens, fonts, components, Remix icons, density, and motion. |
+| Source                                                                    | Role                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| specs/ui.md                                                               | Q-3 routes, flows, responsive transformations, and shared states, subject to PRD exceptions.                                                                                                                     |
+| specs/prototype/                                                          | Working-prototype geometry and composition.                                                                                                                                                                      |
+| specs/inspot-design/                                                      | Tokens, fonts, components, Remix icons, density, and motion.                                                                                                                                                     |
 | specs/bookmarks-page.png; specs/servers-page.png; specs/messages-page.png | Canonical visual snapshots only for the captured Bookmarks, Servers, and Messages composition. They are subordinate to the PRD, design system, and §0.1; they add neither product scope nor a fourth Q-3 source. |
-| specs/project-11944291.zip; specs/design-system.zip | Nonnormative archives and reference copies; never implementation authority. |
+| specs/project-11944291.zip; specs/design-system.zip                       | Nonnormative archives and reference copies; never implementation authority.                                                                                                                                      |
 
 ### 0.3 Live documentation and checkpoint workflow
 
@@ -227,7 +227,7 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Layout and heading hierarchy:** a subcategory renders inside its parent category's own section, after the parent's own direct bookmark grid, under its own heading one rank below the parent's — the parent category heading is `<h2>`, each subcategory heading is `<h3>` — with its own Добавить action, its own rename/delete menu, and its own bookmark grid. No heading level is skipped between a parent and its subcategory.
 
-**Reparenting:** assigning or clearing a subcategory's parent happens only through the category create/edit form's "Родительская категория" native select, which defaults to "— Нет (группа верхнего уровня) —" (top-level, no parent). A subcategory is never itself offered as a parent option (only top-level categories are eligible parents). A top-level category that already has one or more subcategories remains a normal, selectable parent option when creating or editing a *different* category — the depth cap only restricts the category being edited: if it already has subcategories of its own, its own parent-category field is disabled (with an explanatory note) so it cannot be turned into someone else's subcategory, which would otherwise create a three-level chain.
+**Reparenting:** assigning or clearing a subcategory's parent happens only through the category create/edit form's "Родительская категория" native select, which defaults to "— Нет (группа верхнего уровня) —" (top-level, no parent). A subcategory is never itself offered as a parent option (only top-level categories are eligible parents). A top-level category that already has one or more subcategories remains a normal, selectable parent option when creating or editing a _different_ category — the depth cap only restricts the category being edited: if it already has subcategories of its own, its own parent-category field is disabled (with an explanatory note) so it cannot be turned into someone else's subcategory, which would otherwise create a three-level chain.
 
 **Drag-and-drop interaction:** subcategories are not drag-reorderable in this phase (no drag handle on a subcategory heading); reordering/reparenting a subcategory happens only via the parent-select above. Bookmarks nested inside a subcategory remain individually draggable/movable by pointer or keyboard exactly like any other category's bookmarks, including moves across the top-level/subcategory boundary.
 

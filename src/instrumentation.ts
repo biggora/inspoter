@@ -14,9 +14,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("@/lib/config/env");
 
-    const { startServiceScheduler } = await import(
-      "@/lib/services/scheduler"
-    );
+    const { startServiceScheduler } = await import("@/lib/services/scheduler");
     startServiceScheduler();
   }
 }

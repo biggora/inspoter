@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -105,32 +106,21 @@ export function DnsRecordsView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav
-          aria-label="Хлебные крошки"
-          className="flex items-center gap-1.5 text-sm"
-        >
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+      <PageHeader
+        back={{ onClick: onBack, label: "Домены" }}
+        title={domainName}
+        actions={
+          <Button
+            size="sm"
+            onClick={() =>
+              setRecordDialog({ mode: "create", providerId, domainId })
+            }
           >
-            <ChevronLeft aria-hidden className="size-4" />
-            Домены
-          </button>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-mono text-foreground">{domainName}</span>
-        </nav>
-        <Button
-          size="sm"
-          onClick={() =>
-            setRecordDialog({ mode: "create", providerId, domainId })
-          }
-        >
-          <Plus aria-hidden className="size-4" />
-          Добавить запись
-        </Button>
-      </div>
+            <Plus aria-hidden className="size-4" />
+            Добавить запись
+          </Button>
+        }
+      />
 
       {error && (
         <Alert className="border-(--error-bg) bg-(--error-bg)">
@@ -219,8 +209,8 @@ export function DnsRecordsView({
               Удалить эту запись {deleteTarget?.type}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Запись «{deleteTarget?.name}» будет удалена из домена{" "}
-              {domainName}. Это действие нельзя отменить.
+              Запись «{deleteTarget?.name}» будет удалена из домена {domainName}
+              . Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

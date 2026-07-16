@@ -139,7 +139,9 @@ describe("createProviderHttpClient().request()", () => {
   });
 
   it("returns 'Provider unreachable' on a network error", async () => {
-    const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError("fetch failed"));
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
     vi.stubGlobal("fetch", fetchMock);
 
     const client = createProviderHttpClient();
@@ -153,7 +155,10 @@ describe("createProviderHttpClient().request()", () => {
   });
 
   it("returns 'Provider unreachable' when the request aborts due to timeout", async () => {
-    const abortError = new DOMException("The operation was aborted.", "TimeoutError");
+    const abortError = new DOMException(
+      "The operation was aborted.",
+      "TimeoutError",
+    );
     const fetchMock = vi.fn().mockRejectedValueOnce(abortError);
     vi.stubGlobal("fetch", fetchMock);
 

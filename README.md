@@ -59,20 +59,20 @@ docker compose exec app pnpm db:seed
 
 Полный и всегда актуальный контракт — в [`.env.example`](.env.example). Основные переменные:
 
-| Переменная | Обязательна | Описание |
-|---|---|---|
-| `DATABASE_URL` | да | Строка подключения к PostgreSQL. Локально при использовании `docker compose up -d db` — `postgresql://postgres:postgres@localhost:3832/inspot?schema=public` (порт `3832` — хостовый маппинг compose, внутри compose-сети используется `db:5432`). |
-| `OPERATOR_USERNAME` | да | Логин единственного env-seeded оператора. |
-| `OPERATOR_PASSWORD_HASH` | одно из двух | Заранее посчитанный scrypt-хеш пароля (`salt:hash`), используется как есть. Приоритетнее `OPERATOR_PASSWORD`, если заданы оба. |
-| `OPERATOR_PASSWORD` | одно из двух | Пароль в открытом виде (только для разработки) — хешируется в памяти при старте. |
-| `LIST_PAGE_SIZE` | нет (default `50`) | Размер страницы для keyset-пагинации в списках (Mail/Logs/Alerts/Messages). |
-| `WEBHOOK_RATE_LIMIT` | нет (default `120`) | Лимит запросов на токен webhook-приёма за окно `WEBHOOK_RATE_WINDOW_MS`. |
-| `WEBHOOK_RATE_WINDOW_MS` | нет (default `60000`) | Размер окна rate-limit в миллисекундах. |
-| `WEBHOOK_MAX_BODY_BYTES` | нет (default `65536`) | Максимальный размер тела webhook-запроса в байтах. |
-| `CLOUDFLARE_API_TOKEN` | нет | Реальный ключ Cloudflare DNS. Без него — mock-режим. |
-| `HETZNER_DNS_TOKEN` | нет | Реальный ключ Hetzner DNS. Без него — mock-режим. |
-| `HCLOUD_TOKEN` | нет | Реальный ключ Hetzner Cloud (серверы). Без него — mock-режим. |
-| `GODADDY_API_KEY` / `GODADDY_API_SECRET` | нет | Реальные ключи GoDaddy. Без них — mock-режим. |
+| Переменная                               | Обязательна           | Описание                                                                                                                                                                                                                                           |
+| ---------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                           | да                    | Строка подключения к PostgreSQL. Локально при использовании `docker compose up -d db` — `postgresql://postgres:postgres@localhost:3832/inspot?schema=public` (порт `3832` — хостовый маппинг compose, внутри compose-сети используется `db:5432`). |
+| `OPERATOR_USERNAME`                      | да                    | Логин единственного env-seeded оператора.                                                                                                                                                                                                          |
+| `OPERATOR_PASSWORD_HASH`                 | одно из двух          | Заранее посчитанный scrypt-хеш пароля (`salt:hash`), используется как есть. Приоритетнее `OPERATOR_PASSWORD`, если заданы оба.                                                                                                                     |
+| `OPERATOR_PASSWORD`                      | одно из двух          | Пароль в открытом виде (только для разработки) — хешируется в памяти при старте.                                                                                                                                                                   |
+| `LIST_PAGE_SIZE`                         | нет (default `50`)    | Размер страницы для keyset-пагинации в списках (Mail/Logs/Alerts/Messages).                                                                                                                                                                        |
+| `WEBHOOK_RATE_LIMIT`                     | нет (default `120`)   | Лимит запросов на токен webhook-приёма за окно `WEBHOOK_RATE_WINDOW_MS`.                                                                                                                                                                           |
+| `WEBHOOK_RATE_WINDOW_MS`                 | нет (default `60000`) | Размер окна rate-limit в миллисекундах.                                                                                                                                                                                                            |
+| `WEBHOOK_MAX_BODY_BYTES`                 | нет (default `65536`) | Максимальный размер тела webhook-запроса в байтах.                                                                                                                                                                                                 |
+| `CLOUDFLARE_API_TOKEN`                   | нет                   | Реальный ключ Cloudflare DNS. Без него — mock-режим.                                                                                                                                                                                               |
+| `HETZNER_DNS_TOKEN`                      | нет                   | Реальный ключ Hetzner DNS. Без него — mock-режим.                                                                                                                                                                                                  |
+| `HCLOUD_TOKEN`                           | нет                   | Реальный ключ Hetzner Cloud (серверы). Без него — mock-режим.                                                                                                                                                                                      |
+| `GODADDY_API_KEY` / `GODADDY_API_SECRET` | нет                   | Реальные ключи GoDaddy. Без них — mock-режим.                                                                                                                                                                                                      |
 
 ## Демо-данные
 

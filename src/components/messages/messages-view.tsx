@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage } from "@/components/messages/api";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
   SelectContent,
@@ -316,7 +323,10 @@ function SidebarTree({
                               aria-label={`Переименовать «${channel.name}»`}
                               onClick={() => onEditChannel(channel)}
                             >
-                              <i className="ri-pencil-line text-xs" aria-hidden />
+                              <i
+                                className="ri-pencil-line text-xs"
+                                aria-hidden
+                              />
                             </Button>
                             <Button
                               type="button"
@@ -348,7 +358,10 @@ function SidebarTree({
           onClick={onNewCategory}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground-600 transition-colors hover:bg-background-100 hover:text-foreground-900 cursor-pointer"
         >
-          <i className="ri-add-line flex h-4 w-4 items-center justify-center" aria-hidden />
+          <i
+            className="ri-add-line flex h-4 w-4 items-center justify-center"
+            aria-hidden
+          />
           Новая категория
         </button>
       </div>
@@ -362,9 +375,7 @@ function SidebarTree({
             <p className="truncate text-sm font-medium text-foreground-900">
               admin
             </p>
-            <p className="truncate text-[11px] text-foreground-400">
-              В сети
-            </p>
+            <p className="truncate text-[11px] text-foreground-400">В сети</p>
           </div>
         </div>
       </div>
@@ -566,7 +577,9 @@ export function MessagesView() {
     } catch (error) {
       setNotification({
         message:
-          error instanceof Error ? error.message : "Не удалось отправить сообщение",
+          error instanceof Error
+            ? error.message
+            : "Не удалось отправить сообщение",
         variant: "error",
       });
     }
@@ -605,50 +618,58 @@ export function MessagesView() {
   // Loading skeleton — sidebar rail + message feed placeholders.
   if (categoriesLoading) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-3.5rem)]">
-        <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
-          <div className="border-b border-background-100 px-4 py-3">
-            <Skeleton className="h-5 w-20" />
-          </div>
-          <div className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
-            {[1, 2, 3].map((cat) => (
-              <div key={cat} className="space-y-1">
-                <Skeleton className="mb-2 h-3 w-20" />
-                {[1, 2, 3].map((ch) => (
-                  <div key={ch} className="flex items-center gap-2 px-2 py-1.5">
-                    <Skeleton className="h-3.5 w-3.5 shrink-0 rounded" />
-                    <Skeleton className="h-3.5 flex-1" />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-background-100 px-3 py-3">
-            <Skeleton className="h-9 rounded-lg" />
-          </div>
+      <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+        <div className="shrink-0 border-b border-background-200 px-6 py-4">
+          <PageHeader title="Сообщения" />
         </div>
-        <div className="flex flex-1 flex-col bg-background-50">
-          <div className="flex items-center gap-3 border-b border-background-100 px-5 py-3">
-            <Skeleton className="h-5 w-5 rounded" />
-            <Skeleton className="h-5 w-36" />
-          </div>
-          <div className="flex-1 space-y-4 overflow-y-auto p-5">
-            {[1, 2, 3, 4, 5].map((m) => (
-              <div key={m} className="flex gap-3">
-                <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="flex gap-2">
-                    <Skeleton className="h-3.5 w-24" />
-                    <Skeleton className="h-3 w-14" />
-                  </div>
-                  <Skeleton className="h-3.5 w-full" />
-                  <Skeleton className="h-3.5 w-3/4" />
+        <div className="flex flex-1 min-h-0">
+          <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
+            <div className="border-b border-background-100 px-4 py-3">
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
+              {[1, 2, 3].map((cat) => (
+                <div key={cat} className="space-y-1">
+                  <Skeleton className="mb-2 h-3 w-20" />
+                  {[1, 2, 3].map((ch) => (
+                    <div
+                      key={ch}
+                      className="flex items-center gap-2 px-2 py-1.5"
+                    >
+                      <Skeleton className="h-3.5 w-3.5 shrink-0 rounded" />
+                      <Skeleton className="h-3.5 flex-1" />
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="border-t border-background-100 px-3 py-3">
+              <Skeleton className="h-9 rounded-lg" />
+            </div>
           </div>
-          <div className="border-t border-background-100 px-5 py-3">
-            <Skeleton className="h-9 rounded-lg" />
+          <div className="flex flex-1 flex-col bg-background-50">
+            <div className="flex items-center gap-3 border-b border-background-100 px-5 py-3">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-5 w-36" />
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              {[1, 2, 3, 4, 5].map((m) => (
+                <div key={m} className="flex gap-3">
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex gap-2">
+                      <Skeleton className="h-3.5 w-24" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3.5 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-background-100 px-5 py-3">
+              <Skeleton className="h-9 rounded-lg" />
+            </div>
           </div>
         </div>
       </div>
@@ -658,27 +679,36 @@ export function MessagesView() {
   // Error state — categories failed to load entirely.
   if (categoriesError) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-3.5rem)] items-center justify-center p-6">
-        <EmptyState
-          bordered={false}
-          tone="danger"
-          icon="ri-message-3-line"
-          title="Не удалось загрузить сообщения"
-          description={categoriesError}
-          className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
-          action={
-            <Button type="button" onClick={loadCategories}>
-              <i className="ri-refresh-line text-sm" aria-hidden />
-              Повторить
-            </Button>
-          }
-        />
+      <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+        <div className="shrink-0 border-b border-background-200 px-6 py-4">
+          <PageHeader title="Сообщения" />
+        </div>
+        <div className="flex flex-1 items-center justify-center p-6">
+          <EmptyState
+            bordered={false}
+            tone="danger"
+            icon="ri-message-3-line"
+            title="Не удалось загрузить сообщения"
+            description={categoriesError}
+            className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
+            action={
+              <Button type="button" onClick={loadCategories}>
+                <i className="ri-refresh-line text-sm" aria-hidden />
+                Повторить
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+      <div className="shrink-0 border-b border-background-200 px-6 py-4">
+        <PageHeader title="Сообщения" />
+      </div>
+
       {notification && (
         <div
           className={cn(
@@ -840,8 +870,8 @@ export function MessagesView() {
                       title="Нет сообщений"
                       description={
                         <>
-                          В канале <strong>#{selectedChannel.name}</strong>{" "}
-                          пока нет сообщений.
+                          В канале <strong>#{selectedChannel.name}</strong> пока
+                          нет сообщений.
                         </>
                       }
                       className="animate-in fade-in-0 zoom-in-95 duration-200"

@@ -52,7 +52,11 @@ describe("HetznerServerProvider", () => {
       .mockResolvedValueOnce(jsonResponse(200, { servers: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     await provider.listServers();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -71,7 +75,11 @@ describe("HetznerServerProvider", () => {
       .mockResolvedValueOnce(jsonResponse(200, { servers: [rawServer] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const result = await provider.listServers();
 
     expect(result).toEqual({ ok: true, data: [mappedServer] });
@@ -83,7 +91,11 @@ describe("HetznerServerProvider", () => {
       .mockResolvedValueOnce(jsonResponse(200, { server: rawServer }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const result = await provider.getServer("12345");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -101,7 +113,11 @@ describe("HetznerServerProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const result = await provider.getServer("12345");
 
     expect(result).toEqual({
@@ -118,7 +134,11 @@ describe("HetznerServerProvider", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const result = await provider.getServer("12345");
 
     expect(result).toEqual({
@@ -128,12 +148,18 @@ describe("HetznerServerProvider", () => {
   });
 
   it("power('start') calls the poweron action endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      jsonResponse(200, { action: { id: 1, status: "running" } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { action: { id: 1, status: "running" } }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const result = await provider.power("12345", "start");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -144,12 +170,18 @@ describe("HetznerServerProvider", () => {
   });
 
   it("power('stop') calls the poweroff action endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      jsonResponse(200, { action: { id: 2, status: "off" } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { action: { id: 2, status: "off" } }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     await provider.power("12345", "stop");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -159,12 +191,18 @@ describe("HetznerServerProvider", () => {
   });
 
   it("power('restart') calls the reboot action endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      jsonResponse(200, { action: { id: 3, status: "running" } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { action: { id: 3, status: "running" } }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     await provider.power("12345", "restart");
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -177,7 +215,11 @@ describe("HetznerServerProvider", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "bad-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "bad-token",
+    );
     const result = await provider.listServers();
 
     expect(result).toEqual({
@@ -192,7 +234,11 @@ describe("HetznerServerProvider", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new HetznerServerProvider("test-id", "Test Hetzner Cloud", "test-token");
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
     const promise = provider.listServers();
 
     await vi.advanceTimersByTimeAsync(1000);

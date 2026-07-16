@@ -135,7 +135,15 @@ describe("canonical mock provider catalog", () => {
 
   it("produces the exact 13 unique workspace-scoped binding identities", () => {
     const identities = getBindingRows(sourceCatalog).map(
-      ({ provider, resourceType, key }: { provider: string; resourceType: string; key: string }) =>
+      ({
+        provider,
+        resourceType,
+        key,
+      }: {
+        provider: string;
+        resourceType: string;
+        key: string;
+      }) =>
         `${provider}|mock:v1|${resourceType}|MOCK|mock:v1:workspace-1:${provider}:${key}`,
     );
 
@@ -181,7 +189,9 @@ describe("canonical mock provider catalog", () => {
     expect(server).toBeDefined();
     server!.provider = "cloudflare";
 
-    expect(() => validateCatalog(catalog)).toThrow("SERVER supports only hetzner");
+    expect(() => validateCatalog(catalog)).toThrow(
+      "SERVER supports only hetzner",
+    );
   });
 
   it("rejects control characters in identity fields", () => {
@@ -201,7 +211,11 @@ describe("canonical mock provider catalog", () => {
   });
 
   it.each([
-    ["version", (catalog: CatalogFixture) => (catalog.version = 2), "must be exactly 1"],
+    [
+      "version",
+      (catalog: CatalogFixture) => (catalog.version = 2),
+      "must be exactly 1",
+    ],
     [
       "account key",
       (catalog: CatalogFixture) => (catalog.accountKey = "mock:v2"),

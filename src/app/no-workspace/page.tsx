@@ -33,9 +33,8 @@ export default async function NoWorkspacePage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Ваша учётная запись создана, но пока не добавлена ни в одно
-            рабочее пространство. Обратитесь к администратору, чтобы вас
-            добавили.
+            Ваша учётная запись создана, но пока не добавлена ни в одно рабочее
+            пространство. Обратитесь к администратору, чтобы вас добавили.
           </p>
           <form action={logout}>
             <Button type="submit" variant="outline" className="w-full">

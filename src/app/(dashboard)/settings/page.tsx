@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Building2, KeyRound, Webhook } from "lucide-react";
+import { PageHeader } from "@/components/shell/page-header";
 
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Настройки</h1>
+      <PageHeader title="Настройки" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/settings/workspace"
@@ -14,8 +15,8 @@ export default function SettingsPage() {
           <div>
             <p className="font-medium">Рабочее пространство</p>
             <p className="text-sm text-muted-foreground">
-              Управление названием рабочего пространства, участниками и
-              создание новых пространств
+              Управление названием рабочего пространства, участниками и создание
+              новых пространств
             </p>
           </div>
         </Link>

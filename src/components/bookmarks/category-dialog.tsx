@@ -74,11 +74,14 @@ export function CategoryDialog({
   // field is disabled rather than filtering candidate options.
   const editingCategory =
     state?.mode === "edit"
-      ? topLevelCategories.find((candidate) => candidate.id === state.category.id)
+      ? topLevelCategories.find(
+          (candidate) => candidate.id === state.category.id,
+        )
       : undefined;
   const editingHasChildren = (editingCategory?.childCategories.length ?? 0) > 0;
   const parentOptions = topLevelCategories.filter(
-    (candidate) => !(state?.mode === "edit" && candidate.id === state.category.id),
+    (candidate) =>
+      !(state?.mode === "edit" && candidate.id === state.category.id),
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -155,9 +158,7 @@ export function CategoryDialog({
               value={editingHasChildren ? "" : parentCategoryId}
               onChange={(event) => setParentCategoryId(event.target.value)}
               disabled={editingHasChildren}
-              aria-describedby={
-                editingHasChildren ? parentHelperId : undefined
-              }
+              aria-describedby={editingHasChildren ? parentHelperId : undefined}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">— Нет (группа верхнего уровня) —</option>
@@ -169,8 +170,8 @@ export function CategoryDialog({
             </select>
             {editingHasChildren && (
               <p id={parentHelperId} className="text-xs text-foreground-500">
-                У этой категории есть подкатегории, поэтому она не может
-                стать чьей-либо подкатегорией.
+                У этой категории есть подкатегории, поэтому она не может стать
+                чьей-либо подкатегорией.
               </p>
             )}
           </div>

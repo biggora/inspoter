@@ -35,7 +35,10 @@ export async function fetchServers(): Promise<ServersByProviderDto[]> {
   return res.json();
 }
 
-export async function getServer(providerId: string, id: string): Promise<ServerDto> {
+export async function getServer(
+  providerId: string,
+  id: string,
+): Promise<ServerDto> {
   const res = await fetch(`/api/servers/${providerId}/${id}`, {
     headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
   });

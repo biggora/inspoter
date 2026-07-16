@@ -24,7 +24,9 @@ export function isEncryptionConfigured(): boolean {
 function getMasterKey(): Buffer {
   const hex = process.env[KEY_ENV];
   if (!hex || !/^[0-9a-f]{64}$/i.test(hex)) {
-    throw new Error("CREDENTIAL_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)");
+    throw new Error(
+      "CREDENTIAL_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)",
+    );
   }
   return Buffer.from(hex, "hex");
 }
@@ -46,7 +48,11 @@ export function encrypt(data: CredentialData): EncryptedPayload {
 
 export function decrypt(payload: EncryptedPayload): CredentialData {
   const key = getMasterKey();
-  const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(payload.iv, "hex"));
+  const decipher = createDecipheriv(
+    ALGORITHM,
+    key,
+    Buffer.from(payload.iv, "hex"),
+  );
   decipher.setAuthTag(Buffer.from(payload.authTag, "hex"));
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(payload.encryptedData, "hex")),

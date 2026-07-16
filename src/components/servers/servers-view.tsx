@@ -1,11 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/shell/page-header";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ServerStatus } from "@/lib/providers/servers/types";
-import { fetchServers, getServer, powerAction, type ServerDto, type ServersByProviderDto } from "./api";
+import {
+  fetchServers,
+  getServer,
+  powerAction,
+  type ServerDto,
+  type ServersByProviderDto,
+} from "./api";
 
-type Server = Omit<ServerDto, "status"> & { providerId: string; status: ServerStatus };
+type Server = Omit<ServerDto, "status"> & {
+  providerId: string;
+  status: ServerStatus;
+};
 
 type PowerActionType = "start" | "stop" | "restart";
 
@@ -57,7 +69,12 @@ export function ServersView() {
       const errors: string[] = [];
       for (const g of groups) {
         if (g.error) errors.push(`${g.label}: ${g.error}`);
-        for (const s of g.servers) flat.push({ ...s, status: s.status as ServerStatus, providerId: g.providerId });
+        for (const s of g.servers)
+          flat.push({
+            ...s,
+            status: s.status as ServerStatus,
+            providerId: g.providerId,
+          });
       }
       setServers(flat);
       setLoadError(errors.length ? errors.join("; ") : null);
@@ -149,9 +166,7 @@ export function ServersView() {
           setCardErrors((prev) => ({
             ...prev,
             [server.id]:
-              err instanceof Error
-                ? err.message
-                : "Не удалось обновить статус",
+              err instanceof Error ? err.message : "Не удалось обновить статус",
           }));
         }
       }, 2000);
@@ -243,7 +258,7 @@ export function ServersView() {
   }
 
   return (
-    <div className="p-6">
+    <div className="flex flex-col gap-6">
       {notification && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
@@ -265,23 +280,22 @@ export function ServersView() {
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-5">
-        <p className="text-xs text-foreground-500">
-          {servers.length}{" "}
-          {servers.length === 1
+      <PageHeader
+        title="Серверы"
+        description={`${servers.length} ${
+          servers.length === 1
             ? "сервер"
             : servers.length >= 2 && servers.length <= 4
               ? "сервера"
-              : "серверов"}
-        </p>
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-foreground-600 hover:text-foreground-900 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
-        >
-          <i className="ri-refresh-line w-4 h-4 flex items-center justify-center"></i>
-          Обновить
-        </button>
-      </div>
+              : "серверов"
+        }`}
+        actions={
+          <Button variant="ghost" size="sm" onClick={load}>
+            <RefreshCw aria-hidden className="size-4" />
+            Обновить
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {servers.map((server) => (
@@ -350,8 +364,7 @@ function getAvailableActions(server: Server): CardAction[] {
           label: "Перезапустить",
           icon: "ri-restart-line",
           confirmTitle: `Перезапустить «${server.name}»?`,
-          confirmText:
-            "Сервер перезапустится и будет ненадолго недоступен.",
+          confirmText: "Сервер перезапустится и будет ненадолго недоступен.",
         },
         {
           action: "stop",
@@ -425,27 +438,19 @@ function ServerCard({
       <div className="px-4 py-3 space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">CPU</span>
-          <span className="text-foreground-800 font-medium">
-            {server.cpu}
-          </span>
+          <span className="text-foreground-800 font-medium">{server.cpu}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">RAM</span>
-          <span className="text-foreground-800 font-medium">
-            {server.ram}
-          </span>
+          <span className="text-foreground-800 font-medium">{server.ram}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">Диск</span>
-          <span className="text-foreground-800 font-medium">
-            {server.disk}
-          </span>
+          <span className="text-foreground-800 font-medium">{server.disk}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">ОС</span>
-          <span className="text-foreground-800 font-medium">
-            {server.os}
-          </span>
+          <span className="text-foreground-800 font-medium">{server.os}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">Расположение</span>

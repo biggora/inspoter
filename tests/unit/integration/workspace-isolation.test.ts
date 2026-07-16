@@ -47,12 +47,8 @@ afterAll(async () => {
   await db.providerResourceBinding.deleteMany({
     where: { workspaceId: { in: [workspaceA.id, workspaceB.id] } },
   });
-  await db.workspace
-    .delete({ where: { id: workspaceA.id } })
-    .catch(() => {});
-  await db.workspace
-    .delete({ where: { id: workspaceB.id } })
-    .catch(() => {});
+  await db.workspace.delete({ where: { id: workspaceA.id } }).catch(() => {});
+  await db.workspace.delete({ where: { id: workspaceB.id } }).catch(() => {});
   await db.operator.delete({ where: { id: operatorA.id } }).catch(() => {});
   await db.operator.delete({ where: { id: operatorB.id } }).catch(() => {});
 });
@@ -71,9 +67,7 @@ describe("AC-WS-008/010/011: Bookmarks isolation", () => {
     const wsBGrouped = await bookmarksService.list(workspaceB.id);
     expect(wsBGrouped.some((c) => c.id === category.id)).toBe(false);
     expect(
-      wsBGrouped.some((c) =>
-        c.bookmarks.some((b) => b.id === bookmark.id),
-      ),
+      wsBGrouped.some((c) => c.bookmarks.some((b) => b.id === bookmark.id)),
     ).toBe(false);
 
     const wsAGrouped = await bookmarksService.list(workspaceA.id);
@@ -94,9 +88,7 @@ describe("AC-WS-008/010/011: Bookmarks isolation", () => {
 
     const wsAGrouped = await bookmarksService.list(workspaceA.id);
     expect(
-      wsAGrouped.some(
-        (c) => c.name === `bm-cross-parent-a-create-${RUN_ID}`,
-      ),
+      wsAGrouped.some((c) => c.name === `bm-cross-parent-a-create-${RUN_ID}`),
     ).toBe(false);
     const created = await db.category.findFirst({
       where: { name: `bm-cross-parent-a-create-${RUN_ID}` },
@@ -156,10 +148,12 @@ describe("Bookmarks reorder isolation", () => {
     });
 
     const before = await bookmarksService.list(workspaceA.id);
-    const positionBeforeA1 = before.find((c) => c.id === categoryA1.id)
-      ?.position;
-    const positionBeforeA2 = before.find((c) => c.id === categoryA2.id)
-      ?.position;
+    const positionBeforeA1 = before.find(
+      (c) => c.id === categoryA1.id,
+    )?.position;
+    const positionBeforeA2 = before.find(
+      (c) => c.id === categoryA2.id,
+    )?.position;
     expect(positionBeforeA1).toBeDefined();
     expect(positionBeforeA2).toBeDefined();
 
@@ -235,9 +229,9 @@ describe("Logs isolation", () => {
 
     const wsBResult = await logsService.list(workspaceB.id, {});
     expect(wsBResult.items.some((i) => i.message === marker)).toBe(false);
-    expect(
-      wsBResult.items.every((i) => i.workspaceId === workspaceB.id),
-    ).toBe(true);
+    expect(wsBResult.items.every((i) => i.workspaceId === workspaceB.id)).toBe(
+      true,
+    );
 
     const wsAResult = await logsService.list(workspaceA.id, {});
     expect(wsAResult.items.some((i) => i.message === marker)).toBe(true);
@@ -302,9 +296,7 @@ describe("Messages isolation", () => {
       content: `msg-${RUN_ID}`,
     });
 
-    const wsBCategories = await messagesService.listCategories(
-      workspaceB.id,
-    );
+    const wsBCategories = await messagesService.listCategories(workspaceB.id);
     expect(wsBCategories.some((c) => c.id === category.id)).toBe(false);
 
     await expect(

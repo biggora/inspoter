@@ -36,9 +36,7 @@ afterAll(async () => {
     await db.workspace.delete({ where: { id: workspaceId } }).catch(() => {});
   }
   if (workspaceBId) {
-    await db.workspace
-      .delete({ where: { id: workspaceBId } })
-      .catch(() => {});
+    await db.workspace.delete({ where: { id: workspaceBId } }).catch(() => {});
   }
 });
 
@@ -291,27 +289,26 @@ describe("AC-MSG-007: listMessages keyset cursor pagination", () => {
     }
 
     // descending (default): first page, page size 2
-    const page1 = await messagesService.listMessages(
-      workspaceId,
-      channel.id,
-      { pageSize: 2, sort: "desc" },
-    );
+    const page1 = await messagesService.listMessages(workspaceId, channel.id, {
+      pageSize: 2,
+      sort: "desc",
+    });
     expect(page1.items).toHaveLength(2);
     expect(page1.nextCursor).not.toBeNull();
 
-    const page2 = await messagesService.listMessages(
-      workspaceId,
-      channel.id,
-      { pageSize: 2, sort: "desc", cursor: page1.nextCursor! },
-    );
+    const page2 = await messagesService.listMessages(workspaceId, channel.id, {
+      pageSize: 2,
+      sort: "desc",
+      cursor: page1.nextCursor!,
+    });
     expect(page2.items).toHaveLength(2);
     expect(page2.nextCursor).not.toBeNull();
 
-    const page3 = await messagesService.listMessages(
-      workspaceId,
-      channel.id,
-      { pageSize: 2, sort: "desc", cursor: page2.nextCursor! },
-    );
+    const page3 = await messagesService.listMessages(workspaceId, channel.id, {
+      pageSize: 2,
+      sort: "desc",
+      cursor: page2.nextCursor!,
+    });
     expect(page3.items).toHaveLength(1);
     expect(page3.nextCursor).toBeNull();
 
@@ -403,11 +400,10 @@ describe("Cursor workspace-binding", () => {
       });
     }
 
-    const page1 = await messagesService.listMessages(
-      workspaceId,
-      channel.id,
-      { pageSize: 2, sort: "desc" },
-    );
+    const page1 = await messagesService.listMessages(workspaceId, channel.id, {
+      pageSize: 2,
+      sort: "desc",
+    });
     expect(page1.items).toHaveLength(2);
 
     // Craft a cursor that points past the first page but is tagged with a

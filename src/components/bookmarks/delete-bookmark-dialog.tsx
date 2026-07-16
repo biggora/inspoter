@@ -48,9 +48,7 @@ export function DeleteBookmarkDialog({
     <AlertDialog open={bookmark !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Удалить «{bookmark?.name}»?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Удалить «{bookmark?.name}»?</AlertDialogTitle>
           <AlertDialogDescription>
             Эта закладка будет удалена без возможности восстановления.
           </AlertDialogDescription>

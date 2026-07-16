@@ -54,9 +54,7 @@ describe("AC-BM-0xx: category parentCategoryId (Phase 4 hierarchy)", () => {
   });
 
   it("categoryUpdateSchema accepts the same parentCategoryId variants", async () => {
-    const { categoryUpdateSchema } = await import(
-      "@/lib/validation/bookmarks"
-    );
+    const { categoryUpdateSchema } = await import("@/lib/validation/bookmarks");
     expect(
       categoryUpdateSchema.safeParse({
         name: "Infrastructure",
@@ -129,9 +127,8 @@ describe("AC-BM-008: bookmark url must be http(s)", () => {
 
 describe("AC-BM-015..018: bookmark color token validation", () => {
   it("accepts each valid color token", async () => {
-    const { bookmarkSchema, bookmarkColorTokens } = await import(
-      "@/lib/validation/bookmarks"
-    );
+    const { bookmarkSchema, bookmarkColorTokens } =
+      await import("@/lib/validation/bookmarks");
     for (const token of bookmarkColorTokens) {
       const result = bookmarkSchema.safeParse({
         name: "Grafana",
@@ -176,17 +173,13 @@ describe("AC-BM-015..018: bookmark color token validation", () => {
   });
 
   it("bookmarkUpdateSchema rejects an invalid color token", async () => {
-    const { bookmarkUpdateSchema } = await import(
-      "@/lib/validation/bookmarks"
-    );
+    const { bookmarkUpdateSchema } = await import("@/lib/validation/bookmarks");
     const result = bookmarkUpdateSchema.safeParse({ color: "purple" });
     expect(result.success).toBe(false);
   });
 
   it("bookmarkUpdateSchema accepts a valid color token with no other fields", async () => {
-    const { bookmarkUpdateSchema } = await import(
-      "@/lib/validation/bookmarks"
-    );
+    const { bookmarkUpdateSchema } = await import("@/lib/validation/bookmarks");
     const result = bookmarkUpdateSchema.safeParse({ color: "accent" });
     expect(result.success).toBe(true);
   });

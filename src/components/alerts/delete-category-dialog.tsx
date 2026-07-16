@@ -49,12 +49,10 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Удалить «{category?.name}»?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Удалить «{category?.name}»?</AlertDialogTitle>
           <AlertDialogDescription>
-            Оповещения из этой категории останутся без категории. Это
-            действие нельзя отменить.
+            Оповещения из этой категории останутся без категории. Это действие
+            нельзя отменить.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

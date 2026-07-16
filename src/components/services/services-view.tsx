@@ -3,10 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Globe, Loader2, Network, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Activity,
+  Globe,
+  Loader2,
+  Network,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
 import type { Service } from "@/generated/prisma/client";
 import { servicesApi } from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
@@ -16,7 +26,10 @@ import {
   formatTarget,
   MONITOR_TYPE_LABELS,
 } from "./format";
-import { ServiceFormDialog, type ServiceFormDialogState } from "./service-form-dialog";
+import {
+  ServiceFormDialog,
+  type ServiceFormDialogState,
+} from "./service-form-dialog";
 import { ServiceStatusBadge } from "./service-status-badge";
 
 const POLL_INTERVAL_MS = 10000;
@@ -97,18 +110,16 @@ export function ServicesView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Сервисы</h1>
-          <p className="text-sm text-muted-foreground">
-            {services.length} {pluralizeServices(services.length)}
-          </p>
-        </div>
-        <Button onClick={() => setFormState({ mode: "create" })}>
-          <Plus aria-hidden className="size-4" />
-          Новый сервис
-        </Button>
-      </div>
+      <PageHeader
+        title="Сервисы"
+        description={`${services.length} ${pluralizeServices(services.length)}`}
+        actions={
+          <Button onClick={() => setFormState({ mode: "create" })}>
+            <Plus aria-hidden className="size-4" />
+            Новый сервис
+          </Button>
+        }
+      />
 
       {services.length === 0 ? (
         <EmptyState
@@ -195,7 +206,10 @@ function ServiceCard({
             </p>
           </div>
         </Link>
-        <ServiceStatusBadge status={service.currentStatus} className="shrink-0" />
+        <ServiceStatusBadge
+          status={service.currentStatus}
+          className="shrink-0"
+        />
       </div>
 
       <div className="px-4 py-3 space-y-1.5">
@@ -218,7 +232,10 @@ function ServiceCard({
           </div>
         )}
         {service.lastMessage && service.currentStatus === "DOWN" && (
-          <p className="text-xs text-(--error-text) truncate" title={service.lastMessage}>
+          <p
+            className="text-xs text-(--error-text) truncate"
+            title={service.lastMessage}
+          >
             {service.lastMessage}
           </p>
         )}

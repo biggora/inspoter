@@ -148,9 +148,7 @@ export async function update(
   // DB instead of clearing them.
   const resolvedMonitorType = input.monitorType ?? current.monitorType;
   const url =
-    resolvedMonitorType === "HTTP"
-      ? (input.url ?? current.url)
-      : null;
+    resolvedMonitorType === "HTTP" ? (input.url ?? current.url) : null;
   const host =
     resolvedMonitorType === "TCP" || resolvedMonitorType === "PING"
       ? (input.host ?? current.host)

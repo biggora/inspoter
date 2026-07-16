@@ -7,10 +7,22 @@ export interface ProviderMeta {
 }
 
 export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
-  CLOUDFLARE_DNS: { label: "Cloudflare", category: "DNS", fields: ["apiToken"] },
+  CLOUDFLARE_DNS: {
+    label: "Cloudflare",
+    category: "DNS",
+    fields: ["apiToken"],
+  },
   HETZNER_DNS: { label: "Hetzner DNS", category: "DNS", fields: ["apiToken"] },
-  HETZNER_CLOUD: { label: "Hetzner Cloud", category: "HOSTING", fields: ["apiToken"] },
-  GODADDY_DNS: { label: "GoDaddy", category: "DNS", fields: ["apiKey", "apiSecret"] },
+  HETZNER_CLOUD: {
+    label: "Hetzner Cloud",
+    category: "HOSTING",
+    fields: ["apiToken"],
+  },
+  GODADDY_DNS: {
+    label: "GoDaddy",
+    category: "DNS",
+    fields: ["apiKey", "apiSecret"],
+  },
 } as const;
 
 export const DNS_PROVIDER_TYPES: ProviderType[] = [
