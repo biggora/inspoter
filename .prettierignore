@@ -1,0 +1,22 @@
+# Build artifacts
+.next
+out
+build
+coverage
+playwright-report
+test-results
+
+# Generated code
+src/generated
+
+# Separate git worktrees / agent-local workspaces, not part of the app source tree
+.claude
+.agents
+
+# Static assets
+public
+
+# Lockfiles and build metadata
+pnpm-lock.yaml
+*.tsbuildinfo
+next-env.d.ts
