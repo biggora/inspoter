@@ -287,8 +287,8 @@ export function AlertsView() {
       </PageHeader>
 
       {error && (
-        <Alert className="border-(--error-bg) bg-(--error-bg)">
-          <AlertDescription className="text-(--error-text)">
+        <Alert variant="error">
+          <AlertDescription>
             {error}
           </AlertDescription>
         </Alert>

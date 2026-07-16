@@ -102,6 +102,37 @@
   --status-warn: oklch(var(--amber-500));
   --status-danger: oklch(var(--primary-500));
   --status-idle: oklch(var(--secondary-400));
+
+  /* Feedback: quiet tinted surfaces with clear semantic text and borders. */
+  --success-bg: oklch(var(--accent-50));
+  --success-border: oklch(var(--accent-200));
+  --success-text: oklch(var(--accent-700));
+  --info-bg: oklch(var(--secondary-50));
+  --info-border: oklch(var(--secondary-200));
+  --info-text: oklch(var(--secondary-700));
+  --warning-bg: oklch(var(--amber-500) / 0.12);
+  --warning-border: oklch(var(--amber-500) / 0.42);
+  --warning-text: oklch(var(--amber-700));
+  --error-bg: oklch(var(--primary-50));
+  --error-border: oklch(var(--primary-200));
+  --error-text: oklch(var(--primary-700));
+  --critical-bg: oklch(var(--red-500) / 0.10);
+  --critical-border: oklch(var(--red-500) / 0.55);
+  --critical-text: oklch(var(--red-700));
+
+  /* Sonner uses the unprefixed semantic names in its own scope. */
+  --sonner-success-bg: var(--success-bg);
+  --sonner-success-border: var(--success-border);
+  --sonner-success-text: var(--success-text);
+  --sonner-info-bg: var(--info-bg);
+  --sonner-info-border: var(--info-border);
+  --sonner-info-text: var(--info-text);
+  --sonner-warning-bg: var(--warning-bg);
+  --sonner-warning-border: var(--warning-border);
+  --sonner-warning-text: var(--warning-text);
+  --sonner-error-bg: var(--error-bg);
+  --sonner-error-border: var(--error-border);
+  --sonner-error-text: var(--error-text);
 }
 
 /* --------------------------------------------------------------------------
@@ -167,6 +198,35 @@
   --secondary-800: 0.82 0.022 85; /* @kind color */
   --secondary-900: 0.90 0.016 85; /* @kind color */
   --secondary-950: 0.96 0.012 85; /* @kind color */
+
+  --success-bg: oklch(var(--accent-100));
+  --success-border: oklch(var(--accent-300));
+  --success-text: oklch(var(--accent-700));
+  --info-bg: oklch(var(--secondary-100));
+  --info-border: oklch(var(--secondary-300));
+  --info-text: oklch(var(--secondary-700));
+  --warning-bg: oklch(0.22 0.06 62);
+  --warning-border: oklch(0.60 0.13 62);
+  --warning-text: oklch(0.82 0.12 75);
+  --error-bg: oklch(var(--primary-100));
+  --error-border: oklch(var(--primary-300));
+  --error-text: oklch(var(--primary-700));
+  --critical-bg: oklch(0.24 0.08 27);
+  --critical-border: oklch(0.58 0.19 27);
+  --critical-text: oklch(0.82 0.13 27);
+
+  --sonner-success-bg: var(--success-bg);
+  --sonner-success-border: var(--success-border);
+  --sonner-success-text: var(--success-text);
+  --sonner-info-bg: var(--info-bg);
+  --sonner-info-border: var(--info-border);
+  --sonner-info-text: var(--info-text);
+  --sonner-warning-bg: var(--warning-bg);
+  --sonner-warning-border: var(--warning-border);
+  --sonner-warning-text: var(--warning-text);
+  --sonner-error-bg: var(--error-bg);
+  --sonner-error-border: var(--error-border);
+  --sonner-error-text: var(--error-text);
 }
 
 /* ==========================================================================

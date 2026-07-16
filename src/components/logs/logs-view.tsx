@@ -47,7 +47,7 @@ const LEVEL_STYLES: Record<string, string> = {
   info: "bg-(--info-bg) text-(--info-text)",
   warning: "bg-(--warning-bg) text-(--warning-text)",
   error: "bg-(--error-bg) text-(--error-text)",
-  critical: "bg-[#DC2626] text-white",
+  critical: "bg-(--critical-bg) text-(--critical-text)",
 };
 
 function LevelBadge({ level }: { level: string }) {
@@ -228,8 +228,8 @@ export function LogsView() {
       </PageHeader>
 
       {error && (
-        <Alert className="border-(--error-bg) bg-(--error-bg)">
-          <AlertDescription className="text-(--error-text)">
+        <Alert variant="error">
+          <AlertDescription>
             {error}
           </AlertDescription>
         </Alert>
