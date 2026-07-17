@@ -162,26 +162,37 @@ export function ServiceDetailView({
 
   return (
     <PageBody>
-      <PageHeader back={{ href: "/services", label: "Назад к сервисам" }} />
+      <PageHeader
+        back={{ href: "/services", label: "Назад к сервисам" }}
+        title={service.name}
+        description={service.description}
+        actions={
+          <>
+            <ServiceStatusBadge status={service.currentStatus} />
+            <Button onClick={handleCheckNow} disabled={checking}>
+              {checking ? (
+                <Spinner aria-hidden data-icon="inline-start" />
+              ) : (
+                <RefreshCw aria-hidden data-icon="inline-start" />
+              )}
+              Проверить сейчас
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setFormState({ mode: "edit", service })}
+            >
+              <Pencil aria-hidden data-icon="inline-start" />
+              Редактировать
+            </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(service)}>
+              <Trash2 aria-hidden data-icon="inline-start" />
+              Удалить
+            </Button>
+          </>
+        }
+      />
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="font-heading text-lg font-semibold text-foreground-900 truncate">
-              {service.name}
-            </h1>
-            {service.description && (
-              <p className="text-sm text-foreground-500">
-                {service.description}
-              </p>
-            )}
-          </div>
-          <ServiceStatusBadge
-            status={service.currentStatus}
-            className="shrink-0"
-          />
-        </div>
-
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
             <dt className="text-xs text-foreground-500">Тип монитора</dt>
@@ -259,28 +270,6 @@ export function ServiceDetailView({
             <AlertDescription>{checkError}</AlertDescription>
           </Alert>
         )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={handleCheckNow} disabled={checking}>
-            {checking ? (
-              <Spinner aria-hidden data-icon="inline-start" />
-            ) : (
-              <RefreshCw aria-hidden data-icon="inline-start" />
-            )}
-            Проверить сейчас
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setFormState({ mode: "edit", service })}
-          >
-            <Pencil aria-hidden className="size-4" />
-            Редактировать
-          </Button>
-          <Button variant="outline" onClick={() => setDeleteTarget(service)}>
-            <Trash2 aria-hidden className="size-4" />
-            Удалить
-          </Button>
-        </div>
       </div>
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
