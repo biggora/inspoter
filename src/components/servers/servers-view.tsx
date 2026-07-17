@@ -288,7 +288,10 @@ export function ServersView() {
           description="Подключите провайдера Hetzner Cloud в настройках — серверы появятся здесь автоматически."
           className="max-w-sm animate-scale-in"
           action={
-            <Button render={<Link href="/settings/providers" />}>
+            <Button
+              render={<Link href="/settings/providers" />}
+              nativeButton={false}
+            >
               Добавить провайдера
             </Button>
           }
