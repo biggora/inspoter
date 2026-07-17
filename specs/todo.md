@@ -1,0 +1,1 @@
+add hostings - hostinger https://developers.hostinger.com/#description/introduction
