@@ -137,6 +137,16 @@
   body { @apply bg-background text-foreground; min-width: 320px; font-family: var(--font-body); font-size: 14px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); }
   code, pre, kbd, samp { font-family: var(--font-mono); }
+  :where(button, a[href], [role="button"]) {
+    cursor: pointer;
+  }
+  :where(
+    button:disabled,
+    :is(button, a[href], [role="button"])[aria-disabled="true"],
+    :is(button, a[href], [role="button"])[data-disabled]
+  ) {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {

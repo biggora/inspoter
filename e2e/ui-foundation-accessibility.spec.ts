@@ -283,3 +283,124 @@ test("control tokens keep desktop density and reach 44px for coarse pointers", a
     await coarse.context.close();
   }
 });
+
+test("interactive cursors follow semantics while utilities keep precedence", async ({
+  baseURL,
+  browser,
+}) => {
+  expect(baseURL).toBeTruthy();
+  const { context, page } = await openDarkLogin(browser, baseURL!, false);
+
+  try {
+    const cursors = await page.evaluate(() => {
+      const appendProbe = (
+        element: HTMLElement,
+        testId: string,
+        className?: string,
+      ) => {
+        element.dataset.testid = testId;
+        element.textContent = testId;
+        if (className) element.className = className;
+        document.body.append(element);
+        return element;
+      };
+
+      const button = appendProbe(
+        document.createElement("button"),
+        "cursor-button",
+      );
+      const link = appendProbe(
+        document.createElement("a"),
+        "cursor-link",
+      ) as HTMLAnchorElement;
+      link.href = "/login";
+      const roleButton = appendProbe(
+        document.createElement("div"),
+        "cursor-role-button",
+      );
+      roleButton.setAttribute("role", "button");
+
+      const nativeDisabled = appendProbe(
+        document.createElement("button"),
+        "cursor-native-disabled",
+      ) as HTMLButtonElement;
+      nativeDisabled.disabled = true;
+      const ariaDisabled = appendProbe(
+        document.createElement("a"),
+        "cursor-aria-disabled",
+      ) as HTMLAnchorElement;
+      ariaDisabled.href = "/login";
+      ariaDisabled.setAttribute("aria-disabled", "true");
+      const dataDisabled = appendProbe(
+        document.createElement("div"),
+        "cursor-data-disabled",
+      );
+      dataDisabled.setAttribute("role", "button");
+      dataDisabled.setAttribute("data-disabled", "");
+
+      const anchorWithoutHref = appendProbe(
+        document.createElement("a"),
+        "cursor-anchor-without-href",
+      );
+      const grab = appendProbe(
+        document.createElement("button"),
+        "cursor-grab",
+        "cursor-grab active:cursor-grabbing",
+      );
+      const wait = appendProbe(
+        document.createElement("button"),
+        "cursor-wait",
+        "cursor-wait",
+      );
+      const explicitNotAllowed = appendProbe(
+        document.createElement("button"),
+        "cursor-explicit-not-allowed",
+        "cursor-not-allowed",
+      );
+      const resize = appendProbe(
+        document.createElement("button"),
+        "cursor-resize",
+        "cursor-e-resize",
+      );
+
+      return {
+        button: getComputedStyle(button).cursor,
+        link: getComputedStyle(link).cursor,
+        roleButton: getComputedStyle(roleButton).cursor,
+        nativeDisabled: getComputedStyle(nativeDisabled).cursor,
+        ariaDisabled: getComputedStyle(ariaDisabled).cursor,
+        dataDisabled: getComputedStyle(dataDisabled).cursor,
+        anchorWithoutHref: getComputedStyle(anchorWithoutHref).cursor,
+        grab: getComputedStyle(grab).cursor,
+        wait: getComputedStyle(wait).cursor,
+        explicitNotAllowed: getComputedStyle(explicitNotAllowed).cursor,
+        resize: getComputedStyle(resize).cursor,
+      };
+    });
+
+    expect(cursors).toEqual({
+      button: "pointer",
+      link: "pointer",
+      roleButton: "pointer",
+      nativeDisabled: "not-allowed",
+      ariaDisabled: "not-allowed",
+      dataDisabled: "not-allowed",
+      anchorWithoutHref: "auto",
+      grab: "grab",
+      wait: "wait",
+      explicitNotAllowed: "not-allowed",
+      resize: "e-resize",
+    });
+
+    const grab = page.getByTestId("cursor-grab");
+    await grab.hover();
+    await page.mouse.down();
+    try {
+      await expect(grab).toHaveCSS("cursor", "grabbing");
+    } finally {
+      await page.mouse.up();
+    }
+  } finally {
+    await context.close();
+  }
+});
