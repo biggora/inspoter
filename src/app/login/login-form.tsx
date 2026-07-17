@@ -86,7 +86,7 @@ export function LoginForm({
   }
 
   return (
-    <Card className="w-full max-w-[380px]">
+    <Card className="w-full max-w-95">
       <CardHeader>
         <h1 className="font-heading text-base leading-none font-medium text-foreground">
           Войти
