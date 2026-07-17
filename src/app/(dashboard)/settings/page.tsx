@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Building2, KeyRound, Webhook } from "lucide-react";
+import { CardGrid } from "@/components/shell/card-grid";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
+    <PageBody>
       <PageHeader title="Настройки" />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <CardGrid columns={2}>
         <Link
           href="/settings/workspace"
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
@@ -45,7 +47,7 @@ export default function SettingsPage() {
             </p>
           </div>
         </Link>
-      </div>
-    </div>
+      </CardGrid>
+    </PageBody>
   );
 }

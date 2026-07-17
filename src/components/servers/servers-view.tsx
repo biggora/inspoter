@@ -12,6 +12,8 @@ import {
   ServerIcon,
   type LucideIcon,
 } from "lucide-react";
+import { CardGrid } from "@/components/shell/card-grid";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -220,8 +222,8 @@ export function ServersView() {
 
   if (pageState === "loading") {
     return (
-      <div className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <PageBody>
+        <CardGrid>
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} size="sm" className="animate-fade-in">
               <CardHeader className="border-b">
@@ -250,14 +252,14 @@ export function ServersView() {
               </CardFooter>
             </Card>
           ))}
-        </div>
-      </div>
+        </CardGrid>
+      </PageBody>
     );
   }
 
   if (pageState === "error") {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
+      <PageBody className="items-center justify-center min-h-[calc(100vh-3.5rem)]">
         <EmptyState
           bordered={false}
           tone="danger"
@@ -272,13 +274,13 @@ export function ServersView() {
             </Button>
           }
         />
-      </div>
+      </PageBody>
     );
   }
 
   if (pageState === "empty") {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
+      <PageBody className="items-center justify-center min-h-[calc(100vh-3.5rem)]">
         <EmptyState
           bordered={false}
           icon={ServerIcon}
@@ -291,12 +293,12 @@ export function ServersView() {
             </Button>
           }
         />
-      </div>
+      </PageBody>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       {notification && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
@@ -335,7 +337,7 @@ export function ServersView() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <CardGrid>
         {servers.map((server) => (
           <ServerCard
             key={server.id}
@@ -344,8 +346,8 @@ export function ServersView() {
             error={cardErrors[server.id]}
           />
         ))}
-      </div>
-    </div>
+      </CardGrid>
+    </PageBody>
   );
 }
 

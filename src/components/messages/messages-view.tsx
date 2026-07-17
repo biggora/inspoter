@@ -33,6 +33,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
@@ -651,7 +652,7 @@ export function MessagesView() {
   // Loading skeleton — sidebar rail + message feed placeholders.
   if (categoriesLoading) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+      <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 py-4">
           <PageHeader title="Сообщения" />
         </div>
@@ -705,14 +706,14 @@ export function MessagesView() {
             </div>
           </div>
         </div>
-      </div>
+      </PageBody>
     );
   }
 
   // Error state — categories failed to load entirely.
   if (categoriesError) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+      <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 py-4">
           <PageHeader title="Сообщения" />
         </div>
@@ -732,12 +733,12 @@ export function MessagesView() {
             }
           />
         </div>
-      </div>
+      </PageBody>
     );
   }
 
   return (
-    <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
+    <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-6 py-4">
         <PageHeader title="Сообщения" />
       </div>
@@ -1064,6 +1065,6 @@ export function MessagesView() {
         onOpenChange={(open) => !open && setDeleteChannelTarget(null)}
         onDeleted={handleChannelDeleted}
       />
-    </div>
+    </PageBody>
   );
 }

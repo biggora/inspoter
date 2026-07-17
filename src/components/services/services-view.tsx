@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
+import { CardGrid } from "@/components/shell/card-grid";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import type { Service } from "@/generated/prisma/client";
 import { servicesApi } from "./api";
@@ -120,7 +122,7 @@ export function ServicesView({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader
         title="Сервисы"
         description={`${services.length} ${pluralizeServices(services.length)}`}
@@ -145,7 +147,7 @@ export function ServicesView({
           }
         />
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(18rem,100%),1fr))] gap-4">
+        <CardGrid>
           {services.map((service) => (
             <ServiceCard
               key={service.id}
@@ -157,7 +159,7 @@ export function ServicesView({
               onDelete={() => setDeleteTarget(service)}
             />
           ))}
-        </div>
+        </CardGrid>
       )}
 
       <ServiceFormDialog
@@ -176,7 +178,7 @@ export function ServicesView({
           router.refresh();
         }}
       />
-    </div>
+    </PageBody>
   );
 }
 

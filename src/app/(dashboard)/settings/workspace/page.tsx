@@ -7,6 +7,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
 import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
@@ -25,7 +26,7 @@ export default async function WorkspaceSettingsPage() {
   const members = await workspacesService.listMembers(workspace.id);
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader title="Рабочее пространство" />
 
       <Card>
@@ -67,6 +68,6 @@ export default async function WorkspaceSettingsPage() {
           <CreateWorkspaceForm />
         </CardContent>
       </Card>
-    </div>
+    </PageBody>
   );
 }

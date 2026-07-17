@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,7 @@ export function ProviderCredentialsView() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader
         title="Провайдеры"
         back={{ href: "/settings", label: "Назад к настройкам" }}
@@ -208,6 +209,6 @@ export function ProviderCredentialsView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageBody>
   );
 }

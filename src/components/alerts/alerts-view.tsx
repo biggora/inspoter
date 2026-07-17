@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
@@ -211,7 +212,7 @@ export function AlertsView() {
     query !== "" || categoryId !== "all" || severity !== "all";
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader
         title="Оповещения"
         actions={
@@ -404,6 +405,6 @@ export function AlertsView() {
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onDeleted={handleCategoryDeleted}
       />
-    </div>
+    </PageBody>
   );
 }
