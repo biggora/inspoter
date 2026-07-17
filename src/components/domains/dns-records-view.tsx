@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -105,7 +106,7 @@ export function DnsRecordsView({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader
         back={{ onClick: onBack, label: "Домены" }}
         title={domainName}
@@ -223,6 +224,6 @@ export function DnsRecordsView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageBody>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, RefreshCw, Trash2 } from "lucide-react";
 
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -159,7 +160,7 @@ export function ServiceDetailView({
   const heartbeatChecks = checks.slice(0, HEARTBEAT_BAR_COUNT).reverse();
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader back={{ href: "/services", label: "Назад к сервисам" }} />
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
@@ -402,6 +403,6 @@ export function ServiceDetailView({
           router.push("/services");
         }}
       />
-    </div>
+    </PageBody>
   );
 }
