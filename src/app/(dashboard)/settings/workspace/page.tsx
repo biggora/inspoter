@@ -27,7 +27,10 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <PageBody>
-      <PageHeader title="Рабочее пространство" />
+      <PageHeader
+        back={{ href: "/settings", label: "Назад к настройкам" }}
+        title="Рабочее пространство"
+      />
 
       <Card>
         <CardHeader>

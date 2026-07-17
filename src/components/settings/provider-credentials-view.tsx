@@ -93,7 +93,7 @@ export function ProviderCredentialsView() {
         back={{ href: "/settings", label: "Назад к настройкам" }}
         actions={
           <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Добавить провайдер
           </Button>
         }
@@ -114,6 +114,7 @@ export function ProviderCredentialsView() {
       ) : credentials.length === 0 ? (
         <EmptyState
           icon={KeyRound}
+          title="Нет провайдеров"
           description="Провайдеры не настроены. Добавьте API-ключи для подключения к Cloudflare, Hetzner или GoDaddy."
         />
       ) : (

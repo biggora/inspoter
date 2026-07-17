@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
@@ -217,25 +218,18 @@ export function AlertsView() {
         title="Оповещения"
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setManageOpen(true)}
-            >
-              <Settings2 aria-hidden className="size-4" />
+            <Button variant="outline" onClick={() => setManageOpen(true)}>
+              <Settings2 aria-hidden data-icon="inline-start" />
               Управление категориями
             </Button>
-            <Button
-              size="sm"
-              onClick={() => setCategoryDialog({ mode: "create" })}
-            >
-              <Plus aria-hidden className="size-4" />
+            <Button onClick={() => setCategoryDialog({ mode: "create" })}>
+              <Plus aria-hidden data-icon="inline-start" />
               Новая категория
             </Button>
           </>
         }
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <FilterBar>
           <Input
             value={searchInput}
             onChange={(event) => handleSearchChange(event.target.value)}
@@ -297,7 +291,7 @@ export function AlertsView() {
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
+        </FilterBar>
       </PageHeader>
 
       {error && (
@@ -371,7 +365,7 @@ export function AlertsView() {
           onClick={handlePrevious}
           disabled={pageIndex === 0 || loading}
         >
-          <ChevronLeft aria-hidden className="size-4" />
+          <ChevronLeft aria-hidden data-icon="inline-start" />
           Назад
         </Button>
         <span className="text-sm text-muted-foreground">
@@ -384,7 +378,7 @@ export function AlertsView() {
           disabled={!nextCursor || loading}
         >
           Далее
-          <ChevronRight aria-hidden className="size-4" />
+          <ChevronRight aria-hidden data-icon="inline-end" />
         </Button>
       </div>
 

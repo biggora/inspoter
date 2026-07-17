@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Activity, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -323,9 +324,12 @@ export function ServiceDetailView({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Проверок пока не было.
-              </p>
+              <EmptyState
+                size="sm"
+                icon={Activity}
+                title="Нет проверок"
+                description="История проверок пока пуста."
+              />
             )}
 
             {checksError && (

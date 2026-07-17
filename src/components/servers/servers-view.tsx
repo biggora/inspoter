@@ -257,7 +257,7 @@ export function ServersView() {
         }
         actions={
           pageState !== "loading" ? (
-            <Button variant="ghost" size="sm" onClick={load}>
+            <Button variant="outline" onClick={load}>
               <RefreshCw aria-hidden data-icon="inline-start" />
               Обновить
             </Button>
