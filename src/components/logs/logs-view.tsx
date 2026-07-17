@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shell/page-header";
 import {
@@ -169,7 +170,7 @@ export function LogsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Логи">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <FilterBar>
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -225,7 +226,7 @@ export function LogsView() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FilterBar>
       </PageHeader>
 
       {error && (
