@@ -82,7 +82,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
       <PageHeader
         title="Домены"
         actions={
-          <Button size="sm" onClick={() => setIsCreateProviderOpen(true)}>
+          <Button onClick={() => setIsCreateProviderOpen(true)}>
             <Plus aria-hidden className="size-4" />
             Добавить провайдер
           </Button>
