@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
@@ -23,8 +23,23 @@ function serviceCard(page: Page, name: string) {
   // `.rounded-lg`), so scoping by "contains this exact heading" reliably
   // isolates a single card even when other services are present.
   return page.locator(".rounded-xl").filter({
-    has: page.getByRole("heading", { name, exact: true, level: 4 }),
+    has: page.getByRole("heading", { name, exact: true, level: 2 }),
   });
+}
+
+async function expectInsideHorizontally(container: Locator, target: Locator) {
+  const [containerBox, targetBox] = await Promise.all([
+    container.boundingBox(),
+    target.boundingBox(),
+  ]);
+  if (!containerBox || !targetBox) {
+    throw new Error("Expected the card and its action to have bounding boxes.");
+  }
+
+  expect(targetBox.x).toBeGreaterThanOrEqual(containerBox.x);
+  expect(targetBox.x + targetBox.width).toBeLessThanOrEqual(
+    containerBox.x + containerBox.width + 0.5,
+  );
 }
 
 async function createHttpService(
@@ -102,6 +117,79 @@ test("creating an HTTP service persists it and it appears in the list without a 
     await expect(card.getByText("HTTP(S)", { exact: false })).toBeVisible();
   } finally {
     if (id) await deleteServiceViaApi(page, id);
+  }
+});
+
+test("service cards preserve actions and heading hierarchy across tablet and desktop widths", async ({
+  page,
+  testData,
+}) => {
+  const names = [
+    testData.name("Layout Service A"),
+    testData.name("Layout Service B"),
+    testData.name("Layout Service C"),
+  ];
+  const ids: string[] = [];
+
+  try {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto("/services");
+
+    for (const name of names) {
+      ids.push(
+        await createHttpService(page, {
+          name,
+          url: testData.localUrl("/login"),
+        }),
+      );
+    }
+
+    await expect(
+      page.getByRole("heading", { name: "Сервисы", exact: true, level: 1 }),
+    ).toBeVisible();
+
+    for (const name of names) {
+      const card = serviceCard(page, name);
+      const cardBox = await card.boundingBox();
+      if (!cardBox) throw new Error(`Service card «${name}» is not visible.`);
+      expect(cardBox.width).toBeGreaterThanOrEqual(288);
+      await expect(
+        card.getByRole("heading", { name, exact: true, level: 2 }),
+      ).toBeVisible();
+      await expectInsideHorizontally(
+        card,
+        card.getByRole("button", { name: "Проверить сейчас", exact: true }),
+      );
+      await expectInsideHorizontally(
+        card,
+        card.getByRole("button", {
+          name: `Редактировать «${name}»`,
+          exact: true,
+        }),
+      );
+      await expectInsideHorizontally(
+        card,
+        card.getByRole("button", {
+          name: `Удалить «${name}»`,
+          exact: true,
+        }),
+      );
+    }
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const grid = serviceCard(page, names[0]).locator("..");
+    await expect
+      .poll(() =>
+        grid.evaluate(
+          (element) =>
+            getComputedStyle(element)
+              .gridTemplateColumns.split(/\s+/)
+              .filter(Boolean).length,
+        ),
+      )
+      .toBe(3);
+  } finally {
+    for (const id of ids) await deleteServiceViaApi(page, id);
   }
 });
 

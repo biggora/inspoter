@@ -369,9 +369,11 @@ test("domains retry performs one refresh and exposes its disabled transition", a
       return;
     }
 
+    const providerError =
+      domainRscRequests === 0 ? "Authentication failed" : "Timeout after 30s";
     const body = originalBody.replace(
       providerFixture,
-      '"providerId":"mock-cloudflare","mode":"mock","domains":[],"error":"Provider unreachable"',
+      `"providerId":"mock-cloudflare","mode":"mock","domains":[],"error":"${providerError}"`,
     );
     expect(
       body,
@@ -389,6 +391,12 @@ test("domains retry performs one refresh and exposes its disabled transition", a
     .click();
   const retry = page.getByRole("button", { name: "Повторить", exact: true });
   await expect(retry).toBeVisible();
+  await expect(
+    page.getByText("mock-cloudflare — Ошибка аутентификации провайдера.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Authentication failed")).toHaveCount(0);
   const requestCountBeforeRetry = domainRscRequests;
 
   holdNextRequest = true;
@@ -403,6 +411,13 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   releaseRefresh?.();
   await expect(retry).toBeVisible();
   await expect(retry).toBeEnabled();
+  await expect(
+    page.getByText(
+      "mock-cloudflare — Не удалось получить данные от провайдера.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Timeout after 30s")).toHaveCount(0);
   expect(domainRscRequests).toBe(requestCountBeforeRetry + 1);
   expectNoUnexpectedBrowserErrors(browserErrors);
 });

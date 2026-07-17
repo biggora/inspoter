@@ -55,7 +55,7 @@ export function PageHeader({
           </Button>
         ))}
       {(title || actions) && (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
           {title && (
             <div className="min-w-0">
               <h1 className="text-xl font-semibold text-foreground">{title}</h1>
@@ -65,7 +65,9 @@ export function PageHeader({
             </div>
           )}
           {actions && (
-            <div className="flex shrink-0 items-center gap-2">{actions}</div>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">
+              {actions}
+            </div>
           )}
         </div>
       )}

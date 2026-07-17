@@ -145,7 +145,7 @@ export function ServicesView({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(18rem,100%),1fr))] gap-4">
           {services.map((service) => (
             <ServiceCard
               key={service.id}
@@ -209,7 +209,7 @@ function ServiceCard({
           </div>
           <div className="min-w-0">
             <CardTitle>
-              <h4 className="truncate">{service.name}</h4>
+              <h2 className="truncate">{service.name}</h2>
             </CardTitle>
             <CardDescription className="truncate text-xs">
               {MONITOR_TYPE_LABELS[service.monitorType]} ·{" "}
