@@ -98,7 +98,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
         title="Домены"
         actions={
           <Button onClick={() => setIsCreateProviderOpen(true)}>
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Добавить провайдер
           </Button>
         }

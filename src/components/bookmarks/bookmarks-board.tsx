@@ -489,7 +489,7 @@ export function BookmarksBoard({
             items={filteredCategories.map((category) => category.id)}
             strategy={verticalListSortingStrategy}
           >
-            <PageBody>
+            <div className="flex flex-col gap-6">
               {filteredCategories.map((category) => {
                 const original = categoryById.get(category.id) ?? category;
                 return (
@@ -523,7 +523,7 @@ export function BookmarksBoard({
                   />
                 );
               })}
-            </PageBody>
+            </div>
           </SortableContext>
         </DndContext>
       )}

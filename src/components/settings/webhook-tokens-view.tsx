@@ -183,7 +183,7 @@ export function WebhookTokensView() {
         back={{ href: "/settings", label: "Назад к настройкам" }}
         actions={
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Новый токен
           </Button>
         }
@@ -204,6 +204,7 @@ export function WebhookTokensView() {
       ) : tokens.length === 0 ? (
         <EmptyState
           icon={Link2}
+          title="Нет токенов"
           description="Webhook-токенов пока нет. Создайте токен, чтобы внешние системы могли отправлять почту, сообщения, логи и оповещения в это рабочее пространство."
         />
       ) : (

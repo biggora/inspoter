@@ -117,7 +117,7 @@ export function DnsRecordsView({
               setRecordDialog({ mode: "create", providerId, domainId })
             }
           >
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Добавить запись
           </Button>
         }
@@ -138,6 +138,7 @@ export function DnsRecordsView({
       ) : records.length === 0 && !error ? (
         <EmptyState
           icon={FileText}
+          title="Нет записей"
           description="Для этого домена пока нет DNS-записей."
         />
       ) : records.length > 0 ? (

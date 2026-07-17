@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -149,7 +150,7 @@ export function MailView() {
   return (
     <PageBody>
       <PageHeader title="Почта">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <FilterBar>
           <Input
             value={searchInput}
             onChange={(event) => handleSearchChange(event.target.value)}
@@ -175,7 +176,7 @@ export function MailView() {
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
+        </FilterBar>
       </PageHeader>
 
       {error && (
@@ -186,10 +187,10 @@ export function MailView() {
 
       {loading ? (
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
         </div>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
