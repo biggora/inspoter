@@ -220,9 +220,53 @@ export function ServersView() {
         ? "empty"
         : "ready";
 
-  if (pageState === "loading") {
-    return (
-      <PageBody>
+  return (
+    <PageBody>
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
+            notification.variant === "success"
+              ? "bg-accent-100/80 text-accent-800"
+              : "bg-primary-100/70 text-primary-800"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <i
+            className={`${
+              notification.variant === "success"
+                ? "ri-check-line"
+                : "ri-error-warning-line"
+            } w-5 h-5 flex items-center justify-center`}
+          ></i>
+          {notification.message}
+        </div>
+      )}
+
+      <PageHeader
+        title="Серверы"
+        description={
+          pageState === "ready"
+            ? `${servers.length} ${
+                servers.length === 1
+                  ? "сервер"
+                  : servers.length >= 2 && servers.length <= 4
+                    ? "сервера"
+                    : "серверов"
+              }`
+            : undefined
+        }
+        actions={
+          pageState !== "loading" ? (
+            <Button variant="ghost" size="sm" onClick={load}>
+              <RefreshCw aria-hidden data-icon="inline-start" />
+              Обновить
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {pageState === "loading" && (
         <CardGrid>
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} size="sm" className="animate-fade-in">
@@ -253,20 +297,14 @@ export function ServersView() {
             </Card>
           ))}
         </CardGrid>
-      </PageBody>
-    );
-  }
+      )}
 
-  if (pageState === "error") {
-    return (
-      <PageBody className="items-center justify-center min-h-[calc(100vh-3.5rem)]">
+      {pageState === "error" && (
         <EmptyState
-          bordered={false}
           tone="danger"
           icon={CloudOff}
           title="Hetzner недоступен"
           description="Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже."
-          className="max-w-sm animate-scale-in"
           action={
             <Button onClick={load}>
               <RefreshCw aria-hidden data-icon="inline-start" />
@@ -274,19 +312,13 @@ export function ServersView() {
             </Button>
           }
         />
-      </PageBody>
-    );
-  }
+      )}
 
-  if (pageState === "empty") {
-    return (
-      <PageBody className="items-center justify-center min-h-[calc(100vh-3.5rem)]">
+      {pageState === "empty" && (
         <EmptyState
-          bordered={false}
           icon={ServerIcon}
           title="Нет серверов"
           description="Подключите провайдера Hetzner Cloud в настройках — серверы появятся здесь автоматически."
-          className="max-w-sm animate-scale-in"
           action={
             <Button
               render={<Link href="/settings/providers" />}
@@ -296,60 +328,20 @@ export function ServersView() {
             </Button>
           }
         />
-      </PageBody>
-    );
-  }
-
-  return (
-    <PageBody>
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
-            notification.variant === "success"
-              ? "bg-accent-100/80 text-accent-800"
-              : "bg-primary-100/70 text-primary-800"
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          <i
-            className={`${
-              notification.variant === "success"
-                ? "ri-check-line"
-                : "ri-error-warning-line"
-            } w-5 h-5 flex items-center justify-center`}
-          ></i>
-          {notification.message}
-        </div>
       )}
 
-      <PageHeader
-        title="Серверы"
-        description={`${servers.length} ${
-          servers.length === 1
-            ? "сервер"
-            : servers.length >= 2 && servers.length <= 4
-              ? "сервера"
-              : "серверов"
-        }`}
-        actions={
-          <Button variant="ghost" size="sm" onClick={load}>
-            <RefreshCw aria-hidden data-icon="inline-start" />
-            Обновить
-          </Button>
-        }
-      />
-
-      <CardGrid>
-        {servers.map((server) => (
-          <ServerCard
-            key={server.id}
-            server={server}
-            onPowerAction={handlePowerAction}
-            error={cardErrors[server.id]}
-          />
-        ))}
-      </CardGrid>
+      {pageState === "ready" && (
+        <CardGrid>
+          {servers.map((server) => (
+            <ServerCard
+              key={server.id}
+              server={server}
+              onPowerAction={handlePowerAction}
+              error={cardErrors[server.id]}
+            />
+          ))}
+        </CardGrid>
+      )}
     </PageBody>
   );
 }
