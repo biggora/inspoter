@@ -32,12 +32,22 @@ test("Login screen has zero serious or critical accessibility violations", async
   await expectNoBlockingAxeViolations(page);
 });
 
-test("Shell + Bookmarks screen has zero serious or critical accessibility violations", async ({
+test("Shell + Bookmarks screen has one main landmark, one named primary navigation, and zero serious or critical accessibility violations", async ({
   page,
 }) => {
   await login(page);
   await page.goto("/bookmarks");
-  await expect(page.getByRole("navigation")).toBeVisible();
+
+  const main = page.getByRole("main");
+  await expect(main).toHaveCount(1);
+  await expect(main).toBeVisible();
+
+  const primaryNavigation = page.getByRole("navigation", {
+    name: "Основная навигация",
+    exact: true,
+  });
+  await expect(primaryNavigation).toHaveCount(1);
+  await expect(primaryNavigation).toBeVisible();
 
   await expectNoBlockingAxeViolations(page);
 });

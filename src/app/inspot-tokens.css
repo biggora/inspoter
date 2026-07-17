@@ -159,9 +159,9 @@
   --foreground-100: 0.14 0.010 260; /* @kind color */
   --foreground-200: 0.20 0.010 260; /* @kind color */
   --foreground-300: 0.28 0.009 260; /* @kind color */
-  --foreground-400: 0.38 0.008 260; /* @kind color */
-  --foreground-500: 0.48 0.007 260; /* @kind color */
-  --foreground-600: 0.58 0.006 260; /* @kind color */
+  --foreground-400: 0.58 0.008 260; /* @kind color */
+  --foreground-500: 0.60 0.007 260; /* @kind color */
+  --foreground-600: 0.62 0.006 260; /* @kind color */
   --foreground-700: 0.68 0.005 260; /* @kind color */
   --foreground-800: 0.78 0.004 260; /* @kind color */
   --foreground-900: 0.88 0.003 260; /* @kind color */
@@ -329,6 +329,14 @@
   --icon-tile-sm: 28px;   /* w-7 h-7 */
   --icon-tile-md: 32px;   /* w-8 h-8 — most common */
   --icon-tile-lg: 36px;   /* w-9 h-9 — server card header */
+}
+
+@media (pointer: coarse) {
+  :root {
+    --control-sm: 44px;
+    --control-md: 44px;
+    --control-lg: 44px;
+  }
 }
 
 /* ==========================================================================

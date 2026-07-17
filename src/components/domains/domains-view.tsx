@@ -31,6 +31,20 @@ const PROVIDER_LABELS: Record<string, string> = {
   godaddy: "GoDaddy",
 };
 
+const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
+  "Provider unreachable": "Провайдер недоступен.",
+  "Authentication failed": "Ошибка аутентификации провайдера.",
+  "Rate limited": "Превышен лимит запросов к провайдеру.",
+  "Provider error": "Ошибка провайдера.",
+};
+
+function providerErrorMessage(error: string | null): string {
+  return (
+    (error && PROVIDER_ERROR_MESSAGES[error]) ||
+    "Не удалось получить данные от провайдера."
+  );
+}
+
 function providerLabel(providerId: string): string {
   return PROVIDER_LABELS[providerId] ?? providerId;
 }
@@ -103,7 +117,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                   <span className="font-medium">
                     {providerLabel(provider.providerId)}
                   </span>{" "}
-                  — {provider.error}
+                  — {providerErrorMessage(provider.error)}
                 </AlertDescription>
               </div>
               <Button

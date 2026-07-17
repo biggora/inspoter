@@ -68,7 +68,7 @@ export function BookmarkCard({
         target="_blank"
         rel="noopener noreferrer"
         aria-label={bookmark.name}
-        className="flex min-w-0 flex-1 items-start gap-3 no-underline"
+        className="flex min-h-[var(--control-sm)] min-w-0 flex-1 items-start gap-3 no-underline"
       >
         <BookmarkIcon
           icon={bookmark.icon}
