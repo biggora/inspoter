@@ -17,12 +17,19 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/generated/prisma/client";
 import { ApiError, workspacesApi } from "@/components/workspace/api";
@@ -43,6 +50,7 @@ export function WorkspaceSwitcher({
 }: WorkspaceSwitcherProps) {
   const router = useRouter();
   const nameId = useId();
+  const errorId = useId();
 
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -144,26 +152,28 @@ export function WorkspaceSwitcher({
               Загрузка…
             </div>
           ) : (
-            workspaces.map((workspace) => (
-              <DropdownMenuItem
-                key={workspace.id}
-                disabled={switchingId !== null}
-                onClick={() => handleSwitch(workspace.id)}
-              >
-                <span className="min-w-0 flex-1 truncate">
-                  {workspace.name}
-                </span>
-                {workspace.id === currentId && (
-                  <Check aria-hidden className="size-4" />
-                )}
-              </DropdownMenuItem>
-            ))
+            <DropdownMenuGroup>
+              {workspaces.map((workspace) => (
+                <DropdownMenuItem
+                  key={workspace.id}
+                  disabled={switchingId !== null}
+                  onClick={() => handleSwitch(workspace.id)}
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    {workspace.name}
+                  </span>
+                  {workspace.id === currentId && <Check aria-hidden />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={openCreate}>
-            <Plus aria-hidden className="size-4" />
-            Создать рабочее пространство
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={openCreate}>
+              <Plus aria-hidden />
+              Создать рабочее пространство
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -177,24 +187,34 @@ export function WorkspaceSwitcher({
             noValidate
             className="flex flex-col gap-4"
           >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={nameId}>Название</Label>
-              <Input
-                id={nameId}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                aria-required="true"
-                aria-invalid={error ? true : undefined}
-                autoFocus
-              />
-              {error && <p className="text-sm text-(--error-text)">{error}</p>}
-            </div>
+            <FieldGroup>
+              <Field data-invalid={!!error || undefined}>
+                <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+                <Input
+                  id={nameId}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  aria-required="true"
+                  aria-invalid={!!error || undefined}
+                  aria-describedby={error ? errorId : undefined}
+                  autoFocus
+                />
+                <FieldError id={errorId}>{error}</FieldError>
+              </Field>
+            </FieldGroup>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" type="button" />}>
                 Отмена
               </DialogClose>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Создание…" : "Создать"}
+                {submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Создание…
+                  </>
+                ) : (
+                  "Создать"
+                )}
               </Button>
             </DialogFooter>
           </form>

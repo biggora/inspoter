@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Settings2 } from "lucide-react";
+import {
+  BellRing,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Settings2,
+} from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,6 +17,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -244,11 +251,13 @@ export function AlertsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(categoryItems).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(categoryItems).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Select
@@ -260,11 +269,13 @@ export function AlertsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SEVERITY_ITEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(SEVERITY_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Select
@@ -276,11 +287,13 @@ export function AlertsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SORT_ITEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -304,7 +317,7 @@ export function AlertsView() {
           <EmptyState description="Нет алертов, соответствующих текущим фильтрам." />
         ) : (
           <EmptyState
-            icon="ri-alarm-warning-line"
+            icon={BellRing}
             title="Алерты пока отсутствуют"
             description="Отправьте первый алерт через webhook:"
             action={

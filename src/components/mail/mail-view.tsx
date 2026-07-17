@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -164,11 +165,13 @@ export function MailView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SORT_ITEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -192,7 +195,7 @@ export function MailView() {
           <EmptyState description="Нет писем, соответствующих текущим фильтрам." />
         ) : (
           <EmptyState
-            icon="ri-mail-line"
+            icon={Mail}
             title="Входящая почта пока отсутствует"
             description="Отправьте первое письмо через webhook:"
             action={
@@ -209,23 +212,24 @@ export function MailView() {
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
           {items.map((item) => (
             <li key={item.id}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setSelectedId(item.id)}
-                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+                className="h-auto w-full justify-between rounded-none px-4 py-3 text-left"
               >
-                <div className="flex min-w-0 flex-1 items-baseline gap-3">
+                <span className="flex min-w-0 flex-1 items-baseline gap-3">
                   <span className="w-48 shrink-0 truncate text-sm font-medium text-foreground">
                     {item.sender}
                   </span>
                   <span className="min-w-0 truncate text-sm text-muted-foreground">
                     {item.subject}
                   </span>
-                </div>
+                </span>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {formatTimestamp(item.receivedAt)}
                 </span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -238,7 +242,7 @@ export function MailView() {
           onClick={handlePrevious}
           disabled={pageIndex === 0 || loading}
         >
-          <ChevronLeft aria-hidden className="size-4" />
+          <ChevronLeft aria-hidden data-icon="inline-start" />
           Назад
         </Button>
         <span className="text-sm text-muted-foreground">
@@ -251,7 +255,7 @@ export function MailView() {
           disabled={!nextCursor || loading}
         >
           Далее
-          <ChevronRight aria-hidden className="size-4" />
+          <ChevronRight aria-hidden data-icon="inline-end" />
         </Button>
       </div>
     </div>

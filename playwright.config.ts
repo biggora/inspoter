@@ -76,7 +76,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         viewport: { width: 375, height: 800 },
       },
-      testMatch: /shell-responsive\.spec\.ts/,
+      testMatch: /(?:shell-responsive|ui-visual)\.spec\.ts/,
     },
   ],
 });

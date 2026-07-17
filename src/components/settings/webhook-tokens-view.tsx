@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { Check, Copy, Plus } from "lucide-react";
+import { Check, Copy, Link2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -26,9 +27,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -181,7 +188,11 @@ export function WebhookTokensView() {
         }
       />
 
-      {error && <p className="text-sm text-(--error-text)">{error}</p>}
+      {error && (
+        <Alert variant="error">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -191,7 +202,7 @@ export function WebhookTokensView() {
         </div>
       ) : tokens.length === 0 ? (
         <EmptyState
-          icon="ri-links-line"
+          icon={Link2}
           description="Webhook-токенов пока нет. Создайте токен, чтобы внешние системы могли отправлять почту, сообщения, логи и оповещения в это рабочее пространство."
         />
       ) : (
@@ -264,24 +275,22 @@ export function WebhookTokensView() {
                 noValidate
                 className="flex flex-col gap-4"
               >
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor={nameId}>Название</Label>
-                  <Input
-                    id={nameId}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder='например, "CI pipeline"'
-                    aria-required="true"
-                    aria-invalid={nameError ? true : undefined}
-                    aria-describedby={nameError ? nameErrorId : undefined}
-                    autoFocus
-                  />
-                  {nameError && (
-                    <p id={nameErrorId} className="text-sm text-(--error-text)">
-                      {nameError}
-                    </p>
-                  )}
-                </div>
+                <FieldGroup>
+                  <Field data-invalid={!!nameError || undefined}>
+                    <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+                    <Input
+                      id={nameId}
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder='например, "CI pipeline"'
+                      aria-required="true"
+                      aria-invalid={!!nameError || undefined}
+                      aria-describedby={nameError ? nameErrorId : undefined}
+                      autoFocus
+                    />
+                    <FieldError id={nameErrorId}>{nameError}</FieldError>
+                  </Field>
+                </FieldGroup>
                 <DialogFooter>
                   <DialogClose
                     render={<Button variant="outline" type="button" />}
@@ -289,7 +298,14 @@ export function WebhookTokensView() {
                     Отмена
                   </DialogClose>
                   <Button type="submit" disabled={submitting}>
-                    {submitting ? "Создание…" : "Создать"}
+                    {submitting ? (
+                      <>
+                        <Spinner data-icon="inline-start" aria-hidden />
+                        Создание…
+                      </>
+                    ) : (
+                      "Создать"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>

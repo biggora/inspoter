@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, X } from "lucide-react";
+import { BookmarkIcon, FileSearch, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -30,7 +30,12 @@ import {
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import type { Bookmark, Category } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
@@ -410,7 +415,7 @@ export function BookmarksBoard({
         title="Закладки"
         actions={
           <Button onClick={() => setCategoryDialog({ mode: "create" })}>
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Новая категория
           </Button>
         }
@@ -418,30 +423,29 @@ export function BookmarksBoard({
         {categories.length > 0 && (
           <div className="flex flex-col gap-1.5 max-w-sm">
             <Label htmlFor={searchId}>Поиск закладок</Label>
-            <div className="relative">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-foreground-400"
-              />
-              <Input
+            <InputGroup>
+              <InputGroupAddon>
+                <Search aria-hidden />
+              </InputGroupAddon>
+              <InputGroupInput
                 id={searchId}
                 type="text"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Название, описание или URL"
-                className="pl-8 pr-8"
               />
               {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  aria-label="Очистить поиск"
-                  className="absolute right-2 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded text-foreground-400 transition-colors hover:text-foreground-700 cursor-pointer"
-                >
-                  <X aria-hidden className="size-4" />
-                </button>
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size="icon-xs"
+                    onClick={() => setQuery("")}
+                    aria-label="Очистить поиск"
+                  >
+                    <X aria-hidden data-icon="inline-start" />
+                  </InputGroupButton>
+                </InputGroupAddon>
               )}
-            </div>
+            </InputGroup>
           </div>
         )}
       </PageHeader>
@@ -452,19 +456,19 @@ export function BookmarksBoard({
 
       {categories.length === 0 ? (
         <EmptyState
-          icon="ri-bookmark-line"
+          icon={BookmarkIcon}
           title="Нет закладок"
           description="Создайте категорию, чтобы начать добавлять закладки."
           action={
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>
-              <Plus aria-hidden className="size-4" />
+              <Plus aria-hidden data-icon="inline-start" />
               Создать категорию
             </Button>
           }
         />
       ) : isSearching && filteredCategories.length === 0 ? (
         <EmptyState
-          icon="ri-file-search-line"
+          icon={FileSearch}
           title="Ничего не найдено"
           description={`По запросу «${trimmedQuery}» закладок не найдено. Попробуйте изменить запрос или сбросить поиск.`}
           action={

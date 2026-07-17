@@ -5,8 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError, workspacesApi } from "./api";
 
 interface RenameWorkspaceFormProps {
@@ -23,6 +29,7 @@ export function RenameWorkspaceForm({
 }: RenameWorkspaceFormProps) {
   const router = useRouter();
   const nameId = useId();
+  const errorId = useId();
 
   const [name, setName] = useState(currentName);
   const [error, setError] = useState<string | null>(null);
@@ -59,23 +66,35 @@ export function RenameWorkspaceForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={nameId}>Название рабочего пространства</Label>
-        <Input
-          id={nameId}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          aria-required="true"
-          aria-invalid={error ? true : undefined}
-        />
-        {error && <p className="text-sm text-(--error-text)">{error}</p>}
-      </div>
+      <FieldGroup>
+        <Field data-invalid={!!error || undefined}>
+          <FieldLabel htmlFor={nameId}>
+            Название рабочего пространства
+          </FieldLabel>
+          <Input
+            id={nameId}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            aria-required="true"
+            aria-invalid={!!error || undefined}
+            aria-describedby={error ? errorId : undefined}
+          />
+          <FieldError id={errorId}>{error}</FieldError>
+        </Field>
+      </FieldGroup>
       <div>
         <Button
           type="submit"
           disabled={submitting || name.trim() === currentName}
         >
-          {submitting ? "Сохранение…" : "Сохранить изменения"}
+          {submitting ? (
+            <>
+              <Spinner data-icon="inline-start" aria-hidden />
+              Сохранение…
+            </>
+          ) : (
+            "Сохранить изменения"
+          )}
         </Button>
       </div>
     </form>

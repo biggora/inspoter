@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Globe2, Plus, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +121,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
       {domains.length === 0 ? (
         <EmptyState
-          icon="ri-global-line"
+          icon={Globe2}
           title={
             erroredProviders.length > 0
               ? "Нет доменов от исправных провайдеров"

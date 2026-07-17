@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { LucideIcon } from "lucide-react";
 
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 
 const emptyStateIconVariants = cva(
@@ -12,9 +21,9 @@ const emptyStateIconVariants = cva(
         danger: "bg-primary-100 text-primary-600",
       },
       size: {
-        default: "size-16 text-2xl",
-        sm: "size-14 text-xl",
-        xs: "size-14 text-xl",
+        default: "size-16 text-2xl [&_svg]:size-6",
+        sm: "size-14 text-xl [&_svg]:size-5",
+        xs: "size-14 text-xl [&_svg]:size-5",
       },
     },
     defaultVariants: {
@@ -50,8 +59,8 @@ const emptyStateDescriptionVariants = cva("", {
 });
 
 interface EmptyStateProps extends VariantProps<typeof emptyStateIconVariants> {
-  /** RemixIcon class name, e.g. "ri-pulse-line". Omit to render without an icon well. */
-  icon?: string;
+  /** Lucide icon component. */
+  icon?: LucideIcon;
   align?: "center" | "start";
   /** Wraps content in the standard card (border + background + padding). */
   bordered?: boolean;
@@ -72,11 +81,13 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
+  const Icon = icon;
+
   return (
-    <div
+    <Empty
       data-slot="empty-state"
       className={cn(
-        "flex flex-col gap-3",
+        "flex-none gap-3 rounded-lg p-0",
         align === "center"
           ? "items-center text-center"
           : "items-start text-left",
@@ -85,20 +96,45 @@ export function EmptyState({
         className,
       )}
     >
-      {icon && (
-        <div className={cn(emptyStateIconVariants({ tone, size }))}>
-          <i className={icon} aria-hidden />
-        </div>
+      {Icon && (
+        <EmptyMedia
+          variant="default"
+          className={cn(emptyStateIconVariants({ tone, size }))}
+        >
+          <Icon aria-hidden />
+        </EmptyMedia>
       )}
-      {title && (
-        <h2 className={cn(emptyStateTitleVariants({ size }))}>{title}</h2>
+      {(title || description) && (
+        <EmptyHeader
+          className={cn(
+            "max-w-none gap-3",
+            align === "start" && "items-start text-left",
+          )}
+        >
+          {title && (
+            <EmptyTitle className={cn(emptyStateTitleVariants({ size }))}>
+              <h2>{title}</h2>
+            </EmptyTitle>
+          )}
+          {description && (
+            <EmptyDescription
+              className={cn(emptyStateDescriptionVariants({ size }))}
+            >
+              <p>{description}</p>
+            </EmptyDescription>
+          )}
+        </EmptyHeader>
       )}
-      {description && (
-        <p className={cn(emptyStateDescriptionVariants({ size }))}>
-          {description}
-        </p>
+      {action && (
+        <EmptyContent
+          className={cn(
+            "max-w-none",
+            align === "start" && "items-start text-left",
+          )}
+        >
+          {action}
+        </EmptyContent>
       )}
-      {action}
-    </div>
+    </Empty>
   );
 }

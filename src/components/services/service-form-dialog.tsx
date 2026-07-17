@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -12,15 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { Service } from "@/generated/prisma/client";
 import { ApiError, servicesApi, type MonitorTypeValue } from "./api";
@@ -225,204 +233,248 @@ export function ServiceFormDialog({
           noValidate
           className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Название</Label>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-required="true"
-              aria-invalid={errors.name ? true : undefined}
-              autoFocus
-            />
-            {errors.name && (
-              <p className="text-sm text-(--error-text)">{errors.name}</p>
-            )}
-          </div>
+          <FieldGroup>
+            <Field data-invalid={!!errors.name || undefined}>
+              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+              <Input
+                id={nameId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!errors.name || undefined}
+                aria-describedby={errors.name ? `${nameId}-error` : undefined}
+                autoFocus
+              />
+              <FieldError id={`${nameId}-error`}>{errors.name}</FieldError>
+            </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={descriptionId}>Описание (необязательно)</Label>
-            <Textarea
-              id={descriptionId}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={2}
-            />
-          </div>
+            <Field>
+              <FieldLabel htmlFor={descriptionId}>
+                Описание (необязательно)
+              </FieldLabel>
+              <Textarea
+                id={descriptionId}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={2}
+              />
+            </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={monitorTypeId}>Тип монитора</Label>
-            <Select
-              value={monitorType}
-              onValueChange={(value) =>
-                setMonitorType(value as MonitorTypeValue)
-              }
-              items={monitorTypeItems}
-            >
-              <SelectTrigger id={monitorTypeId}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(monitorTypeItems).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <Field>
+              <FieldLabel htmlFor={monitorTypeId}>Тип монитора</FieldLabel>
+              <Select
+                value={monitorType}
+                onValueChange={(value) =>
+                  setMonitorType(value as MonitorTypeValue)
+                }
+                items={monitorTypeItems}
+              >
+                <SelectTrigger id={monitorTypeId}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Object.entries(monitorTypeItems).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
 
-          {monitorType === "HTTP" ? (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={urlId}>URL</Label>
-                <Input
-                  id={urlId}
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  aria-required="true"
-                  aria-invalid={errors.url ? true : undefined}
-                  placeholder="https://example.com/health"
-                />
-                {errors.url && (
-                  <p className="text-sm text-(--error-text)">{errors.url}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={expectedStatusCodesId}>
-                  Ожидаемые коды ответа (необязательно)
-                </Label>
-                <Input
-                  id={expectedStatusCodesId}
-                  value={expectedStatusCodes}
-                  onChange={(event) =>
-                    setExpectedStatusCodes(event.target.value)
-                  }
-                  placeholder="200-299"
-                  aria-invalid={errors.expectedStatusCodes ? true : undefined}
-                />
-                {errors.expectedStatusCodes && (
-                  <p className="text-sm text-(--error-text)">
+            {monitorType === "HTTP" ? (
+              <>
+                <Field data-invalid={!!errors.url || undefined}>
+                  <FieldLabel htmlFor={urlId}>URL</FieldLabel>
+                  <Input
+                    id={urlId}
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    aria-required="true"
+                    aria-invalid={!!errors.url || undefined}
+                    aria-describedby={errors.url ? `${urlId}-error` : undefined}
+                    placeholder="https://example.com/health"
+                  />
+                  <FieldError id={`${urlId}-error`}>{errors.url}</FieldError>
+                </Field>
+                <Field data-invalid={!!errors.expectedStatusCodes || undefined}>
+                  <FieldLabel htmlFor={expectedStatusCodesId}>
+                    Ожидаемые коды ответа (необязательно)
+                  </FieldLabel>
+                  <Input
+                    id={expectedStatusCodesId}
+                    value={expectedStatusCodes}
+                    onChange={(event) =>
+                      setExpectedStatusCodes(event.target.value)
+                    }
+                    placeholder="200-299"
+                    aria-invalid={!!errors.expectedStatusCodes || undefined}
+                    aria-describedby={
+                      errors.expectedStatusCodes
+                        ? `${expectedStatusCodesId}-error`
+                        : undefined
+                    }
+                  />
+                  <FieldError id={`${expectedStatusCodesId}-error`}>
                     {errors.expectedStatusCodes}
-                  </p>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor={hostId}>Хост</Label>
+                  </FieldError>
+                </Field>
+              </>
+            ) : (
+              <FieldGroup className="flex-row gap-3">
+                <Field
+                  className="flex-1"
+                  data-invalid={!!errors.host || undefined}
+                >
+                  <FieldLabel htmlFor={hostId}>Хост</FieldLabel>
+                  <Input
+                    id={hostId}
+                    value={host}
+                    onChange={(event) => setHost(event.target.value)}
+                    aria-required="true"
+                    aria-invalid={!!errors.host || undefined}
+                    aria-describedby={
+                      errors.host ? `${hostId}-error` : undefined
+                    }
+                    placeholder="example.com"
+                  />
+                  <FieldError id={`${hostId}-error`}>{errors.host}</FieldError>
+                </Field>
+                <Field
+                  className="w-28"
+                  data-invalid={!!errors.port || undefined}
+                >
+                  <FieldLabel htmlFor={portId}>
+                    Порт{monitorType === "PING" ? " (необязательно)" : ""}
+                  </FieldLabel>
+                  <Input
+                    id={portId}
+                    type="number"
+                    min={1}
+                    max={65535}
+                    value={port}
+                    onChange={(event) => setPort(event.target.value)}
+                    aria-required={monitorType === "TCP" ? "true" : undefined}
+                    aria-invalid={!!errors.port || undefined}
+                    aria-describedby={
+                      errors.port ? `${portId}-error` : undefined
+                    }
+                    placeholder={monitorType === "PING" ? "80" : undefined}
+                  />
+                  <FieldError id={`${portId}-error`}>{errors.port}</FieldError>
+                </Field>
+              </FieldGroup>
+            )}
+
+            <FieldGroup className="flex-row gap-3">
+              <Field
+                className="flex-1"
+                data-invalid={!!errors.intervalSeconds || undefined}
+              >
+                <FieldLabel htmlFor={intervalSecondsId}>
+                  Интервал (сек)
+                </FieldLabel>
                 <Input
-                  id={hostId}
-                  value={host}
-                  onChange={(event) => setHost(event.target.value)}
-                  aria-required="true"
-                  aria-invalid={errors.host ? true : undefined}
-                  placeholder="example.com"
+                  id={intervalSecondsId}
+                  type="number"
+                  min={10}
+                  max={86400}
+                  value={intervalSeconds}
+                  onChange={(event) => setIntervalSeconds(event.target.value)}
+                  aria-invalid={!!errors.intervalSeconds || undefined}
+                  aria-describedby={
+                    errors.intervalSeconds
+                      ? `${intervalSecondsId}-error`
+                      : undefined
+                  }
                 />
-                {errors.host && (
-                  <p className="text-sm text-(--error-text)">{errors.host}</p>
-                )}
-              </div>
-              <div className="flex w-28 flex-col gap-1.5">
-                <Label htmlFor={portId}>
-                  Порт{monitorType === "PING" ? " (необязательно)" : ""}
-                </Label>
+                <FieldError id={`${intervalSecondsId}-error`}>
+                  {errors.intervalSeconds}
+                </FieldError>
+              </Field>
+              <Field
+                className="flex-1"
+                data-invalid={!!errors.timeoutMs || undefined}
+              >
+                <FieldLabel htmlFor={timeoutMsId}>Таймаут (мс)</FieldLabel>
                 <Input
-                  id={portId}
+                  id={timeoutMsId}
+                  type="number"
+                  min={1000}
+                  max={30000}
+                  value={timeoutMs}
+                  onChange={(event) => setTimeoutMs(event.target.value)}
+                  aria-invalid={!!errors.timeoutMs || undefined}
+                  aria-describedby={
+                    errors.timeoutMs ? `${timeoutMsId}-error` : undefined
+                  }
+                />
+                <FieldError id={`${timeoutMsId}-error`}>
+                  {errors.timeoutMs}
+                </FieldError>
+              </Field>
+              <Field
+                className="flex-1"
+                data-invalid={!!errors.retries || undefined}
+              >
+                <FieldLabel htmlFor={retriesId}>Попыток до сбоя</FieldLabel>
+                <Input
+                  id={retriesId}
                   type="number"
                   min={1}
-                  max={65535}
-                  value={port}
-                  onChange={(event) => setPort(event.target.value)}
-                  aria-required={monitorType === "TCP" ? "true" : undefined}
-                  aria-invalid={errors.port ? true : undefined}
-                  placeholder={monitorType === "PING" ? "80" : undefined}
+                  max={10}
+                  value={retries}
+                  onChange={(event) => setRetries(event.target.value)}
+                  aria-invalid={!!errors.retries || undefined}
+                  aria-describedby={
+                    errors.retries ? `${retriesId}-error` : undefined
+                  }
                 />
-                {errors.port && (
-                  <p className="text-sm text-(--error-text)">{errors.port}</p>
-                )}
-              </div>
-            </div>
-          )}
+                <FieldError id={`${retriesId}-error`}>
+                  {errors.retries}
+                </FieldError>
+              </Field>
+            </FieldGroup>
 
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor={intervalSecondsId}>Интервал (сек)</Label>
-              <Input
-                id={intervalSecondsId}
-                type="number"
-                min={10}
-                max={86400}
-                value={intervalSeconds}
-                onChange={(event) => setIntervalSeconds(event.target.value)}
-                aria-invalid={errors.intervalSeconds ? true : undefined}
+            <Field orientation="horizontal">
+              <Checkbox
+                id={isActiveId}
+                checked={isActive}
+                onCheckedChange={(value) => setIsActive(value === true)}
               />
-              {errors.intervalSeconds && (
-                <p className="text-sm text-(--error-text)">
-                  {errors.intervalSeconds}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor={timeoutMsId}>Таймаут (мс)</Label>
-              <Input
-                id={timeoutMsId}
-                type="number"
-                min={1000}
-                max={30000}
-                value={timeoutMs}
-                onChange={(event) => setTimeoutMs(event.target.value)}
-                aria-invalid={errors.timeoutMs ? true : undefined}
-              />
-              {errors.timeoutMs && (
-                <p className="text-sm text-(--error-text)">
-                  {errors.timeoutMs}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor={retriesId}>Попыток до сбоя</Label>
-              <Input
-                id={retriesId}
-                type="number"
-                min={1}
-                max={10}
-                value={retries}
-                onChange={(event) => setRetries(event.target.value)}
-                aria-invalid={errors.retries ? true : undefined}
-              />
-              {errors.retries && (
-                <p className="text-sm text-(--error-text)">{errors.retries}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id={isActiveId}
-              type="checkbox"
-              checked={isActive}
-              onChange={(event) => setIsActive(event.target.checked)}
-              className="size-4 rounded border border-input accent-[var(--action-primary)]"
-            />
-            <Label htmlFor={isActiveId} className="cursor-pointer font-normal">
-              Активен (проверять по расписанию)
-            </Label>
-          </div>
+              <FieldLabel
+                htmlFor={isActiveId}
+                className="cursor-pointer font-normal"
+              >
+                Активен (проверять по расписанию)
+              </FieldLabel>
+            </Field>
+          </FieldGroup>
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit
-                ? submitting
-                  ? "Сохранение…"
-                  : "Сохранить изменения"
-                : submitting
-                  ? "Создание…"
-                  : "Создать"}
+              {isEdit ? (
+                submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Сохранение…
+                  </>
+                ) : (
+                  "Сохранить изменения"
+                )
+              ) : submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Создание…
+                </>
+              ) : (
+                "Создать"
+              )}
             </Button>
           </DialogFooter>
         </form>

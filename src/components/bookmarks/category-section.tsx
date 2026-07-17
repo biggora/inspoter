@@ -9,11 +9,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -64,6 +65,7 @@ export function CategorySection({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -90,21 +92,23 @@ export function CategorySection({
           {/* Drag handle: a third, independent focus stop — separate from
               every card link and the category/bookmark action menus
               (design.md §5.1 a11y rule). */}
-          <button
+          <Button
+            ref={setActivatorNodeRef}
             type="button"
+            variant="ghost"
+            size="icon-sm"
             {...attributes}
             {...listeners}
             aria-label={`Изменить порядок категории «${category.name}»`}
             className={cn(
-              buttonVariants({ variant: "ghost", size: "icon-sm" }),
               "shrink-0 touch-none",
               dragDisabled
                 ? "cursor-not-allowed opacity-30"
                 : "cursor-grab active:cursor-grabbing",
             )}
           >
-            <GripVertical aria-hidden className="size-4" />
-          </button>
+            <GripVertical aria-hidden data-icon="inline-start" />
+          </Button>
           <h2
             id={headingId}
             className="truncate font-heading text-sm font-semibold text-foreground-800"
@@ -113,29 +117,31 @@ export function CategorySection({
           </h2>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={onAddBookmark}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground-600 hover:text-foreground-900 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
           >
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Добавить
-          </button>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "icon-sm" }),
-              )}
+              render={<Button type="button" variant="ghost" size="icon-sm" />}
               aria-label={`Действия категории «${category.name}»`}
             >
-              <MoreVertical aria-hidden className="size-4" />
+              <MoreVertical aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onRename}>
-                Переименовать категорию
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                Удалить категорию
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={onRename}>
+                  Переименовать категорию
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  Удалить категорию
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -233,29 +239,31 @@ function SubcategorySection({
           {subcategory.name}
         </h3>
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={onAddBookmark}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground-600 hover:text-foreground-900 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
           >
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Добавить
-          </button>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "icon-sm" }),
-              )}
+              render={<Button type="button" variant="ghost" size="icon-sm" />}
               aria-label={`Действия категории «${subcategory.name}»`}
             >
-              <MoreVertical aria-hidden className="size-4" />
+              <MoreVertical aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onRename}>
-                Переименовать категорию
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                Удалить категорию
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={onRename}>
+                  Переименовать категорию
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  Удалить категорию
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

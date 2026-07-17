@@ -12,15 +12,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import type { DnsRecord } from "@/lib/providers/dns/types";
 import { ApiError, createRecord, updateRecord } from "./api";
 import {
@@ -192,121 +199,124 @@ export function DnsRecordDialog({
           noValidate
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={typeFieldId}>Тип</Label>
-            <Select
-              value={type}
-              onValueChange={(next) => setType(next as DnsRecordType)}
-              items={TYPE_ITEMS}
-              disabled={isEdit}
+          <FieldGroup>
+            <Field data-disabled={isEdit || undefined}>
+              <FieldLabel htmlFor={typeFieldId}>Тип</FieldLabel>
+              <Select
+                value={type}
+                onValueChange={(next) => setType(next as DnsRecordType)}
+                items={TYPE_ITEMS}
+                disabled={isEdit}
+              >
+                <SelectTrigger id={typeFieldId} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {DNS_RECORD_TYPES.map((recordType) => (
+                      <SelectItem key={recordType} value={recordType}>
+                        {recordType}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field
+              data-disabled={isEdit || undefined}
+              data-invalid={!!errors.name || undefined}
             >
-              <SelectTrigger id={typeFieldId} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DNS_RECORD_TYPES.map((recordType) => (
-                  <SelectItem key={recordType} value={recordType}>
-                    {recordType}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Название</Label>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={isEdit}
-              aria-required="true"
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={errors.name ? nameErrorId : undefined}
-              placeholder="@ или поддомен"
-              autoFocus={!isEdit}
-              className="font-mono"
-            />
-            {errors.name && (
-              <p id={nameErrorId} className="text-sm text-(--error-text)">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={valueId}>Значение</Label>
-            <Input
-              id={valueId}
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              aria-required="true"
-              aria-invalid={errors.value ? true : undefined}
-              aria-describedby={errors.value ? valueErrorId : undefined}
-              autoFocus={isEdit}
-              className="font-mono"
-            />
-            {errors.value && (
-              <p id={valueErrorId} className="text-sm text-(--error-text)">
-                {errors.value}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ttlId}>TTL (секунды)</Label>
-            <Input
-              id={ttlId}
-              type="number"
-              min={1}
-              value={ttl}
-              onChange={(event) => setTtl(event.target.value)}
-              aria-required="true"
-              aria-invalid={errors.ttl ? true : undefined}
-              aria-describedby={errors.ttl ? ttlErrorId : undefined}
-              className="font-mono"
-            />
-            {errors.ttl && (
-              <p id={ttlErrorId} className="text-sm text-(--error-text)">
-                {errors.ttl}
-              </p>
-            )}
-          </div>
-
-          {isMx && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={priorityId}>Приоритет</Label>
+              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
               <Input
-                id={priorityId}
-                type="number"
-                min={0}
-                value={priority}
-                onChange={(event) => setPriority(event.target.value)}
+                id={nameId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                disabled={isEdit}
                 aria-required="true"
-                aria-invalid={errors.priority ? true : undefined}
-                aria-describedby={errors.priority ? priorityErrorId : undefined}
+                aria-invalid={!!errors.name || undefined}
+                aria-describedby={errors.name ? nameErrorId : undefined}
+                placeholder="@ или поддомен"
+                autoFocus={!isEdit}
                 className="font-mono"
               />
-              {errors.priority && (
-                <p id={priorityErrorId} className="text-sm text-(--error-text)">
-                  {errors.priority}
-                </p>
-              )}
-            </div>
-          )}
+              <FieldError id={nameErrorId}>{errors.name}</FieldError>
+            </Field>
+
+            <Field data-invalid={!!errors.value || undefined}>
+              <FieldLabel htmlFor={valueId}>Значение</FieldLabel>
+              <Input
+                id={valueId}
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!errors.value || undefined}
+                aria-describedby={errors.value ? valueErrorId : undefined}
+                autoFocus={isEdit}
+                className="font-mono"
+              />
+              <FieldError id={valueErrorId}>{errors.value}</FieldError>
+            </Field>
+
+            <Field data-invalid={!!errors.ttl || undefined}>
+              <FieldLabel htmlFor={ttlId}>TTL (секунды)</FieldLabel>
+              <Input
+                id={ttlId}
+                type="number"
+                min={1}
+                value={ttl}
+                onChange={(event) => setTtl(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!errors.ttl || undefined}
+                aria-describedby={errors.ttl ? ttlErrorId : undefined}
+                className="font-mono"
+              />
+              <FieldError id={ttlErrorId}>{errors.ttl}</FieldError>
+            </Field>
+
+            {isMx && (
+              <Field data-invalid={!!errors.priority || undefined}>
+                <FieldLabel htmlFor={priorityId}>Приоритет</FieldLabel>
+                <Input
+                  id={priorityId}
+                  type="number"
+                  min={0}
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value)}
+                  aria-required="true"
+                  aria-invalid={!!errors.priority || undefined}
+                  aria-describedby={
+                    errors.priority ? priorityErrorId : undefined
+                  }
+                  className="font-mono"
+                />
+                <FieldError id={priorityErrorId}>{errors.priority}</FieldError>
+              </Field>
+            )}
+          </FieldGroup>
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit
-                ? submitting
-                  ? "Сохранение…"
-                  : "Сохранить изменения"
-                : submitting
-                  ? "Создание…"
-                  : "Создать"}
+              {isEdit ? (
+                submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Сохранение…
+                  </>
+                ) : (
+                  "Сохранить изменения"
+                )
+              ) : submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Создание…
+                </>
+              ) : (
+                "Создать"
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -47,7 +47,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast:
+            "cn-toast transition-[transform,height,box-shadow]! [&>*]:transition-none!",
         },
       }}
       {...props}

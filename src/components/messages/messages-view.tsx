@@ -3,15 +3,36 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  MessageSquare,
+  MessageSquareWarning,
+  Paperclip,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { sendMessage } from "@/components/messages/api";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
@@ -213,6 +234,8 @@ function SidebarTree({
   onEditChannel,
   onDeleteChannel,
 }: SidebarTreeProps) {
+  const instanceId = useId();
+
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-background-100 px-4 py-3">
@@ -233,17 +256,23 @@ function SidebarTree({
         ) : (
           categories.map((category) => {
             const isCollapsed = collapsedCategories.has(category.id);
+            const channelListId = `${instanceId}-${category.id}-channels`;
             return (
               <div key={category.id} className="group/category">
                 <div className="flex items-center gap-1 px-2 py-1.5">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onToggleCategory(category.id)}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left cursor-pointer"
+                    aria-expanded={!isCollapsed}
+                    aria-controls={channelListId}
+                    className="min-w-0 flex-1 justify-start"
                   >
-                    <i
+                    <ChevronDown
+                      data-icon="inline-start"
                       className={cn(
-                        "ri-arrow-down-s-line flex h-3.5 w-3.5 shrink-0 items-center justify-center text-foreground-400 transition-transform",
+                        "text-foreground-400 transition-transform",
                         isCollapsed && "-rotate-90",
                       )}
                       aria-hidden
@@ -251,7 +280,7 @@ function SidebarTree({
                     <span className="truncate text-[11px] font-semibold tracking-wide text-foreground-500 uppercase">
                       {category.name}
                     </span>
-                  </button>
+                  </Button>
                   <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity group-hover/category:opacity-100 lg:opacity-0">
                     <Button
                       type="button"
@@ -260,7 +289,7 @@ function SidebarTree({
                       aria-label={`Новый канал в «${category.name}»`}
                       onClick={() => onNewChannel(category.id)}
                     >
-                      <i className="ri-add-line text-xs" aria-hidden />
+                      <Plus aria-hidden data-icon="inline-start" />
                     </Button>
                     <Button
                       type="button"
@@ -269,7 +298,7 @@ function SidebarTree({
                       aria-label={`Переименовать «${category.name}»`}
                       onClick={() => onEditCategory(category)}
                     >
-                      <i className="ri-pencil-line text-xs" aria-hidden />
+                      <Pencil aria-hidden data-icon="inline-start" />
                     </Button>
                     <Button
                       type="button"
@@ -278,74 +307,79 @@ function SidebarTree({
                       aria-label={`Удалить «${category.name}»`}
                       onClick={() => onDeleteCategory(category)}
                     >
-                      <i className="ri-delete-bin-line text-xs" aria-hidden />
+                      <Trash2 aria-hidden data-icon="inline-start" />
                     </Button>
                   </div>
                 </div>
 
-                {!isCollapsed && (
-                  <div className="flex flex-col gap-0.5">
-                    {category.channels.length === 0 ? (
-                      <EmptyState
-                        size="xs"
-                        align="start"
-                        bordered={false}
-                        description="Нет каналов"
-                        className="px-3 py-1"
-                      />
-                    ) : (
-                      category.channels.map((channel) => (
-                        <div
-                          key={channel.id}
-                          className="group/channel flex items-center gap-1 rounded-md"
+                <div
+                  id={channelListId}
+                  hidden={isCollapsed}
+                  className={cn(
+                    "flex flex-col gap-0.5",
+                    isCollapsed && "hidden",
+                  )}
+                >
+                  {category.channels.length === 0 ? (
+                    <EmptyState
+                      size="xs"
+                      align="start"
+                      bordered={false}
+                      description="Нет каналов"
+                      className="px-3 py-1"
+                    />
+                  ) : (
+                    category.channels.map((channel) => (
+                      <div
+                        key={channel.id}
+                        className="group/channel flex items-center gap-1 rounded-md"
+                      >
+                        <Button
+                          type="button"
+                          variant={
+                            channel.id === selectedChannelId
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          size="sm"
+                          onClick={() => onSelectChannel(channel.id)}
+                          title={channel.name}
+                          aria-current={
+                            channel.id === selectedChannelId
+                              ? "page"
+                              : undefined
+                          }
+                          className="min-w-0 flex-1 justify-start"
                         >
-                          <button
+                          <span className="shrink-0 text-base font-medium text-foreground-400">
+                            #
+                          </span>
+                          <span className="truncate">{channel.name}</span>
+                        </Button>
+                        <div className="flex shrink-0 items-center gap-0.5 pr-1 opacity-100 transition-opacity group-hover/channel:opacity-100 lg:opacity-0">
+                          <Button
                             type="button"
-                            onClick={() => onSelectChannel(channel.id)}
-                            title={channel.name}
-                            className={cn(
-                              "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
-                              channel.id === selectedChannelId
-                                ? "bg-primary-100/70 text-primary-700"
-                                : "text-foreground-600 hover:bg-background-100 hover:text-foreground-900",
-                            )}
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Переименовать «${channel.name}»`}
+                            onClick={() => onEditChannel(channel)}
                           >
-                            <span className="shrink-0 text-base font-medium text-foreground-400">
-                              #
-                            </span>
-                            <span className="truncate">{channel.name}</span>
-                          </button>
-                          <div className="flex shrink-0 items-center gap-0.5 pr-1 opacity-100 transition-opacity group-hover/channel:opacity-100 lg:opacity-0">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label={`Переименовать «${channel.name}»`}
-                              onClick={() => onEditChannel(channel)}
-                            >
-                              <i
-                                className="ri-pencil-line text-xs"
-                                aria-hidden
-                              />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label={`Удалить «${channel.name}»`}
-                              onClick={() => onDeleteChannel(channel)}
-                            >
-                              <i
-                                className="ri-delete-bin-line text-xs"
-                                aria-hidden
-                              />
-                            </Button>
-                          </div>
+                            <Pencil aria-hidden data-icon="inline-start" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Удалить «${channel.name}»`}
+                            onClick={() => onDeleteChannel(channel)}
+                          >
+                            <Trash2 aria-hidden data-icon="inline-start" />
+                          </Button>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             );
           })
@@ -353,17 +387,16 @@ function SidebarTree({
       </div>
 
       <div className="border-t border-background-100 p-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onNewCategory}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground-600 transition-colors hover:bg-background-100 hover:text-foreground-900 cursor-pointer"
+          className="w-full justify-start"
         >
-          <i
-            className="ri-add-line flex h-4 w-4 items-center justify-center"
-            aria-hidden
-          />
+          <Plus aria-hidden data-icon="inline-start" />
           Новая категория
-        </button>
+        </Button>
       </div>
 
       <div className="border-t border-background-200 bg-background-100/50 px-3 py-3">
@@ -687,13 +720,13 @@ export function MessagesView() {
           <EmptyState
             bordered={false}
             tone="danger"
-            icon="ri-message-3-line"
+            icon={MessageSquareWarning}
             title="Не удалось загрузить сообщения"
             description={categoriesError}
             className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
             action={
               <Button type="button" onClick={loadCategories}>
-                <i className="ri-refresh-line text-sm" aria-hidden />
+                <RefreshCw aria-hidden data-icon="inline-start" />
                 Повторить
               </Button>
             }
@@ -770,7 +803,7 @@ export function MessagesView() {
             aria-label="Категории и каналы"
             onClick={() => setMobileNavOpen(true)}
           >
-            <i className="ri-menu-line text-base" aria-hidden />
+            <Menu aria-hidden data-icon="inline-start" />
           </Button>
         </div>
       )}
@@ -788,7 +821,7 @@ export function MessagesView() {
               <EmptyState
                 bordered={false}
                 size="sm"
-                icon="ri-message-2-line"
+                icon={MessageSquare}
                 title={
                   categories.length === 0
                     ? "Категорий пока нет"
@@ -829,7 +862,7 @@ export function MessagesView() {
                       bordered={false}
                       size="sm"
                       tone="danger"
-                      icon="ri-message-3-line"
+                      icon={MessageSquareWarning}
                       title="Не удалось загрузить сообщения"
                       description={messagesError}
                       className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
@@ -839,7 +872,7 @@ export function MessagesView() {
                           size="sm"
                           onClick={() => setMessagesReloadToken((n) => n + 1)}
                         >
-                          <i className="ri-refresh-line text-sm" aria-hidden />
+                          <RefreshCw aria-hidden data-icon="inline-start" />
                           Повторить
                         </Button>
                       }
@@ -866,7 +899,7 @@ export function MessagesView() {
                     <EmptyState
                       bordered={false}
                       size="sm"
-                      icon="ri-message-2-line"
+                      icon={MessageSquare}
                       title="Нет сообщений"
                       description={
                         <>
@@ -942,7 +975,7 @@ export function MessagesView() {
                   onClick={handlePrevious}
                   disabled={pageIndex === 0 || messagesLoading}
                 >
-                  <i className="ri-arrow-left-s-line text-sm" aria-hidden />
+                  <ChevronLeft aria-hidden data-icon="inline-start" />
                   Назад
                 </Button>
                 <span className="text-xs text-foreground-400">
@@ -956,42 +989,45 @@ export function MessagesView() {
                   disabled={!nextCursor || messagesLoading}
                 >
                   Далее
-                  <i className="ri-arrow-right-s-line text-sm" aria-hidden />
+                  <ChevronRight aria-hidden data-icon="inline-end" />
                 </Button>
               </div>
 
               {/* Message input */}
               <div className="shrink-0 border-t border-background-100 px-5 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
+                  <InputGroup className="flex-1">
+                    <InputGroupInput
                       ref={inputRef}
                       type="text"
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       onKeyDown={handleInputKeyDown}
                       placeholder={`Написать в #${selectedChannel.name}...`}
-                      className="w-full rounded-lg border border-background-200 bg-background-50 py-2 pr-12 pl-4 text-sm text-foreground-900 transition-colors placeholder:text-foreground-400 focus:border-primary-300 focus:ring-2 focus:ring-primary-300 focus:outline-none"
                     />
-                    <div className="absolute top-1/2 right-2 -translate-y-1/2">
-                      <button
-                        type="button"
-                        title="Прикрепить файл"
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-foreground-400 transition-colors hover:bg-background-100 hover:text-foreground-600"
+                    <InputGroupAddon align="inline-end">
+                      {/* Attachment upload is intentionally out of scope: keep
+                          the affordance visible but explicitly unavailable. */}
+                      <InputGroupButton
+                        size="icon-xs"
+                        disabled
+                        title="Прикрепление файлов недоступно"
+                        aria-label="Прикрепить файл (недоступно)"
                       >
-                        <i className="ri-attachment-2 text-sm" aria-hidden />
-                      </button>
-                    </div>
-                  </div>
-                  <button
+                        <Paperclip aria-hidden data-icon="inline-start" />
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <Button
                     type="button"
+                    size="icon"
                     onClick={handleSendMessage}
                     disabled={!messageInput.trim()}
                     title="Отправить"
-                    className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-primary-500 text-background-50 transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Отправить"
                   >
-                    <i className="ri-send-plane-fill text-sm" aria-hidden />
-                  </button>
+                    <Send aria-hidden data-icon="inline-start" />
+                  </Button>
                 </div>
               </div>
             </>

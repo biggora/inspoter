@@ -12,8 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { Bookmark } from "@/generated/prisma/client";
 import { ApiError, bookmarkFaviconApi, bookmarksApi } from "./api";
@@ -35,10 +51,8 @@ interface FieldErrors {
   url?: string;
 }
 
-// AC-BM-006..009/011 (design.md §3.3.4). Category uses a plain native
-// <select> rather than the shadcn Select primitive — a deliberate deviation
-// (see delivery report) so the field exposes standard <select>/<option>
-// semantics.
+// AC-BM-006..009/011 (design.md §3.3.4). Category intentionally uses the
+// NativeSelect primitive so browser select/option semantics remain available.
 export function BookmarkDialog({
   state,
   categories,
@@ -170,104 +184,111 @@ export function BookmarkDialog({
           noValidate
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Название</Label>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-required="true"
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={errors.name ? nameErrorId : undefined}
-              autoFocus
-            />
-            {errors.name && (
-              <p id={nameErrorId} className="text-sm text-(--error-text)">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={urlId}>URL</Label>
-            <Input
-              id={urlId}
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              aria-required="true"
-              aria-invalid={errors.url ? true : undefined}
-              aria-describedby={errors.url ? urlErrorId : undefined}
-              placeholder="https://"
-            />
-            {errors.url && (
-              <p id={urlErrorId} className="text-sm text-(--error-text)">
-                {errors.url}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={iconId}>Иконка (необязательно)</Label>
-            <div className="flex gap-2">
+          <FieldGroup>
+            <Field data-invalid={!!errors.name || undefined}>
+              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
               <Input
-                id={iconId}
-                value={icon}
-                onChange={(event) => setIcon(event.target.value)}
-                placeholder="Эмодзи, название иконки или URL изображения"
+                id={nameId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!errors.name || undefined}
+                aria-describedby={errors.name ? nameErrorId : undefined}
+                autoFocus
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!isValidHttpUrl(url.trim()) || suggesting}
-                onClick={handleSuggestFavicon}
+              <FieldError id={nameErrorId}>{errors.name}</FieldError>
+            </Field>
+
+            <Field data-invalid={!!errors.url || undefined}>
+              <FieldLabel htmlFor={urlId}>URL</FieldLabel>
+              <Input
+                id={urlId}
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!errors.url || undefined}
+                aria-describedby={errors.url ? urlErrorId : undefined}
+                placeholder="https://"
+              />
+              <FieldError id={urlErrorId}>{errors.url}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor={iconId}>Иконка (необязательно)</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id={iconId}
+                  value={icon}
+                  onChange={(event) => setIcon(event.target.value)}
+                  placeholder="Эмодзи, название иконки или URL изображения"
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    variant="outline"
+                    size="sm"
+                    disabled={!isValidHttpUrl(url.trim()) || suggesting}
+                    onClick={handleSuggestFavicon}
+                  >
+                    {suggesting ? "Подбор…" : "Подобрать"}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+
+            <ColorPicker value={color} onChange={setColor} />
+
+            <Field>
+              <FieldLabel htmlFor={descriptionId}>
+                Описание (необязательно)
+              </FieldLabel>
+              <Textarea
+                id={descriptionId}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={2}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor={categoryFieldId}>Категория</FieldLabel>
+              <NativeSelect
+                id={categoryFieldId}
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                required
+                className="w-full"
               >
-                {suggesting ? "Подбор…" : "Подобрать"}
-              </Button>
-            </div>
-          </div>
-
-          <ColorPicker value={color} onChange={setColor} />
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={descriptionId}>Описание (необязательно)</Label>
-            <Textarea
-              id={descriptionId}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={2}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={categoryFieldId}>Категория</Label>
-            <select
-              id={categoryFieldId}
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              required
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            >
-              {categories.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </div>
+                {categories.map((option) => (
+                  <NativeSelectOption key={option.id} value={option.id}>
+                    {option.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </Field>
+          </FieldGroup>
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit
-                ? submitting
-                  ? "Сохранение…"
-                  : "Сохранить изменения"
-                : submitting
-                  ? "Создание…"
-                  : "Создать"}
+              {isEdit ? (
+                submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Сохранение…
+                  </>
+                ) : (
+                  "Сохранить изменения"
+                )
+              ) : submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Создание…
+                </>
+              ) : (
+                "Создать"
+              )}
             </Button>
           </DialogFooter>
         </form>

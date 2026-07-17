@@ -2,10 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -251,15 +253,17 @@ export function ServiceDetailView({
         )}
 
         {checkError && (
-          <p className="text-sm text-(--error-text)">{checkError}</p>
+          <Alert variant="error">
+            <AlertDescription>{checkError}</AlertDescription>
+          </Alert>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleCheckNow} disabled={checking}>
             {checking ? (
-              <Loader2 aria-hidden className="size-4 animate-spin" />
+              <Spinner aria-hidden data-icon="inline-start" />
             ) : (
-              <RefreshCw aria-hidden className="size-4" />
+              <RefreshCw aria-hidden data-icon="inline-start" />
             )}
             Проверить сейчас
           </Button>
@@ -283,7 +287,13 @@ export function ServiceDetailView({
         </h2>
 
         {loadingChecks ? (
-          <p className="text-sm text-muted-foreground">Загрузка…</p>
+          <div
+            role="status"
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            <Spinner aria-hidden />
+            Загрузка…
+          </div>
         ) : (
           <>
             {heartbeatChecks.length > 0 ? (
@@ -318,7 +328,9 @@ export function ServiceDetailView({
             )}
 
             {checksError && (
-              <p className="text-sm text-(--error-text)">{checksError}</p>
+              <Alert variant="error">
+                <AlertDescription>{checksError}</AlertDescription>
+              </Alert>
             )}
 
             {checks.length > 0 && (
@@ -360,7 +372,14 @@ export function ServiceDetailView({
                 disabled={loadingMore}
                 className="self-center"
               >
-                {loadingMore ? "Загрузка…" : "Показать ещё"}
+                {loadingMore ? (
+                  <>
+                    <Spinner aria-hidden data-icon="inline-start" />
+                    Загрузка…
+                  </>
+                ) : (
+                  "Показать ещё"
+                )}
               </Button>
             )}
           </>

@@ -1,13 +1,15 @@
 "use client";
 
 import { GripVertical, MoreVertical } from "lucide-react";
+import Link from "next/link";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -37,6 +39,7 @@ export function BookmarkCard({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -60,74 +63,77 @@ export function BookmarkCard({
         isDragging && "opacity-60",
       )}
     >
-      <a
+      <Link
         href={bookmark.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="shrink-0"
+        aria-label={bookmark.name}
+        className="flex min-w-0 flex-1 items-start gap-3 no-underline"
       >
         <BookmarkIcon
           icon={bookmark.icon}
           name={bookmark.name}
           color={bookmark.color}
         />
-      </a>
-
-      <div className="min-w-0 flex-1">
-        <a
-          href={bookmark.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block truncate font-medium text-sm text-foreground-900 no-underline transition-colors hover:text-primary-600"
-        >
-          {bookmark.name}
-        </a>
-        {bookmark.description ? (
-          <p className="mt-0.5 line-clamp-1 text-xs text-foreground-500">
-            {bookmark.description}
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground-900 transition-colors hover:text-primary-600">
+            {bookmark.name}
+          </span>
+          {bookmark.description ? (
+            <p className="mt-0.5 line-clamp-1 text-xs text-foreground-500">
+              {bookmark.description}
+            </p>
+          ) : null}
+          <p className="mt-1 truncate text-xs text-foreground-400">
+            {bookmark.url}
           </p>
-        ) : null}
-        <p className="mt-1 truncate text-xs text-foreground-400">
-          {bookmark.url}
-        </p>
-      </div>
+        </div>
+      </Link>
 
       <div className="flex shrink-0 items-center gap-0.5">
-        {/* Drag handle: a third, independent focus stop — separate from
-            the two card links above and the DropdownMenuTrigger below
+        {/* Drag handle: an independent focus stop — separate from
+            the card link above and the DropdownMenuTrigger below
             (design.md §5.1 a11y rule). Opacity mirrors the menu trigger's
             existing reveal-on-hover pattern, but keyboard focus always
             reveals it (opacity ≠ visibility for a11y). */}
-        <button
+        <Button
+          ref={setActivatorNodeRef}
           type="button"
+          variant="ghost"
+          size="icon-sm"
           {...attributes}
           {...listeners}
           aria-label={`Изменить порядок: «${bookmark.name}»`}
           className={cn(
-            buttonVariants({ variant: "ghost", size: "icon-sm" }),
             "touch-none opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
             dragDisabled
               ? "cursor-not-allowed"
               : "cursor-grab active:cursor-grabbing",
           )}
         >
-          <GripVertical aria-hidden className="size-4" />
-        </button>
+          <GripVertical aria-hidden data-icon="inline-start" />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "icon-sm" }),
-              "opacity-0 transition-all group-hover:opacity-100",
-            )}
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100"
+              />
+            }
             aria-label={`Действия закладки «${bookmark.name}»`}
           >
-            <MoreVertical aria-hidden className="size-4" />
+            <MoreVertical aria-hidden data-icon="inline-start" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>Изменить</DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              Удалить
-            </DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={onEdit}>Изменить</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                Удалить
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

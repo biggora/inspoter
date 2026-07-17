@@ -3,6 +3,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,15 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
 import {
   ApiError,
@@ -44,6 +52,14 @@ const FIELD_LABELS: Record<string, string> = {
 const PROVIDER_OPTIONS = (Object.keys(PROVIDER_REGISTRY) as ProviderType[]).map(
   (provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }),
 );
+
+const PROVIDER_SELECT_ITEMS = [
+  { label: "Выберите провайдера", value: null },
+  ...PROVIDER_OPTIONS.map((option) => ({
+    label: `${option.label} (${CATEGORY_LABELS[option.category]})`,
+    value: option.provider,
+  })),
+];
 
 interface ProviderCredentialDialogProps {
   open: boolean;
@@ -73,28 +89,31 @@ export function ProviderCredentialDialog({
   const [label, setLabel] = useState(existing?.label ?? "");
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const labelId = useId();
   const providerId = useId();
   const fieldBaseId = useId();
+  const globalErrorId = useId();
 
   const activeFields = provider ? PROVIDER_REGISTRY[provider].fields : [];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!provider) {
-      setError("Выберите провайдера.");
+      setErrors({ provider: "Выберите провайдера." });
       return;
     }
     const trimmedLabel = label.trim();
     if (!trimmedLabel) {
-      setError("Название обязательно.");
+      setErrors({ label: "Название обязательно." });
       return;
     }
     for (const field of activeFields) {
       if (!secrets[field]?.trim()) {
-        setError(`Поле «${FIELD_LABELS[field] ?? field}» обязательно.`);
+        setErrors({
+          [field]: `Поле «${FIELD_LABELS[field] ?? field}» обязательно.`,
+        });
         return;
       }
     }
@@ -108,7 +127,7 @@ export function ProviderCredentialDialog({
     } as UpsertCredentialInput;
 
     setSubmitting(true);
-    setError(null);
+    setErrors({});
     try {
       if (mode === "create") {
         await credentialsApi.create(payload);
@@ -119,10 +138,17 @@ export function ProviderCredentialDialog({
       onOpenChange(false);
       onSaved();
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Не удалось сохранить учётные данные. Попробуйте снова.",
+      setErrors(
+        err instanceof ApiError &&
+          err.fieldErrors &&
+          Object.keys(err.fieldErrors).length > 0
+          ? err.fieldErrors
+          : {
+              global:
+                err instanceof ApiError
+                  ? err.message
+                  : "Не удалось сохранить учётные данные. Попробуйте снова.",
+            },
       );
     } finally {
       setSubmitting(false);
@@ -144,65 +170,107 @@ export function ProviderCredentialDialog({
           noValidate
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={providerId}>Провайдер</Label>
-            <Select
-              value={provider || ""}
-              onValueChange={(value) => setProvider(value as ProviderType)}
-              disabled={mode === "edit"}
+          <FieldGroup>
+            <Field
+              data-disabled={mode === "edit" || undefined}
+              data-invalid={!!errors.provider || undefined}
             >
-              <SelectTrigger id={providerId} className="w-full">
-                <SelectValue placeholder="Выберите провайдера" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_OPTIONS.map((option) => (
-                  <SelectItem key={option.provider} value={option.provider}>
-                    {option.label} ({CATEGORY_LABELS[option.category]})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={labelId}>Название</Label>
-            <Input
-              id={labelId}
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder='например, "Основной аккаунт"'
-              autoFocus={mode === "edit"}
-            />
-          </div>
-
-          {activeFields.map((field) => (
-            <div key={field} className="flex flex-col gap-1.5">
-              <Label htmlFor={`${fieldBaseId}-${field}`}>
-                {FIELD_LABELS[field] ?? field}
-              </Label>
-              <Input
-                id={`${fieldBaseId}-${field}`}
-                type="password"
-                value={secrets[field] ?? ""}
-                onChange={(event) =>
-                  setSecrets((prev) => ({
-                    ...prev,
-                    [field]: event.target.value,
-                  }))
+              <FieldLabel htmlFor={providerId}>Провайдер</FieldLabel>
+              <Select
+                value={provider || null}
+                onValueChange={(value) =>
+                  setProvider((value ?? "") as ProviderType | "")
                 }
-                autoComplete="off"
-              />
-            </div>
-          ))}
+                items={PROVIDER_SELECT_ITEMS}
+                disabled={mode === "edit"}
+              >
+                <SelectTrigger
+                  id={providerId}
+                  className="w-full"
+                  aria-invalid={!!errors.provider || undefined}
+                  aria-describedby={
+                    errors.provider ? `${providerId}-error` : undefined
+                  }
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {PROVIDER_OPTIONS.map((option) => (
+                      <SelectItem key={option.provider} value={option.provider}>
+                        {option.label} ({CATEGORY_LABELS[option.category]})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldError id={`${providerId}-error`}>
+                {errors.provider}
+              </FieldError>
+            </Field>
 
-          {error && <p className="text-sm text-(--error-text)">{error}</p>}
+            <Field data-invalid={!!errors.label || undefined}>
+              <FieldLabel htmlFor={labelId}>Название</FieldLabel>
+              <Input
+                id={labelId}
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder='например, "Основной аккаунт"'
+                autoFocus={mode === "edit"}
+                aria-invalid={!!errors.label || undefined}
+                aria-describedby={errors.label ? `${labelId}-error` : undefined}
+              />
+              <FieldError id={`${labelId}-error`}>{errors.label}</FieldError>
+            </Field>
+
+            {activeFields.map((field) => {
+              const fieldId = `${fieldBaseId}-${field}`;
+              const message = errors[field];
+
+              return (
+                <Field key={field} data-invalid={!!message || undefined}>
+                  <FieldLabel htmlFor={fieldId}>
+                    {FIELD_LABELS[field] ?? field}
+                  </FieldLabel>
+                  <Input
+                    id={fieldId}
+                    type="password"
+                    value={secrets[field] ?? ""}
+                    onChange={(event) =>
+                      setSecrets((prev) => ({
+                        ...prev,
+                        [field]: event.target.value,
+                      }))
+                    }
+                    autoComplete="off"
+                    aria-invalid={!!message || undefined}
+                    aria-describedby={message ? `${fieldId}-error` : undefined}
+                  />
+                  <FieldError id={`${fieldId}-error`}>{message}</FieldError>
+                </Field>
+              );
+            })}
+          </FieldGroup>
+
+          {errors.global && (
+            <Alert id={globalErrorId} variant="error">
+              <AlertDescription>{errors.global}</AlertDescription>
+            </Alert>
+          )}
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Сохранение…" : "Сохранить"}
+              {submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Сохранение…
+                </>
+              ) : (
+                "Сохранить"
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -1,10 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import {
+  CircleAlert,
+  CirclePlay,
+  CircleStop,
+  CloudOff,
+  RefreshCw,
+  RotateCcw,
+  ServerIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import {
   fetchServers,
@@ -188,31 +222,32 @@ export function ServersView() {
       <div className="p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-background-200 bg-background-50 overflow-hidden animate-fade-in"
-            >
-              <div className="px-4 py-3.5 border-b border-background-100 flex items-center gap-2.5">
-                <div className="animate-skeleton w-9 h-9 rounded-lg shrink-0"></div>
-                <div className="space-y-1.5 flex-1">
-                  <div className="animate-skeleton h-4 w-28 rounded"></div>
-                  <div className="animate-skeleton h-3 w-24 rounded"></div>
+            <Card key={i} size="sm" className="animate-fade-in">
+              <CardHeader className="border-b">
+                <div className="flex items-center gap-2.5">
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
                 </div>
-                <div className="animate-skeleton h-6 w-20 rounded-full"></div>
-              </div>
-              <div className="px-4 py-3 space-y-2">
+                <CardAction>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </CardAction>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5].map((j) => (
                   <div key={j} className="flex items-center justify-between">
-                    <div className="animate-skeleton h-3 w-10 rounded"></div>
-                    <div className="animate-skeleton h-3 w-32 rounded"></div>
+                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-3 w-32" />
                   </div>
                 ))}
-              </div>
-              <div className="px-4 py-3 border-t border-background-100 flex gap-2">
-                <div className="animate-skeleton h-7 w-16 rounded-lg"></div>
-                <div className="animate-skeleton h-7 w-16 rounded-lg"></div>
-              </div>
-            </div>
+              </CardContent>
+              <CardFooter className="gap-2">
+                <Skeleton className="h-7 w-16 rounded-lg" />
+                <Skeleton className="h-7 w-16 rounded-lg" />
+              </CardFooter>
+            </Card>
           ))}
         </div>
       </div>
@@ -225,18 +260,15 @@ export function ServersView() {
         <EmptyState
           bordered={false}
           tone="danger"
-          icon="ri-cloud-off-line"
+          icon={CloudOff}
           title="Hetzner недоступен"
           description="Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже."
           className="max-w-sm animate-scale-in"
           action={
-            <button
-              onClick={load}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary-500 text-sm font-semibold text-background-50 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-            >
-              <i className="ri-refresh-line w-5 h-5 flex items-center justify-center"></i>
+            <Button onClick={load}>
+              <RefreshCw aria-hidden data-icon="inline-start" />
               Повторить
-            </button>
+            </Button>
           }
         />
       </div>
@@ -248,7 +280,7 @@ export function ServersView() {
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] p-6">
         <EmptyState
           bordered={false}
-          icon="ri-server-line"
+          icon={ServerIcon}
           title="Нет серверов"
           description="В вашем аккаунте Hetzner пока нет активных VPS. Создайте сервер через панель Hetzner, и он появится здесь."
           className="max-w-sm animate-scale-in"
@@ -291,7 +323,7 @@ export function ServersView() {
         }`}
         actions={
           <Button variant="ghost" size="sm" onClick={load}>
-            <RefreshCw aria-hidden className="size-4" />
+            <RefreshCw aria-hidden data-icon="inline-start" />
             Обновить
           </Button>
         }
@@ -313,82 +345,102 @@ export function ServersView() {
 
 const statusConfig: Record<
   ServerStatus,
-  { label: string; color: string; dotColor: string }
+  {
+    label: string;
+    variant: "success" | "secondary" | "warning";
+  }
 > = {
   running: {
     label: "Работает",
-    color: "bg-accent-100 text-accent-700",
-    dotColor: "bg-accent-500",
+    variant: "success",
   },
   stopped: {
     label: "Остановлен",
-    color: "bg-secondary-100 text-secondary-700",
-    dotColor: "bg-secondary-400",
+    variant: "secondary",
   },
   starting: {
     label: "Запуск…",
-    color: "bg-primary-100 text-primary-700",
-    dotColor: "bg-primary-400",
+    variant: "warning",
   },
   stopping: {
     label: "Остановка…",
-    color: "bg-primary-100 text-primary-700",
-    dotColor: "bg-primary-400",
+    variant: "warning",
   },
   restarting: {
     label: "Перезапуск…",
-    color: "bg-primary-100 text-primary-700",
-    dotColor: "bg-primary-400",
+    variant: "warning",
   },
   unknown: {
     label: "Неизвестно",
-    color: "bg-secondary-100 text-secondary-700",
-    dotColor: "bg-secondary-400",
+    variant: "secondary",
   },
 };
 
-interface CardAction {
+interface PowerCardAction {
   action: PowerActionType;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   confirmTitle: string;
   confirmText: string;
 }
 
-function getAvailableActions(server: Server): CardAction[] {
-  switch (server.status) {
-    case "running":
-      return [
-        {
-          action: "restart",
-          label: "Перезапустить",
-          icon: "ri-restart-line",
-          confirmTitle: `Перезапустить «${server.name}»?`,
-          confirmText: "Сервер перезапустится и будет ненадолго недоступен.",
-        },
-        {
-          action: "stop",
-          label: "Остановить",
-          icon: "ri-stop-circle-line",
-          confirmTitle: `Остановить «${server.name}»?`,
-          confirmText: "Сервер будет остановлен и станет недоступен.",
-        },
-      ];
-    case "stopped":
-    case "unknown":
-      return [
-        {
-          action: "start",
-          label: "Запустить",
-          icon: "ri-play-circle-line",
-          confirmTitle: `Запустить «${server.name}»?`,
-          confirmText:
-            "Сервер будет запущен. Это может занять несколько секунд.",
-        },
-      ];
-    default:
-      return [];
+const PENDING_ACTION_BY_STATUS: Partial<Record<ServerStatus, PowerActionType>> =
+  {
+    starting: "start",
+    stopping: "stop",
+    restarting: "restart",
+  };
+
+const POWER_ACTIONS_BY_STATUS = {
+  running: ["restart", "stop"],
+  stopped: ["start"],
+  starting: ["start"],
+  stopping: ["stop"],
+  restarting: ["restart"],
+  unknown: ["start"],
+} as const satisfies Record<ServerStatus, readonly PowerActionType[]>;
+
+const PENDING_ACTION_LABELS: Record<PowerActionType, string> = {
+  start: "Запускается…",
+  stop: "Останавливается…",
+  restart: "Перезапускается…",
+};
+
+function getPowerAction(
+  server: Server,
+  action: PowerActionType,
+): PowerCardAction {
+  switch (action) {
+    case "start":
+      return {
+        action,
+        label: "Запустить",
+        icon: CirclePlay,
+        confirmTitle: `Запустить «${server.name}»?`,
+        confirmText: "Сервер будет запущен. Это может занять несколько секунд.",
+      };
+    case "stop":
+      return {
+        action,
+        label: "Остановить",
+        icon: CircleStop,
+        confirmTitle: `Остановить «${server.name}»?`,
+        confirmText: "Сервер будет остановлен и станет недоступен.",
+      };
+    case "restart":
+      return {
+        action,
+        label: "Перезапустить",
+        icon: RotateCcw,
+        confirmTitle: `Перезапустить «${server.name}»?`,
+        confirmText: "Сервер перезапустится и будет ненадолго недоступен.",
+      };
   }
+}
+
+function getAvailableActions(server: Server): PowerCardAction[] {
+  const actions = POWER_ACTIONS_BY_STATUS[server.status] ?? [];
+  return actions.map((action) => getPowerAction(server, action));
 }
 
 function ServerCard({
@@ -400,42 +452,60 @@ function ServerCard({
   onPowerAction: (server: Server, action: PowerActionType) => void;
   error?: string;
 }) {
-  const [menuOpen, setMenuOpen] = useState<PowerActionType | null>(null);
+  const [pendingAction, setPendingAction] = useState<PowerActionType | null>(
+    null,
+  );
+  const cardRef = useRef<HTMLDivElement>(null);
+  const activeTriggerRef = useRef<HTMLButtonElement>(null);
+  const confirmingRef = useRef(false);
 
   const config = statusConfig[server.status] ?? statusConfig.unknown;
   const busy = TRANSITIONAL_STATUSES.includes(server.status);
+  const busyAction = PENDING_ACTION_BY_STATUS[server.status];
   const availableActions = getAvailableActions(server);
 
   const handleConfirm = (action: PowerActionType) => {
-    setMenuOpen(null);
+    if (confirmingRef.current) return;
+    confirmingRef.current = true;
+    setPendingAction(null);
     onPowerAction(server, action);
   };
 
   return (
-    <div className="rounded-xl border border-background-200 bg-background-50 overflow-hidden transition-colors hover:border-background-300">
-      <div className="px-4 py-3.5 border-b border-background-100 flex items-center justify-between">
+    <Card
+      ref={cardRef}
+      role="group"
+      aria-label={`Сервер «${server.name}»`}
+      tabIndex={-1}
+      size="sm"
+    >
+      <CardHeader className="border-b">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-secondary-100 flex items-center justify-center shrink-0">
-            <i className="ri-server-line text-lg text-secondary-600"></i>
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
+            <ServerIcon aria-hidden className="size-4 text-secondary-600" />
           </div>
           <div className="min-w-0">
-            <h4 className="font-heading text-sm font-semibold text-foreground-900 truncate">
-              {server.name}
-            </h4>
-            <p className="text-xs text-foreground-500">{server.ip}</p>
+            <CardTitle>
+              <h4 className="truncate">{server.name}</h4>
+            </CardTitle>
+            <CardDescription className="text-xs">{server.ip}</CardDescription>
           </div>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 ${config.color}`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${busy ? "animate-pulse" : ""} ${config.dotColor}`}
-          ></span>
-          {config.label}
-        </span>
-      </div>
+        <CardAction>
+          <Badge variant={config.variant}>
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full bg-current",
+                busy && "animate-pulse motion-reduce:animate-none",
+              )}
+              aria-hidden="true"
+            />
+            {config.label}
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
-      <div className="px-4 py-3 space-y-1.5">
+      <CardContent className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">CPU</span>
           <span className="text-foreground-800 font-medium">{server.cpu}</span>
@@ -458,79 +528,83 @@ function ServerCard({
             {server.location}
           </span>
         </div>
-      </div>
+        {error && (
+          <Alert variant="error" className="mt-1 animate-fade-in">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
 
-      {error && (
-        <div className="px-4 pb-1">
-          <div className="flex items-start gap-1.5 rounded-md bg-primary-100/60 px-2.5 py-2 text-xs text-primary-700 animate-fade-in">
-            <i className="ri-error-warning-line w-4 h-4 flex items-center justify-center shrink-0 mt-px"></i>
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
+      <CardFooter className="gap-2">
+        {availableActions.map((act) => {
+          const ActionIcon = act.icon;
+          const actionBusy = busy && busyAction === act.action;
 
-      <div className="px-4 py-3 border-t border-background-100 flex items-center gap-2">
-        {availableActions.map((act) => (
-          <div key={act.action} className="relative">
-            <button
-              onClick={() =>
-                setMenuOpen(menuOpen === act.action ? null : act.action)
-              }
-              disabled={busy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-background-200 text-foreground-700 hover:bg-background-100 hover:border-background-300 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+          return (
+            <AlertDialog
+              key={act.action}
+              open={pendingAction === act.action}
+              onOpenChange={(open) => {
+                if (open) {
+                  confirmingRef.current = false;
+                  setPendingAction(act.action);
+                } else if (pendingAction === act.action) {
+                  setPendingAction(null);
+                }
+              }}
             >
-              <i
-                className={`${act.icon} w-4 h-4 flex items-center justify-center`}
-              ></i>
-              {act.label}
-            </button>
-            {menuOpen === act.action && (
-              <>
-                <div
-                  className="fixed inset-0 z-30"
-                  onClick={() => setMenuOpen(null)}
-                  aria-hidden="true"
-                />
-                <div className="absolute left-0 bottom-full mb-2 w-72 rounded-lg border border-background-200 bg-background-50 shadow-lg animate-scale-in z-40">
-                  <div className="px-4 py-3">
-                    <h5 className="font-heading text-sm font-semibold text-foreground-900 mb-1">
-                      {act.confirmTitle}
-                    </h5>
-                    <p className="text-xs text-foreground-600 mb-3">
-                      {act.confirmText}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setMenuOpen(null)}
-                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-foreground-600 hover:bg-background-100 border border-background-200 transition-colors cursor-pointer whitespace-nowrap"
-                      >
-                        Отмена
-                      </button>
-                      <button
-                        onClick={() => handleConfirm(act.action)}
-                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-background-50 bg-primary-500 hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-                      >
-                        Подтвердить
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={actionBusy}
+                    onFocus={(event) => {
+                      activeTriggerRef.current = event.currentTarget;
+                    }}
+                  />
+                }
+              >
+                {actionBusy ? (
+                  <Spinner aria-hidden data-icon="inline-start" />
+                ) : (
+                  <ActionIcon aria-hidden data-icon="inline-start" />
+                )}
+                {actionBusy ? PENDING_ACTION_LABELS[act.action] : act.label}
+              </AlertDialogTrigger>
+              <AlertDialogContent
+                finalFocus={() =>
+                  confirmingRef.current
+                    ? cardRef.current
+                    : activeTriggerRef.current
+                }
+              >
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{act.confirmTitle}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {act.confirmText}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant={act.action === "stop" ? "destructive" : "default"}
+                    onClick={() => handleConfirm(act.action)}
+                  >
+                    Подтвердить
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          );
+        })}
         {availableActions.length === 0 && !busy && (
           <span className="text-xs text-foreground-400">
             Нет доступных действий
           </span>
         )}
-        {busy && (
-          <span className="flex items-center gap-1.5 text-xs text-foreground-500">
-            <i className="ri-loader-4-line animate-spin w-4 h-4 flex items-center justify-center"></i>
-            Выполняется...
-          </span>
-        )}
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

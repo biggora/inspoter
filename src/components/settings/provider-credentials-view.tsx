@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -97,7 +98,11 @@ export function ProviderCredentialsView() {
         }
       />
 
-      {error && <p className="text-sm text-(--error-text)">{error}</p>}
+      {error && (
+        <Alert variant="error">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -107,7 +112,7 @@ export function ProviderCredentialsView() {
         </div>
       ) : credentials.length === 0 ? (
         <EmptyState
-          icon="ri-key-2-line"
+          icon={KeyRound}
           description="Провайдеры не настроены. Добавьте API-ключи для подключения к Cloudflare, Hetzner или GoDaddy."
         />
       ) : (

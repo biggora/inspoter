@@ -38,7 +38,7 @@
   --primary-200: 0.85 0.09 30; /* @kind color */
   --primary-300: 0.77 0.12 30; /* @kind color */
   --primary-400: 0.68 0.16 30; /* @kind color */
-  --primary-500: 0.58 0.19 30; /* @kind color */
+  --primary-500: 0.579 0.19 30; /* @kind color */
   --primary-600: 0.50 0.17 30; /* @kind color */
   --primary-700: 0.42 0.14 30; /* @kind color */
   --primary-800: 0.34 0.11 30; /* @kind color */
@@ -92,6 +92,7 @@
   --text-body: oklch(var(--foreground-900));         /* default body */
   --text-secondary: oklch(var(--foreground-600));    /* labels */
   --text-muted: oklch(var(--foreground-400));        /* meta, captions */
+  --text-placeholder: oklch(var(--foreground-400));  /* field placeholder text */
   --text-on-accent: oklch(var(--background-50));      /* text on filled buttons */
 
   --action-primary: oklch(var(--primary-500));
@@ -123,7 +124,7 @@
   /* Sonner bridge tokens prevent its public variables from self-referencing. */
   --feedback-success-bg: var(--success-bg);
   --feedback-success-border: var(--success-border);
-  --feedback-success-text: var(--success-text);
+  --feedback-success-text: oklch(var(--accent-800));
   --feedback-info-bg: var(--info-bg);
   --feedback-info-border: var(--info-border);
   --feedback-info-text: var(--info-text);
@@ -201,6 +202,10 @@
   --secondary-800: 0.82 0.022 85; /* @kind color */
   --secondary-900: 0.90 0.016 85; /* @kind color */
   --secondary-950: 0.96 0.012 85; /* @kind color */
+
+  --text-placeholder: oklch(var(--foreground-700));
+  --action-primary: oklch(var(--primary-600));
+  --action-primary-hover: oklch(var(--primary-700));
 
   /* Feedback: quiet, border-defined surfaces for system messages. */
   --success-bg: oklch(var(--accent-100));

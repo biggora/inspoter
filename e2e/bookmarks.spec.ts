@@ -510,7 +510,7 @@ test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and
 
   // AC-BM-016: choosing a color renders that color's tone classes.
   await openEditDialog();
-  await page.getByRole("radio", { name: "Бирюзовый", exact: true }).click();
+  await page.getByRole("button", { name: "Бирюзовый", exact: true }).click();
   await page
     .getByRole("button", { name: "Сохранить изменения", exact: true })
     .click();
@@ -521,7 +521,7 @@ test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and
   // AC-BM-017: clearing the color reverts to the deterministic hash-based
   // fallback tone captured before any color was ever set.
   await openEditDialog();
-  await page.getByRole("radio", { name: "Без цвета", exact: true }).click();
+  await page.getByRole("button", { name: "Без цвета", exact: true }).click();
   await page
     .getByRole("button", { name: "Сохранить изменения", exact: true })
     .click();

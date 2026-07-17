@@ -6,6 +6,7 @@ import { ChevronDown, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -39,14 +40,16 @@ export function OperatorMenu({ username }: { username: string }) {
           <p className="text-xs text-muted-foreground">Оператор</p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={isPending}
-          onClick={() => startTransition(() => logout())}
-        >
-          <LogOut aria-hidden className="size-4" />
-          Выйти
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={isPending}
+            onClick={() => startTransition(() => logout())}
+          >
+            <LogOut aria-hidden className="size-4" />
+            Выйти
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -12,8 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError, channelsApi, type ChannelDto } from "./api";
 
 export type ChannelDialogState =
@@ -95,35 +101,43 @@ export function ChannelDialog({
           noValidate
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Название канала</Label>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-required="true"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-              autoFocus
-            />
-            {error && (
-              <p id={errorId} className="text-sm text-(--error-text)">
-                {error}
-              </p>
-            )}
-          </div>
+          <FieldGroup>
+            <Field data-invalid={!!error || undefined}>
+              <FieldLabel htmlFor={nameId}>Название канала</FieldLabel>
+              <Input
+                id={nameId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!error || undefined}
+                aria-describedby={error ? errorId : undefined}
+                autoFocus
+              />
+              <FieldError id={errorId}>{error}</FieldError>
+            </Field>
+          </FieldGroup>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit
-                ? submitting
-                  ? "Сохранение…"
-                  : "Сохранить"
-                : submitting
-                  ? "Создание…"
-                  : "Создать"}
+              {isEdit ? (
+                submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Сохранение…
+                  </>
+                ) : (
+                  "Сохранить"
+                )
+              ) : submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Создание…
+                </>
+              ) : (
+                "Создать"
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -136,7 +136,7 @@ export function DnsRecordsView({
         </div>
       ) : records.length === 0 && !error ? (
         <EmptyState
-          icon="ri-file-list-3-line"
+          icon={FileText}
           description="Для этого домена пока нет DNS-записей."
         />
       ) : records.length > 0 ? (

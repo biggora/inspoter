@@ -12,8 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import type { Category } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
 import { ApiError, categoriesApi } from "./api";
@@ -133,61 +144,75 @@ export function CategoryDialog({
           noValidate
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Название</Label>
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-required="true"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-              autoFocus
-            />
-            {error && (
-              <p id={errorId} className="text-sm text-(--error-text)">
-                {error}
-              </p>
-            )}
-          </div>
+          <FieldGroup>
+            <Field data-invalid={!!error || undefined}>
+              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+              <Input
+                id={nameId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                aria-required="true"
+                aria-invalid={!!error || undefined}
+                aria-describedby={error ? errorId : undefined}
+                autoFocus
+              />
+              <FieldError id={errorId}>{error}</FieldError>
+            </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={parentFieldId}>Родительская категория</Label>
-            <select
-              id={parentFieldId}
-              value={editingHasChildren ? "" : parentCategoryId}
-              onChange={(event) => setParentCategoryId(event.target.value)}
-              disabled={editingHasChildren}
-              aria-describedby={editingHasChildren ? parentHelperId : undefined}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">— Нет (группа верхнего уровня) —</option>
-              {parentOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-            {editingHasChildren && (
-              <p id={parentHelperId} className="text-xs text-foreground-500">
-                У этой категории есть подкатегории, поэтому она не может стать
-                чьей-либо подкатегорией.
-              </p>
-            )}
-          </div>
+            <Field data-disabled={editingHasChildren || undefined}>
+              <FieldLabel htmlFor={parentFieldId}>
+                Родительская категория
+              </FieldLabel>
+              <NativeSelect
+                id={parentFieldId}
+                value={editingHasChildren ? "" : parentCategoryId}
+                onChange={(event) => setParentCategoryId(event.target.value)}
+                disabled={editingHasChildren}
+                aria-describedby={
+                  editingHasChildren ? parentHelperId : undefined
+                }
+                className="w-full"
+              >
+                <NativeSelectOption value="">
+                  — Нет (группа верхнего уровня) —
+                </NativeSelectOption>
+                {parentOptions.map((option) => (
+                  <NativeSelectOption key={option.id} value={option.id}>
+                    {option.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              {editingHasChildren && (
+                <FieldDescription id={parentHelperId}>
+                  У этой категории есть подкатегории, поэтому она не может стать
+                  чьей-либо подкатегорией.
+                </FieldDescription>
+              )}
+            </Field>
+          </FieldGroup>
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
               Отмена
             </DialogClose>
             <Button type="submit" disabled={submitting}>
-              {isEdit
-                ? submitting
-                  ? "Сохранение…"
-                  : "Сохранить"
-                : submitting
-                  ? "Создание…"
-                  : "Создать"}
+              {isEdit ? (
+                submitting ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    Сохранение…
+                  </>
+                ) : (
+                  "Сохранить"
+                )
+              ) : submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" aria-hidden />
+                  Создание…
+                </>
+              ) : (
+                "Создать"
+              )}
             </Button>
           </DialogFooter>
         </form>

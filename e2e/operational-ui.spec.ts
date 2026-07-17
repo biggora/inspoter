@@ -1,0 +1,408 @@
+import type { Page, Route } from "@playwright/test";
+
+import { expect, test } from "./fixtures/test";
+import { login } from "./utils/auth";
+
+const REMIX_ICON_STYLESHEET_URL =
+  "https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css";
+const GOOGLE_FONTS_STYLESHEET_URL =
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap";
+const EXPECTED_BLOCKED_STYLESHEET_URLS = new Set([
+  REMIX_ICON_STYLESHEET_URL,
+  GOOGLE_FONTS_STYLESHEET_URL,
+]);
+
+function json(route: Route, body: unknown, status = 200) {
+  return route.fulfill({
+    status,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  });
+}
+
+function captureUnexpectedBrowserErrors(page: Page) {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    const text = message.text();
+    const location = message.location();
+    // The shared fixture intentionally blocks the exact external stylesheets
+    // declared by the app shell. Their Chromium diagnostics are expected.
+    const expectedStylesheetBlock =
+      message.type() === "error" &&
+      text ===
+        "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector" &&
+      EXPECTED_BLOCKED_STYLESHEET_URLS.has(location.url) &&
+      location.lineNumber === 0 &&
+      location.columnNumber === 0;
+    if (message.type() === "error" && !expectedStylesheetBlock) {
+      errors.push(text);
+    }
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  return errors;
+}
+
+function expectNoUnexpectedBrowserErrors(errors: string[]) {
+  expect(errors, "operational flow emitted browser errors").toEqual([]);
+}
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
+
+test("server power confirmation cancels safely and submits exactly once", async ({
+  page,
+}) => {
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+  const powerRequests: Array<{ action?: string }> = [];
+  let releasePowerRequest: (() => void) | undefined;
+  const powerRequestCanFinish = new Promise<void>((resolve) => {
+    releasePowerRequest = resolve;
+  });
+  let markPowerResponseFinished: (() => void) | undefined;
+  const powerResponseFinished = new Promise<void>((resolve) => {
+    markPowerResponseFinished = resolve;
+  });
+
+  await page.route("**/api/servers", (route) =>
+    json(route, [
+      {
+        providerId: "mock-hetzner",
+        providerType: "hetzner",
+        label: "Hetzner Mock",
+        mode: "mock",
+        error: null,
+        servers: [
+          {
+            id: "server-1",
+            name: "edge-01",
+            type: "cx22",
+            status: "running",
+            ip: "192.0.2.10",
+            cpu: "2 vCPU",
+            ram: "4 GB",
+            disk: "40 GB",
+            os: "Ubuntu 24.04",
+            location: "Helsinki",
+          },
+        ],
+      },
+    ]),
+  );
+  await page.route(
+    "**/api/servers/mock-hetzner/server-1/power",
+    async (route) => {
+      expect(route.request().method()).toBe("POST");
+      powerRequests.push((await route.request().postDataJSON()) as object);
+      await powerRequestCanFinish;
+      await json(route, { ok: true });
+      markPowerResponseFinished?.();
+    },
+  );
+  await page.route("**/api/servers/mock-hetzner/server-1", (route) =>
+    json(route, {
+      id: "server-1",
+      name: "edge-01",
+      type: "cx22",
+      status: "running",
+      ip: "192.0.2.10",
+      cpu: "2 vCPU",
+      ram: "4 GB",
+      disk: "40 GB",
+      os: "Ubuntu 24.04",
+      location: "Helsinki",
+    }),
+  );
+
+  await page.goto("/servers");
+  const server = page.getByRole("group", { name: "Сервер «edge-01»" });
+  const restart = server.getByRole("button", {
+    name: "Перезапустить",
+    exact: true,
+  });
+
+  await restart.click();
+  const dialog = page.getByRole("alertdialog", {
+    name: "Перезапустить «edge-01»?",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Отмена" })).toBeFocused();
+  await dialog.getByRole("button", { name: "Отмена" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(restart).toBeFocused();
+  expect(powerRequests).toHaveLength(0);
+
+  await restart.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(restart).toBeFocused();
+  expect(powerRequests).toHaveLength(0);
+
+  await restart.click();
+  await dialog.getByRole("button", { name: "Подтвердить" }).click();
+  await expect.poll(() => powerRequests.length).toBe(1);
+  expect(powerRequests).toEqual([{ action: "restart" }]);
+  await expect(
+    server.getByRole("button", { name: "Перезапускается…" }),
+  ).toBeDisabled();
+  await expect(server).toBeFocused();
+
+  releasePowerRequest?.();
+  await powerResponseFinished;
+  expectNoUnexpectedBrowserErrors(browserErrors);
+});
+
+test("mobile messages navigation closes its Sheet and composer sends via keyboard and button", async ({
+  page,
+}) => {
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+  const sentMessageBodies: unknown[] = [];
+  const messageReadMethods: string[] = [];
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.route("**/api/message-categories", (route) =>
+    json(route, [
+      {
+        id: "category-1",
+        name: "Operations",
+        channels: [
+          {
+            id: "channel-1",
+            messageCategoryId: "category-1",
+            name: "deploys",
+          },
+        ],
+      },
+    ]),
+  );
+  await page.route("**/api/channels/channel-1/messages*", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      const body = await route.request().postDataJSON();
+      sentMessageBodies.push(body);
+      await json(route, { id: `sent-${sentMessageBodies.length}` }, 201);
+      return;
+    }
+    expect(method, "message list must use the GET read branch").toBe("GET");
+    messageReadMethods.push(method);
+    await json(route, {
+      items: [
+        {
+          id: "message-1",
+          channelId: "channel-1",
+          content: "Deployment completed",
+          author: "deploy-bot",
+          createdAt: "2026-07-17T08:00:00.000Z",
+        },
+      ],
+      nextCursor: null,
+    });
+  });
+
+  await page.goto("/messages");
+  await page
+    .getByRole("button", { name: "Категории и каналы", exact: true })
+    .click();
+  const sheet = page.getByRole("dialog", { name: "Категории и каналы" });
+  await expect(sheet).toBeVisible();
+
+  const category = sheet.getByRole("button", {
+    name: "Operations",
+    exact: true,
+  });
+  await expect(category).toHaveAttribute("aria-expanded", "true");
+  await category.click();
+  await expect(category).toHaveAttribute("aria-expanded", "false");
+  await category.click();
+  await sheet.getByRole("button", { name: "# deploys", exact: true }).click();
+
+  await expect(sheet).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "deploys", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Deployment completed")).toBeVisible();
+  expect(messageReadMethods).toEqual(["GET"]);
+
+  const composer = page.getByPlaceholder("Написать в #deploys...");
+  await composer.fill("status via Enter");
+  await composer.press("Enter");
+  await expect.poll(() => sentMessageBodies.length).toBe(1);
+  expect(sentMessageBodies).toEqual([{ content: "status via Enter" }]);
+  await expect(composer).toHaveValue("");
+
+  await composer.fill("status via button");
+  const send = page.getByRole("button", { name: "Отправить", exact: true });
+  await expect(send).toBeEnabled();
+  await send.click();
+  await expect.poll(() => sentMessageBodies.length).toBe(2);
+  expect(sentMessageBodies).toEqual([
+    { content: "status via Enter" },
+    { content: "status via button" },
+  ]);
+  await expect(composer).toHaveValue("");
+  await expect(
+    page.getByRole("button", { name: "Прикрепить файл (недоступно)" }),
+  ).toBeDisabled();
+  expectNoUnexpectedBrowserErrors(browserErrors);
+});
+
+test("mail row selection renders the corresponding message detail", async ({
+  page,
+}) => {
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+
+  await page.route("**/api/mail?*", (route) =>
+    json(route, {
+      items: [
+        {
+          id: "mail-1",
+          sender: "ops@example.com",
+          subject: "Incident resolved",
+          body: "The primary service is healthy again.\nNo action is required.",
+          receivedAt: "2026-07-17T09:15:00.000Z",
+        },
+      ],
+      nextCursor: null,
+    }),
+  );
+
+  await page.goto("/mail");
+  const messageRow = page.getByRole("button", {
+    name: /ops@example\.com.*Incident resolved/,
+  });
+  await expect(messageRow).toBeVisible();
+  await messageRow.click();
+
+  await expect(
+    page.getByRole("heading", { name: "Incident resolved", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("ops@example.com", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "The primary service is healthy again.\nNo action is required.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Назад к почте", exact: true }),
+  ).toBeVisible();
+  expectNoUnexpectedBrowserErrors(browserErrors);
+});
+
+test("logs apply filters and reveal detail through the explicit expand button", async ({
+  page,
+}) => {
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+  const requestedQueries: URLSearchParams[] = [];
+  const logEntry = {
+    id: "log-error",
+    level: "error",
+    source: "scheduler",
+    message: "Nightly backup failed: permission denied",
+    timestamp: "2026-07-17T10:20:30.123Z",
+  };
+
+  await page.route("**/api/logs?*", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    requestedQueries.push(new URLSearchParams(params));
+    const items = params.get("level") === "error" ? [logEntry] : [];
+    return json(route, { items, nextCursor: null });
+  });
+
+  await page.goto("/logs");
+  await expect(page.locator("#log-error-detail")).toHaveCount(0);
+  const levelFilter = page.getByRole("combobox", {
+    name: "Фильтр по уровню",
+  });
+  await levelFilter.click();
+  await page.getByRole("option", { name: "Ошибка", exact: true }).click();
+  await expect
+    .poll(() =>
+      requestedQueries.some((params) => params.get("level") === "error"),
+    )
+    .toBe(true);
+
+  const expand = page.locator('button[aria-controls="log-error-detail"]');
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
+  const detailId = await expand.getAttribute("aria-controls");
+  expect(detailId).toBe("log-error-detail");
+  await expand.click();
+  await expect(expand).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#log-error-detail")).toContainText(
+    logEntry.message,
+  );
+  await expect(
+    page.getByRole("button", {
+      name: "Скрыть детали записи журнала",
+      exact: true,
+    }),
+  ).toBeVisible();
+  expectNoUnexpectedBrowserErrors(browserErrors);
+});
+
+test("domains retry performs one refresh and exposes its disabled transition", async ({
+  page,
+}) => {
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+  let domainRscRequests = 0;
+  let holdNextRequest = false;
+  let releaseRefresh: (() => void) | undefined;
+  const refreshCanFinish = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  const providerFixture =
+    /"providerId":"mock-cloudflare","mode":"mock","domains":\[[^\]]*\],"error":null/;
+
+  await page.route("**/domains?*", async (route) => {
+    if (route.request().headers()["rsc"] !== "1") {
+      await route.continue();
+      return;
+    }
+
+    const response = await route.fetch();
+    const originalBody = await response.text();
+    if (!providerFixture.test(originalBody)) {
+      await route.fulfill({ response, body: originalBody });
+      return;
+    }
+
+    const body = originalBody.replace(
+      providerFixture,
+      '"providerId":"mock-cloudflare","mode":"mock","domains":[],"error":"Provider unreachable"',
+    );
+    expect(
+      body,
+      "domains RSC fixture must include the mock Cloudflare provider",
+    ).not.toBe(originalBody);
+
+    domainRscRequests += 1;
+    if (holdNextRequest) await refreshCanFinish;
+    await route.fulfill({ response, body });
+  });
+
+  await page
+    .getByRole("navigation", { name: "Основная навигация" })
+    .getByRole("link", { name: "Домены", exact: true })
+    .click();
+  const retry = page.getByRole("button", { name: "Повторить", exact: true });
+  await expect(retry).toBeVisible();
+  const requestCountBeforeRetry = domainRscRequests;
+
+  holdNextRequest = true;
+  await retry.click();
+  await expect.poll(() => domainRscRequests).toBe(requestCountBeforeRetry + 1);
+  const pendingRetry = page.getByRole("button", {
+    name: "Повтор…",
+    exact: true,
+  });
+  await expect(pendingRetry).toBeDisabled();
+
+  releaseRefresh?.();
+  await expect(retry).toBeVisible();
+  await expect(retry).toBeEnabled();
+  expect(domainRscRequests).toBe(requestCountBeforeRetry + 1);
+  expectNoUnexpectedBrowserErrors(browserErrors);
+});

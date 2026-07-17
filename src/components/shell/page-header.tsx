@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type PageHeaderBack =
@@ -23,8 +25,6 @@ export function PageHeader({
   className,
   children,
 }: PageHeaderProps) {
-  const backClassName =
-    "inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground";
   return (
     <div
       data-slot="page-header"
@@ -32,19 +32,27 @@ export function PageHeader({
     >
       {back &&
         ("href" in back ? (
-          <Link href={back.href} className={backClassName}>
-            <ChevronLeft aria-hidden className="size-4" />
-            {back.label}
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={back.onClick}
-            className={backClassName}
+          <Button
+            render={<Link href={back.href} />}
+            nativeButton={false}
+            variant="ghost"
+            size="sm"
+            className="w-fit"
           >
-            <ChevronLeft aria-hidden className="size-4" />
+            <ChevronLeft aria-hidden data-icon="inline-start" />
             {back.label}
-          </button>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={back.onClick}
+            className="w-fit"
+          >
+            <ChevronLeft aria-hidden data-icon="inline-start" />
+            {back.label}
+          </Button>
         ))}
       {(title || actions) && (
         <div className="flex items-center justify-between gap-4">

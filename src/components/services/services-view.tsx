@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
+  CircleAlert,
   Globe,
-  Loader2,
   Network,
   Pencil,
   Plus,
@@ -15,7 +15,18 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/shell/page-header";
 import type { Service } from "@/generated/prisma/client";
 import { servicesApi } from "./api";
@@ -115,7 +126,7 @@ export function ServicesView({
         description={`${services.length} ${pluralizeServices(services.length)}`}
         actions={
           <Button onClick={() => setFormState({ mode: "create" })}>
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden data-icon="inline-start" />
             Новый сервис
           </Button>
         }
@@ -123,12 +134,12 @@ export function ServicesView({
 
       {services.length === 0 ? (
         <EmptyState
-          icon="ri-pulse-line"
+          icon={Activity}
           title="Нет сервисов"
           description="Добавьте первый сервис — HTTP(S)-эндпоинт, TCP-порт или хост для проверки доступности — чтобы начать отслеживать его статус."
           action={
             <Button onClick={() => setFormState({ mode: "create" })}>
-              <Plus aria-hidden className="size-4" />
+              <Plus aria-hidden data-icon="inline-start" />
               Создать сервис
             </Button>
           }
@@ -187,32 +198,34 @@ function ServiceCard({
   const MonitorIcon = MONITOR_TYPE_ICONS[service.monitorType] ?? Globe;
 
   return (
-    <div className="rounded-xl border border-background-200 bg-background-50 overflow-hidden transition-colors hover:border-background-300">
-      <div className="px-4 py-3.5 border-b border-background-100 flex items-center justify-between gap-2">
+    <Card size="sm">
+      <CardHeader className="border-b">
         <Link
           href={`/services/${service.id}`}
           className="flex items-center gap-2.5 min-w-0"
         >
-          <div className="w-9 h-9 rounded-lg bg-secondary-100 flex items-center justify-center shrink-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
             <MonitorIcon aria-hidden className="size-4 text-secondary-600" />
           </div>
           <div className="min-w-0">
-            <h4 className="font-heading text-sm font-semibold text-foreground-900 truncate">
-              {service.name}
-            </h4>
-            <p className="text-xs text-foreground-500 truncate">
+            <CardTitle>
+              <h4 className="truncate">{service.name}</h4>
+            </CardTitle>
+            <CardDescription className="truncate text-xs">
               {MONITOR_TYPE_LABELS[service.monitorType]} ·{" "}
               {formatTarget(service)}
-            </p>
+            </CardDescription>
           </div>
         </Link>
-        <ServiceStatusBadge
-          status={service.currentStatus}
-          className="shrink-0"
-        />
-      </div>
+        <CardAction>
+          <ServiceStatusBadge
+            status={service.currentStatus}
+            className="shrink-0"
+          />
+        </CardAction>
+      </CardHeader>
 
-      <div className="px-4 py-3 space-y-1.5">
+      <CardContent className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">Последняя проверка</span>
           <span className="text-foreground-800 font-medium">
@@ -239,15 +252,15 @@ function ServiceCard({
             {service.lastMessage}
           </p>
         )}
-      </div>
+        {error && (
+          <Alert variant="error" className="mt-1">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
 
-      {error && (
-        <div className="px-4 pb-1">
-          <p className="text-xs text-(--error-text)">{error}</p>
-        </div>
-      )}
-
-      <div className="px-4 py-3 border-t border-background-100 flex items-center gap-1">
+      <CardFooter className="gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -256,9 +269,9 @@ function ServiceCard({
           className="mr-auto"
         >
           {checking ? (
-            <Loader2 aria-hidden className="size-4 animate-spin" />
+            <Spinner aria-hidden data-icon="inline-start" />
           ) : (
-            <RefreshCw aria-hidden className="size-4" />
+            <RefreshCw aria-hidden data-icon="inline-start" />
           )}
           Проверить сейчас
         </Button>
@@ -268,7 +281,7 @@ function ServiceCard({
           onClick={onEdit}
           aria-label={`Редактировать «${service.name}»`}
         >
-          <Pencil aria-hidden className="size-4" />
+          <Pencil aria-hidden data-icon="inline-start" />
         </Button>
         <Button
           variant="ghost"
@@ -276,9 +289,9 @@ function ServiceCard({
           onClick={onDelete}
           aria-label={`Удалить «${service.name}»`}
         >
-          <Trash2 aria-hidden className="size-4" />
+          <Trash2 aria-hidden data-icon="inline-start" />
         </Button>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

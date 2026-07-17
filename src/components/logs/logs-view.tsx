@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -187,11 +188,13 @@ export function LogsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(LEVEL_ITEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(LEVEL_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Select
@@ -203,11 +206,13 @@ export function LogsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(sourceItems).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(sourceItems).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Select
@@ -219,11 +224,13 @@ export function LogsView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SORT_ITEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </FilterBar>
@@ -247,7 +254,7 @@ export function LogsView() {
           <EmptyState description="Нет записей журнала, соответствующих текущим фильтрам." />
         ) : (
           <EmptyState
-            icon="ri-file-list-3-line"
+            icon={FileText}
             title="Логи пока отсутствуют"
             description="Отправьте первый лог через webhook:"
             action={
@@ -268,6 +275,9 @@ export function LogsView() {
               <TableHead>Уровень</TableHead>
               <TableHead>Источник</TableHead>
               <TableHead>Сообщение</TableHead>
+              <TableHead>
+                <span className="sr-only">Детали</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -275,20 +285,7 @@ export function LogsView() {
               const isExpanded = expandedId === entry.id;
               return (
                 <Fragment key={entry.id}>
-                  <TableRow
-                    tabIndex={0}
-                    role="button"
-                    aria-expanded={isExpanded}
-                    aria-controls={`${entry.id}-detail`}
-                    className="cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setExpandedId(isExpanded ? null : entry.id);
-                      }
-                    }}
-                  >
+                  <TableRow>
                     <TableCell className="font-mono text-muted-foreground">
                       {formatTimestamp(entry.timestamp)}
                     </TableCell>
@@ -299,11 +296,33 @@ export function LogsView() {
                     <TableCell className="max-w-md truncate font-mono">
                       {entry.message}
                     </TableCell>
+                    <TableCell className="w-[var(--control-sm)]">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-expanded={isExpanded}
+                        aria-controls={`${entry.id}-detail`}
+                        aria-label={`${isExpanded ? "Скрыть" : "Показать"} детали записи журнала`}
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : entry.id)
+                        }
+                      >
+                        <ChevronRight
+                          aria-hidden
+                          data-icon="inline-start"
+                          className={cn(
+                            "transition-transform",
+                            isExpanded && "rotate-90",
+                          )}
+                        />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                   {isExpanded && (
                     <TableRow id={`${entry.id}-detail`} className="bg-muted/30">
                       <TableCell
-                        colSpan={4}
+                        colSpan={5}
                         className="font-mono text-sm whitespace-pre-wrap"
                       >
                         {entry.message}
@@ -324,7 +343,7 @@ export function LogsView() {
           onClick={handlePrevious}
           disabled={pageIndex === 0 || loading}
         >
-          <ChevronLeft aria-hidden className="size-4" />
+          <ChevronLeft aria-hidden data-icon="inline-start" />
           Назад
         </Button>
         <span className="text-sm text-muted-foreground">
@@ -337,7 +356,7 @@ export function LogsView() {
           disabled={!nextCursor || loading}
         >
           Далее
-          <ChevronRight aria-hidden className="size-4" />
+          <ChevronRight aria-hidden data-icon="inline-end" />
         </Button>
       </div>
     </div>

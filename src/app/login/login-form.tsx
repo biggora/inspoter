@@ -1,15 +1,22 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
 import { login } from "./actions";
 
@@ -104,55 +111,59 @@ export function LoginForm({
             </Alert>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="login-username">Имя пользователя</Label>
-            <Input
-              id="login-username"
-              name="username"
-              autoComplete="username"
-              placeholder="admin"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              disabled={submitting}
-              aria-required="true"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="login-password">Пароль</Label>
-            <div className="relative">
+          <FieldGroup>
+            <Field data-disabled={submitting || undefined}>
+              <FieldLabel htmlFor="login-username">Имя пользователя</FieldLabel>
               <Input
-                id="login-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="········"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                id="login-username"
+                name="username"
+                autoComplete="username"
+                placeholder="admin"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
                 disabled={submitting}
                 aria-required="true"
-                className="pr-9"
+                autoFocus
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((value) => !value)}
-                className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-              >
-                {showPassword ? (
-                  <EyeOff aria-hidden className="size-4" />
-                ) : (
-                  <Eye aria-hidden className="size-4" />
-                )}
-              </button>
-            </div>
-          </div>
+            </Field>
+
+            <Field data-disabled={submitting || undefined}>
+              <FieldLabel htmlFor="login-password">Пароль</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="login-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="········"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  disabled={submitting}
+                  aria-required="true"
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    onClick={() => setShowPassword((value) => !value)}
+                    disabled={submitting}
+                    aria-label={
+                      showPassword ? "Скрыть пароль" : "Показать пароль"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff aria-hidden />
+                    ) : (
+                      <Eye aria-hidden />
+                    )}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+          </FieldGroup>
 
           <Button type="submit" disabled={!canSubmit}>
             {submitting ? (
               <>
-                <Loader2 aria-hidden className="size-4 animate-spin" />
+                <Spinner aria-hidden data-icon="inline-start" />
                 Вход…
               </>
             ) : (
@@ -168,12 +179,14 @@ export function LoginForm({
               <span className="text-xs text-muted-foreground">или</span>
               <div className="h-px flex-1 bg-border" />
             </div>
-            <a
-              href={authentikHref}
-              className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+            <Button
+              render={<Link href={authentikHref} />}
+              nativeButton={false}
+              variant="outline"
+              className="w-full"
             >
               Войти через Authentik
-            </a>
+            </Button>
           </div>
         )}
       </CardContent>

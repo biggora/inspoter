@@ -14,7 +14,16 @@ const badgeVariants = cva(
         secondary:
           "bg-[oklch(var(--secondary-100))] text-[oklch(var(--secondary-700))] [a]:hover:bg-[oklch(var(--secondary-200))]",
         destructive:
-          "bg-[oklch(var(--primary-100))] text-[oklch(var(--primary-700))] [a]:hover:bg-[oklch(var(--primary-200))]",
+          "border-[var(--error-border)] bg-[var(--error-bg)] text-[var(--error-text)] [a]:hover:brightness-95",
+        info: "border-[var(--info-border)] bg-[var(--info-bg)] text-[var(--info-text)] [a]:hover:brightness-95",
+        success:
+          "border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-text)] [a]:hover:brightness-95",
+        warning:
+          "border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-text)] [a]:hover:brightness-95",
+        error:
+          "border-[var(--error-border)] bg-[var(--error-bg)] text-[var(--error-text)] [a]:hover:brightness-95",
+        critical:
+          "border-[var(--critical-border)] bg-[var(--critical-bg)] text-[var(--critical-text)] [a]:hover:brightness-95",
         outline:
           "border-[var(--border-default)] text-[var(--text-body)] [a]:hover:bg-[var(--surface-hover)] [a]:hover:text-[var(--text-secondary)]",
         ghost:

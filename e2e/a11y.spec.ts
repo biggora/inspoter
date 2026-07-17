@@ -1,14 +1,27 @@
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "./fixtures/test";
 import AxeBuilder from "@axe-core/playwright";
 import { login } from "./utils/auth";
 
-// NFR-A11Y-001 / M-8 (design.md §8): automated axe pass, zero critical
-// violations on Login, Shell, and Bookmarks. Each test first asserts the
-// screen actually rendered (heading/landmark visible) before running axe —
+// NFR-A11Y-001 / M-8 (design.md §8): automated axe pass, zero serious or
+// critical violations. Each test first asserts the screen actually rendered
+// (heading/landmark visible) before running axe —
 // so a missing page fails on that assertion, not by silently running axe
 // against an unrelated 404/error page.
 
-test("Login screen has zero critical accessibility violations", async ({
+async function expectNoBlockingAxeViolations(page: Page, include?: string) {
+  const builder = new AxeBuilder({ page });
+  if (include) builder.include(include);
+  const results = await builder.analyze();
+  const blocking = results.violations.filter(
+    (violation) =>
+      violation.impact === "critical" || violation.impact === "serious",
+  );
+  expect(blocking).toEqual([]);
+}
+
+test("Login screen has zero serious or critical accessibility violations", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -16,24 +29,20 @@ test("Login screen has zero critical accessibility violations", async ({
     page.getByRole("heading", { name: "Войти", exact: true }),
   ).toBeVisible();
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page);
 });
 
-test("Shell + Bookmarks screen has zero critical accessibility violations", async ({
+test("Shell + Bookmarks screen has zero serious or critical accessibility violations", async ({
   page,
 }) => {
   await login(page);
   await page.goto("/bookmarks");
   await expect(page.getByRole("navigation")).toBeVisible();
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page);
 });
 
-test("Bookmark dialog with the color picker open has zero critical accessibility violations", async ({
+test("Bookmark dialog with the color picker open has zero serious or critical accessibility violations", async ({
   page,
   testData,
 }) => {
@@ -72,17 +81,13 @@ test("Bookmark dialog with the color picker open has zero critical accessibility
   await expect(category).toBeVisible();
   await category.getByRole("button", { name: "Добавить", exact: true }).click();
   await expect(
-    page.getByRole("radiogroup", { name: "Цвет", exact: true }),
+    page.getByRole("group", { name: "Цвет", exact: true }),
   ).toBeVisible();
 
-  const results = await new AxeBuilder({ page })
-    .include('[data-slot="dialog-content"]')
-    .analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page, '[data-slot="dialog-content"]');
 });
 
-test("Bookmarks search input and no-results state have zero critical accessibility violations", async ({
+test("Bookmarks search input and no-results state have zero serious or critical accessibility violations", async ({
   page,
   testData,
 }) => {
@@ -123,12 +128,10 @@ test("Bookmarks search input and no-results state have zero critical accessibili
     page.getByRole("heading", { name: "Ничего не найдено", exact: true }),
   ).toBeVisible();
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page);
 });
 
-test("Bookmark drag handle, focused, has zero critical accessibility violations", async ({
+test("Bookmark drag handle, focused, has zero serious or critical accessibility violations", async ({
   page,
   testData,
 }) => {
@@ -191,12 +194,10 @@ test("Bookmark drag handle, focused, has zero critical accessibility violations"
   await dragHandle.focus();
   await expect(dragHandle).toBeFocused();
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page);
 });
 
-test("Bookmarks screen with a subcategory has correct heading levels (h2 parent / h3 subcategory, no skipped level) and zero critical accessibility violations", async ({
+test("Bookmarks screen with a subcategory has correct heading levels (h2 parent / h3 subcategory, no skipped level) and zero serious or critical accessibility violations", async ({
   page,
   testData,
 }) => {
@@ -285,7 +286,176 @@ test("Bookmarks screen with a subcategory has correct heading levels (h2 parent 
     expect(headingLevels[i] - headingLevels[i - 1]).toBeLessThanOrEqual(1);
   }
 
-  const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
+  await expectNoBlockingAxeViolations(page);
+});
+
+test("NativeSelect in the category form has zero serious or critical accessibility violations", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/bookmarks");
+  await page
+    .getByRole("button", { name: "Новая категория", exact: true })
+    .click();
+
+  await expect(
+    page.getByLabel("Родительская категория", { exact: true }),
+  ).toBeVisible();
+  await expectNoBlockingAxeViolations(page, '[data-slot="dialog-content"]');
+});
+
+test("Service form and active checkbox have zero serious or critical accessibility violations", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/services");
+  await page.getByRole("button", { name: "Новый сервис", exact: true }).click();
+
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Активен (проверять по расписанию)",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectNoBlockingAxeViolations(page, '[data-slot="dialog-content"]');
+});
+
+test("Server power AlertDialog has zero serious or critical accessibility violations", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/servers", async (route) => {
+    if (new URL(route.request().url()).pathname !== "/api/servers") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          providerId: "a11y-provider",
+          providerType: "hetzner",
+          label: "A11y Provider",
+          mode: "mock",
+          error: null,
+          servers: [
+            {
+              id: "a11y-server",
+              name: "a11y-server",
+              type: "cx22",
+              status: "running",
+              ip: "192.0.2.10",
+              cpu: "2 vCPU",
+              ram: "4 GB",
+              disk: "40 GB",
+              os: "Linux",
+              location: "Test Region",
+            },
+          ],
+        },
+      ]),
+    });
+  });
+  await page.goto("/servers");
+
+  const card = page.getByRole("group", { name: "Сервер «a11y-server»" });
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "Остановить", exact: true }).click();
+  await expect(
+    page.getByRole("alertdialog", { name: "Остановить «a11y-server»?" }),
+  ).toBeVisible();
+  await expectNoBlockingAxeViolations(
+    page,
+    '[data-slot="alert-dialog-content"]',
+  );
+});
+
+test("Expanded log row has zero serious or critical accessibility violations", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/logs?*", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [
+          {
+            id: "a11y-log",
+            level: "warning",
+            source: "a11y-test",
+            message: "Deterministic expanded log details",
+            timestamp: "2026-07-17T10:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+    });
+  });
+  await page.goto("/logs");
+
+  const expand = page.locator('button[aria-controls="a11y-log-detail"]');
+  await expect(expand).toBeVisible();
+  await expect(expand).toHaveAccessibleName("Показать детали записи журнала");
+  await expand.click();
+  await expect(expand).toHaveAttribute("aria-expanded", "true");
+  await expect(expand).toHaveAccessibleName("Скрыть детали записи журнала");
+  await expect(
+    page.getByText("Deterministic expanded log details").last(),
+  ).toBeVisible();
+  await expectNoBlockingAxeViolations(page, "main");
+});
+
+test.describe("mobile migrated controls", () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+
+  test("Messages composer and open channel Sheet have zero serious or critical accessibility violations", async ({
+    page,
+  }) => {
+    await login(page);
+    await page.route("**/api/message-categories", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: "a11y-category",
+            name: "A11y category",
+            channels: [
+              {
+                id: "a11y-channel",
+                messageCategoryId: "a11y-category",
+                name: "a11y-channel",
+              },
+            ],
+          },
+        ]),
+      });
+    });
+    await page.route(
+      "**/api/channels/a11y-channel/messages?*",
+      async (route) => {
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({ items: [], nextCursor: null }),
+        });
+      },
+    );
+    await page.goto("/messages");
+
+    const openChannels = page.getByRole("button", {
+      name: "Категории и каналы",
+      exact: true,
+    });
+    await expect(openChannels).toBeVisible();
+    await openChannels.click();
+    const sheet = page.locator('[data-slot="sheet-content"]');
+    await expect(sheet).toBeVisible();
+    await expectNoBlockingAxeViolations(page, '[data-slot="sheet-content"]');
+
+    await sheet
+      .getByRole("button", { name: "# a11y-channel", exact: true })
+      .click();
+    const composer = page.getByPlaceholder("Написать в #a11y-channel...");
+    await expect(composer).toBeVisible();
+    await expectNoBlockingAxeViolations(page, '[data-slot="input-group"]');
+  });
 });
