@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Select,
@@ -169,7 +170,7 @@ export function LogsView() {
   const hasActiveFilters = query !== "" || level !== "all" || source !== "all";
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader title="Логи">
         <FilterBar>
           <Input
@@ -359,6 +360,6 @@ export function LogsView() {
           <ChevronRight aria-hidden data-icon="inline-end" />
         </Button>
       </div>
-    </div>
+    </PageBody>
   );
 }

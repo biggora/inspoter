@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { Check, Copy, Link2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -176,7 +177,7 @@ export function WebhookTokensView() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader
         title="Webhook-токены"
         back={{ href: "/settings", label: "Назад к настройкам" }}
@@ -375,6 +376,6 @@ export function WebhookTokensView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageBody>
   );
 }

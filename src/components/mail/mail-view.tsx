@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
 
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ export function MailView() {
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-6">
+      <PageBody>
         <PageHeader
           back={{ onClick: () => setSelectedId(null), label: "Назад к почте" }}
           title={selected.subject}
@@ -141,12 +142,12 @@ export function MailView() {
             {selected.body}
           </pre>
         </div>
-      </div>
+      </PageBody>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageBody>
       <PageHeader title="Почта">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Input
@@ -258,6 +259,6 @@ export function MailView() {
           <ChevronRight aria-hidden data-icon="inline-end" />
         </Button>
       </div>
-    </div>
+    </PageBody>
   );
 }

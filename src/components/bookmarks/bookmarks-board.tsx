@@ -27,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
+import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -410,7 +411,7 @@ export function BookmarksBoard({
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <PageBody>
       <PageHeader
         title="Закладки"
         actions={
@@ -488,7 +489,7 @@ export function BookmarksBoard({
             items={filteredCategories.map((category) => category.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="flex flex-col gap-8">
+            <PageBody>
               {filteredCategories.map((category) => {
                 const original = categoryById.get(category.id) ?? category;
                 return (
@@ -522,7 +523,7 @@ export function BookmarksBoard({
                   />
                 );
               })}
-            </div>
+            </PageBody>
           </SortableContext>
         </DndContext>
       )}
@@ -561,6 +562,6 @@ export function BookmarksBoard({
           router.refresh();
         }}
       />
-    </div>
+    </PageBody>
   );
 }
