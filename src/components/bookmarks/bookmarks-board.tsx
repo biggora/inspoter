@@ -475,6 +475,7 @@ export function BookmarksBoard({
         />
       ) : (
         <DndContext
+          id="bookmarks-dnd-context"
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
