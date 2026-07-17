@@ -90,7 +90,7 @@ flowchart LR
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | CURRENT                        | Compose maps application port `3800` to container port `3000` and database port `3832` to `5432`; the runtime runs migrations before `pnpm run start`.                                      | Preserve unless deployment validation changes the contract.                                            |
 | CURRENT / PENDING REVALIDATION | Docker, CI, and Playwright use Node 24, Corepack, `pnpm@11.12.0`, and `pnpm-lock.yaml`; dependency installation is frozen-lockfile, and Playwright starts the built application.            | R2.0 implementation is complete; only the three-run `R2.0-G` runtime integration gate remains pending. |
-| GAP                            | `docker-compose.yml` does not pass `CLOUDFLARE_API_TOKEN`, `HETZNER_DNS_TOKEN`, `GODADDY_API_KEY`, `GODADDY_API_SECRET`, or `HCLOUD_TOKEN` to the application container.                    | TARGET (Phase 3): wire optional provider variables without values or secrets in source control.        |
+| CURRENT                        | Provider credentials are not passed through environment variables at all; they live in the encrypted `ProviderCredential` store and are managed in the UI (`/settings/providers`).          | Preserve; only `CREDENTIAL_ENCRYPTION_KEY` is required in the environment.                             |
 | CURRENT                        | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup.                                                                            |
 | GAP                            | Base env validation does not validate provider credentials or complete credential sets.                                                                                                     | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration.    |
 
@@ -414,11 +414,9 @@ sequenceDiagram
 | CURRENT | `{ ok: false, kind: "error", message: string }`         | 502                                                     |
 | CURRENT | `{ ok: false, kind: "unsupported", operation: string }` | 501                                                     |
 
-**CURRENT:** DNS factories return Cloudflare, Hetzner DNS, and GoDaddy providers. Server factory returns Hetzner Cloud. Missing credentials select deterministic process-local mocks. Present credentials select real-mode classes.
+**CURRENT:** DNS factories return Cloudflare, Hetzner DNS, and GoDaddy providers. Server factory returns Hetzner Cloud. Providers are built exclusively from workspace `ProviderCredential` records (managed in the UI at `/settings/providers`, encrypted with `CREDENTIAL_ENCRYPTION_KEY`). There is no env-var or mock fallback: a workspace without credentials gets an empty provider list, and `/domains` / `/servers` render empty states.
 
 **GAP:** Every real-mode operation currently returns `unsupported`; no upstream request exists. Credential presence therefore does not mean a working real integration.
-
-**GAP:** Factories read `process.env` directly. No centralized provider schema validates credentials. GoDaddy mode checks only `GODADDY_API_KEY` and ignores `GODADDY_API_SECRET`.
 
 **CURRENT / GAP:** DNS and server mocks make zero external requests. Their mutable module state resets at process restart and is shared across all workspaces, violating Q-13. Domains aggregation uses `Promise.allSettled`, so one provider failure does not remove healthy providers.
 
@@ -432,12 +430,12 @@ sequenceDiagram
 - Hetzner Cloud requires its complete credential.
 - Hetzner DNS requires its complete credential.
 - GoDaddy requires both key and secret.
-- A complete absent credential set selects mock and causes zero upstream calls.
+- An absent credential set yields an empty provider list and causes zero upstream calls.
 - A complete configured set selects real mode.
 - An incomplete set fails configuration explicitly; it does not silently choose mock.
 - Invalid or revoked real credentials produce typed provider authentication failure and never fall back to mock.
 
-**TARGET (Phase 3):** Keep configuration values in environment variables. Never persist provider credentials in Prisma, return them through APIs, render them, or log them. `docker-compose.yml` may reference variable names but must not contain values.
+**TARGET (Phase 3):** Keep provider credentials in the encrypted `ProviderCredential` store, managed only through the UI — never in environment variables. Never return decrypted credentials through APIs, render them, or log them.
 
 ### 7.3 Target HTTP boundary
 

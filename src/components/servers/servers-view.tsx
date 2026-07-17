@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CircleAlert,
@@ -282,8 +283,13 @@ export function ServersView() {
           bordered={false}
           icon={ServerIcon}
           title="Нет серверов"
-          description="В вашем аккаунте Hetzner пока нет активных VPS. Создайте сервер через панель Hetzner, и он появится здесь."
+          description="Подключите провайдера Hetzner Cloud в настройках — серверы появятся здесь автоматически."
           className="max-w-sm animate-scale-in"
+          action={
+            <Button render={<Link href="/settings/providers" />}>
+              Добавить провайдера
+            </Button>
+          }
         />
       </div>
     );

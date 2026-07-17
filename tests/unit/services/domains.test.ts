@@ -4,6 +4,20 @@ import { MockDnsProvider } from "@/lib/providers/dns/mock";
 
 // Domains service (architecture.md §4.4, AC-DOM-*, AC-PROV-*) — mock
 // providers use module-global in-memory state, no database involved.
+// Production has no mock/env fallback (providers come only from workspace
+// credentials), so the factory is mocked here to return the deterministic
+// mock providers.
+
+vi.mock("@/lib/providers/dns", async () => {
+  const { MockDnsProvider } = await import("@/lib/providers/dns/mock");
+  return {
+    getDnsProvidersForWorkspace: async () => [
+      new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
+      new MockDnsProvider("mock-hetzner", "hetzner", "Hetzner DNS Mock"),
+      new MockDnsProvider("mock-godaddy", "godaddy", "GoDaddy Mock"),
+    ],
+  };
+});
 
 const WORKSPACE_ID = "test-workspace";
 

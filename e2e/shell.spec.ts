@@ -57,7 +57,7 @@ const IMPLEMENTED_SECTIONS = [
   {
     path: "/servers",
     label: "Серверы",
-    readiness: { role: "button", name: "Обновить" },
+    readiness: { role: "link", name: "Добавить провайдера" },
   },
   {
     path: "/mail",

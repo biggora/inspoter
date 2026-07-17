@@ -1,14 +1,12 @@
 import type { DnsProvider } from "@/lib/providers/dns/types";
-import { MockDnsProvider } from "@/lib/providers/dns/mock";
 import { CloudflareDnsProvider } from "@/lib/providers/dns/cloudflare";
 import { HetznerDnsProvider } from "@/lib/providers/dns/hetzner";
 import { GoDaddyDnsProvider } from "@/lib/providers/dns/godaddy";
 import * as credentialsService from "@/lib/services/credentials";
 
-// Real-vs-mock selection by workspace credentials (multiple allowed per
-// provider type), then env fallback (only when no workspace credential
-// exists for that provider type), then a single mock as last resort
-// (AC-PROV-002, architecture.md §4.2).
+// Providers are built exclusively from workspace ProviderCredential records
+// (managed at /settings/providers). No env or mock fallback: a workspace
+// without credentials gets an empty provider list.
 
 export async function getDnsProvidersForWorkspace(
   workspaceId: string,
@@ -36,52 +34,6 @@ export async function getDnsProvidersForWorkspace(
         ),
       );
     }
-  }
-
-  const hasCloudflare = allCreds.some((c) => c.type === "CLOUDFLARE_DNS");
-  if (!hasCloudflare && process.env.CLOUDFLARE_API_TOKEN) {
-    providers.push(
-      new CloudflareDnsProvider(
-        "env-cloudflare",
-        "Cloudflare (env)",
-        process.env.CLOUDFLARE_API_TOKEN,
-      ),
-    );
-  }
-
-  const hasHetznerDns = allCreds.some((c) => c.type === "HETZNER_DNS");
-  if (!hasHetznerDns && process.env.HETZNER_DNS_TOKEN) {
-    providers.push(
-      new HetznerDnsProvider(
-        "env-hetzner",
-        "Hetzner DNS (env)",
-        process.env.HETZNER_DNS_TOKEN,
-      ),
-    );
-  }
-
-  const hasGoDaddy = allCreds.some((c) => c.type === "GODADDY_DNS");
-  if (
-    !hasGoDaddy &&
-    process.env.GODADDY_API_KEY &&
-    process.env.GODADDY_API_SECRET
-  ) {
-    providers.push(
-      new GoDaddyDnsProvider(
-        "env-godaddy",
-        "GoDaddy (env)",
-        process.env.GODADDY_API_KEY,
-        process.env.GODADDY_API_SECRET,
-      ),
-    );
-  }
-
-  if (!providers.length) {
-    providers.push(
-      new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
-      new MockDnsProvider("mock-hetzner", "hetzner", "Hetzner DNS Mock"),
-      new MockDnsProvider("mock-godaddy", "godaddy", "GoDaddy Mock"),
-    );
   }
 
   return providers;

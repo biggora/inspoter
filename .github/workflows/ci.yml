@@ -21,11 +21,6 @@ jobs:
       TEST_DATABASE_MARKER: inspoter-e2e
       OPERATOR_USERNAME: test-operator
       OPERATOR_PASSWORD: local-test-only-password
-      CLOUDFLARE_API_TOKEN: ""
-      HETZNER_DNS_TOKEN: ""
-      GODADDY_API_KEY: ""
-      GODADDY_API_SECRET: ""
-      HCLOUD_TOKEN: ""
 
     steps:
       - name: Check out repository
@@ -65,11 +60,6 @@ jobs:
             --env DATABASE_URL=postgresql://inspoter_test:local_test_only@db-test:5432/inspoter_e2e_test?schema=public \
             --env OPERATOR_USERNAME=test-operator \
             --env OPERATOR_PASSWORD=local-test-only-password \
-            --env CLOUDFLARE_API_TOKEN= \
-            --env HETZNER_DNS_TOKEN= \
-            --env GODADDY_API_KEY= \
-            --env GODADDY_API_SECRET= \
-            --env HCLOUD_TOKEN= \
             inspoter-ci:verify
 
           status=000

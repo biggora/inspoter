@@ -3,8 +3,22 @@ import * as serversService from "@/lib/services/servers";
 
 // Servers service (architecture.md §4.4, AC-SRV-*) — mock Hetzner provider
 // uses module-global in-memory state and time-based status transitions, no
-// database involved. No credentials are configured for this workspace, so
-// the factory falls back to the single mock provider ("mock-hetzner-cloud").
+// database involved. Production has no mock/env fallback (providers come
+// only from workspace credentials), so the factory is mocked here to
+// return the deterministic mock provider ("mock-hetzner-cloud").
+
+vi.mock("@/lib/providers/servers", async () => {
+  const { MockServerProvider } = await import("@/lib/providers/servers/mock");
+  return {
+    getServerProvidersForWorkspace: async () => [
+      new MockServerProvider(
+        "mock-hetzner-cloud",
+        "hetzner",
+        "Hetzner Cloud Mock",
+      ),
+    ],
+  };
+});
 
 const WORKSPACE_ID = "test-workspace";
 const PROVIDER_ID = "mock-hetzner-cloud";

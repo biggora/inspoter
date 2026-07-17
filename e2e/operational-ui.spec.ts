@@ -353,8 +353,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   const refreshCanFinish = new Promise<void>((resolve) => {
     releaseRefresh = resolve;
   });
-  const providerFixture =
-    /"providerId":"mock-cloudflare","mode":"mock","domains":\[[^\]]*\],"error":null/;
+  const emptyProvidersFixture = '"providers":[]';
 
   await page.route("**/domains?*", async (route) => {
     if (route.request().headers()["rsc"] !== "1") {
@@ -364,7 +363,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
 
     const response = await route.fetch();
     const originalBody = await response.text();
-    if (!providerFixture.test(originalBody)) {
+    if (!originalBody.includes(emptyProvidersFixture)) {
       await route.fulfill({ response, body: originalBody });
       return;
     }
@@ -372,12 +371,12 @@ test("domains retry performs one refresh and exposes its disabled transition", a
     const providerError =
       domainRscRequests === 0 ? "Authentication failed" : "Timeout after 30s";
     const body = originalBody.replace(
-      providerFixture,
-      `"providerId":"mock-cloudflare","mode":"mock","domains":[],"error":"${providerError}"`,
+      emptyProvidersFixture,
+      `"providers":[{"providerId":"cloudflare","mode":"real","domains":[],"error":"${providerError}"}]`,
     );
     expect(
       body,
-      "domains RSC fixture must include the mock Cloudflare provider",
+      "domains RSC fixture must contain an empty providers list",
     ).not.toBe(originalBody);
 
     domainRscRequests += 1;
@@ -392,7 +391,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   const retry = page.getByRole("button", { name: "Повторить", exact: true });
   await expect(retry).toBeVisible();
   await expect(
-    page.getByText("mock-cloudflare — Ошибка аутентификации провайдера.", {
+    page.getByText("Cloudflare — Ошибка аутентификации провайдера.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -413,7 +412,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   await expect(retry).toBeEnabled();
   await expect(
     page.getByText(
-      "mock-cloudflare — Не удалось получить данные от провайдера.",
+      "Cloudflare — Не удалось получить данные от провайдера.",
       { exact: true },
     ),
   ).toBeVisible();
