@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DomainsByProvider } from "@/lib/services/domains";
+import { ProviderCredentialDialog } from "@/components/settings/provider-credential-dialog";
 import { DnsRecordsView } from "./dns-records-view";
 
 interface DomainsViewProps {
@@ -49,6 +50,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
   const router = useRouter();
   const [isRetrying, startTransition] = useTransition();
   const [selected, setSelected] = useState<SelectedDomain | null>(null);
+  const [isCreateProviderOpen, setIsCreateProviderOpen] = useState(false);
 
   if (selected) {
     return (
@@ -77,7 +79,15 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Домены" />
+      <PageHeader
+        title="Домены"
+        actions={
+          <Button size="sm" onClick={() => setIsCreateProviderOpen(true)}>
+            <Plus aria-hidden className="size-4" />
+            Добавить провайдер
+          </Button>
+        }
+      />
 
       {erroredProviders.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -156,6 +166,16 @@ export function DomainsView({ providers }: DomainsViewProps) {
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {isCreateProviderOpen && (
+        <ProviderCredentialDialog
+          open={isCreateProviderOpen}
+          onOpenChange={setIsCreateProviderOpen}
+          mode="create"
+          existing={null}
+          onSaved={() => router.refresh()}
+        />
       )}
     </div>
   );
