@@ -28,7 +28,7 @@ export function PageHeader({
   return (
     <div
       data-slot="page-header"
-      className={cn("flex flex-col gap-4", className)}
+      className={cn("flex flex-col gap-6", className)}
     >
       {back &&
         ("href" in back ? (
