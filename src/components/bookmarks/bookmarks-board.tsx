@@ -37,7 +37,6 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Label } from "@/components/ui/label";
 import type { Bookmark, Category } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
 import { bookmarksApi, categoriesApi } from "./api";
@@ -422,8 +421,7 @@ export function BookmarksBoard({
         }
       >
         {categories.length > 0 && (
-          <div className="flex flex-col gap-1.5 max-w-sm">
-            <Label htmlFor={searchId}>Поиск закладок</Label>
+          <div className="max-w-sm">
             <InputGroup>
               <InputGroupAddon>
                 <Search aria-hidden />
@@ -434,6 +432,7 @@ export function BookmarksBoard({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Название, описание или URL"
+                aria-label="Поиск закладок"
               />
               {query && (
                 <InputGroupAddon align="inline-end">

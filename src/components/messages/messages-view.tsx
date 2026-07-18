@@ -653,7 +653,7 @@ export function MessagesView() {
   if (categoriesLoading) {
     return (
       <PageBody fullBleed>
-        <div className="shrink-0 border-b border-background-200 px-6 py-4">
+        <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
           <PageHeader title="Сообщения" />
         </div>
         <div className="flex flex-1 min-h-0">
@@ -714,7 +714,7 @@ export function MessagesView() {
   if (categoriesError) {
     return (
       <PageBody fullBleed>
-        <div className="shrink-0 border-b border-background-200 px-6 py-4">
+        <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
           <PageHeader title="Сообщения" />
         </div>
         <div className="flex flex-1 items-center justify-center p-6">
@@ -739,7 +739,7 @@ export function MessagesView() {
 
   return (
     <PageBody fullBleed>
-      <div className="shrink-0 border-b border-background-200 px-6 py-4">
+      <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
         <PageHeader title="Сообщения" />
       </div>
 
