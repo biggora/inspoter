@@ -143,6 +143,11 @@ export function DomainsView({ providers }: DomainsViewProps) {
               : "Доменов пока нет"
           }
           description="Домены появятся автоматически при подключении DNS-провайдера в настройках."
+          action={
+            <Button onClick={() => setIsCreateProviderOpen(true)}>
+              Добавить провайдера
+            </Button>
+          }
         />
       ) : (
         <Table>
