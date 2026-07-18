@@ -7,6 +7,7 @@ import {
   CirclePlay,
   CircleStop,
   CloudOff,
+  Plus,
   RefreshCw,
   RotateCcw,
   ServerIcon,
@@ -16,6 +17,7 @@ import { CardGrid } from "@/components/shell/card-grid";
 import { NotificationToast } from "@/components/shell/notification-toast";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
+import { ProviderCredentialDialog } from "@/components/settings/provider-credential-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -77,6 +79,7 @@ export function ServersView() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [isCreateProviderOpen, setIsCreateProviderOpen] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
     new Map(),
@@ -244,12 +247,18 @@ export function ServersView() {
             : undefined
         }
         actions={
-          pageState !== "loading" ? (
-            <Button variant="outline" onClick={load}>
-              <RefreshCw aria-hidden data-icon="inline-start" />
-              Обновить
+          <>
+            <Button onClick={() => setIsCreateProviderOpen(true)}>
+              <Plus aria-hidden data-icon="inline-start" />
+              Добавить провайдера
             </Button>
-          ) : undefined
+            {pageState !== "loading" ? (
+              <Button variant="outline" onClick={load}>
+                <RefreshCw aria-hidden data-icon="inline-start" />
+                Обновить
+              </Button>
+            ) : undefined}
+          </>
         }
       />
 
@@ -328,6 +337,16 @@ export function ServersView() {
             />
           ))}
         </CardGrid>
+      )}
+
+      {isCreateProviderOpen && (
+        <ProviderCredentialDialog
+          open={isCreateProviderOpen}
+          onOpenChange={setIsCreateProviderOpen}
+          mode="create"
+          existing={null}
+          onSaved={load}
+        />
       )}
     </PageBody>
   );
