@@ -58,7 +58,10 @@ export function PageHeader({
         <div className="flex min-h-[var(--control-md)] flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
           {title && (
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+              {/* min-h matches the control-md action buttons so the title's box center lines up with theirs while its top stays pinned to the row top */}
+              <h1 className="text-xl font-semibold text-foreground sm:flex sm:min-h-[var(--control-md)] sm:items-center">
+                {title}
+              </h1>
               {description && (
                 <p className="text-sm text-muted-foreground">{description}</p>
               )}
