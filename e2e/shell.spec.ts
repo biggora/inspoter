@@ -48,7 +48,21 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
   expect(markerSurvived).toBe(true);
 });
 
-const IMPLEMENTED_SECTIONS = [
+interface Readiness {
+  name: string;
+  // Optional ARIA role. When omitted, the readiness marker is matched by
+  // visible text only — used for elements whose role is intentionally
+  // non-deterministic (e.g. a Base UI Button rendered over a next/link).
+  role?: "heading" | "link" | "button";
+}
+
+interface ImplementedSection {
+  path: string;
+  label: string;
+  readiness: Readiness;
+}
+
+const IMPLEMENTED_SECTIONS: readonly ImplementedSection[] = [
   {
     path: "/domains",
     label: "Домены",
@@ -57,7 +71,11 @@ const IMPLEMENTED_SECTIONS = [
   {
     path: "/servers",
     label: "Серверы",
-    readiness: { role: "link", name: "Добавить провайдера" },
+    // The empty-state CTA renders as a Base UI Button with nativeButton=false
+    // over a next/link, which surfaces as role="button" (not "link") in the
+    // accessibility tree. Assert by name only so the readiness check survives
+    // that intentional role without coupling the shell contract to it.
+    readiness: { name: "Добавить провайдера" },
   },
   {
     path: "/mail",
@@ -79,7 +97,7 @@ const IMPLEMENTED_SECTIONS = [
     label: "Оповещения",
     readiness: { role: "heading", name: "Оповещения" },
   },
-] as const;
+];
 
 const SETTINGS_ROUTE = {
   path: "/settings",
@@ -110,9 +128,10 @@ test.describe("AC-SHELL-003: implemented sections render through the active shel
           .getByRole("navigation", { name: "Основная навигация" })
           .getByRole("link", { name: label, exact: true }),
       ).toHaveAttribute("data-active", "true");
-      await expect(
-        page.getByRole(readiness.role, { name: readiness.name, exact: true }),
-      ).toBeVisible();
+      const readinessLocator = readiness.role
+        ? page.getByRole(readiness.role, { name: readiness.name, exact: true })
+        : page.getByText(readiness.name, { exact: true });
+      await expect(readinessLocator).toBeVisible();
     });
   }
 });
