@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CardGrid } from "@/components/shell/card-grid";
+import { NotificationToast } from "@/components/shell/notification-toast";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -223,24 +224,10 @@ export function ServersView() {
   return (
     <PageBody>
       {notification && (
-        <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium animate-slide-in-right ${
-            notification.variant === "success"
-              ? "bg-accent-100/80 text-accent-800"
-              : "bg-primary-100/70 text-primary-800"
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          <i
-            className={`${
-              notification.variant === "success"
-                ? "ri-check-line"
-                : "ri-error-warning-line"
-            } w-5 h-5 flex items-center justify-center`}
-          ></i>
-          {notification.message}
-        </div>
+        <NotificationToast
+          message={notification.message}
+          variant={notification.variant}
+        />
       )}
 
       <PageHeader

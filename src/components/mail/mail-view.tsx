@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
+import { Pagination } from "@/components/shell/pagination";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -138,7 +139,7 @@ export function MailView() {
             </>
           }
         />
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-xl border border-background-200 bg-background-50 p-5">
           <pre className="whitespace-pre-wrap break-words font-mono text-sm text-foreground">
             {selected.body}
           </pre>
@@ -211,7 +212,7 @@ export function MailView() {
           />
         )
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="flex flex-col divide-y divide-background-200 rounded-lg border border-background-200 bg-background-50">
           {items.map((item) => (
             <li key={item.id}>
               <Button
@@ -237,29 +238,14 @@ export function MailView() {
         </ul>
       )}
 
-      <div className="flex items-center justify-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePrevious}
-          disabled={pageIndex === 0 || loading}
-        >
-          <ChevronLeft aria-hidden data-icon="inline-start" />
-          Назад
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Страница {pageIndex + 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleNext}
-          disabled={!nextCursor || loading}
-        >
-          Далее
-          <ChevronRight aria-hidden data-icon="inline-end" />
-        </Button>
-      </div>
+      <Pagination
+        page={pageIndex + 1}
+        hasPrevious={pageIndex > 0}
+        hasNext={Boolean(nextCursor)}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        disabled={loading}
+      />
     </PageBody>
   );
 }

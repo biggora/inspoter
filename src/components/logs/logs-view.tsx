@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
+import { Pagination } from "@/components/shell/pagination";
 import {
   Select,
   SelectContent,
@@ -337,29 +338,14 @@ export function LogsView() {
         </Table>
       )}
 
-      <div className="flex items-center justify-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePrevious}
-          disabled={pageIndex === 0 || loading}
-        >
-          <ChevronLeft aria-hidden data-icon="inline-start" />
-          Назад
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Страница {pageIndex + 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleNext}
-          disabled={!nextCursor || loading}
-        >
-          Далее
-          <ChevronRight aria-hidden data-icon="inline-end" />
-        </Button>
-      </div>
+      <Pagination
+        page={pageIndex + 1}
+        hasPrevious={pageIndex > 0}
+        hasNext={Boolean(nextCursor)}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        disabled={loading}
+      />
     </PageBody>
   );
 }
