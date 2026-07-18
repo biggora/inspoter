@@ -11,7 +11,7 @@ export default function SettingsPage() {
       <CardGrid columns={2}>
         <Link
           href="/settings/workspace"
-          className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
         >
           <Building2 className="size-5 text-muted-foreground" />
           <div>
@@ -24,7 +24,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/settings/webhooks"
-          className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
         >
           <Webhook className="size-5 text-muted-foreground" />
           <div>
@@ -37,7 +37,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/settings/providers"
-          className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
         >
           <KeyRound className="size-5 text-muted-foreground" />
           <div>

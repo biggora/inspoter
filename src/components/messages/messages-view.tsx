@@ -11,8 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Menu,
   MessageSquare,
   MessageSquareWarning,
@@ -35,6 +33,8 @@ import {
 } from "@/components/ui/input-group";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
+import { NotificationToast } from "@/components/shell/notification-toast";
+import { Pagination } from "@/components/shell/pagination";
 import {
   Select,
   SelectContent,
@@ -744,27 +744,10 @@ export function MessagesView() {
       </div>
 
       {notification && (
-        <div
-          className={cn(
-            "animate-in fade-in-0 slide-in-from-right-4 fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium duration-200",
-            notification.variant === "success"
-              ? "bg-accent-100/90 text-accent-800"
-              : "bg-primary-100/90 text-primary-800",
-          )}
-          role="status"
-          aria-live="polite"
-        >
-          <i
-            className={cn(
-              notification.variant === "success"
-                ? "ri-check-line"
-                : "ri-error-warning-line",
-              "text-base",
-            )}
-            aria-hidden
-          />
-          {notification.message}
-        </div>
+        <NotificationToast
+          message={notification.message}
+          variant={notification.variant}
+        />
       )}
 
       {isMobile && (
@@ -968,31 +951,15 @@ export function MessagesView() {
               </div>
 
               {/* Pagination */}
-              <div className="flex shrink-0 items-center justify-center gap-3 border-t border-background-100 px-5 py-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePrevious}
-                  disabled={pageIndex === 0 || messagesLoading}
-                >
-                  <ChevronLeft aria-hidden data-icon="inline-start" />
-                  Назад
-                </Button>
-                <span className="text-xs text-foreground-400">
-                  Страница {pageIndex + 1}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNext}
-                  disabled={!nextCursor || messagesLoading}
-                >
-                  Далее
-                  <ChevronRight aria-hidden data-icon="inline-end" />
-                </Button>
-              </div>
+              <Pagination
+                page={pageIndex + 1}
+                hasPrevious={pageIndex > 0}
+                hasNext={Boolean(nextCursor)}
+                onPrevious={handlePrevious}
+                onNext={handleNext}
+                disabled={messagesLoading}
+                className="shrink-0 border-t border-background-100 px-5 py-2"
+              />
 
               {/* Message input */}
               <div className="shrink-0 border-t border-background-100 px-5 py-3">
