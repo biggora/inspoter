@@ -1,9 +1,14 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 //
-// Schema authored verbatim from docs/architecture.md v1.1 §2.3 (Decision P-1:
-// full 13-entity schema in one Slice-0 migration). Do not add per-slice
-// incremental models here — see architecture.md §2.3 / plan.md §4.1.
+// Origin: the 13-entity Slice-0 baseline was authored verbatim from
+// docs/architecture.md v1.1 §2.3 in one initial migration (Decision P-1).
+// P-1 revision (2026-07-18): approved feature slices legitimately extend this
+// schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13
+// ownership, provider credentials, services, external identity, and the
+// 20260718130000_mail_client_multi_account mail cluster). What remains
+// prohibited is unreviewed ad-hoc incremental modeling — see
+// docs/architecture.md §4.1 / docs/plan.md §4.1.
 
 generator client {
   provider = "prisma-client"
@@ -78,6 +83,8 @@ model Workspace {
   messageCategories MessageCategory[]
   channels          Channel[]
   messages          Message[]
+  mailAccounts      MailAccount[]
+  mailFolders       MailFolder[]
   mailItems         MailItem[]
   logEntries        LogEntry[]
   alertCategories   AlertCategory[]
@@ -187,20 +194,150 @@ model Message {
   @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
 }
 
-// --- Mail (FR-MAIL-001..002) ---
-model MailItem {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  sender      String
-  subject     String
-  body        String
-  receivedAt  DateTime  @default(now())
-  createdAt   DateTime  @default(now())
+// --- Mail (FR-MAIL-001..002; multi-account mail client) ---
+enum MailAccountKind {
+  WEBHOOK
+  IMAP
+}
 
+enum MailSecurity {
+  SSL
+  STARTTLS
+}
+
+enum MailSyncStatus {
+  IDLE
+  SYNCING
+  ERROR
+}
+
+enum MailSpecialUse {
+  INBOX
+  SENT
+  DRAFTS
+  TRASH
+  JUNK
+  ARCHIVE
+  OTHER
+}
+
+model MailAccount {
+  id                  String          @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind                MailAccountKind
+  mode                ProviderMode
+  name                String
+  email               String
+  imapHost            String?
+  imapPort            Int?
+  imapSecurity        MailSecurity?
+  smtpHost            String?
+  smtpPort            Int?
+  smtpSecurity        MailSecurity?
+  username            String?
+  encryptedData       String? // AES-256-GCM password payload (same scheme as ProviderCredential)
+  iv                  String?
+  authTag             String?
+  maskedHint          String?
+  isValid             Boolean?
+  lastCheckedAt       DateTime?
+  isActive            Boolean         @default(true)
+  syncStatus          MailSyncStatus  @default(IDLE)
+  syncError           String?
+  lastSyncAt          DateTime?
+  nextSyncAt          DateTime?
+  syncLeaseExpiresAt  DateTime?
+  syncIntervalSeconds Int             @default(300)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  folders             MailFolder[]
+  mailItems           MailItem[]
+
+  // At most one WEBHOOK account per workspace: raw partial unique index in the
+  // migration SQL (WHERE "kind" = 'WEBHOOK') — not expressible in Prisma DSL.
+  @@unique([id, workspaceId])
+  @@index([workspaceId])
+  @@index([isActive, nextSyncAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
+}
+
+model MailFolder {
+  id                 String         @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId          String
+  accountWorkspaceId String
+  account            MailAccount    @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  path               String
+  name               String
+  delimiter          String?
+  specialUse         MailSpecialUse @default(OTHER)
+  position           Int            @default(0)
+  uidValidity        BigInt?
+  lastSeenUid        BigInt?
+  lastSyncAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  mailItems          MailItem[]
+
+  @@unique([id, workspaceId])
+  @@unique([accountId, path])
+  @@index([workspaceId])
+}
+
+model MailItem {
+  id                 String           @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId          String
+  accountWorkspaceId String
+  account            MailAccount      @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  folderId           String
+  folderWorkspaceId  String
+  folder             MailFolder       @relation(fields: [folderId, folderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  uid                BigInt? // IMAP UID; null for webhook-ingested items
+  messageId          String?
+  fromAddress        String
+  fromName           String?
+  toRecipients       Json?
+  ccRecipients       Json?
+  bccRecipients      Json?
+  replyToAddress     String?
+  subject            String
+  bodyText           String
+  bodyHtml           String?
+  snippet            String?
+  isRead             Boolean          @default(false)
+  isAnswered         Boolean          @default(false)
+  isFlagged          Boolean          @default(false)
+  hasAttachments     Boolean          @default(false)
+  receivedAt         DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  attachments        MailAttachment[]
+
+  @@unique([folderId, uid]) // idempotent sync upsert; NULL uid (webhook items) never conflicts
   @@index([workspaceId])
   @@index([workspaceId, receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
-  @@index([workspaceId, sender]) // equality filter (AC-MAIL-003, NFR-PERF-002)
+  @@index([workspaceId, fromAddress]) // equality filter (AC-MAIL-003, NFR-PERF-002)
+  @@index([workspaceId, accountId, folderId, receivedAt, id]) // per-folder list + keyset pagination
+  @@index([workspaceId, accountId, folderId, isRead]) // unread filter + folder badge counts
+}
+
+model MailAttachment {
+  id          String    @id @default(cuid())
+  mailItemId  String
+  mailItem    MailItem  @relation(fields: [mailItemId], references: [id], onDelete: Cascade)
+  partId      String? // IMAP BODYSTRUCTURE part id; null for non-IMAP sources
+  filename    String
+  contentType String
+  sizeBytes   Int
+  contentId   String?
+  isInline    Boolean   @default(false)
+  content     Bytes? // lazily fetched from IMAP on first access, then cached
+  fetchedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([mailItemId])
 }
 
 // --- Logs (FR-LOG-001..002) ---

@@ -1,0 +1,371 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Archive,
+  ChevronLeft,
+  Forward,
+  Mail,
+  MailOpen,
+  Paperclip,
+  RefreshCw,
+  Reply,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { MailBody } from "./mail-body";
+import { getInitials, stringToColor } from "./message-list";
+import {
+  ApiError,
+  downloadAttachment,
+  type MailAddressDto,
+  type MailDetailDto,
+} from "./api";
+
+function formatFullDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatAddress(address: MailAddressDto): string {
+  return address.name
+    ? `${address.name} <${address.address}>`
+    : address.address;
+}
+
+function formatAddressList(addresses: MailAddressDto[]): string {
+  return addresses.map(formatAddress).join(", ");
+}
+
+function formatBytes(sizeBytes: number): string {
+  if (sizeBytes >= 1024 * 1024) {
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} МБ`;
+  }
+  if (sizeBytes >= 1024) {
+    return `${Math.round(sizeBytes / 1024)} КБ`;
+  }
+  return `${sizeBytes} Б`;
+}
+
+export interface MessagePaneProps {
+  detail: MailDetailDto | null;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  hasSelection: boolean;
+  /** Mobile-only: return from the detail back to the message list. */
+  onBack: () => void;
+  onReply: () => void;
+  onForward: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  onToggleRead: () => void;
+  /** Account has an ARCHIVE folder and the message is not already in it. */
+  canArchive: boolean;
+  /** Message sits in the TRASH folder — deleting is permanent (confirm). */
+  isInTrash: boolean;
+}
+
+// Reading pane (plan §5) + Phase 6 action bar under the subject header:
+// reply/forward/archive/delete/read-toggle. WEBHOOK messages only expose
+// delete + read-toggle (no transport to answer through). Attachment chips
+// (Phase 7) download through the lazy-cache attachment route.
+export function MessagePane({
+  detail,
+  loading,
+  error,
+  onRetry,
+  hasSelection,
+  onBack,
+  onReply,
+  onForward,
+  onArchive,
+  onDelete,
+  onToggleRead,
+  canArchive,
+  isInTrash,
+}: MessagePaneProps) {
+  // Permanent-delete confirm (trash only) — controlled so the confirm button
+  // reliably closes the dialog before the row disappears.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Attachment chip currently downloading (lazy IMAP fetch can take a
+  // moment on first access) — one at a time is enough for chips.
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownloadAttachment(
+    mailId: string,
+    attachmentId: string,
+    filename: string,
+  ) {
+    if (downloadingId) return;
+    setDownloadingId(attachmentId);
+    try {
+      await downloadAttachment(mailId, attachmentId, filename);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Не удалось скачать вложение. Попробуйте снова.",
+      );
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  if (!hasSelection) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <EmptyState
+          bordered={false}
+          size="sm"
+          icon={MailOpen}
+          title="Выберите письмо"
+          description="Нажмите на письмо слева, чтобы прочитать его"
+          className="max-w-xs"
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <BackButton onBack={onBack} />
+        <div className="space-y-3 p-6">
+          <Alert variant="error">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button type="button" size="sm" onClick={onRetry}>
+            <RefreshCw aria-hidden data-icon="inline-start" />
+            Повторить
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading || !detail) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <BackButton onBack={onBack} />
+        <div className="space-y-4 p-6">
+          <Skeleton className="h-6 w-3/4" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 shrink-0 rounded-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+          </div>
+          <div className="space-y-2 pt-2">
+            {[1, 2, 3, 4, 5].map((row) => (
+              <Skeleton key={row} className="h-4 w-full" />
+            ))}
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = detail.fromName || detail.from;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
+      <BackButton onBack={onBack} />
+      <div className="border-b border-background-100 px-6 py-5">
+        <h2 className="mb-3 font-heading text-lg font-semibold text-foreground-900">
+          {detail.subject}
+        </h2>
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-background-50"
+            style={{ backgroundColor: stringToColor(displayName) }}
+          >
+            {getInitials(displayName)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground-900">
+              {displayName}
+            </p>
+            <p className="truncate text-xs text-foreground-400">
+              {detail.from}
+            </p>
+            {detail.to.length > 0 && (
+              <p
+                className="truncate text-xs text-foreground-400"
+                title={formatAddressList(detail.to)}
+              >
+                Кому: {formatAddressList(detail.to)}
+              </p>
+            )}
+            {detail.cc.length > 0 && (
+              <p
+                className="truncate text-xs text-foreground-400"
+                title={formatAddressList(detail.cc)}
+              >
+                Копия: {formatAddressList(detail.cc)}
+              </p>
+            )}
+            <p className="mt-0.5 text-xs text-foreground-400">
+              {formatFullDate(detail.receivedAt)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1 border-b border-background-100 px-4 py-1.5">
+        {detail.accountKind !== "WEBHOOK" && (
+          <>
+            <Button type="button" variant="ghost" size="sm" onClick={onReply}>
+              <Reply aria-hidden data-icon="inline-start" />
+              Ответить
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onForward}>
+              <Forward aria-hidden data-icon="inline-start" />
+              Переслать
+            </Button>
+            {canArchive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onArchive}
+              >
+                <Archive aria-hidden data-icon="inline-start" />
+                В архив
+              </Button>
+            )}
+          </>
+        )}
+        {isInTrash ? (
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogTrigger
+              render={<Button type="button" variant="ghost" size="sm" />}
+            >
+              <Trash2 aria-hidden data-icon="inline-start" />
+              Удалить
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить навсегда?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Письмо находится в корзине и будет удалено без возможности
+                  восстановления.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    onDelete();
+                  }}
+                >
+                  Удалить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
+            <Trash2 aria-hidden data-icon="inline-start" />
+            Удалить
+          </Button>
+        )}
+        <Button type="button" variant="ghost" size="sm" onClick={onToggleRead}>
+          {detail.isRead ? (
+            <>
+              <Mail aria-hidden data-icon="inline-start" />
+              Непрочитано
+            </>
+          ) : (
+            <>
+              <MailOpen aria-hidden data-icon="inline-start" />
+              Прочитано
+            </>
+          )}
+        </Button>
+      </div>
+
+      {detail.attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-b border-background-100 px-6 py-3">
+          {/* Download chips (Phase 7): lazy IMAP fetch + cached bytes via
+              GET /api/mail/[id]/attachments/[attId]. */}
+          {detail.attachments.map((attachment) => (
+            <Button
+              key={attachment.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={downloadingId !== null}
+              onClick={() =>
+                handleDownloadAttachment(
+                  detail.id,
+                  attachment.id,
+                  attachment.filename,
+                )
+              }
+            >
+              {downloadingId === attachment.id ? (
+                <Spinner
+                  aria-label="Скачивание вложения"
+                  data-icon="inline-start"
+                />
+              ) : (
+                <Paperclip aria-hidden data-icon="inline-start" />
+              )}
+              <span className="max-w-48 truncate">{attachment.filename}</span>
+              <span className="text-muted-foreground">
+                {formatBytes(attachment.sizeBytes)}
+              </span>
+            </Button>
+          ))}
+        </div>
+      )}
+
+      <div className="px-6 py-5">
+        <MailBody bodyText={detail.bodyText} bodyHtml={detail.bodyHtml} />
+      </div>
+    </div>
+  );
+}
+
+// Mobile-only return control — on lg+ the list stays visible next to the
+// pane, so the button is hidden there.
+function BackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="shrink-0 border-b border-background-100 px-3 py-2 lg:hidden">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack}>
+        <ChevronLeft aria-hidden data-icon="inline-start" />
+        Назад к списку
+      </Button>
+    </div>
+  );
+}

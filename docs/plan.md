@@ -1,15 +1,20 @@
 # Execution Plan — inspoter (vertical slices)
 
-**Version:** 1.4
-**Status:** Revised to record the Workspaces slice implemented out-of-band between Slice 1 and Slice 2 (v1.3 → v1.4)
+**Version:** 1.5
+**Status:** Revised to record the Q-14 Mail multi-account client slice (§5b, phases M1–M8, all done) on top of v1.4's Workspaces record
 **Owner:** Planner
-**Date:** 2026-07-13
+**Date:** 2026-07-18
 **Normative inputs:** `docs/prd.md` v2.1+ (requirements + AC-IDs, incl. §3.10 Workspaces / AC-WS-001..011), `docs/architecture.md` v1.1 (layers, schema §2.3, build order §7, ADRs §8), `docs/design.md` v1.1 (UI spec, Slice 1 dark-only), `docs/progress.md` (coordinator Decisions log)
 **Consumed by:** coordinator (dispatch), tester (test-plan matrix), backend-dev, frontend-dev, implementor, code-reviewer
 
 **Scope of this document:** Slice 0 (scaffolding) and Slice 1 (tracer bullet) are specified at **executable, per-file** detail — work starts on them immediately. Slices 2–7 are specified at **structural** detail (goal, AC coverage, ordering, coarse subtasks, disjoint scope zones) per the current-launch boundary in `progress.md` line 3. No requirement is invented beyond PRD v2.1; no architecture decision is altered. Any document conflict is recorded in §9 Conflicts, not silently "fixed". **§5a (added v1.4) documents the Workspaces slice, which was implemented between Slice 1 and Slice 2 and was not part of the original v1.0–v1.3 slice sequence.**
 
 ## Changelog
+
+**v1.5 — 2026-07-18 (Q-14 Mail multi-account client slice).**
+
+- **Added §5b — Slice MAIL.** Records the Q-14 expansion of `/mail` from the Slice-6 read-only webhook list into a full multi-account IMAP/SMTP client, executed as eight linear phases (schema/migration → transport → accounts → sync → reading UI → actions/send → attachments → documentation), each verified before the next. All eight phases are **done**.
+- **Appendix A** gains a Mail-client row (AC-MAIL-007..030, 24 IDs) with a footnote that the appendix totals predate PRD v3.x renumbering; PRD v3.7 Appendix B is the authoritative accounting (144 unconditional active).
 
 **v1.4 — 2026-07-13 (retroactive documentation of the Workspaces slice, implemented out-of-band).**
 
@@ -219,6 +224,27 @@ All Slice-1 acceptance tests green end-to-end in a real browser against a real P
 **Deviation from process (recorded, not silently absorbed):** this slice skipped the tester-Mode-A-first workflow (§2, §5's Phase 1) that governs every other slice in this document — implementation and tests were not adversarially separated. This is a process gap relative to §2's "tester owns `tests/**` exclusively, dev roles never write tests" rule (S-1, §12) and should be closed by a dedicated tester Mode-B pass before Slice 2 is considered to build on a fully-verified workspace layer.
 
 ---
+
+## 5b. Slice MAIL — Q-14 multi-account mail client (implemented 2026-07-18, all phases done)
+
+**Trigger:** binding user decision Q-14 (PRD v3.7, D-22) lifted the Q-5 read-only constraint on Mail. This slice turns the Slice-6 read-only webhook list into a full multi-account IMAP/SMTP client while preserving the `POST /api/webhooks/mail` contract via a per-workspace system WEBHOOK mailbox.
+
+**AC-IDs covered:** AC-MAIL-007..030 (24 new; PRD v3.7 §3.4), plus re-verification of AC-MAIL-001..006 against the three-pane client.
+
+**Phases (linear 1→8; each phase verified before the next; per approved plan `mail-sorted-avalanche`):**
+
+| #  | Phase                                                                 | Key files                                                                                                                                        | Status / verification                                                                                              |
+| -- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| M1 | Schema + migration + webhook mailbox backfill                         | `prisma/schema.prisma` (MailAccount/MailFolder/MailAttachment, extended MailItem), `prisma/migrations/20260718130000_mail_client_multi_account/`, `src/lib/services/mail.ts`, `mail-accounts.ts` get-or-create | done — `pnpm test` green, legacy UI kept working on renamed columns                                                |
+| M2 | Transport layer (`src/lib/mail/`)                                     | `types.ts`, `imap-smtp.ts`, `mock.ts`, `index.ts`; crypto union `MAIL_PASSWORD`; `next.config.ts` `serverExternalPackages`; tsconfig ES2020        | done — `pnpm typecheck && pnpm build`, `mock-driver.test.ts`                                                       |
+| M3 | Accounts: service + API + settings UI                                 | `src/lib/services/mail-accounts.ts`, `src/lib/validation/mail.ts`, `src/app/api/mail/accounts/**`, `src/app/(dashboard)/settings/mail/`, `src/components/settings/mail-account*`                                 | done — `mail-accounts.test.ts`; MOCK account creates, «Проверить подключение» green                                |
+| M4 | Sync engine + scheduler #2                                            | `src/lib/services/mail-sync.ts`, `mail-scheduler.ts`, `src/instrumentation.ts`, sync/folders routes                                              | done — `mail-sync.test.ts` (lease, initial limit, incremental, UIDVALIDITY reset, flags, deletions, error path)    |
+| M5 | Mail API + three-pane reading UI                                      | `src/lib/services/mail.ts` (filters/snippet), `/api/mail*`, `src/components/mail/mail-client-view|mail-sidebar|message-list|message-pane|mail-body` | done — e2e list/detail/folders/badges + axe (`e2e/mail-client.spec.ts`)                                            |
+| M6 | Actions + send                                                        | PATCH/DELETE/move/send routes, send rate limiter, `compose-dialog.tsx`, action bar                                                               | done — `mail-actions.test.ts` + e2e read-toggle/archive/trash/compose/reply                                        |
+| M7 | Attachments                                                           | attachment route, `attachments in message-pane`, lazy bytea cache                                                                                | done — `mail-attachments.test.ts` (cache), e2e download                                                            |
+| M8 | Documentation + final polish                                          | prd/architecture/design/plan/test-plan/progress, `specs/ui.md`, schema header                                                                    | done — full `pnpm lint`/`typecheck`/`test`/e2e regression (results in `docs/progress.md`)                          |
+
+**Deviation note:** like Slice WS, this slice was executed by feature subagents with tests written alongside implementation (not the §2 tester-Mode-A-first protocol); coverage is recorded in `docs/test-plan.md` §8.
 
 ## 6. Slices 2–7 (structural — goal, AC coverage, ordering, coarse subtasks)
 
@@ -433,7 +459,8 @@ The MVP is DONE when Slices 0–7 are each DONE and:
 | 5     | AC-ALR-001..007                                        | 7            |
 | 6     | AC-MAIL-001..006                                       | 6            |
 | 7     | AC-MSG-001..007                                        | 7            |
+| MAIL  | AC-MAIL-007..030 (Q-14 client, §5b)                    | 24           |
 | —     | **AC-MSG-008 — INACTIVE (gated on OQ-6), not planned** | 1 (inactive) |
-|       | **Total active**                                       | **90**       |
+|       | **Total active**                                       | **90 (+24 Q-14 = 114 of this appendix's baseline)** |
 
-Every one of the 90 active AC-IDs (PRD Appendix B, progress.md:11–13; §3.10 for AC-WS-001..011) maps to exactly one **primary** slice. **Distributed-verification footnote (CH-PLAN-003):** AC-PROV-001 and AC-PROV-003 are exercised across Slices 2 (Domains) and 3 (Servers); AC-WH-003 and AC-WH-007 are exercised across Slices 4/5/6/7 (one webhook `type` per slice). Their primary-slice assignment above is where the mechanism is first built; full `PASS` timing is in the §10.1 distributed-AC list. AC-MSG-008 is the sole inactive ID and is intentionally UNVERIFIED per D-10/OQ-6. **Slice WS's 11 AC-IDs are implemented but not yet tester-verified** (§5a) — `docs/test-plan.md` §3.2 tracks this as a residual gap, distinct from AC-MSG-008's intentional inactivity.
+**Baseline note (v1.5):** this appendix's 90-ID total is the historical PRD v2.x baseline; PRD v3.x amendments (Bookmarks AC-BM-015..034, Messages AC-MSG-009..014, Alerts AC-ALR-008, AC-REAL/AC-DEMO families, and the Q-14 Mail row above) are accounted authoritatively in PRD v3.7 Appendix B (144 unconditional active + 16 conditional + 1 inactive). Every one of the 90 active AC-IDs (PRD Appendix B, progress.md:11–13; §3.10 for AC-WS-001..011) maps to exactly one **primary** slice. **Distributed-verification footnote (CH-PLAN-003):** AC-PROV-001 and AC-PROV-003 are exercised across Slices 2 (Domains) and 3 (Servers); AC-WH-003 and AC-WH-007 are exercised across Slices 4/5/6/7 (one webhook `type` per slice). Their primary-slice assignment above is where the mechanism is first built; full `PASS` timing is in the §10.1 distributed-AC list. AC-MSG-008 is the sole inactive ID and is intentionally UNVERIFIED per D-10/OQ-6. **Slice WS's 11 AC-IDs are implemented but not yet tester-verified** (§5a) — `docs/test-plan.md` §3.2 tracks this as a residual gap, distinct from AC-MSG-008's intentional inactivity.

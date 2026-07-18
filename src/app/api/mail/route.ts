@@ -18,9 +18,15 @@ export async function GET(request: NextRequest) {
 
   const result = await mailService.list(workspace.id, {
     cursor: sp.get("cursor") ?? undefined,
-    sender: sp.get("sender") ?? undefined,
+    from: sp.get("from") ?? undefined,
     query: sp.get("query") ?? undefined,
+    accountId: sp.get("accountId") ?? undefined,
+    folderId: sp.get("folderId") ?? undefined,
+    unreadOnly: sp.get("unread") === "1",
     sort,
   });
-  return jsonResponse(result);
+  return jsonResponse({
+    items: result.items.map(mailService.toMailListItemDto),
+    nextCursor: result.nextCursor,
+  });
 }

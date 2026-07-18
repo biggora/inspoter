@@ -252,24 +252,92 @@ test("mail row selection renders the corresponding message detail", async ({
 }) => {
   const browserErrors = captureUnexpectedBrowserErrors(page);
 
+  await page.route("**/api/mail/accounts", (route) =>
+    json(route, [
+      {
+        id: "acc-1",
+        kind: "IMAP",
+        mode: "MOCK",
+        name: "Рабочая почта",
+        email: "mail-ops@example.com",
+        imapHost: "imap.example.com",
+        imapPort: 993,
+        imapSecurity: "SSL",
+        smtpHost: "smtp.example.com",
+        smtpPort: 465,
+        smtpSecurity: "SSL",
+        username: "ops",
+        maskedHint: "••••",
+        isValid: true,
+        lastCheckedAt: null,
+        isActive: true,
+        syncStatus: "IDLE",
+        syncError: null,
+        lastSyncAt: null,
+        createdAt: "2026-07-17T09:00:00.000Z",
+        updatedAt: "2026-07-17T09:00:00.000Z",
+      },
+    ]),
+  );
+  await page.route("**/api/mail/accounts/acc-1/folders", (route) =>
+    json(route, [
+      {
+        id: "folder-inbox",
+        path: "INBOX",
+        name: "Входящие",
+        specialUse: "INBOX",
+        position: 0,
+        unreadCount: 1,
+      },
+    ]),
+  );
   await page.route("**/api/mail?*", (route) =>
     json(route, {
       items: [
         {
           id: "mail-1",
-          sender: "ops@example.com",
+          from: "ops@example.com",
+          fromName: "Ops Team",
           subject: "Incident resolved",
-          body: "The primary service is healthy again.\nNo action is required.",
+          snippet: "The primary service is healthy again.",
+          isRead: false,
+          isAnswered: false,
+          isFlagged: false,
+          hasAttachments: false,
           receivedAt: "2026-07-17T09:15:00.000Z",
+          accountId: "acc-1",
+          folderId: "folder-inbox",
         },
       ],
       nextCursor: null,
     }),
   );
+  await page.route("**/api/mail/mail-1", (route) =>
+    json(route, {
+      id: "mail-1",
+      accountId: "acc-1",
+      folderId: "folder-inbox",
+      accountKind: "IMAP",
+      from: "ops@example.com",
+      fromName: "Ops Team",
+      to: [{ name: null, address: "operator@inspot.local" }],
+      cc: [],
+      subject: "Incident resolved",
+      snippet: "The primary service is healthy again.",
+      bodyText: "The primary service is healthy again.\nNo action is required.",
+      bodyHtml: null,
+      isRead: false,
+      isAnswered: false,
+      isFlagged: false,
+      hasAttachments: false,
+      receivedAt: "2026-07-17T09:15:00.000Z",
+      attachments: [],
+    }),
+  );
 
   await page.goto("/mail");
   const messageRow = page.getByRole("button", {
-    name: /ops@example\.com.*Incident resolved/,
+    name: /Ops Team.*Incident resolved/,
   });
   await expect(messageRow).toBeVisible();
   await messageRow.click();
@@ -287,7 +355,7 @@ test("mail row selection renders the corresponding message detail", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Назад к почте", exact: true }),
+    page.getByText("Кому: operator@inspot.local", { exact: true }),
   ).toBeVisible();
   expectNoUnexpectedBrowserErrors(browserErrors);
 });
@@ -411,10 +479,9 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   await expect(retry).toBeVisible();
   await expect(retry).toBeEnabled();
   await expect(
-    page.getByText(
-      "Cloudflare — Не удалось получить данные от провайдера.",
-      { exact: true },
-    ),
+    page.getByText("Cloudflare — Не удалось получить данные от провайдера.", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText("Timeout after 30s")).toHaveCount(0);
   expect(domainRscRequests).toBe(requestCountBeforeRetry + 1);

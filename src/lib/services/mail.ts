@@ -1,7 +1,11 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
-import { Prisma, type MailItem } from "@/generated/prisma/client";
+import { Prisma, type MailAccountKind } from "@/generated/prisma/client";
+import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
 
+// External webhook contract shape (src/lib/validation/webhooks.ts mailSchema):
+// `sender`/`body` are mapped to the renamed `fromAddress`/`bodyText` columns
+// internally.
 export interface CreateMailInput {
   sender: string;
   subject: string;
@@ -12,13 +16,37 @@ export interface CreateMailInput {
 export interface ListMailParams {
   cursor?: string;
   pageSize?: number;
-  sender?: string;
+  from?: string;
   query?: string;
   sort?: "asc" | "desc";
+  accountId?: string;
+  folderId?: string;
+  unreadOnly?: boolean;
 }
 
+// List projection: metadata only — bodies (`bodyText`/`bodyHtml`) never travel
+// with list responses (plan §4); the reading pane fetches them via getById.
+const LIST_SELECT = {
+  id: true,
+  fromAddress: true,
+  fromName: true,
+  subject: true,
+  snippet: true,
+  isRead: true,
+  isAnswered: true,
+  isFlagged: true,
+  hasAttachments: true,
+  receivedAt: true,
+  accountId: true,
+  folderId: true,
+} satisfies Prisma.MailItemSelect;
+
+export type MailListItem = Prisma.MailItemGetPayload<{
+  select: typeof LIST_SELECT;
+}>;
+
 export interface ListMailResult {
-  items: MailItem[];
+  items: MailListItem[];
   nextCursor: string | null;
 }
 
@@ -30,7 +58,7 @@ interface Cursor {
 
 function encodeCursor(
   workspaceId: string,
-  entry: Pick<MailItem, "receivedAt" | "id">,
+  entry: Pick<MailListItem, "receivedAt" | "id">,
 ): string {
   return Buffer.from(
     JSON.stringify({
@@ -56,16 +84,28 @@ function decodeCursor(cursor: string): Cursor | null {
   }
 }
 
+// First 120 chars of the body with whitespace collapsed, for list rows.
+function makeSnippet(body: string): string {
+  return body.replace(/\s+/g, " ").trim().slice(0, 120);
+}
+
 export async function create(
   workspaceId: string,
   input: CreateMailInput,
 ): Promise<{ id: string }> {
+  const { account, inboxFolder } = await getOrCreateWebhookAccount(workspaceId);
   const entry = await db.mailItem.create({
     data: {
       workspaceId,
-      sender: input.sender,
+      accountId: account.id,
+      accountWorkspaceId: workspaceId,
+      folderId: inboxFolder.id,
+      folderWorkspaceId: workspaceId,
+      fromAddress: input.sender,
       subject: input.subject,
-      body: input.body,
+      bodyText: input.body,
+      snippet: makeSnippet(input.body),
+      isRead: false,
       ...(input.receivedAt ? { receivedAt: new Date(input.receivedAt) } : {}),
     },
   });
@@ -80,11 +120,15 @@ export async function list(
   const sort = params.sort ?? "desc";
 
   const where: Prisma.MailItemWhereInput = { workspaceId };
-  if (params.sender) where.sender = params.sender;
+  if (params.from) where.fromAddress = params.from;
+  if (params.accountId) where.accountId = params.accountId;
+  if (params.folderId) where.folderId = params.folderId;
+  if (params.unreadOnly) where.isRead = false;
   if (params.query) {
     where.OR = [
       { subject: { contains: params.query, mode: "insensitive" } },
-      { sender: { contains: params.query, mode: "insensitive" } },
+      { fromAddress: { contains: params.query, mode: "insensitive" } },
+      { fromName: { contains: params.query, mode: "insensitive" } },
     ];
   }
 
@@ -112,6 +156,7 @@ export async function list(
 
   const rows = await db.mailItem.findMany({
     where,
+    select: LIST_SELECT,
     orderBy: [{ receivedAt: sort }, { id: sort }],
     take: pageSize + 1,
   });
@@ -125,9 +170,149 @@ export async function list(
   return { items, nextCursor };
 }
 
+// Detail row: full bodies + attachment metadata (never `content` bytes) +
+// account kind, so the UI can distinguish webhook and IMAP mailboxes.
+const DETAIL_INCLUDE = {
+  attachments: {
+    select: {
+      id: true,
+      filename: true,
+      contentType: true,
+      sizeBytes: true,
+      isInline: true,
+    },
+    orderBy: { createdAt: "asc" },
+  },
+  account: { select: { kind: true } },
+} satisfies Prisma.MailItemInclude;
+
+export type MailDetailItem = Prisma.MailItemGetPayload<{
+  include: typeof DETAIL_INCLUDE;
+}>;
+
 export async function getById(
   id: string,
   workspaceId: string,
-): Promise<MailItem | null> {
-  return db.mailItem.findFirst({ where: { id, workspaceId } });
+): Promise<MailDetailItem | null> {
+  return db.mailItem.findFirst({
+    where: { id, workspaceId },
+    include: DETAIL_INCLUDE,
+  });
+}
+
+// Wire shapes for the /api/mail routes (plan §4). BigInt columns (`uid`) are
+// deliberately never part of a DTO — they must not reach JSON.stringify.
+export interface MailAddressDto {
+  name: string | null;
+  address: string;
+}
+
+export interface MailListItemDto {
+  id: string;
+  from: string;
+  fromName: string | null;
+  subject: string;
+  snippet: string | null;
+  isRead: boolean;
+  isAnswered: boolean;
+  isFlagged: boolean;
+  hasAttachments: boolean;
+  receivedAt: Date;
+  accountId: string;
+  folderId: string;
+}
+
+export function toMailListItemDto(item: MailListItem): MailListItemDto {
+  return {
+    id: item.id,
+    from: item.fromAddress,
+    fromName: item.fromName,
+    subject: item.subject,
+    snippet: item.snippet,
+    isRead: item.isRead,
+    isAnswered: item.isAnswered,
+    isFlagged: item.isFlagged,
+    hasAttachments: item.hasAttachments,
+    receivedAt: item.receivedAt,
+    accountId: item.accountId,
+    folderId: item.folderId,
+  };
+}
+
+export interface MailAttachmentDto {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  isInline: boolean;
+}
+
+export interface MailDetailDto {
+  id: string;
+  accountId: string;
+  folderId: string;
+  accountKind: MailAccountKind;
+  from: string;
+  fromName: string | null;
+  to: MailAddressDto[];
+  cc: MailAddressDto[];
+  subject: string;
+  snippet: string | null;
+  bodyText: string;
+  bodyHtml: string | null;
+  isRead: boolean;
+  isAnswered: boolean;
+  isFlagged: boolean;
+  hasAttachments: boolean;
+  receivedAt: Date;
+  attachments: MailAttachmentDto[];
+}
+
+// Recipients are stored as Json `{ name: string | null, address: string }[]`
+// (mail-sync.ts toJsonAddresses); parse defensively so a malformed row never
+// breaks the detail response.
+function parseAddresses(value: Prisma.JsonValue | null): MailAddressDto[] {
+  if (!Array.isArray(value)) return [];
+  const addresses: MailAddressDto[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    if (typeof record.address !== "string") continue;
+    addresses.push({
+      name: typeof record.name === "string" ? record.name : null,
+      address: record.address,
+    });
+  }
+  return addresses;
+}
+
+export function toMailDetailDto(item: MailDetailItem): MailDetailDto {
+  return {
+    id: item.id,
+    accountId: item.accountId,
+    folderId: item.folderId,
+    accountKind: item.account.kind,
+    from: item.fromAddress,
+    fromName: item.fromName,
+    to: parseAddresses(item.toRecipients),
+    cc: parseAddresses(item.ccRecipients),
+    subject: item.subject,
+    snippet: item.snippet,
+    bodyText: item.bodyText,
+    bodyHtml: item.bodyHtml,
+    isRead: item.isRead,
+    isAnswered: item.isAnswered,
+    isFlagged: item.isFlagged,
+    hasAttachments: item.hasAttachments,
+    receivedAt: item.receivedAt,
+    attachments: item.attachments.map((attachment) => ({
+      id: attachment.id,
+      filename: attachment.filename,
+      contentType: attachment.contentType,
+      sizeBytes: attachment.sizeBytes,
+      isInline: attachment.isInline,
+    })),
+  };
 }
