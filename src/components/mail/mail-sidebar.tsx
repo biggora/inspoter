@@ -1,0 +1,272 @@
+"use client";
+
+import Link from "next/link";
+import {
+  Archive,
+  FileText,
+  Folder,
+  Inbox,
+  RefreshCw,
+  Send,
+  Settings,
+  ShieldAlert,
+  SquarePen,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import type { MailAccountDto, MailFolderDto } from "./api";
+
+const SPECIAL_USE_NAMES: Partial<Record<MailFolderDto["specialUse"], string>> =
+  {
+    INBOX: "Входящие",
+    SENT: "Отправленные",
+    DRAFTS: "Черновики",
+    TRASH: "Корзина",
+    JUNK: "Спам",
+    ARCHIVE: "Архив",
+  };
+
+const SPECIAL_USE_ICONS: Partial<
+  Record<MailFolderDto["specialUse"], LucideIcon>
+> = {
+  INBOX: Inbox,
+  SENT: Send,
+  DRAFTS: FileText,
+  TRASH: Trash2,
+  JUNK: ShieldAlert,
+  ARCHIVE: Archive,
+};
+
+export function folderDisplayName(folder: MailFolderDto): string {
+  return SPECIAL_USE_NAMES[folder.specialUse] ?? folder.name;
+}
+
+// Sync status dot next to the account name: animated while syncing, red on
+// error (with the error text in the tooltip). Idle accounts show nothing.
+function SyncStatusDot({ account }: { account: MailAccountDto }) {
+  if (account.syncStatus === "SYNCING") {
+    return (
+      <span
+        className="size-2 shrink-0 animate-pulse rounded-full bg-[var(--info-text)]"
+        title="Синхронизация…"
+      />
+    );
+  }
+  if (account.syncStatus === "ERROR") {
+    return (
+      <span
+        className="size-2 shrink-0 rounded-full bg-[var(--error-text)]"
+        title={account.syncError ?? "Ошибка синхронизации"}
+      />
+    );
+  }
+  return null;
+}
+
+export interface MailSidebarProps {
+  accounts: MailAccountDto[];
+  selectedAccountId: string | null;
+  onSelectAccount: (id: string) => void;
+  folders: MailFolderDto[];
+  foldersLoading: boolean;
+  foldersError: string | null;
+  onRetryFolders: () => void;
+  selectedFolderId: string | null;
+  onSelectFolder: (id: string) => void;
+  onSync: () => void;
+  syncing: boolean;
+  /** null while no IMAP account exists — compose stays disabled. */
+  onCompose: (() => void) | null;
+}
+
+// Account switcher + folder list + sync/compose actions (plan §5). Rendered
+// both in the persistent desktop rail (lg+) and inside the mobile Sheet.
+export function MailSidebar({
+  accounts,
+  selectedAccountId,
+  onSelectAccount,
+  folders,
+  foldersLoading,
+  foldersError,
+  onRetryFolders,
+  selectedFolderId,
+  onSelectFolder,
+  onSync,
+  syncing,
+  onCompose,
+}: MailSidebarProps) {
+  const selectedAccount =
+    accounts.find((account) => account.id === selectedAccountId) ?? null;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="space-y-2 border-b border-background-100 p-3">
+        {/* Compose needs an IMAP account with SMTP transport — the webhook
+            mailbox is inbound-only. */}
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!onCompose}
+          title={
+            onCompose ? undefined : "Добавьте IMAP-аккаунт, чтобы писать письма"
+          }
+          onClick={onCompose ?? undefined}
+        >
+          <SquarePen aria-hidden data-icon="inline-start" />
+          Написать
+        </Button>
+
+        <Select
+          value={selectedAccountId ?? ""}
+          onValueChange={(value) => value && onSelectAccount(value as string)}
+          items={Object.fromEntries(
+            accounts.map((account) => [account.id, account.name]),
+          )}
+        >
+          <SelectTrigger className="w-full" aria-label="Почтовый аккаунт">
+            <SelectValue placeholder="Выберите аккаунт..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <SyncStatusDot account={account} />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{account.name}</span>
+                      {account.email && (
+                        <span className="truncate text-xs text-muted-foreground">
+                          {account.email}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        {selectedAccount && (
+          <div className="flex min-w-0 items-center gap-1.5 px-0.5">
+            <SyncStatusDot account={selectedAccount} />
+            <span
+              className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+              title={selectedAccount.email || selectedAccount.name}
+            >
+              {selectedAccount.email || selectedAccount.name}
+            </span>
+            {selectedAccount.kind === "WEBHOOK" && (
+              <Badge variant="secondary">Системный</Badge>
+            )}
+          </div>
+        )}
+      </div>
+
+      <nav
+        aria-label="Папки"
+        className="flex-1 space-y-0.5 overflow-y-auto p-2"
+      >
+        {foldersLoading ? (
+          <div className="space-y-1.5 p-1">
+            {[1, 2, 3, 4].map((row) => (
+              <Skeleton key={row} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : foldersError ? (
+          <EmptyState
+            size="xs"
+            align="start"
+            bordered={false}
+            description={foldersError}
+            className="px-2 py-4"
+            action={
+              <Button type="button" size="sm" onClick={onRetryFolders}>
+                <RefreshCw aria-hidden data-icon="inline-start" />
+                Повторить
+              </Button>
+            }
+          />
+        ) : folders.length === 0 ? (
+          <EmptyState
+            size="xs"
+            align="start"
+            bordered={false}
+            description="Папок пока нет. Запустите синхронизацию."
+            className="px-2 py-4"
+          />
+        ) : (
+          folders.map((folder) => {
+            const Icon = SPECIAL_USE_ICONS[folder.specialUse] ?? Folder;
+            const isSelected = folder.id === selectedFolderId;
+            return (
+              <Button
+                key={folder.id}
+                type="button"
+                variant={isSelected ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => onSelectFolder(folder.id)}
+                aria-current={isSelected ? "true" : undefined}
+                className="w-full justify-start"
+              >
+                <Icon aria-hidden data-icon="inline-start" />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {folderDisplayName(folder)}
+                </span>
+                {folder.unreadCount > 0 && (
+                  <Badge aria-label={`Непрочитанных: ${folder.unreadCount}`}>
+                    {folder.unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })
+        )}
+      </nav>
+
+      <div className="space-y-0.5 border-t border-background-100 p-2">
+        {selectedAccount && selectedAccount.kind !== "WEBHOOK" && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onSync}
+            disabled={syncing}
+            className="w-full justify-start"
+          >
+            {syncing ? (
+              <Spinner data-icon="inline-start" aria-hidden />
+            ) : (
+              <RefreshCw aria-hidden data-icon="inline-start" />
+            )}
+            Синхронизировать
+          </Button>
+        )}
+        <Button
+          render={<Link href="/settings/mail" />}
+          nativeButton={false}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+        >
+          <Settings aria-hidden data-icon="inline-start" />
+          Управление аккаунтами
+        </Button>
+      </div>
+    </div>
+  );
+}

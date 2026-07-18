@@ -26,6 +26,20 @@ const envSchema = z
       .int()
       .positive()
       .default(15000),
+    // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
+    MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
+    MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),
+    MAIL_MAX_ATTACHMENT_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(26_214_400),
+    MAIL_SEND_RATE_LIMIT: z.coerce.number().int().positive().default(30),
+    MAIL_SEND_RATE_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000),
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     OPERATOR_PASSWORD_HASH: z.string().min(1).optional(),
     OPERATOR_PASSWORD: z.string().min(1).optional(),

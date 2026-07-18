@@ -13,6 +13,10 @@ const TEST_ENV_KEYS = new Set([
   "OPERATOR_USERNAME",
   "OPERATOR_PASSWORD_HASH",
   "OPERATOR_PASSWORD",
+  // Local-test-only AES key from .env.test.example — the e2e app server needs
+  // it so mail-account creation (encrypted app passwords) works in Playwright
+  // runs; unit tests stub their own value (see mail-accounts.test.ts).
+  "CREDENTIAL_ENCRYPTION_KEY",
 ]);
 
 const PROVIDER_CREDENTIAL_KEYS = [

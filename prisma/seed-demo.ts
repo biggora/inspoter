@@ -352,16 +352,60 @@ async function seedAlerts(client: ClientLike, workspaceId: string) {
   );
 }
 
+// System webhook mailbox (account + INBOX folder) the demo mail lands in.
+// Mirrors src/lib/services/mail-accounts.ts getOrCreateWebhookAccount().
+async function ensureWebhookMailbox(
+  client: ClientLike,
+  workspaceId: string,
+): Promise<{ accountId: string; folderId: string }> {
+  const account = await client.query(
+    'SELECT id FROM "MailAccount" WHERE "workspaceId" = $1 AND kind = \'WEBHOOK\' LIMIT 1',
+    [workspaceId],
+  );
+  let accountId: string;
+  if (account.rowCount && account.rowCount > 0) {
+    accountId = account.rows[0].id as string;
+  } else {
+    accountId = randomUUID();
+    await client.query(
+      "INSERT INTO \"MailAccount\" (id, \"workspaceId\", kind, mode, name, email, \"syncStatus\", \"updatedAt\") VALUES ($1, $2, 'WEBHOOK', 'REAL', 'Webhook', '', 'IDLE', now())",
+      [accountId, workspaceId],
+    );
+  }
+
+  const folder = await client.query(
+    'SELECT id FROM "MailFolder" WHERE "accountId" = $1 AND path = \'INBOX\' LIMIT 1',
+    [accountId],
+  );
+  let folderId: string;
+  if (folder.rowCount && folder.rowCount > 0) {
+    folderId = folder.rows[0].id as string;
+  } else {
+    folderId = randomUUID();
+    await client.query(
+      'INSERT INTO "MailFolder" (id, "workspaceId", "accountId", "accountWorkspaceId", path, name, "specialUse", position, "updatedAt") VALUES ($1, $2, $3, $2, \'INBOX\', \'Входящие\', \'INBOX\', 0, now())',
+      [folderId, workspaceId, accountId],
+    );
+  }
+
+  return { accountId, folderId };
+}
+
 async function seedMail(client: ClientLike, workspaceId: string) {
   const marker = "notifications@server.local";
   const existing = await client.query(
-    'SELECT id FROM "MailItem" WHERE "workspaceId" = $1 AND sender = $2 LIMIT 1',
+    'SELECT id FROM "MailItem" WHERE "workspaceId" = $1 AND "fromAddress" = $2 LIMIT 1',
     [workspaceId, marker],
   );
   if (existing.rowCount && existing.rowCount > 0) {
     console.log("Demo seed: mail items already exist — skipping.");
     return;
   }
+
+  const { accountId, folderId } = await ensureWebhookMailbox(
+    client,
+    workspaceId,
+  );
 
   const items: Array<{ sender: string; subject: string; body: string }> = [
     {
@@ -406,10 +450,12 @@ async function seedMail(client: ClientLike, workspaceId: string) {
     const item = items[i];
     const receivedAt = new Date(now - (items.length - i) * 3 * 60 * 60 * 1000);
     await client.query(
-      'INSERT INTO "MailItem" (id, "workspaceId", sender, subject, body, "receivedAt", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, now())',
+      'INSERT INTO "MailItem" (id, "workspaceId", "accountId", "accountWorkspaceId", "folderId", "folderWorkspaceId", "fromAddress", subject, "bodyText", snippet, "receivedAt", "createdAt") VALUES ($1, $2, $3, $2, $4, $2, $5, $6, $7, left($7, 120), $8, now())',
       [
         randomUUID(),
         workspaceId,
+        accountId,
+        folderId,
         item.sender,
         item.subject,
         item.body,

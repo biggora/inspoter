@@ -8,7 +8,8 @@ export type CredentialData =
   | { type: "CLOUDFLARE_DNS"; apiToken: string }
   | { type: "HETZNER_DNS"; apiToken: string }
   | { type: "HETZNER_CLOUD"; apiToken: string }
-  | { type: "GODADDY_DNS"; apiKey: string; apiSecret: string };
+  | { type: "GODADDY_DNS"; apiKey: string; apiSecret: string }
+  | { type: "MAIL_PASSWORD"; imapPassword: string; smtpPassword?: string };
 
 export interface EncryptedPayload {
   encryptedData: string; // hex

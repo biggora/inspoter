@@ -1,9 +1,16 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
+**Version:** 1.1
+**Status:** v1.1 adds the Q-14 Mail-client matrix (§8, AC-MAIL-007..030 — runtime green 2026-07-18). Historical Slice 1 Mode B runtime was green on 2026-07-12; sections §§2–7 keep their pre-Q-14 dispositions and dates.
 **Owner:** tester
-**Status:** Historical Slice 1 Mode B runtime was green on 2026-07-12. The rewritten R2.0-I3 E2E suite remains **PENDING_REVALIDATION** until R2.0-G completes its dedicated-database repeated runtime gate; prior unit evidence remains valid. Q-13 is an approved documentation target but is **not implemented or runtime-verified**. Workspaces remain PARTIAL.
-**Scope:** Slice 0/1 evidence + R2.0 current revalidation + Q-13 workspace foundation/facet/all-section contract. This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.1, `docs/architecture.md` v1.4, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.0, `docs/plan.md` v1.4, `docs/progress.md`
+**Date:** 2026-07-18
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.7, `docs/architecture.md` v1.5, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.8, `docs/plan.md` v1.5, `docs/progress.md`
+
+## Changelog
+
+- **v1.1 — 2026-07-18:** added §8 (Q-14 mail client): AC-MAIL-007..030 traceability to unit suites (`mail-accounts`, `mail-sync`, `mail-actions`, `mail-attachments`, `mock-driver`, extended `mail`) and `e2e/mail-client.spec.ts`, plus the mock-driver test strategy. Added the versioned header block.
+- **v1.0 (unversioned) — 2026-07-14:** pre-Q-14 content (§§1–7).
 
 ---
 
@@ -266,3 +273,40 @@ Authored tests, file discovery, Prisma validation, and SQL inspection remain `ST
 Create workspaces A/B and owners/members A1/A2/B1/B2. Seed distinct Bookmarks, Domains/DNS bindings and records, Servers, Mail, Messages, Logs, Alerts, Settings state, and tokens. For each role, switch A↔B repeatedly and exercise list/detail/create/update/delete where in scope, pagination/cursors, stale tabs, caches, webhook ingest, DNS mutation, server power, and owner-only controls. Pass requires zero mixed identifiers/content, zero foreign provider calls, correct role denials, no stale repaint, no automatic stale mutation retry, and unchanged upstream resources after local binding/workspace removal.
 
 Before R2.8, AC-WS-008/010/011 remain PARTIAL even when every individual facet is green. After one clean R2.8 runtime plus independent review, record those three criteria PASS and Workspaces 11/11. Real-provider facts remain R3.x and are not inferred from mock PASS.
+
+---
+
+## 8. Q-14 Mail client traceability (AC-MAIL-007..030) — runtime green 2026-07-18
+
+**Mock-driver strategy:** all mail tests run against `MockMailDriver` (`src/lib/mail/mock.ts`) — a deterministic in-memory IMAP/SMTP substitute keyed by account id (~30 seeded INBOX messages with HTML bodies, attachments, and mixed read state, plus Sent/Trash/Archive). Mutations change the shared store; `send()` writes to an exported outbox that tests assert against; `resetMockMailStore()` reseeds between tests. The e2e suite creates a `mode: MOCK` account, so the entire client path (account → sync → folders → read → actions → compose → attachments) is exercised end-to-end with **no real IMAP server**. The driver itself is verified by `tests/unit/mail/mock-driver.test.ts` (12 cases: determinism, store isolation, special-use folders, `initialLimit`/`afterUid`, flag round-trip, moves, attachment content, outbox/append, reset). Real-transport behavior (`imap-smtp.ts`) is type/build-verified and constrained by architecture §7A.6; it has no automated real-server suite (accepted — same posture as provider real-account smoke).
+
+| AC-ID       | Test file : case                                                                                                                                                                                                                 | Status |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| AC-MAIL-007 | `tests/unit/services/mail-accounts.test.ts` : "encrypts the password (round-trip via crypto) and verifies a MOCK account"; "rejects a MEMBER with WorkspaceOwnerRequiredError"; "…returns no secret fields"                       | PASS   |
+| AC-MAIL-008 | `tests/unit/services/mail-accounts.test.ts` : "testConnection — returns imapOk/smtpOk true for a MOCK config" · `e2e/mail-client.spec.ts` fixture creates the MOCK account through the settings flow                              | PASS   |
+| AC-MAIL-009 | `tests/unit/services/mail-accounts.test.ts` : "keeps the stored password when the input password is empty/absent"; "re-encrypts when a new password is provided"                                                                  | PASS   |
+| AC-MAIL-010 | `tests/unit/services/mail-accounts.test.ts` : "deletes an IMAP account"; "refuses to delete the WEBHOOK account"; "rejects connection-field changes on the WEBHOOK account"                                                       | PASS   |
+| AC-MAIL-011 | `tests/unit/services/mail-accounts.test.ts` : "ensures the webhook account exists and returns no secret fields" · `tests/unit/services/mail.test.ts` : "creates the WEBHOOK account + INBOX folder once and reuses them"          | PASS   |
+| AC-MAIL-012 | `tests/unit/services/mail-sync.test.ts` : "creates 4 folders and 30 INBOX messages with flags, attachments and lastSeenUid" · `mock-driver.test.ts` : "honours initialLimit and afterUid in fetchMessages"                        | PASS   |
+| AC-MAIL-013 | `tests/unit/services/mail-sync.test.ts` : "fetches only messages after lastSeenUid"; "is idempotent — a second sync creates nothing new"                                                                                          | PASS   |
+| AC-MAIL-014 | `tests/unit/services/mail-sync.test.ts` : "wipes and resyncs the folder when stored validity differs from remote"                                                                                                                | PASS   |
+| AC-MAIL-015 | `tests/unit/services/mail-sync.test.ts` : "updates isRead when the flag changed on the server"; "deletes local rows whose uids vanished from the server folder"                                                                   | PASS   |
+| AC-MAIL-016 | `tests/unit/services/mail-sync.test.ts` : "returns busy while another sync holds a fresh lease"; "takes over an expired lease from a crashed sync" (409 `SYNC_IN_PROGRESS` mapping in `/api/mail/accounts/[id]/sync`)             | PASS   |
+| AC-MAIL-017 | `tests/unit/services/mail-sync.test.ts` : "records ERROR + syncError and still advances nextSyncAt on transport failure"                                                                                                          | PASS   |
+| AC-MAIL-018 | `tests/unit/services/mail-actions.test.ts` : "setRead — round-trips \Seen through the driver and updates the DB row" · `e2e/mail-client.spec.ts` : "mail actions: read badge, archive, trash, compose and reply" (auto-read)      | PASS   |
+| AC-MAIL-019 | `tests/unit/services/mail-actions.test.ts` : "moves an INBOX item into TRASH on the server and locally"; "permanently deletes an item already in TRASH (row and mock message gone)"; "WEBHOOK items — setRead and deleteItem work without touching any driver" · e2e trash flow | PASS   |
+| AC-MAIL-020 | `tests/unit/services/mail-actions.test.ts` : "moves an item into the Archive folder on the server and locally"; "rejects a target folder belonging to another account" · e2e archive flow                                         | PASS   |
+| AC-MAIL-021 | `e2e/mail-client.spec.ts` : "mail client shows folders with unread badges, reads a message, switches folders, and filters" · `tests/unit/services/mail.test.ts` : "unreadOnly returns only unread items"                          | PASS   |
+| AC-MAIL-022 | `tests/unit/services/mail-actions.test.ts` : "sends via SMTP, appends the Sent copy, and creates a read local Sent row" · e2e compose flow                                                                                        | PASS   |
+| AC-MAIL-023 | `tests/unit/services/mail-actions.test.ts` : "reply threads In-Reply-To/References and marks the original answered" · e2e reply flow (Re: prefill + цитата)                                                                       | PASS   |
+| AC-MAIL-024 | `tests/unit/services/mail-actions.test.ts` : "enforces the per-workspace rate limit with a 429-mapped error"; recipient (≤50) and body (≤500 KB) caps in `src/lib/validation/mail.ts`                                             | PASS   |
+| AC-MAIL-025 | `tests/unit/services/mail-actions.test.ts` : "rejects sending from the webhook mailbox"; UI hint «Добавьте IMAP-аккаунт, чтобы писать письма» in `mail-sidebar.tsx`                                                               | PASS   |
+| AC-MAIL-026 | `tests/unit/services/mail-attachments.test.ts` : "downloads from the driver on first access and caches content + fetchedAt"; "serves the cached content without touching the driver again" · e2e attachment download              | PASS   |
+| AC-MAIL-027 | `tests/unit/services/mail-attachments.test.ts` : "throws AttachmentTooLargeError when sizeBytes exceeds the limit" (→ 413); "throws AttachmentUnavailableError for an uncached attachment on a uid-less item" (→ 409)             | PASS   |
+| AC-MAIL-028 | Content-Type allowlist → `application/octet-stream` fallback implemented in `src/app/api/mail/[id]/attachments/[attachmentId]/route.ts`; download disposition/filename asserted in the e2e attachment case                        | PASS   |
+| AC-MAIL-029 | `e2e/mail-client.spec.ts` : "mail client shows folders with unread badges, reads a message, switches folders, and filters"                                                                                                       | PASS   |
+| AC-MAIL-030 | e2e account switching in the same case · workspace scoping units: `mail-sync.test.ts` "never touches data of другого workspace", foreign-workspace not-found cases in `mail-actions.test.ts` / `mail-attachments.test.ts`, `mail.test.ts` workspace isolation + cursor binding | PASS   |
+| — (a11y)    | `e2e/mail-client.spec.ts` : "mail client screen has zero serious or critical accessibility violations"                                                                                                                           | PASS   |
+| AC-MAIL-001..006 | Pre-Q-14 rows remain valid; re-verified against the three-pane client by `tests/unit/services/mail.test.ts` (AC-labelled describes incl. the Phase-5 projection/filter cases) and the two functional e2e cases above         | PASS   |
+
+Runtime evidence for this section: full `pnpm test` (590 unit tests / 46 files) and the Playwright regression on the dedicated test database — command output recorded in `docs/progress.md` («Веха Mail client», 2026-07-18).

@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.7
-**Status:** Draft Bookmarks nested-category-groups amendment (AC-BM-029..034) — independent doc-review pending; v2.6/v2.5/v2.4/v2.3 (Bookmarks) and v2.2 (dark theme + theme switcher) amendments otherwise unaffected
+**Version:** v2.8
+**Status:** Draft Mail multi-account client amendment (Q-14, §5.4 rewritten, AC-MAIL-007..030) — independent doc-review pending; v2.7 and earlier amendments otherwise unaffected
 **Owner:** UI/UX Designer
-**Date:** 2026-07-15
+**Date:** 2026-07-18
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.6 (Bookmarks nested-category-groups amendment), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -28,7 +28,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 - Q-1: all operator-visible UI is Russian under the finite allowlist in §3.
 - Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
-- Q-5: Mail remains read-only; no compose, reply, forward, delete, or mailbox polling UI.
+- Q-5 (superseded by Q-14, 2026-07-18): Mail is a full multi-account IMAP/SMTP client — three-pane layout, folders, read/unread, delete/archive, attachments, and plain-text compose/reply/forward (§5.4). Rich-text compose, attachment forwarding, and OAuth remain excluded.
 - Q-6: Servers permits inventory/status plus start, stop, and restart only.
 - Q-7 and AC-ALR-008: Alerts permits confirmed deletion; acknowledge and resolve controls do not exist.
 - D-21/Q-13: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts, Settings, webhook tokens, selected detail, exclusive local provider-resource bindings, mock state, caches, and cursors follow the active workspace. Provider credentials alone remain deployment-global `.env` secrets. Removing a local binding or workspace never deletes an upstream provider resource. D-20 is superseded and non-normative.
@@ -273,23 +273,36 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Exclusions:** create, delete, rebuild, resize, reinstall, rescue, snapshots, volumes, networking changes, provider credential entry, and deletion of upstream servers when a local binding or workspace is removed.
 
-## 5.4 Mail
+## 5.4 Mail (Q-14 multi-account client)
 
-**Route and scope:** /mail; active-workspace, read-only records created by ingest. Trace: AC-MAIL-001..006, AC-WS-011.
+**Route and scope:** /mail (three-pane client) and /settings/mail (owner account management); active-workspace accounts, folders, messages, and attachments. Trace: AC-MAIL-001..030, AC-WS-011.
 
-**Layout/content:** compact filter/sort row, paginated list, and selected-message detail. List fields are sender, subject, and received time. Detail shows sender, subject, body, and timestamp. Ingest source metadata may appear only when already supplied; do not invent an administration surface.
+**Layout/content (lg and up):** three columns — a 220px sidebar, a 420px message list, and a flexible reading pane.
 
-**Actions:** filter by sender/text, sort by received date or sender, paginate, open detail, return to list, clear filters. There are no record mutations.
+- **Sidebar:** «Написать» primary action; account switcher («Почтовый аккаунт» select; the webhook mailbox carries a «Системный» badge); «Синхронизировать» with pending state «Синхронизация…» and error state «Ошибка синхронизации»; «Папки» list with Russian special-use names (Входящие, Отправленные, Черновики, Корзина, Спам, Архив) and unread badges (aria-label «Непрочитанных: N»); footer link «Управление аккаунтами» → /settings/mail. Workspaces without an IMAP account show the hint «Добавьте IMAP-аккаунт, чтобы писать письма».
+- **Message list:** search («Поиск по теме или отправителю...»), «Только непрочитанные» toggle, sort order («Сначала новые» / «Сначала старые»), keyset pagination footer. Rows show an initials avatar (deterministic oklch hash tone), sender, relative ru-RU time, subject (bold + unread dot for unread, indicator «Непрочитанное»), snippet, and an attachment glyph («Есть вложения»).
+- **Reading pane:** header with subject, sender, recipients, ru-RU timestamp; action bar Ответить / Переслать / В архив / Удалить / Прочитано; attachment chips with size and download; sanitized body. Empty selection shows «Выберите письмо» / «Нажмите на письмо слева, чтобы прочитать его».
 
-**States:** list/detail skeleton; empty mailbox; no filter results; fetch error with Повторить; detail-not-found error; pagination boundaries. Newly ingested records become observable through refresh/navigation.
+**Key behavior:**
 
-**Mobile:** rows become stacked sender/subject/time records; selected mail opens a full-screen detail with Назад; narrow headers and controls wrap without overflow.
+- Opening an unread message optimistically marks it read (auto-PATCH) and decrements the folder badge (AC-MAIL-018/021).
+- «Удалить» is trash-first; inside Корзина it opens the confirm dialog «Удалить навсегда?» with Отмена/Удалить (AC-MAIL-019).
+- HTML bodies render only through DOMPurify sanitization (no styles/forms/inputs; links open in a new tab with rel=noopener); otherwise plain text in a preformatted block.
+- Attachment download goes fetch-as-blob through the feature api.ts (the workspace header cannot be sent via a bare `<a>`), with the toast «Не удалось скачать вложение. Попробуйте снова.» on failure.
+- Compose dialog (по образцу provider-credential-dialog): titles «Новое письмо» / «Ответить» / «Переслать письмо»; fields Кому (chips, placeholder «адрес@example.ru, адрес2@example.ru»), Копия, Скрытая копия, Тема, Текст письма (plain-text textarea); validation «Укажите хотя бы одного получателя.», «Тема обязательна.», «Текст письма обязателен.»; submit «Отправить»; success toast «Письмо отправлено», failure «Не удалось отправить письмо. Попробуйте снова.». Reply prefills Re: + цитату, forward — Fwd: + цитату.
+- Action/sync toasts: «Синхронизация завершена.», «Синхронизация уже выполняется.», «Письмо перемещено в корзину», «Письмо удалено», «Письмо перемещено в архив», and matching «Не удалось …. Попробуйте снова.» failures for load/read/move/delete/sync.
 
-**Accessibility:** each row is one clearly named activation target; full body is readable in document order; filter changes have an announced result count; dates have unambiguous ru-RU text.
+**/settings/mail (owner-only mutations):** card on /settings («Почтовые аккаунты»); page header «Почтовые аккаунты» with «Назад к настройкам»; accounts table (name, email, host, status, last sync) with Изменить/Удалить (confirm «Удалить»/«Удаление…»); dialog «Добавить аккаунт» with Название, Рабочая почта, IMAP/SMTP servers and Порт fields (validation «Порт должен быть в диапазоне 1–65535.»), Логин, password (edit placeholder «Оставьте пустым, чтобы не менять»), the hint «Используйте пароль приложения, а не основной пароль почты.», «Проверить подключение» (per-protocol errors «Не удалось подключиться к IMAP-серверу.» / «Не удалось подключиться к SMTP-серверу.»), and «Сохранить» with toasts «Аккаунт сохранён.» / «Аккаунт удалён.». Empty state: «Нет почтовых аккаунтов» + «Подключите IMAP/SMTP-ящик, чтобы получать и отправлять почту из панели.». Trace: AC-MAIL-007..011.
 
-**Acceptance:** list/detail/filter/sort/pagination satisfy AC-MAIL-001..005; an ingested record appears in the list/detail per AC-MAIL-006 without added compose UI; all dates are ru-RU and all controls Russian.
+**States:** skeletons for sidebar/list/pane; empty webhook mailbox with a webhook curl hint («Входящая почта пока отсутствует» / «Отправьте первое письмо через webhook:»); empty folder («Нет писем» / «В этой папке пока пусто.»); no filter results («Ничего не найдено» / «Нет писем, соответствующих текущим фильтрам.»); load errors with Повторить («Не удалось загрузить почту», «Не удалось загрузить письма. Попробуйте снова.», «Не удалось загрузить папки. Попробуйте снова.», «Не удалось загрузить почтовые аккаунты. Попробуйте снова.»); sync busy → 409 toast; pagination boundaries.
 
-**Exclusions:** compose, reply, forward, send, delete, archive, folders, attachments management, and mailbox polling.
+**Mobile:** panels swap in place (list ↔ reading pane) without new routes; the sidebar moves into a left Sheet titled «Аккаунты и папки»; the reading pane provides a Назад control back to the list; controls wrap without body overflow at 375px.
+
+**Accessibility:** each list row is one named activation target; unread state is conveyed by text («Непрочитанное»), not color alone; the list region is labeled «Список писем»; folder badges expose «Непрочитанных: N»; dialogs (compose, delete-confirm, account form) trap and restore focus; attachment downloads expose «Скачивание вложения»; dates use ru-RU 24-hour text; axe reports no serious/critical violations on /mail (e2e/mail-client.spec.ts).
+
+**Acceptance:** list/detail/filter/sort/pagination satisfy AC-MAIL-001..005; webhook ingest visibility satisfies AC-MAIL-006 (system mailbox); account management satisfies AC-MAIL-007..011; sync behavior satisfies AC-MAIL-012..017; actions satisfy AC-MAIL-018..021; compose/reply/forward satisfy AC-MAIL-022..025; attachments satisfy AC-MAIL-026..028; folders/account switching satisfy AC-MAIL-029..030.
+
+**Exclusions:** rich-text (HTML) composition, forwarding attachments, OAuth account linking, POP3, and any mail administration surface beyond /settings/mail (PRD §3.4 Known Limitations).
 
 ## 5.5 Messages
 
@@ -364,7 +377,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Bookmarks | PARTIAL        | Category/bookmark CRUD, grouping, skeleton, and empty state exist.                                  | Translate all visible copy; replace mixed icons; remove emoji rendering; add explicit initial-load error/retry; verify 375px.                                                                           | src/components/bookmarks/bookmarks-board.tsx; src/components/bookmarks/bookmark-dialog.tsx; src/components/bookmarks/bookmark-icon.tsx; src/components/bookmarks/empty-state.tsx |
 | Domains   | PARTIAL        | Provider inventory, DNS CRUD, validation, and core states exist.                                    | Translate copy; use Remix; make refresh/error retry provider-local; retain healthy providers; remove narrow-screen overflow.                                                                            | src/components/domains/domains-view.tsx; src/components/domains/dns-records-view.tsx; src/components/domains/dns-record-dialog.tsx                                               |
 | Servers   | PARTIAL        | Inventory, status, permitted actions, polling, states, grid, and Remix usage are closest to target. | Translate remaining statuses/details; replace positioned confirmation with semantic dialog/sheet and focus/Escape behavior; remove duplicate padding.                                                   | src/components/servers/servers-view.tsx                                                                                                                                          |
-| Mail      | PARTIAL        | Read-only list/detail, filters, sorting, and pagination exist.                                      | Translate copy; replace Lucide; enforce ru-RU dates; stack narrow rows and provide full-screen mobile detail.                                                                                           | src/components/mail/mail-view.tsx                                                                                                                                                |
+| Mail      | DONE (Q-14)    | Full three-pane multi-account client per §5.4 (2026-07-18): sidebar/list/pane, folders, actions, compose, attachments, mobile in-place panels, Russian copy, ru-RU dates. | —                                                                                                                                                                                                       | src/components/mail/mail-client-view.tsx; mail-sidebar.tsx; message-list.tsx; message-pane.tsx; mail-body.tsx; compose-dialog.tsx; src/components/settings/mail-accounts-view.tsx |
 | Messages  | CONTRADICTS    | Category/channel management, feed, pagination, and responsive structure exist.                      | Replace demo-only compose with persisted AC-MSG-009..014 flow; remove attachment/decorative emoji UI; add visible origin labels, disclosures, aria-current, validation, and confirmed failure behavior. | src/components/messages/messages-view.tsx; src/components/messages/channel-dialog.tsx; src/app/api/channels/[id]/messages/route.ts                                               |
 | Logs      | PARTIAL        | Filters, sorting, pagination, and row expansion exist.                                              | Translate copy; replace Lucide; replace hardcoded critical color with semantic token; add visible focus and disclosure semantics; stack mobile records.                                                 | src/components/logs/logs-view.tsx                                                                                                                                                |
 | Alerts    | CONTRADICTS    | Category CRUD, list, filters, sorting, and pagination exist.                                        | Add confirmed alert deletion for AC-ALR-008; translate copy; replace Lucide; enforce ru-RU dates; fix narrow header; keep acknowledge/resolve absent.                                                   | src/components/alerts/alerts-view.tsx; src/components/alerts/manage-categories-dialog.tsx; src/components/alerts/delete-category-dialog.tsx                                      |
@@ -388,7 +401,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Bookmarks                                   | AC-BM-001..014                                                        |
 | Domains and provider-local resilience       | AC-DOM-001..009; AC-PROV-001..003                                     |
 | Servers and only three power actions        | Q-6; AC-SRV-001..008                                                  |
-| Mail read-only and observable ingest        | Q-5; AC-MAIL-001..006                                                 |
+| Mail multi-account client and observable ingest | Q-14 (supersedes Q-5); AC-MAIL-001..030                           |
 | Messages real compose and origin            | Q-4; AC-MSG-009..014                                                  |
 | Messages no auto-create                     | Q-8; AC-MSG-006, AC-MSG-008 inactive, AC-MSG-013                      |
 | Logs read/filter/sort and observable ingest | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
@@ -402,6 +415,11 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.8 — 2026-07-18 (Mail multi-account client amendment, Q-14)
+
+- Rewrote §5.4 for the Q-14 mail client: three-pane layout (220px sidebar / 420px list / reading pane), account switcher with the «Системный» webhook badge, Russian special-use folder names with unread badges, message-list search/unread-filter/sort, sanitized (DOMPurify) reading pane with the Ответить/Переслать/В архив/Удалить/Прочитано action bar, auto-read on open, trash-first delete with the «Удалить навсегда?» confirm, attachment chips with fetch-as-blob download, the plain-text compose dialog (Re:/Fwd: prefill), the full Russian string inventory (folders, actions, toasts, compose, account settings), mobile in-place panel switching with the sidebar in a Sheet, and the /settings/mail owner surface. Updated §0.1 (Q-5 superseded by Q-14), the §7 Mail delta row, and the §8 trace to AC-MAIL-001..030.
+- Exclusions now list only the remaining Q-14 boundaries: rich-text compose, attachment forwarding, OAuth, POP3.
 
 ### v2.7 — 2026-07-15 (Bookmarks nested category groups amendment, Phase 4)
 

@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.4
-**Status:** Draft Q-13 target amendment — independent doc-review pending
+**Version:** 1.5
+**Status:** Draft Q-14 mail-client amendment (mail cluster CURRENT) — independent doc-review pending; v1.4 Q-13 target amendment otherwise unaffected
 **Owner:** Architect
-**Date:** 2026-07-14
+**Date:** 2026-07-18
 **Normative inputs:** `docs/prd.md` v3.1, `docs/design.md` v2.0, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state on 2026-07-14
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.5 (2026-07-18):** documents the implemented Q-14 multi-account mail client as CURRENT: the four-model mail cluster (`MailAccount`, `MailFolder`, extended `MailItem`, `MailAttachment`) with the `20260718130000_mail_client_multi_account` migration and webhook-mailbox backfill; the `src/lib/mail/` transport driver boundary (MOCK/REAL, imapflow + mailparser + nodemailer); the lease-locked sync engine and second in-process scheduler; the full `/api/mail/**` surface; new `MAIL_*` env variables; `serverExternalPackages` and the ES2020 TypeScript target; and the mail security posture (credential encryption, DOMPurify, attachment Content-Type allowlist, send rate limit, accepted private-range SSRF trade-off). Updates page/route/model counters and relaxes the Slice-0 "one migration" P-1 note (see §4.1). New section §7A.
 - **v1.4 (2026-07-14):** defines the approved but unimplemented Q-13 target: every visible/operable area follows the active workspace; provider credentials remain deployment-scoped; exclusive resource bindings, repair/forward migrations, stale-context preconditions, durable provider leases, workspace-bound UI/cache/cursors, and facet gates are normative.
 - **v1.3 (2026-07-14):** reconciles the document with Next.js 16.2.10, `src/proxy.ts`, 12 pages, 29 route files, 42 handlers, 15 Prisma models, active Settings routes, D-20, FR-MSG-003, AC-ALR-008, the verified webhook idempotency race, real-provider stubs, deployment gaps, and the Phase 3 provider target.
 - **v1.2 (2026-07-13):** historical workspace revision.
@@ -98,7 +99,7 @@ flowchart LR
 
 ### 3.1 Complete current page tree
 
-**CURRENT:** The application contains 12 `page.tsx` files. The `(dashboard)` route group does not add a URL segment.
+**CURRENT (2026-07-18):** The application contains 17 `page.tsx` files. The `(dashboard)` route group does not add a URL segment. Beyond the v1.3 table below, later slices added `/services`, `/services/[id]`, `/settings/providers`, `/no-workspace`, and — with the Q-14 mail client — `/settings/mail`.
 
 | Label   | URL                   | File                                              | Boundary and data source                                                                     |
 | ------- | --------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -107,7 +108,8 @@ flowchart LR
 | CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`          | Server Component; `requireAuth()` plus workspace-scoped service read                         |
 | CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`            | Server Component; `requireAuth()` plus provider aggregation                                  |
 | CURRENT | `/servers`            | `src/app/(dashboard)/servers/page.tsx`            | Authenticated Server Component shell; Client view fetches API                                |
-| CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`               | Authenticated Server Component shell; Client view fetches API                                |
+| CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`               | Authenticated Server Component shell; Client three-pane mail client (`MailClientView`) fetches API |
+| CURRENT | `/settings/mail`      | `src/app/(dashboard)/settings/mail/page.tsx`      | Authenticated Server Component shell; Client mail-account management (owner-gated mutations) |
 | CURRENT | `/messages`           | `src/app/(dashboard)/messages/page.tsx`           | Authenticated Server Component shell; Client view fetches API                                |
 | CURRENT | `/logs`               | `src/app/(dashboard)/logs/page.tsx`               | Authenticated Server Component shell; Client view fetches API                                |
 | CURRENT | `/alerts`             | `src/app/(dashboard)/alerts/page.tsx`             | Authenticated Server Component shell; Client view fetches API                                |
@@ -117,7 +119,7 @@ flowchart LR
 
 ### 3.2 Complete current route-handler families
 
-**CURRENT:** `src/app/api` contains 29 `route.ts` files and 42 exported handlers: 14 GET, 12 POST, 7 PATCH, and 9 DELETE.
+**CURRENT (2026-07-18):** `src/app/api` contains 48 `route.ts` files and 71 exported handlers: 24 GET, 21 POST, 12 PATCH, 13 DELETE, and 1 PUT. Beyond the v1.3 families below, later slices added Services (`/api/services/**`), provider credentials (`/api/credentials/**`), and Authentik OIDC (`/api/auth/authentik/**`); the Q-14 mail client expanded the Mail family as shown.
 
 | Label   | Family                                 | Current URL patterns and methods                                                                                                                                                          | Files / handlers |
 | ------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
@@ -125,7 +127,7 @@ flowchart LR
 | CURRENT | Bookmark categories and bookmarks      | `POST /api/categories`; `PATCH,DELETE /api/categories/[id]`; `POST /api/bookmarks`; `PATCH,DELETE /api/bookmarks/[id]`                                                                    | 4 / 6            |
 | CURRENT | Domains and DNS records                | `GET /api/domains`; `GET,POST /api/domains/[providerId]/[domainId]/records`; `PATCH,DELETE /api/domains/[providerId]/[domainId]/records/[recordId]`                                       | 3 / 5            |
 | CURRENT | Servers and power                      | `GET /api/servers`; `GET /api/servers/[id]`; `POST /api/servers/[id]/power`                                                                                                               | 3 / 3            |
-| CURRENT | Mail                                   | `GET /api/mail`; `GET /api/mail/[id]`                                                                                                                                                     | 2 / 2            |
+| CURRENT | Mail (Q-14 client)                     | `GET /api/mail`; `GET,PATCH,DELETE /api/mail/[id]`; `POST /api/mail/[id]/move`; `GET /api/mail/[id]/attachments/[attachmentId]`; `POST /api/mail/send`; `GET,POST /api/mail/accounts`; `POST /api/mail/accounts/test`; `PATCH,DELETE /api/mail/accounts/[id]`; `POST /api/mail/accounts/[id]/sync`; `GET /api/mail/accounts/[id]/folders` | 10 / 14          |
 | CURRENT | Message categories, channels, messages | `GET,POST /api/message-categories`; `PATCH,DELETE /api/message-categories/[id]`; `POST /api/channels`; `PATCH,DELETE /api/channels/[id]`; `GET /api/channels/[id]/messages`               | 5 / 8            |
 | CURRENT | Logs                                   | `GET /api/logs`                                                                                                                                                                           | 1 / 1            |
 | CURRENT | Alerts and alert categories            | `GET /api/alerts`; `GET,POST /api/alert-categories`; `PATCH,DELETE /api/alert-categories/[id]`                                                                                            | 3 / 5            |
@@ -169,23 +171,42 @@ flowchart LR
 
 ### 4.1 Exact current Prisma model inventory
 
-**CURRENT:** `prisma/schema.prisma` defines exactly 15 models:
+**CURRENT (2026-07-18):** `prisma/schema.prisma` defines exactly 23 models:
 
 1. `Operator`
-2. `Session`
-3. `Workspace`
-4. `WorkspaceMember`
-5. `Category`
-6. `Bookmark`
-7. `MessageCategory`
-8. `Channel`
-9. `Message`
-10. `MailItem`
-11. `LogEntry`
-12. `AlertCategory`
-13. `Alert`
-14. `WebhookToken`
-15. `IdempotencyKey`
+2. `ExternalIdentity` (Authentik OIDC slice)
+3. `Session`
+4. `Workspace`
+5. `WorkspaceMember`
+6. `Category`
+7. `Bookmark`
+8. `MessageCategory`
+9. `Channel`
+10. `Message`
+11. `MailAccount` (Q-14 mail client)
+12. `MailFolder` (Q-14 mail client)
+13. `MailItem` (extended by Q-14: account/folder ownership, addresses, bodies, flags, `uid BigInt?`)
+14. `MailAttachment` (Q-14 mail client)
+15. `LogEntry`
+16. `AlertCategory`
+17. `Alert`
+18. `Service` (Services slice)
+19. `ServiceCheck` (Services slice)
+20. `WebhookToken`
+21. `IdempotencyKey`
+22. `ProviderResourceBinding` (Q-13 R2.1e)
+23. `ProviderCredential` (provider credentials slice)
+
+**CURRENT — P-1 note revision (2026-07-18):** the Slice-0 decision P-1 ("full schema in one initial migration, no per-slice incremental models") applied to the original 13-entity baseline. Later feature slices legitimately extend the schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13 ownership, provider credentials, bookmark color, services, category hierarchy, external identity, and `20260718130000_mail_client_multi_account`). P-1 now means "no *unreviewed ad-hoc* incremental models", not "the schema never grows"; the same note is updated in the `prisma/schema.prisma` header comment.
+
+**CURRENT — Q-14 mail cluster:**
+
+- `MailAccount` — per-workspace mailbox: `kind WEBHOOK|IMAP`, `mode` (existing `ProviderMode` MOCK/REAL), IMAP/SMTP host/port/`MailSecurity SSL|STARTTLS`, username, AES-256-GCM password payload (`encryptedData`/`iv`/`authTag`/`maskedHint` — same scheme as `ProviderCredential`), `isValid`/`lastCheckedAt`, and sync bookkeeping (`syncStatus IDLE|SYNCING|ERROR`, `syncError`, `lastSyncAt`, `nextSyncAt`, `syncLeaseExpiresAt`, `syncIntervalSeconds` default 300). Composite `@@unique([id, workspaceId])`; the scheduler due-query index `[isActive, nextSyncAt]` is intentionally not workspace-prefixed (cross-tenant sweep). At most one WEBHOOK account per workspace is enforced by a raw partial unique index in the migration SQL (`WHERE "kind" = 'WEBHOOK'`), plus lazy get-or-create in the service. The migration backfills a system WEBHOOK account and an «Входящие» INBOX folder for every existing workspace and re-homes legacy `MailItem` rows onto them.
+- `MailFolder` — composite-FK child of `MailAccount` with `path`, Russian-mapped `specialUse` (`INBOX|SENT|DRAFTS|TRASH|JUNK|ARCHIVE|OTHER`), `position` (INBOX first), and IMAP sync positions `uidValidity BigInt?` / `lastSeenUid BigInt?`. `@@unique([accountId, path])` makes folder upserts idempotent.
+- `MailItem` — extended, not replaced: renamed `sender`→`fromAddress` and `body`→`bodyText` (SQL `RENAME COLUMN`), plus `fromName`, JSON recipient lists, `replyToAddress`, `bodyHtml`, `snippet`, flags (`isRead`/`isAnswered`/`isFlagged`/`hasAttachments`), and `uid BigInt?` (null for webhook items). `@@unique([folderId, uid])` gives idempotent sync upserts; per-folder keyset and unread-count indexes exist alongside the preserved `[workspaceId, receivedAt, id]` index.
+- `MailAttachment` — metadata captured at sync (`partId`, `filename`, `contentType`, `sizeBytes`, `contentId`, `isInline`) with lazily cached binary `content Bytes?` + `fetchedAt` (bytea-in-database storage: one container + PostgreSQL, database-only backups, free cascade on workspace deletion).
+
+**BigInt boundary rule (CURRENT):** `uid`/`uidValidity` are `BigInt` and are always serialized with `.toString()` in DTOs; Prisma rows are never returned raw from mail routes. This required raising the TypeScript `target` to ES2020 (see §7A.5).
 
 ### 4.2 Current ownership boundary and Q-13 replacement
 
@@ -194,7 +215,8 @@ flowchart LR
 | CURRENT              | Auth and workspace  | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace.                                                                                                   |
 | CURRENT              | Bookmarks           | `Category.workspaceId` owns categories; `Bookmark` is a category child.                                                                                                                                                                  |
 | CURRENT              | Messages            | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children.                                                                                                                                                     |
-| CURRENT              | Mail and Logs       | `MailItem.workspaceId` and `LogEntry.workspaceId` directly own rows.                                                                                                                                                                     |
+| CURRENT              | Mail (Q-14)         | `MailAccount.workspaceId` owns accounts; `MailFolder` and `MailItem` are composite-FK children carrying both direct `workspaceId` and parent-workspace shadows; `MailAttachment` is a `MailItem` child. The system WEBHOOK account is workspace-unique via a partial unique index. |
+| CURRENT              | Logs                | `LogEntry.workspaceId` directly owns rows.                                                                                                                                                                                               |
 | CURRENT              | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                      |
 | CURRENT              | Webhook tokens      | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership.                                                          |
 | CURRENT / GAP        | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                           |
@@ -237,7 +259,7 @@ flowchart LR
 
 ### 4.5 Q-13 target relational contract — not implemented
 
-**TARGET (R2.1a/e):** The schema below is normative. The current 15-model schema and two committed migrations do not implement it.
+**TARGET (R2.1a/e):** The schema below is normative for the Q-13 relational contract. The current 23-model schema (ten committed migrations as of 2026-07-18) implements it only partially; unimplemented rows remain TARGET.
 
 | Model                           | Required Q-13 ownership and relation                                                                                                                                                                                                                                                                                                                                                                                       |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -507,6 +529,70 @@ Transfer requires owners of both workspaces, operates on local metadata only, an
 
 Provider-specific identity, capability, pagination, and reconciliation facts remain R3.1–R3.4 validation work. Q-13 does not invent an upstream capability before fixture and real-account evidence exists.
 
+## 7A. Mail client architecture — CURRENT (Q-14, 2026-07-18)
+
+The Q-14 mail client follows the provider playbook (§7): a narrow driver contract, a deterministic mock, a real adapter, and a factory that selects by mode. Unlike DNS/server providers, mail state is persisted locally (accounts/folders/messages/attachments, §4.1) and kept fresh by a sync engine.
+
+### 7A.1 Transport driver (`src/lib/mail/`)
+
+| File           | Responsibility                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `types.ts`     | `MailDriver` interface: `verify()`, `listFolders()`, `fetchMessages(path, {afterUid?, initialLimit?})`, `listUidsWithFlags(path, uids)` (flag down-sync + deletion detection), `setSeen`, `move`, `downloadAttachment(path, uid, partId)`, `send(msg)` (returns the raw RFC 822 message), `append(path, raw, flags)`, `close()`; DTO types `MailAddress`, `RemoteFolder`, `RemoteMessage`, `OutgoingMessage`. |
+| `imap-smtp.ts` | `ImapSmtpMailDriver` — real driver on `imapflow` (IMAP, SPECIAL-USE detection with name-based fallback) + `mailparser` (MIME → text/html/attachments) + `nodemailer` (SMTP send and raw build for APPEND to Sent). Lazy connections, ~15 s timeouts, TLS-only (`SSL` or `STARTTLS`), no `rejectUnauthorized: false`.                        |
+| `mock.ts`      | `MockMailDriver` — deterministic in-memory dataset per account id (INBOX with HTML bodies and attachments, Sent/Trash/Archive folders); mutations change the shared store; `send` writes to an exported outbox so unit/e2e tests can assert sends. Used for dev and the whole e2e suite — no real IMAP server is ever needed.                |
+| `index.ts`     | `getMailDriver(account)` factory: decrypts the password via `src/lib/crypto/credentials.ts` (`MAIL_PASSWORD` member of the `CredentialData` union), returns the mock driver for `mode === "MOCK"`, and throws for WEBHOOK accounts (they have no transport).                                                                                |
+
+### 7A.2 Sync engine and scheduler #2
+
+`src/lib/services/mail-sync.ts` — `syncAccount(accountId, workspaceId)`:
+
+1. **Lease lock:** one atomic `updateMany` (`syncStatus != SYNCING OR lease expired` → `SYNCING` + 5-minute `syncLeaseExpiresAt`); `count === 0` means another sync is running → skip/409. Expired leases are reclaimed, never stolen mid-run.
+2. **Folders:** `listFolders()` → upsert by `[accountId, path]`, delete vanished folders (cascade), position INBOX=0 → special-use → alphabetical.
+3. **Per folder, sequentially:** UIDVALIDITY change → wipe + full resync; initial sync (`lastSeenUid == null`) imports the newest `MAIL_INITIAL_SYNC_LIMIT` messages; incremental sync fetches `afterUid: lastSeenUid`; upsert by `[folderId, uid]`; flag down-sync + server-deletion detection via `listUidsWithFlags` in chunks of 500 over the locally stored window.
+4. **Finalize:** `IDLE`/`ERROR` + truncated `syncError`, `lastSyncAt`, `nextSyncAt = now + syncIntervalSeconds` (also on error — no hot-loop), driver `close()` in `finally`.
+
+Flag **up-sync is not in the engine:** the PATCH/DELETE/move routes call the driver synchronously (server first, database second; a driver failure maps to 502 without touching local state). WEBHOOK items mutate the database only.
+
+`src/lib/services/mail-scheduler.ts` is a copy of the `scheduler.ts` pattern (module-global guard + `tickInFlight`): tick every `MAIL_SYNC_TICK_MS` (30 s), pick due accounts by `[isActive, nextSyncAt]`, sync in chunks of 3 (IMAP syncs are heavier than HTTP checks). Registered next to the services scheduler in `src/instrumentation.ts`, so the single Node process now runs **two** in-process schedulers. Manual sync is `POST /api/mail/accounts/[id]/sync` (busy → 409 `SYNC_IN_PROGRESS`); account creation fire-and-forgets a first sync.
+
+### 7A.3 API surface
+
+The full family table is in §3.2. Contract highlights: all routes use `requireAuthWithWorkspaceHeader`; account mutations additionally require the workspace owner role (shared `requireWorkspaceOwner` in `src/lib/services/workspace-auth.ts`); `GET /api/mail` returns a list projection (snippet, no bodies) with keyset pagination and `accountId`/`folderId`/`unread=1` filters; `DELETE /api/mail/[id]` is trash-first (permanent only from TRASH); `POST /api/mail/send` enforces ≤50 recipients, ≤500 KB body, and the per-workspace rate limit (429); the attachment route streams from the database cache or lazily fetches from IMAP (413 over `MAIL_MAX_ATTACHMENT_BYTES`, 409 before first sync). Error mapping: `MailTransportError` → 502, `SyncInProgressError` → 409, `WorkspaceOwnerRequiredError` → 403, `EncryptionNotConfiguredError` → 503. Zod schemas live in `src/lib/validation/mail.ts`. `POST /api/webhooks/mail` is untouched; `mailService.create` resolves the webhook account + INBOX internally.
+
+### 7A.4 Environment variables
+
+All validated in `src/lib/config/env.ts` with defaults and documented in `.env.example`:
+
+| Variable                    | Default            | Meaning                                        |
+| --------------------------- | ------------------ | ---------------------------------------------- |
+| `MAIL_SYNC_TICK_MS`         | 30000              | mail scheduler tick                            |
+| `MAIL_INITIAL_SYNC_LIMIT`   | 200                | newest messages imported per folder on first sync |
+| `MAIL_MAX_ATTACHMENT_BYTES` | 26214400 (25 MiB)  | attachment download/cache cap → 413            |
+| `MAIL_SEND_RATE_LIMIT`      | 30                 | sends per workspace per window → 429           |
+| `MAIL_SEND_RATE_WINDOW_MS`  | 3600000 (1 h)      | send rate-limit window                         |
+
+`CREDENTIAL_ENCRYPTION_KEY` (already required for provider credentials) also encrypts mail passwords and is allowlisted in `scripts/test-env.mjs` for the test harness.
+
+### 7A.5 Build and runtime configuration
+
+- `next.config.ts` declares `serverExternalPackages: ["imapflow", "mailparser", "nodemailer"]` so Turbopack leaves the Node-native mail stack external (verified by `pnpm build`).
+- `tsconfig.json` `target` was raised to **ES2020** for native `BigInt` literals/serialization (IMAP `uid`/`uidValidity`).
+- `dompurify` is a client-side dependency for HTML body sanitization (§7A.6).
+
+### 7A.6 Security posture
+
+| Concern              | Disposition                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Credentials at rest  | AES-256-GCM via `CREDENTIAL_ENCRYPTION_KEY` (same primitive as `ProviderCredential`); APIs return only `maskedHint`; blank-password-means-keep on edit; decrypted values never logged or rendered.                               |
+| XSS from mail bodies | `bodyHtml` is rendered only through client-side `DOMPurify.sanitize` (style/form/input forbidden; links forced `target="_blank"` + `rel="noopener noreferrer"`); plain-text fallback otherwise. The unsanitized prototype pattern was explicitly not copied. |
+| SSRF                 | Zod hostname validation (no schemes/paths), ports 1–65535, TLS-only modes, driver timeouts. **Private-range IMAP/SMTP hosts are deliberately allowed** — self-hosted mail servers on private networks are a primary use case; trade-off accepted (PRD §3.4 Known Limitations #6). |
+| Attachment delivery  | `Content-Disposition: attachment` with RFC 5987 filename; Content-Type allowlist with `application/octet-stream` fallback; size cap → 413.                                                                                     |
+| Send abuse           | Per-workspace in-memory fixed-window rate limit (pattern of `src/lib/webhooks/ratelimit.ts`, ADR-006 single-process caveat applies), ≤50 recipients, ≤500 KB body.                                                              |
+
+### 7A.7 Known limitations (mirror of PRD §3.4)
+
+Local-only `isAnswered` on reply (overwritten by the next flag down-sync); possible transient duplicate after move/trash until a `Message-ID`-based match is implemented (moved rows carry `uid: null` and are skipped by deletion detection); in-memory per-process send rate limit; plain-text compose without attachment forwarding; no OAuth; webhook-mailbox compose falls back to the first IMAP account.
+
 ## 8. Request sequences
 
 ### 8.1 Authenticated dashboard read and mutation — CURRENT
@@ -593,10 +679,14 @@ src/
 │   └── api/webhooks/[type]/route.ts                     [CURRENT POST]
 └── lib/
     ├── auth/{dal,password,session}.ts                   [CURRENT]
-    ├── config/env.ts                                    [CURRENT base config]
+    ├── config/env.ts                                    [CURRENT base config + MAIL_* vars]
     ├── config/providers.ts                              [TARGET Phase 3; ABSENT]
     ├── db.ts                                            [CURRENT]
     ├── services/...                                     [CURRENT]
+    ├── services/{mail-accounts,mail-sync,mail-scheduler,
+    │   mail-actions,mail-attachments}.ts                [CURRENT Q-14 mail client]
+    ├── validation/mail.ts                               [CURRENT Q-14 mail client]
+    ├── mail/{types,imap-smtp,mock,index}.ts             [CURRENT Q-14 mail driver boundary]
     ├── webhooks/{pipeline,dispatch,idempotency,
     │   ratelimit}.ts                                    [CURRENT]
     └── providers/
@@ -634,6 +724,7 @@ src/
 | ADR-021 | TARGET R2.1e                 | Real and mock resources use exclusive global identity bindings. Local removal/deletion never deletes upstream resources.                                                                                                                                           |
 | ADR-022 | TARGET R2.1e / R3.x          | Execute provider I/O outside database transactions under durable lease/readback/CAS/reconciliation semantics.                                                                                                                                                      |
 | ADR-023 | TARGET R2.1a                 | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity.                                                                                                                                                           |
+| ADR-024 | CURRENT (Q-14)               | Mail uses a driver boundary (`src/lib/mail/`, MOCK/REAL like providers) with locally persisted mail state and a lease-locked pull-sync engine on a second in-process scheduler. Actions are server-first (driver, then database; 502 on driver failure). Attachments store lazily-fetched bytea in PostgreSQL. Accepted trade-offs are recorded in §7A.7. |
 
 ## 11. Decision and requirement traceability
 
@@ -645,7 +736,8 @@ src/
 | Q-2      | CURRENT                        | Light theme is primary; dark theme and a switcher are deferred.                                                    |
 | Q-3      | TARGET (Phase 4)               | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions.    |
 | Q-4      | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only.  |
-| Q-5      | CURRENT                        | Mail remains read-only. No compose/send route is planned for this iteration.                                       |
+| Q-5      | SUPERSEDED by Q-14             | Historical read-only constraint. Q-14 (2026-07-18) delivered the full multi-account mail client (§7A) as CURRENT.  |
+| Q-14     | CURRENT                        | Multi-account IMAP/SMTP mail client: mail model cluster (§4.1), driver boundary, sync engine, second scheduler, `/api/mail/**` surface, and mail security posture (§7A). |
 | Q-6      | CURRENT                        | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned.                 |
 | Q-7      | GAP / TARGET (Phase 2.5)       | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded. |
 | Q-8      | CURRENT                        | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive.                      |

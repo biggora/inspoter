@@ -30,13 +30,12 @@ export class EncryptionNotConfiguredError extends Error {
 
 // Authorization is intentionally kept out of the CRUD functions below (they
 // take only workspaceId, matching the API route's already-verified
-// workspace context). Mutating routes call requireWorkspaceOwner() first.
-export class WorkspaceOwnerRequiredError extends Error {
-  constructor() {
-    super("Only the workspace owner can perform this action");
-    this.name = "WorkspaceOwnerRequiredError";
-  }
-}
+// workspace context). Mutating routes call requireWorkspaceOwner() first —
+// re-exported from the shared module so existing route imports keep working.
+export {
+  requireWorkspaceOwner,
+  WorkspaceOwnerRequiredError,
+} from "@/lib/services/workspace-auth";
 
 export interface CredentialSummary {
   id: string;
@@ -79,9 +78,9 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
 }
 
 function computeMaskedHint(data: CredentialData): string {
-  return data.type === "GODADDY_DNS"
-    ? maskSecret(data.apiKey)
-    : maskSecret(data.apiToken);
+  if (data.type === "GODADDY_DNS") return maskSecret(data.apiKey);
+  if (data.type === "MAIL_PASSWORD") return maskSecret(data.imapPassword);
+  return maskSecret(data.apiToken);
 }
 
 function decryptRow(row: {
@@ -215,16 +214,4 @@ export async function deleteCredential(
     throw new CredentialNotFoundError(id);
   }
   await db.providerCredential.delete({ where: { id: credential.id } });
-}
-
-export async function requireWorkspaceOwner(
-  workspaceId: string,
-  operatorId: string,
-): Promise<void> {
-  const membership = await db.workspaceMember.findUnique({
-    where: { workspaceId_operatorId: { workspaceId, operatorId } },
-  });
-  if (!membership || membership.role !== "OWNER") {
-    throw new WorkspaceOwnerRequiredError();
-  }
 }
