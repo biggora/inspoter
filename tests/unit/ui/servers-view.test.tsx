@@ -12,7 +12,17 @@ const apiMocks = vi.hoisted(() => ({
   powerAction: vi.fn(),
 }));
 
+const credentialsMocks = vi.hoisted(() => ({
+  create: vi.fn(),
+}));
+
 vi.mock("@/components/servers/api", () => apiMocks);
+vi.mock("@/components/settings/credentials-api", () => ({
+  ApiError: class ApiError extends Error {},
+  credentialsApi: {
+    create: credentialsMocks.create,
+  },
+}));
 
 const runningServer = {
   id: "server-1",
@@ -41,6 +51,49 @@ describe("ServersView destructive actions", () => {
     apiMocks.fetchServers.mockReset().mockResolvedValue([serverGroup]);
     apiMocks.getServer.mockReset().mockResolvedValue(runningServer);
     apiMocks.powerAction.mockReset().mockResolvedValue({});
+    credentialsMocks.create.mockReset().mockResolvedValue({});
+  });
+
+  it("opens the create-provider dialog from the header and reloads after save", async () => {
+    const user = userEvent.setup();
+    render(<ServersView />);
+
+    const addProvider = await screen.findByRole("button", {
+      name: "Добавить провайдера",
+    });
+    const refresh = screen.getByRole("button", { name: "Обновить" });
+
+    expect(
+      addProvider.compareDocumentPosition(refresh) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      addProvider.querySelector("[data-icon='inline-start']"),
+    ).toBeTruthy();
+
+    await user.click(addProvider);
+
+    expect(
+      screen.getByRole("heading", { name: "Добавить провайдера" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Провайдер" }));
+    await user.click(
+      await screen.findByRole("option", { name: "Hetzner Cloud (Хостинг)" }),
+    );
+    await user.type(screen.getByLabelText("Название"), "Основной Hetzner");
+    await user.type(screen.getByLabelText("API-токен"), "token-value");
+    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    await waitFor(() =>
+      expect(credentialsMocks.create).toHaveBeenCalledTimes(1),
+    );
+    expect(credentialsMocks.create).toHaveBeenCalledWith({
+      provider: "HETZNER_CLOUD",
+      label: "Основной Hetzner",
+      apiToken: "token-value",
+    });
+    await waitFor(() => expect(apiMocks.fetchServers).toHaveBeenCalledTimes(2));
   });
 
   it("cancels by button or Escape without an API call and restores trigger focus", async () => {
