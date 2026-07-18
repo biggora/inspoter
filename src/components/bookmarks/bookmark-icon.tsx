@@ -76,7 +76,7 @@ export function BookmarkIcon({
       <img
         src={trimmedIcon}
         alt=""
-        className="size-10 shrink-0 rounded-lg object-cover"
+        className="size-14 shrink-0 rounded-lg object-cover"
         onError={() => setImageFailed(true)}
       />
     );
@@ -95,7 +95,7 @@ export function BookmarkIcon({
     return (
       <span
         aria-hidden
-        className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${toneClass}`}
+        className={`flex size-14 shrink-0 items-center justify-center rounded-lg text-base font-semibold ${toneClass}`}
       >
         {trimmedIcon}
       </span>
@@ -105,7 +105,7 @@ export function BookmarkIcon({
   return (
     <span
       aria-hidden
-      className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${toneClass}`}
+      className={`flex size-14 shrink-0 items-center justify-center rounded-lg text-base font-semibold ${toneClass}`}
     >
       {getInitials(name)}
     </span>

@@ -156,7 +156,7 @@ export function CategorySection({
         />
       ) : (
         <SortableContext items={bookmarkIds} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {category.bookmarks.map((bookmark) => (
               <BookmarkCard
                 key={bookmark.id}
@@ -278,7 +278,7 @@ function SubcategorySection({
         />
       ) : (
         <SortableContext items={bookmarkIds} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {subcategory.bookmarks.map((bookmark) => (
               <BookmarkCard
                 key={bookmark.id}
