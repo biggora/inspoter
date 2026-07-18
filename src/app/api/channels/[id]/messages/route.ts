@@ -42,6 +42,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       channelId: id,
       content,
       author: operator.username,
+      origin: "OPERATOR",
     });
     return jsonResponse(result, { status: 201 });
   } catch (error) {

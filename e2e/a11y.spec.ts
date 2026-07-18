@@ -452,7 +452,7 @@ test.describe("mobile migrated controls", () => {
     await page.goto("/messages");
 
     const openChannels = page.getByRole("button", {
-      name: "Категории и каналы",
+      name: "Открыть каналы",
       exact: true,
     });
     await expect(openChannels).toBeVisible();
@@ -466,6 +466,6 @@ test.describe("mobile migrated controls", () => {
       .click();
     const composer = page.getByPlaceholder("Написать в #a11y-channel...");
     await expect(composer).toBeVisible();
-    await expectNoBlockingAxeViolations(page, '[data-slot="input-group"]');
+    await expectNoBlockingAxeViolations(page);
   });
 });

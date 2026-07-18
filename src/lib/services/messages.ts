@@ -5,6 +5,7 @@ import {
   type MessageCategory,
   type Channel,
   type Message,
+  type MessageOrigin,
 } from "@/generated/prisma/client";
 
 export type CategoryWithChannels = MessageCategory & { channels: Channel[] };
@@ -121,7 +122,12 @@ export async function deleteChannel(
 
 export async function createMessage(
   workspaceId: string,
-  input: { channelId: string; content: string; author?: string },
+  input: {
+    channelId: string;
+    content: string;
+    author?: string;
+    origin?: MessageOrigin;
+  },
 ): Promise<{ id: string }> {
   const channel = await db.channel.findUnique({
     where: { id: input.channelId },
@@ -137,6 +143,7 @@ export async function createMessage(
       channelWorkspaceId: workspaceId,
       content: input.content,
       author: input.author ?? null,
+      origin: input.origin ?? "LEGACY",
     },
   });
   return { id: message.id };

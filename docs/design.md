@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.8
-**Status:** Draft Mail multi-account client amendment (Q-14, §5.4 rewritten, AC-MAIL-007..030) — independent doc-review pending; v2.7 and earlier amendments otherwise unaffected
+**Version:** v2.9
+**Status:** Draft channel-webhook and Messages interaction amendment — source inspected; runtime revalidation pending
 **Owner:** UI/UX Designer
 **Date:** 2026-07-18
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.6 (Bookmarks nested-category-groups amendment), docs/architecture.md v1.4, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.8, docs/architecture.md v1.6, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -182,7 +182,7 @@ Routes: /settings, /settings/workspace, and /settings/webhooks.
 
 Workspace settings provide complete CRUD and membership management: create, rename, delete, list members, add an existing operator, create an invite-only operator, and remove a member. Workspace deletion sits in a visually separated danger zone, requires explicit confirmation, states that workspace-scoped database content is removed, and states that provider/external resources are not removed. If the active workspace is deleted, the shell resolves another membership or returns to the permitted selection/login flow.
 
-Webhook-token settings are active, not a placeholder. Provide list, create, one-time secret reveal, copy, and confirmed revoke. Never reveal a stored secret again. Use Russian labels; token values and API examples are monospace. Tokens follow the active workspace.
+Workspace-wide webhook-token settings are active, not a placeholder. They retain the legacy null-channel list/create/one-time reveal/copy/revoke flow and never expose channel-scoped credentials. Channel-scoped webhooks are managed inside the owning channel's settings (§5.5). Never reveal a stored secret again. Use Russian labels; token values and API examples are monospace. Both token families follow the active workspace.
 
 ### 4.4 Shared states
 
@@ -308,19 +308,21 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Route and scope:** /messages; active-workspace content. Trace: AC-MSG-001..007, AC-MSG-009..014; AC-MSG-008 is inactive.
 
-**Layout/content:** desktop uses category/channel navigation and a selected-channel feed. The feed is chronological and server-paginated. Each record visibly identifies origin as Оператор or Внешний источник; operator name or available external source follows as text/monospace detail. A text composer is anchored after the feed.
+**Layout/content:** desktop uses category/channel navigation, a selected-channel header, a chronological server-paginated feed, and a composer anchored after the feed. When the current selection is missing, select the first available channel. Each record renders one text label: `OPERATOR` → «Оператор», `WEBHOOK` → «Внешний источник», `LEGACY`/missing → «Источник не определён»; author is the immutable display-name snapshot.
 
-**Actions:** create and rename categories/channels; delete either only after explicit confirmation; select channel; reach older pages; submit non-empty operator text to an existing channel. The composer uses a labeled textarea and Отправить button; Ctrl+Enter may submit while Enter inserts a newline. No attachment or decorative affordance exists.
+**Actions:** create and rename categories/channels; delete either only after explicit confirmation; select channel; prepend older pages through «Загрузить предыдущие» while preserving scroll position; submit non-empty operator text to an existing channel. A confirmed send explicitly refetches the feed and clears the draft; a failed send retains the draft. The composer uses a labeled multiline textarea and Отправить button; Ctrl+Enter submits while Enter inserts a newline. No attachment affordance exists.
+
+**Channel settings:** both the channel-row action menu and selected-channel header expose «Настройки канала». The dialog has «Обзор» for rename/delete and «Вебхуки» with independent loading, empty, error/retry, create, list, and revoke states. Creation accepts a 1–80-character name and transiently shows the same-origin tokenized URL plus ready cURL; copy success/fallback is explicit and the warning states that closing the dialog destroys the only reveal. The URL is never placed in toast text or browser storage. Revocation requires destructive confirmation, is irreversible, and updates only the affected row. Closing settings restores focus to a settings trigger for that channel.
 
 **States:** navigation/feed skeletons; no categories; category with no channels; selected empty channel; no selection; page loading; compose pending; empty-content validation; missing-channel rejection; persistence failure. Do not insert a sent record until persistence is confirmed; on failure retain draft and confirmed feed.
 
-**Mobile:** category/channel tree becomes a sheet with disclosure controls; selected channel occupies the page; compose remains visible without covering content. Feed records and controls wrap without overflow.
+**Mobile:** category/channel navigation is one Sheet (no duplicate Select); selected channel occupies the page; compose remains visible without covering content. Feed records and controls wrap without overflow. Row actions are visible on touch sizes and keyboard-reachable rather than hover-only.
 
 **Accessibility:** category disclosures expose aria-expanded and controls; selected channel uses aria-current; new confirmed messages use a polite live region without stealing focus; origin is text, not color-only; composer has label, error association, and keyboard submission help.
 
 **Acceptance:** structure/feed/pagination satisfy AC-MSG-001..007; real compose, exactly-one persistence, attribution, origin visibility, validation, missing channel, and failure behavior satisfy AC-MSG-009..014. Ingested and operator records are distinguishable in the same feed. No auto-create, attachment, or emoji UI renders.
 
-**Exclusions:** auto-created channels, file attachments, reactions, decorative emoji, typing indicators, message edit/delete, threads, calls, and false demo submission.
+**Exclusions:** auto-created channels, file attachments, reactions, decorative emoji, typing indicators/presence, message edit/delete, threads, realtime push, calls, Discord wire compatibility, and false demo submission.
 
 ## 5.6 Logs
 
@@ -407,7 +409,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Logs read/filter/sort and observable ingest | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
 | Alerts delete, no acknowledge/resolve       | Q-7; AC-ALR-001..008                                                  |
 | All-content workspace switch and isolation  | AC-WS-001..011; D-21/Q-13                                             |
-| Active webhook token utility                | AC-WH-008..009                                                        |
+| Legacy and channel-scoped webhook utilities | AC-WH-008..009; channel-webhook amendment (2026-07-18)                |
 | Observable ingest without added surface     | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
 
 ## Appendix A — dark theme tokens, activated v2.2
@@ -415,6 +417,10 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.9 — 2026-07-18 (Messages channel settings and incoming webhooks)
+
+- Added the two-tab channel settings flow, one-time URL/cURL handling, feed/composer/pagination/mobile/focus behaviors, explicit Discord-parity exclusions, and legacy-vs-channel webhook separation. Runtime verification remains pending.
 
 ### v2.8 — 2026-07-18 (Mail multi-account client amendment, Q-14)
 

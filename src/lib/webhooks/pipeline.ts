@@ -110,7 +110,7 @@ export async function processWebhook(
   }
   const tokenHash = crypto.createHash("sha256").update(match[1]).digest("hex");
   const token = await db.webhookToken.findUnique({ where: { tokenHash } });
-  if (!token || token.revokedAt) {
+  if (!token || token.revokedAt || token.channelId) {
     return errorResponse(401, "UNAUTHORIZED", "Invalid or revoked token");
   }
   db.webhookToken

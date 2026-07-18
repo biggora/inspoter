@@ -1,11 +1,11 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.5
-**Status:** Draft Q-14 mail-client amendment (mail cluster CURRENT) — independent doc-review pending; v1.4 Q-13 target amendment otherwise unaffected
+**Version:** 1.6
+**Status:** Draft channel-webhook amendment — source inspected; runtime revalidation pending
 **Owner:** Architect
 **Date:** 2026-07-18
-**Normative inputs:** `docs/prd.md` v3.1, `docs/design.md` v2.0, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
-**Implementation evidence:** repository state on 2026-07-14
+**Normative inputs:** `docs/prd.md` v3.8, `docs/design.md` v2.9, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
+**Implementation evidence:** repository state on 2026-07-18
 
 ## 0. Reading contract
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.6 (2026-07-18):** documents the source-present channel-scoped webhook migration, management/public API contracts, atomic channel-message idempotency, structured message origin, legacy null-channel compatibility, and tokenized-path redaction requirement. Runtime status remains pending.
 - **v1.5 (2026-07-18):** documents the implemented Q-14 multi-account mail client as CURRENT: the four-model mail cluster (`MailAccount`, `MailFolder`, extended `MailItem`, `MailAttachment`) with the `20260718130000_mail_client_multi_account` migration and webhook-mailbox backfill; the `src/lib/mail/` transport driver boundary (MOCK/REAL, imapflow + mailparser + nodemailer); the lease-locked sync engine and second in-process scheduler; the full `/api/mail/**` surface; new `MAIL_*` env variables; `serverExternalPackages` and the ES2020 TypeScript target; and the mail security posture (credential encryption, DOMPurify, attachment Content-Type allowlist, send rate limit, accepted private-range SSRF trade-off). Updates page/route/model counters and relaxes the Slice-0 "one migration" P-1 note (see §4.1). New section §7A.
 - **v1.4 (2026-07-14):** defines the approved but unimplemented Q-13 target: every visible/operable area follows the active workspace; provider credentials remain deployment-scoped; exclusive resource bindings, repair/forward migrations, stale-context preconditions, durable provider leases, workspace-bound UI/cache/cursors, and facet gates are normative.
 - **v1.3 (2026-07-14):** reconciles the document with Next.js 16.2.10, `src/proxy.ts`, 12 pages, 29 route files, 42 handlers, 15 Prisma models, active Settings routes, D-20, FR-MSG-003, AC-ALR-008, the verified webhook idempotency race, real-provider stubs, deployment gaps, and the Phase 3 provider target.
@@ -94,6 +95,7 @@ flowchart LR
 | CURRENT                        | Provider credentials are not passed through environment variables at all; they live in the encrypted `ProviderCredential` store and are managed in the UI (`/settings/providers`).          | Preserve; only `CREDENTIAL_ENCRYPTION_KEY` is required in the environment.                             |
 | CURRENT                        | `src/instrumentation.ts` imports base env validation at Node server startup. `src/lib/config/env.ts` validates database, pagination, webhook limits, and operator authentication variables. | Preserve fail-fast startup.                                                                            |
 | GAP                            | Base env validation does not validate provider credentials or complete credential sets.                                                                                                     | TARGET (Phase 3): move provider mode selection to centralized, server-only validated configuration.    |
+| REQUIRED BEFORE DEPLOYMENT     | Channel webhook credentials are embedded in `/api/webhooks/channels/<webhook-id>/<token>`. Default reverse-proxy access/error logging can therefore disclose the credential.                 | Reverse proxies **MUST redact the full request path for `/api/webhooks/channels/*`**; verify sanitized log fixtures before rollout. |
 
 ## 3. App Router and presentation boundary
 
@@ -206,6 +208,8 @@ flowchart LR
 - `MailItem` — extended, not replaced: renamed `sender`→`fromAddress` and `body`→`bodyText` (SQL `RENAME COLUMN`), plus `fromName`, JSON recipient lists, `replyToAddress`, `bodyHtml`, `snippet`, flags (`isRead`/`isAnswered`/`isFlagged`/`hasAttachments`), and `uid BigInt?` (null for webhook items). `@@unique([folderId, uid])` gives idempotent sync upserts; per-folder keyset and unread-count indexes exist alongside the preserved `[workspaceId, receivedAt, id]` index.
 - `MailAttachment` — metadata captured at sync (`partId`, `filename`, `contentType`, `sizeBytes`, `contentId`, `isInline`) with lazily cached binary `content Bytes?` + `fetchedAt` (bytea-in-database storage: one container + PostgreSQL, database-only backups, free cascade on workspace deletion).
 
+**CURRENT SOURCE / PENDING RUNTIME — channel webhooks:** migration `20260718170000_channel_webhooks` adds nullable `WebhookToken.channelId/channelWorkspaceId`, a strict both-null-or-both-present CHECK, workspace equality CHECK, and compound `Channel(id, workspaceId)` FK with cascade. Null-channel rows remain legacy workspace-wide tokens. `Message.origin` uses `MessageOrigin { LEGACY, OPERATOR, WEBHOOK }`; the migration default/backfill is `LEGACY`, while new operator and channel-webhook writes explicitly persist their origin. `Message.author` remains the immutable display-name snapshot. Channel deletion cascades its scoped tokens, then existing token→idempotency cascade removes their keys.
+
 **BigInt boundary rule (CURRENT):** `uid`/`uidValidity` are `BigInt` and are always serialized with `.toString()` in DTOs; Prisma rows are never returned raw from mail routes. This required raising the TypeScript `target` to ES2020 (see §7A.5).
 
 ### 4.2 Current ownership boundary and Q-13 replacement
@@ -218,7 +222,7 @@ flowchart LR
 | CURRENT              | Mail (Q-14)         | `MailAccount.workspaceId` owns accounts; `MailFolder` and `MailItem` are composite-FK children carrying both direct `workspaceId` and parent-workspace shadows; `MailAttachment` is a `MailItem` child. The system WEBHOOK account is workspace-unique via a partial unique index. |
 | CURRENT              | Logs                | `LogEntry.workspaceId` directly owns rows.                                                                                                                                                                                               |
 | CURRENT              | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                      |
-| CURRENT              | Webhook tokens      | `WebhookToken.workspaceId` owns tokens; `IdempotencyKey` is a token child. Q-9 means tokens are not restricted by event type or source; it does not remove workspace ownership.                                                          |
+| CURRENT SOURCE / PENDING RUNTIME | Webhook tokens | `WebhookToken.workspaceId` owns every token and `IdempotencyKey` is a token child. Null-channel tokens retain Q-9 workspace-wide behavior; non-null `channelId/channelWorkspaceId` creates a message-only capability for one channel. |
 | CURRENT / GAP        | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                           |
 | TARGET (Q-13, R2.1e) | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access. |
 | TARGET (Q-13)        | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets.               |
@@ -378,7 +382,7 @@ Domains, DNS records, Servers, Bookmarks, Mail, Messages, Logs, Alerts, Settings
 
 ### 6.1 Current ordered pipeline
 
-**CURRENT:** `POST /api/webhooks/[type]` is the only public API Route Handler family that does not require a session. `/login` and its login Server Action are the separate public human-authentication surface. `src/lib/webhooks/pipeline.ts` processes requests in this order:
+**CURRENT:** The public token-authenticated Route Handler families are legacy `POST /api/webhooks/[type]` and channel-scoped `POST /api/webhooks/channels/[webhookId]/[token]`; neither requires a session. `/login` and its login Server Action are the separate public human-authentication surface. `src/lib/webhooks/pipeline.ts` processes legacy requests in this order:
 
 1. Enforce declared and streamed body-size limits.
 2. Parse JSON.
@@ -423,6 +427,24 @@ sequenceDiagram
 **CURRENT:** The rate limiter is a module-scope map. It resets on restart and is not shared across replicas.
 
 **TARGET (Phase 2.2):** Keep the in-process limiter for the single-process deployment and test its exact limits. A shared limiter becomes necessary only if deployment topology changes.
+
+### 6.3 Channel-scoped message webhooks — current source, runtime pending
+
+Authenticated management routes call `requireAuthWithWorkspaceHeader`; all workspace members may manage webhooks, and foreign channel/webhook ids are mapped to non-disclosing `404`:
+
+| Method and route | Request | Success |
+| --- | --- | --- |
+| `GET /api/channels/[id]/webhooks` | no body | `200` metadata array without secret/hash |
+| `POST /api/channels/[id]/webhooks` | strict `{ name }`, trimmed 1–80 | `201 { webhook, url }`; `url` is a relative tokenized path shown once |
+| `DELETE /api/channels/[id]/webhooks/[webhookId]` | no body | `204`, including repeated revoke of the same existing webhook |
+
+Legacy `/api/webhook-tokens/**` service queries explicitly require `channelId: null`, so they cannot list or revoke channel credentials. Creation generates 24 random bytes encoded as 48 hex characters; persistence contains only SHA-256 and the 12-character prefix. The browser accepts only a single-leading-slash path, resolves it against `window.location.origin`, verifies same-origin, and keeps URL/cURL in component state until the dialog closes.
+
+`src/lib/webhooks/channelPipeline.ts` enforces declared/streamed body limit → JSON parse → exact id+SHA-256 credential lookup → per-token rate limit → strict payload validation → optional idempotency-key validation → message create. Payload is `{ content: string, author?: string }`, with trimmed content 1–4000 and optional trimmed author 1–80; unknown keys such as `channelId` fail `400`, and absent author uses the configured webhook name. `Idempotency-Key`, when present, is 1–128 printable ASCII.
+
+For keyed delivery, lookup, `Message(origin=WEBHOOK)` insert, and `IdempotencyKey` insert share one transaction. A `P2002` loser reads the winner after rollback and returns `200 { id }`; a new commit returns `201 { id }`. Invalid/revoked/cascade-deleted credentials return `401`; malformed JSON/schema/key `400`; oversized body `413`; throttle `429` with `Retry-After`. No-key retries remain at-least-once. Responses set `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `X-Content-Type-Options: nosniff`.
+
+Management responses pass through `jsonResponse`/`emptyResponse`, which add `Cache-Control: private, no-store` and workspace `Vary`; GET/POST additionally set `Referrer-Policy: no-referrer`. This is source-present and unit-asserted, but runtime revalidation remains pending. Application and proxy logs must never record route parameters; reverse-proxy path redaction is a deployment gate because application response headers cannot sanitize upstream access logs.
 
 ## 7. Provider architecture
 
@@ -725,6 +747,7 @@ src/
 | ADR-022 | TARGET R2.1e / R3.x          | Execute provider I/O outside database transactions under durable lease/readback/CAS/reconciliation semantics.                                                                                                                                                      |
 | ADR-023 | TARGET R2.1a                 | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity.                                                                                                                                                           |
 | ADR-024 | CURRENT (Q-14)               | Mail uses a driver boundary (`src/lib/mail/`, MOCK/REAL like providers) with locally persisted mail state and a lease-locked pull-sync engine on a second in-process scheduler. Actions are server-first (driver, then database; 502 on driver failure). Attachments store lazily-fetched bytea in PostgreSQL. Accepted trade-offs are recorded in §7A.7. |
+| ADR-025 | CURRENT SOURCE / PENDING RUNTIME | Preserve legacy null-channel webhook tokens and their `/api/webhooks/[type]` contract; create all channel webhooks as one-channel message capabilities using token-in-URL delivery. All workspace members may manage them. The channel pipeline uses transactional idempotency; reverse-proxy full-path redaction is mandatory. |
 
 ## 11. Decision and requirement traceability
 
@@ -741,7 +764,7 @@ src/
 | Q-6      | CURRENT                        | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned.                 |
 | Q-7      | GAP / TARGET (Phase 2.5)       | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded. |
 | Q-8      | CURRENT                        | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive.                      |
-| Q-9      | CURRENT                        | Webhook tokens are not restricted by event type/source; they remain workspace-owned.                               |
+| Q-9      | PARTIALLY SUPERSEDED           | Legacy null-channel tokens remain workspace-wide; every new channel webhook is a workspace-owned, message-only capability bound to one channel. |
 | Q-10     | CURRENT                        | No automatic retention. Growth risk R-5 remains accepted.                                                          |
 | Q-11     | TARGET (Phase 3)               | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials.               |
 | Q-12     | TARGET (Phase 4.4)             | Add an optional idempotent `db:seed:demo`, separate from production bootstrap.                                     |
@@ -755,7 +778,8 @@ src/
 | FR-WS-001..003; AC-WS-003..007           | Workspace administration authenticates the caller but does not authorize the target workspace or owner role.                                                | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests.                           |
 | AC-AUTH-001..003                         | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values.                                           | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths.                                          |
 | Q-13                                     | TARGET (R2.1a–e, R2.2–R2.8)                                                                                                                                 | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11. |
-| FR-MSG-003; AC-MSG-009…014               | No operator POST, explicit origin, or persisted operator attribution.                                                                                       | Phases 2.7 and 4.3: API, service, schema, UI, and failure-state tests.                                                                               |
+| FR-MSG-003; AC-MSG-009…014               | Operator POST, `MessageOrigin`, origin labels, refetch-after-send, draft retention, and paginated scroll-back are present in source; runtime revalidation is pending. | Run targeted unit + real-DB desktop/mobile/Axe journeys before recording PASS. |
+| FR-WH-001..002; AC-WH-001..011           | Legacy tokens remain null-channel; channel management and tokenized public delivery are present in source. Private/no-store management headers are source-present; proxy redaction is deployment-owned. | Run migration/service/route/concurrency/E2E tests and retain redacted proxy-log evidence. |
 | AC-ALR-008                               | No alert delete route or UI action.                                                                                                                         | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent.                                                                            |
 | FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported.                                                                                            | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection.                                             |
 | NFR-SEC-002                              | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete. | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures.                                                    |

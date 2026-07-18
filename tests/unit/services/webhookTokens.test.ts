@@ -8,6 +8,7 @@ import * as webhookTokensService from "@/lib/services/webhookTokens";
 const NAME_PREFIX = `wht-${randomUUID()}`;
 let workspaceId: string;
 let otherWorkspaceId: string;
+let channelId: string;
 
 beforeAll(async () => {
   const workspace = await db.workspace.create({
@@ -27,6 +28,19 @@ beforeAll(async () => {
     },
   });
   otherWorkspaceId = otherWorkspace.id;
+
+  const category = await db.messageCategory.create({
+    data: { workspaceId, name: `${NAME_PREFIX}-category` },
+  });
+  const channel = await db.channel.create({
+    data: {
+      workspaceId,
+      messageCategoryId: category.id,
+      messageCategoryWorkspaceId: workspaceId,
+      name: `${NAME_PREFIX}-channel`,
+    },
+  });
+  channelId = channel.id;
 });
 
 afterAll(async () => {
@@ -116,5 +130,183 @@ describe("AC-WH-009: revoke()", () => {
     const list = await webhookTokensService.list(workspaceId);
     const found = list.find((t) => t.id === created.id);
     expect(found?.revokedAt).not.toBeNull();
+  });
+});
+
+describe("channel-scoped webhooks", () => {
+  it("creates a channel-bound credential and returns its secret only in a relative one-time URL", async () => {
+    const created = await webhookTokensService.createForChannel(
+      channelId,
+      workspaceId,
+      `${NAME_PREFIX}-channel-create`,
+    );
+
+    expect(created.webhook.channelId).toBe(channelId);
+    expect(created.url).toMatch(
+      new RegExp(`^/api/webhooks/channels/${created.webhook.id}/[0-9a-f]{48}$`),
+    );
+    expect(created.webhook).not.toHaveProperty("token");
+    expect(created.webhook).not.toHaveProperty("tokenHash");
+
+    const secret = created.url.split("/").at(-1)!;
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.webhook.id },
+    });
+    expect(stored?.tokenHash).not.toBe(secret);
+    expect(stored?.channelId).toBe(channelId);
+    expect(stored?.channelWorkspaceId).toBe(workspaceId);
+  });
+
+  it("keeps legacy and channel-scoped lists isolated", async () => {
+    const legacy = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-legacy-only`,
+    );
+    const channel = await webhookTokensService.createForChannel(
+      channelId,
+      workspaceId,
+      `${NAME_PREFIX}-channel-only`,
+    );
+
+    expect(
+      (await webhookTokensService.list(workspaceId)).some(
+        (item) => item.id === legacy.id,
+      ),
+    ).toBe(true);
+    expect(
+      (await webhookTokensService.list(workspaceId)).some(
+        (item) => item.id === channel.webhook.id,
+      ),
+    ).toBe(false);
+    expect(
+      (await webhookTokensService.listForChannel(channelId, workspaceId)).some(
+        (item) => item.id === channel.webhook.id,
+      ),
+    ).toBe(true);
+  });
+
+  it("fails closed for a channel from another workspace", async () => {
+    await expect(
+      webhookTokensService.createForChannel(
+        channelId,
+        otherWorkspaceId,
+        `${NAME_PREFIX}-foreign`,
+      ),
+    ).rejects.toBeInstanceOf(webhookTokensService.ChannelWebhookNotFoundError);
+  });
+
+  it("enforces the nullable pair and compound workspace constraints in PostgreSQL", async () => {
+    await expect(
+      db.webhookToken.create({
+        data: {
+          workspaceId,
+          channelId,
+          channelWorkspaceId: null,
+          name: `${NAME_PREFIX}-broken-pair`,
+          tokenHash: `broken-pair-${randomUUID()}`,
+          tokenPrefix: "broken-pair",
+        },
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      db.webhookToken.create({
+        data: {
+          workspaceId: otherWorkspaceId,
+          channelId,
+          channelWorkspaceId: otherWorkspaceId,
+          name: `${NAME_PREFIX}-broken-workspace`,
+          tokenHash: `broken-workspace-${randomUUID()}`,
+          tokenPrefix: "broken-ws",
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("revokes only when both channel and workspace match", async () => {
+    const created = await webhookTokensService.createForChannel(
+      channelId,
+      workspaceId,
+      `${NAME_PREFIX}-channel-revoke`,
+    );
+    await expect(
+      webhookTokensService.revokeForChannel(
+        channelId,
+        created.webhook.id,
+        otherWorkspaceId,
+      ),
+    ).rejects.toBeInstanceOf(webhookTokensService.ChannelWebhookNotFoundError);
+
+    await webhookTokensService.revokeForChannel(
+      channelId,
+      created.webhook.id,
+      workspaceId,
+    );
+    const firstRevokedAt = (
+      await db.webhookToken.findUniqueOrThrow({
+        where: { id: created.webhook.id },
+        select: { revokedAt: true },
+      })
+    ).revokedAt;
+    await webhookTokensService.revokeForChannel(
+      channelId,
+      created.webhook.id,
+      workspaceId,
+    );
+    expect(
+      (
+        await db.webhookToken.findUniqueOrThrow({
+          where: { id: created.webhook.id },
+          select: { revokedAt: true },
+        })
+      ).revokedAt,
+    ).toEqual(firstRevokedAt);
+    expect(
+      await webhookTokensService.authenticateChannelWebhook(
+        created.webhook.id,
+        created.url.split("/").at(-1)!,
+      ),
+    ).toBeNull();
+  });
+
+  it("cascades a channel delete through its webhook and idempotency records", async () => {
+    const category = await db.messageCategory.create({
+      data: { workspaceId, name: `${NAME_PREFIX}-cascade-category` },
+    });
+    const channel = await db.channel.create({
+      data: {
+        workspaceId,
+        messageCategoryId: category.id,
+        messageCategoryWorkspaceId: workspaceId,
+        name: `${NAME_PREFIX}-cascade-channel`,
+      },
+    });
+    const created = await webhookTokensService.createForChannel(
+      channel.id,
+      workspaceId,
+      `${NAME_PREFIX}-cascade-webhook`,
+    );
+    await db.idempotencyKey.create({
+      data: {
+        workspaceId,
+        tokenId: created.webhook.id,
+        tokenWorkspaceId: workspaceId,
+        key: `cascade-${randomUUID()}`,
+        targetType: "channel-message",
+        targetId: "test-target",
+      },
+    });
+
+    await db.channel.delete({ where: { id: channel.id } });
+    expect(
+      await db.webhookToken.findUnique({
+        where: { id: created.webhook.id },
+      }),
+    ).toBeNull();
+    expect(
+      await db.idempotencyKey.count({
+        where: { tokenId: created.webhook.id },
+      }),
+    ).toBe(0);
   });
 });

@@ -37,10 +37,10 @@ const handlers: Record<string, Handler> = {
     mailService.create(workspaceId, payload as MailWebhookPayload),
   message: async (workspaceId, payload) => {
     try {
-      return await messagesService.createMessage(
-        workspaceId,
-        payload as MessageWebhookPayload,
-      );
+      return await messagesService.createMessage(workspaceId, {
+        ...(payload as MessageWebhookPayload),
+        origin: "WEBHOOK",
+      });
     } catch (error) {
       if (error instanceof messagesService.ChannelNotFoundError) {
         throw new ChannelNotFoundWebhookError(

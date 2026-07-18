@@ -4,6 +4,6 @@ import { MessagesView } from "@/components/messages/messages-view";
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
-  await requireAuth();
-  return <MessagesView />;
+  const { workspace } = await requireAuth();
+  return <MessagesView workspaceId={workspace.id} />;
 }

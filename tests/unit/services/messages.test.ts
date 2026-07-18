@@ -182,6 +182,7 @@ describe("AC-MSG-004/009/010: createMessage + chronological listing + attributio
     const stored = await db.message.findUnique({ where: { id: message.id } });
     expect(stored?.content).toBe("operator says hi");
     expect(stored?.author).toBeNull();
+    expect(stored?.origin).toBe("LEGACY");
   });
 
   it("creates a webhook message with author attribution", async () => {
@@ -198,11 +199,13 @@ describe("AC-MSG-004/009/010: createMessage + chronological listing + attributio
       channelId: channel.id,
       content: "webhook payload",
       author: "monitoring-bot",
+      origin: "WEBHOOK",
     });
 
     const stored = await db.message.findUnique({ where: { id: message.id } });
     expect(stored?.content).toBe("webhook payload");
     expect(stored?.author).toBe("monitoring-bot");
+    expect(stored?.origin).toBe("WEBHOOK");
   });
 
   it("AC-MSG-011: distinguishes operator-origin (no author) from webhook-origin (author set) messages in the same channel feed", async () => {
@@ -218,11 +221,13 @@ describe("AC-MSG-004/009/010: createMessage + chronological listing + attributio
     await messagesService.createMessage(workspaceId, {
       channelId: channel.id,
       content: "from operator",
+      origin: "OPERATOR",
     });
     await messagesService.createMessage(workspaceId, {
       channelId: channel.id,
       content: "from webhook",
       author: "ci-bot",
+      origin: "WEBHOOK",
     });
 
     const { items } = await messagesService.listMessages(
@@ -233,7 +238,9 @@ describe("AC-MSG-004/009/010: createMessage + chronological listing + attributio
     const operatorMsg = items.find((m) => m.content === "from operator");
     const webhookMsg = items.find((m) => m.content === "from webhook");
     expect(operatorMsg?.author).toBeNull();
+    expect(operatorMsg?.origin).toBe("OPERATOR");
     expect(webhookMsg?.author).toBe("ci-bot");
+    expect(webhookMsg?.origin).toBe("WEBHOOK");
   });
 });
 

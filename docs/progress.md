@@ -146,6 +146,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 | Q14-M6 | Mail: действия + отправка | phase6-actions (fullstack) | DONE | PATCH isRead / DELETE (trash-first→permanent из TRASH) / POST move / POST send (rate-limit 30/ч per-workspace, ≤50 получателей, body ≤500 КБ, 429); сервер-сначала для IMAP (ошибка → 502); compose-dialog (plain-text, Re:/Fwd: prefill с цитатой), экшен-бар Ответить/Переслать/В архив/Удалить/Прочитано; mail-actions.test.ts + e2e actions/compose/reply зелёные |
 | Q14-M7 | Mail: вложения | phase7-attachments (backend-dev) | DONE | Метаданные вложений при sync; GET /[id]/attachments/[attachmentId]: ленивый fetch с IMAP + кэш bytea, лимит MAIL_MAX_ATTACHMENT_BYTES=25 МиБ → 413, 409 при uid null, Content-Type allowlist → octet-stream, RFC 5987 filename; UI-чипы со скачиванием fetch-as-blob; mail-attachments.test.ts + e2e download зелёные |
 | Q14-M8 | Mail: документация + финальная верификация | technical-writer + final reviewer | DONE | prd.md v3.7 (Q-14/D-22, FR-MAIL-003..007, AC-MAIL-007..030, Known Limitations), architecture.md v1.5 (§7A, 23 модели, счётчики 17 страниц / 48 роутов / 71 handler, ADR-024), design.md v2.8 (§5.4 трёхпанельный клиент), plan.md v1.5 (§5b), test-plan.md v1.1 (§8), specs/ui.md (раздел /mail переписан), заголовок prisma/schema.prisma; верификация — см. «Веха Mail client» ниже |
+| Q15-MSG-WH | Discord-подобные Messages + channel webhooks | backend/frontend/test/docs | IN_PROGRESS | Source-present в dirty worktree: nullable channel scope + `MessageOrigin`, management/public routes, transactional channel idempotency, private/no-store management headers, settings/feed/composer split and unit-test additions. Док-контракт синхронизирован; runtime-команды и real-DB Playwright ещё не подтверждены. Reverse-proxy redaction fixture и channel-webhook E2E отсутствуют. См. test-plan.md §9. |
 
 ## Remediation ledger
 
@@ -172,6 +173,12 @@ PRD v3.0 остаётся утверждённой базовой версией
 
 **Известные ограничения mail-клиента** (зафиксированы в prd.md §3.4 Known Limitations и architecture.md §7A.7): локальный `isAnswered` при ответе; возможный временный дубликат письма после move/trash до матчинга по Message-ID; in-memory rate-limit отправки; только plain-text compose без пересылки вложений; без OAuth; частные IMAP-хосты разрешены осознанно; compose из webhook-ящика уходит через первый IMAP-аккаунт.
 
+## Веха Discord-style Messages и channel webhooks (2026-07-18)
+
+**Local feature acceptance PASS:** guarded PostgreSQL migration/service/API/pipeline suite — **54/54**; focused Messages UI Vitest — **12/12**; real-browser desktop 1440×900 and mobile 375×800 critical journeys, exact-opener focus restoration, workspace switching, and Axe serious/critical = 0 — PASS. Финальный полный `pnpm test:ci` завершён с exit 0: **624/624 Vitest** (49 файлов), production build PASS, **93 Playwright passed + 2 intentionally skipped**, 0 failed. Глобальный `pnpm format:check` остаётся `BASELINE_FAIL` на 310 существующих файлах; изменённые feature TS/TSX проходят targeted Prettier. Lint — 0 errors / 2 existing warnings; typecheck и cleanup — PASS.
+
+**Deployment control PENDING:** обязательная redaction полного пути `/api/webhooks/channels/*` в reverse-proxy access/error logs не подтверждена, потому что proxy-конфигурация и sanitized log fixture находятся вне этого репозитория. Локальный feature PASS не является заявлением о production readiness.
+
 ## Decisions log
 
 - 2026-07-12 — Стек: Next.js fullstack (один деплой, self-hosted панель уровня Homarr); БД: PostgreSQL + Prisma; объём запуска: docs + tracer bullet. Решение пользователя.
@@ -189,12 +196,13 @@ PRD v3.0 остаётся утверждённой базовой версией
 - 2026-07-14 — Q-6: Servers поддерживает только просмотр статуса и действия start/stop/restart. Решение пользователя.
 - 2026-07-14 — Q-7: acknowledge/resolve не входит в эту итерацию Alerts; остаются просмотр, организация и удаление. Решение пользователя.
 - 2026-07-14 — Q-8: webhook в несуществующий канал возвращает 4xx; auto-create не используется, AC-MSG-008 остаётся inactive. Решение пользователя.
-- 2026-07-14 — Q-9: webhook-токены остаются нескоупленными. Решение пользователя.
+- 2026-07-14 — Q-9: webhook-токены остаются нескоупленными. Решение пользователя. **Частично заменено 2026-07-18:** правило сохраняется для legacy-токенов с `channelId = null`; каждый новый channel webhook является message-only capability одного канала.
 - 2026-07-14 — Q-10: автоматический retention не используется; риск R-5 принят. Решение пользователя.
 - 2026-07-14 — Q-11: порядок подключения — Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy; credentials предоставляются инкрементально только через `.env`. Решение пользователя.
 - 2026-07-14 — Q-12: требуется опциональная идемпотентная команда `db:seed:demo`. Решение пользователя.
 - 2026-07-14 — Q-13 (binding): every user-visible/operable content area, including Domains and Servers, is workspace-scoped; provider credentials alone remain deployment-level `.env` secrets. Prior R2.1 exclusion is superseded; architecture/contract revision required before implementation. Решение пользователя.
 - 2026-07-18 — Q-14 (binding): ограничение Q-5 «Mail read-only» снято. `/mail` становится полноценным мульти-аккаунт почтовым клиентом: несколько IMAP/SMTP-ящиков (app-passwords, без OAuth), синхронизация папок и писем, прочитано/непрочитано, удаление/архив/перемещение, вложения, составление/ответ/пересылка (plain-text). Webhook-ингест сохраняется как системный ящик с неизменным контрактом. Rich-text, пересылка вложений и OAuth — вне итерации. Решение пользователя; PRD v3.7 (D-22), architecture v1.5 §7A, design v2.8 §5.4, test-plan v1.1 §8, specs/ui.md (раздел /mail переписан).
+- 2026-07-18 — Channel webhooks (binding): новые webhooks создаются из настроек конкретного канала, токен передаётся в URL, управлять ими может любой участник активного workspace. Legacy null-channel tokens сохраняют прежний workspace-wide контракт. Реакции, вложения, треды, редактирование, presence/calls, realtime и Discord wire compatibility вне v1. Local feature acceptance PASS; deployment-owned reverse-proxy path redaction остаётся PENDING, поэтому production readiness не заявлена (test-plan.md §9).
 - 2026-07-14 — Документ architecture target version = v1.3: существующая v1.2 сохраняется как workspace-ревизия; scope остаётся remediation task 1.3.
 - 2026-07-14 — P1 P-RULE-3 checkpoint: runtime surfaces operational at http://127.0.0.1:3000; English Bookmarks/Domains inner content carried to R4.1; пользователь поручил продолжать без паузы.
 
@@ -222,6 +230,6 @@ PRD v3.0 остаётся утверждённой базовой версией
 ## Open questions
 
 - ~~Нужны ли реальные API-ключи (Cloudflare/Hetzner/GoDaddy) на этапе реализации соответствующих слайсов~~ — реализованы mock-провайдеры; real-провайдеры — stubs, переключаются через env vars.
-- ~~AQ-2 (число webhook-токенов в UI, связано с OQ-7)~~ — реализовано: Settings → Webhooks, N токенов, без скоупинга по типу (MVP).
+- ~~AQ-2 (число webhook-токенов в UI, связано с OQ-7)~~ — реализовано для legacy null-channel tokens: Settings → Webhooks, N workspace-wide токенов без скоупинга по типу. Новые channel webhooks управляются в настройках канала и не входят в этот исторический AQ-2.
 - ~~AQ-3 (upsert-by-name категории алерта при ingest)~~ — реализовано: alerts.create() ищет категорию по имени, создаёт если не найдена.
 - ~~jsdom отсутствует в devDeps~~ — закрыто: jsdom ^29.1.1 добавлен implementor'ом после fan-out.

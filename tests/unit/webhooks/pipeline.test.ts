@@ -115,6 +115,33 @@ describe("AC-WH-001: authentication", () => {
 
     expect(response.status).toBe(401);
   });
+
+  it("rejects a channel-scoped token on the legacy typed endpoint", async () => {
+    const category = await db.messageCategory.create({
+      data: { workspaceId, name: `legacy-isolation-${randomUUID()}` },
+    });
+    const channel = await db.channel.create({
+      data: {
+        workspaceId,
+        messageCategoryId: category.id,
+        messageCategoryWorkspaceId: workspaceId,
+        name: `legacy-isolation-${randomUUID()}`,
+      },
+    });
+    const scoped = await webhookTokensService.createForChannel(
+      channel.id,
+      workspaceId,
+      `legacy-isolation-${randomUUID()}`,
+    );
+    const response = await processWebhook(
+      buildRequest("log", {
+        token: scoped.url.split("/").at(-1)!,
+        body: { level: "info", source: "test", message: "blocked" },
+      }),
+      "log",
+    );
+    expect(response.status).toBe(401);
+  });
 });
 
 describe("AC-WH-011: body limits", () => {

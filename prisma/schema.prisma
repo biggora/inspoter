@@ -173,6 +173,7 @@ model Channel {
   messageCategory            MessageCategory @relation(fields: [messageCategoryId, messageCategoryWorkspaceId], references: [id, workspaceId], onDelete: Cascade) // AC-MSG-003
   name                       String
   messages                   Message[]
+  webhookTokens              WebhookToken[]
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt
 
@@ -180,16 +181,23 @@ model Channel {
   @@index([workspaceId, messageCategoryId, createdAt, id])
 }
 
+enum MessageOrigin {
+  LEGACY
+  OPERATOR
+  WEBHOOK
+}
+
 model Message {
-  id                 String    @id @default(cuid())
+  id                 String        @id @default(cuid())
   workspaceId        String
-  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   channelId          String
   channelWorkspaceId String
-  channel            Channel   @relation(fields: [channelId, channelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  channel            Channel       @relation(fields: [channelId, channelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   content            String
   author             String? // source label from webhook payload
-  createdAt          DateTime  @default(now())
+  origin             MessageOrigin @default(LEGACY)
+  createdAt          DateTime      @default(now())
 
   @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
 }
@@ -451,19 +459,23 @@ model ServiceCheck {
 
 // --- Webhook (FR-WH-001..002) ---
 model WebhookToken {
-  id              String           @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name            String
-  tokenHash       String           @unique // sha256 of secret; raw secret shown once (AC-WH-008), never stored
-  tokenPrefix     String // first chars, for UI identification only
-  createdAt       DateTime         @default(now())
-  revokedAt       DateTime? // AC-WH-009 revoke -> 401
-  lastUsedAt      DateTime?
-  idempotencyKeys IdempotencyKey[]
+  id                 String           @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channelId          String?
+  channelWorkspaceId String?
+  channel            Channel?         @relation(fields: [channelId, channelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  name               String
+  tokenHash          String           @unique // sha256 of secret; raw secret shown once (AC-WH-008), never stored
+  tokenPrefix        String // first chars, for UI identification only
+  createdAt          DateTime         @default(now())
+  revokedAt          DateTime? // AC-WH-009 revoke -> 401
+  lastUsedAt         DateTime?
+  idempotencyKeys    IdempotencyKey[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId])
+  @@index([workspaceId, channelId, createdAt, id])
 }
 
 model IdempotencyKey {

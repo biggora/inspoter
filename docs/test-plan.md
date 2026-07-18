@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.1
-**Status:** v1.1 adds the Q-14 Mail-client matrix (§8, AC-MAIL-007..030 — runtime green 2026-07-18). Historical Slice 1 Mode B runtime was green on 2026-07-12; sections §§2–7 keep their pre-Q-14 dispositions and dates.
+**Version:** 1.2
+**Status:** v1.2 adds the pending channel-webhook/Messages revalidation matrix (§9). No new runtime PASS is claimed. Historical evidence retains its original dates and dispositions.
 **Owner:** tester
 **Date:** 2026-07-18
-**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.7, `docs/architecture.md` v1.5, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.8, `docs/plan.md` v1.5, `docs/progress.md`
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.8, `docs/architecture.md` v1.6, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.9, `docs/plan.md` v1.5, `docs/progress.md`
 
 ## Changelog
 
+- **v1.2 — 2026-07-18:** added §9 with source-grounded migration/service/API/pipeline/UI/E2E/deployment cases. All new statuses are PENDING/GAP until commands and retained evidence exist.
 - **v1.1 — 2026-07-18:** added §8 (Q-14 mail client): AC-MAIL-007..030 traceability to unit suites (`mail-accounts`, `mail-sync`, `mail-actions`, `mail-attachments`, `mock-driver`, extended `mail`) and `e2e/mail-client.spec.ts`, plus the mock-driver test strategy. Added the versioned header block.
 - **v1.0 (unversioned) — 2026-07-14:** pre-Q-14 content (§§1–7).
 
@@ -310,3 +311,27 @@ Before R2.8, AC-WS-008/010/011 remain PARTIAL even when every individual facet i
 | AC-MAIL-001..006 | Pre-Q-14 rows remain valid; re-verified against the three-pane client by `tests/unit/services/mail.test.ts` (AC-labelled describes incl. the Phase-5 projection/filter cases) and the two functional e2e cases above         | PASS   |
 
 Runtime evidence for this section: full `pnpm test` (590 unit tests / 46 files) and the Playwright regression on the dedicated test database — command output recorded in `docs/progress.md` («Веха Mail client», 2026-07-18).
+
+---
+
+## 9. Channel webhooks and Discord-style Messages revalidation — LOCAL PASS / DEPLOYMENT PENDING
+
+Local feature acceptance passed on 2026-07-18. The guarded database/API suite passed 54/54, focused Messages UI Vitest passed 12/12, and the final full `pnpm test:ci` passed with 624/624 Vitest tests (49 files), production build PASS, and 93 passed + 2 intentionally skipped Playwright cases. The only remaining control is deployment-owned reverse-proxy path redaction; no proxy configuration or sanitized access-log fixture exists in this repository, so production readiness is not inferred.
+
+| ID | Observable case and evidence target | Current status |
+| --- | --- | --- |
+| CHWH-DB-001 | Fresh migration replay and populated upgrade leave historic messages as `LEGACY` and historic tokens with both channel fields null; PostgreSQL rejects partial pairs and workspace mismatch. | PASS |
+| CHWH-DB-002 | Deleting a channel cascades its scoped webhook and that token's idempotency rows; unrelated/legacy tokens remain. | PASS |
+| CHWH-SVC-001 | `tests/unit/services/webhookTokens.test.ts`: 24-byte secret, hash-only persistence, relative one-time URL, isolated legacy/channel lists, cross-workspace denial, channel/workspace revoke, and cascade. | PASS |
+| CHWH-API-001 | `tests/unit/api/channel-webhooks.test.ts`: session + exact workspace header; OWNER and MEMBER may manage; foreign channel/webhook is non-disclosing 404; strict name 1–80; GET contains neither secret nor hash; POST returns one URL; first/repeated DELETE is 204. | PASS |
+| CHWH-API-002 | Legacy `/api/webhook-tokens/**` lists/revokes only `channelId = null`; legacy `POST /api/webhooks/<type>` behavior and required message `channelId` remain compatible. | PASS |
+| CHWH-ING-001 | `tests/unit/webhooks/channelPipeline.test.ts`: strict `{content, author?}`, server-derived channel, attempted `channelId`/unknown-field rejection, default/custom author, `WEBHOOK` origin, whitespace/4000/80 bounds, malformed JSON 400, streamed/declared oversize 413, invalid/revoked/deleted credential 401. | PASS |
+| CHWH-IDEM-001 | Same token + same printable-ASCII key (1–128) under concurrency commits exactly one message/key; loser and later replay return the winner id with 200; new commit is 201; no-key retries create separately; transaction failure leaves neither partial row. | PASS |
+| CHWH-RATE-001 | Exact per-token boundary returns 429 plus integer `Retry-After`; throttled calls create nothing. | PASS |
+| CHWH-SEC-001 | Creation response is `Cache-Control: private, no-store` plus `Referrer-Policy: no-referrer`; public delivery is `Cache-Control: no-store` plus `Referrer-Policy: no-referrer`. Secret/hash never appear in list, toast, storage, RSC data, analytics, application logs, or retained browser artifacts. | PASS |
+| CHWH-DEPLOY-001 | Reverse-proxy access/error log fixture proves the **full request path** is redacted for `/api/webhooks/channels/*`; no `<webhook-id>/<token>` is retained. | PENDING / FIXTURE ABSENT |
+| MSG-UI-001 | `tests/unit/ui/interactions.test.tsx`: auto-selection, Enter newline, Ctrl+Enter exactly-one send, explicit refetch, clear-on-success, draft retention/error association, origin text, HTML-as-text, prepend-with-scroll-anchor, one-time URL disposal, exact opener focus, and workspace remount. | PASS (12/12) |
+| MSG-E2E-001 | Real disposable PostgreSQL + Playwright at 1440×900: member create/copy/inbound/reload/revoke, row/header focus restoration, keyboard flow, workspace isolation, and Axe serious/critical = 0. | PASS |
+| MSG-E2E-002 | Real disposable PostgreSQL + Playwright at 375×800: one navigation Sheet, exact Sheet/header focus restoration, keyboard flow, no duplicate navigation, and Axe serious/critical = 0. | PASS |
+
+Verification classification: global `pnpm format:check` is `BASELINE_FAIL` on 310 repository files while the changed feature TS/TSX files pass targeted Prettier; `pnpm lint` PASS with 0 errors and 2 existing warnings; `pnpm typecheck` PASS; guarded feature DB/API tests 54/54 PASS; focused UI 12/12 PASS; build PASS with the existing Nodemailer externalization warning; final `pnpm test:ci` PASS (624/624 Vitest, 93 Playwright passed, 2 skipped). `pnpm test:db:down` cleanup and ports 3833/3910 verification PASS. `CHWH-DEPLOY-001` remains PENDING and blocks a production-ready claim.

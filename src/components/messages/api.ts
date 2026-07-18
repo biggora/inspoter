@@ -25,7 +25,23 @@ export interface MessageDto {
   channelId: string;
   content: string;
   author: string | null;
+  origin: "LEGACY" | "OPERATOR" | "WEBHOOK";
   createdAt: string;
+}
+
+export interface ChannelWebhookDto {
+  id: string;
+  channelId: string;
+  name: string;
+  tokenPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedChannelWebhookDto {
+  webhook: ChannelWebhookDto;
+  url: string;
 }
 
 export interface FetchMessagesParams {
@@ -119,6 +135,20 @@ export const channelsApi = {
     }),
   remove: (id: string) =>
     request<void>(`/api/channels/${id}`, { method: "DELETE" }),
+};
+
+export const channelWebhooksApi = {
+  list: (channelId: string) =>
+    request<ChannelWebhookDto[]>(`/api/channels/${channelId}/webhooks`),
+  create: (channelId: string, name: string) =>
+    request<CreatedChannelWebhookDto>(`/api/channels/${channelId}/webhooks`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  revoke: (channelId: string, webhookId: string) =>
+    request<void>(`/api/channels/${channelId}/webhooks/${webhookId}`, {
+      method: "DELETE",
+    }),
 };
 
 export function sendMessage(

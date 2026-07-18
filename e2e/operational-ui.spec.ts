@@ -153,7 +153,7 @@ test("server power confirmation cancels safely and submits exactly once", async 
   expectNoUnexpectedBrowserErrors(browserErrors);
 });
 
-test("mobile messages navigation closes its Sheet and composer sends via keyboard and button", async ({
+test("mobile messages navigation closes its Sheet and composer uses newline, keyboard send, and button send", async ({
   page,
 }) => {
   const browserErrors = captureUnexpectedBrowserErrors(page);
@@ -202,7 +202,7 @@ test("mobile messages navigation closes its Sheet and composer sends via keyboar
 
   await page.goto("/messages");
   await page
-    .getByRole("button", { name: "Категории и каналы", exact: true })
+    .getByRole("button", { name: "Открыть каналы", exact: true })
     .click();
   const sheet = page.getByRole("dialog", { name: "Категории и каналы" });
   await expect(sheet).toBeVisible();
@@ -225,25 +225,34 @@ test("mobile messages navigation closes its Sheet and composer sends via keyboar
   expect(messageReadMethods).toEqual(["GET"]);
 
   const composer = page.getByPlaceholder("Написать в #deploys...");
-  await composer.fill("status via Enter");
+  await composer.fill("status via keyboard");
   await composer.press("Enter");
+  expect(sentMessageBodies).toHaveLength(0);
+  await expect(composer).toHaveValue("status via keyboard\n");
+  await composer.pressSequentially("second line");
+  await composer.press("Control+Enter");
   await expect.poll(() => sentMessageBodies.length).toBe(1);
-  expect(sentMessageBodies).toEqual([{ content: "status via Enter" }]);
+  expect(sentMessageBodies).toEqual([
+    { content: "status via keyboard\nsecond line" },
+  ]);
   await expect(composer).toHaveValue("");
 
   await composer.fill("status via button");
-  const send = page.getByRole("button", { name: "Отправить", exact: true });
+  const send = page.getByRole("button", {
+    name: "Отправить сообщение",
+    exact: true,
+  });
   await expect(send).toBeEnabled();
   await send.click();
   await expect.poll(() => sentMessageBodies.length).toBe(2);
   expect(sentMessageBodies).toEqual([
-    { content: "status via Enter" },
+    { content: "status via keyboard\nsecond line" },
     { content: "status via button" },
   ]);
   await expect(composer).toHaveValue("");
   await expect(
-    page.getByRole("button", { name: "Прикрепить файл (недоступно)" }),
-  ).toBeDisabled();
+    page.getByRole("button", { name: /Прикрепить файл/ }),
+  ).toHaveCount(0);
   expectNoUnexpectedBrowserErrors(browserErrors);
 });
 
