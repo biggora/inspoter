@@ -7,7 +7,7 @@ function FilterBar({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="filter-bar"
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center **:data-[slot=input]:h-[var(--control-sm)] **:data-[slot=select-trigger]:h-[var(--control-sm)] **:data-[slot=button]:h-[var(--control-sm)]",
+        "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center **:data-[slot=input]:h-[var(--control-sm)] **:data-[slot=input-group]:h-[var(--control-sm)] **:data-[slot=select-trigger]:h-[var(--control-sm)] **:data-[slot=button]:h-[var(--control-sm)]",
         className,
       )}
       {...props}

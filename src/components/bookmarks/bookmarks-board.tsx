@@ -31,6 +31,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
 import {
   InputGroup,
   InputGroupAddon,
@@ -421,8 +422,8 @@ export function BookmarksBoard({
         }
       >
         {categories.length > 0 && (
-          <div className="max-w-sm">
-            <InputGroup>
+          <FilterBar>
+            <InputGroup className="sm:max-w-xs">
               <InputGroupAddon>
                 <Search aria-hidden />
               </InputGroupAddon>
@@ -446,7 +447,7 @@ export function BookmarksBoard({
                 </InputGroupAddon>
               )}
             </InputGroup>
-          </div>
+          </FilterBar>
         )}
       </PageHeader>
 

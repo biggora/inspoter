@@ -55,7 +55,7 @@ export function PageHeader({
           </Button>
         ))}
       {(title || actions) && (
-        <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-h-[var(--control-md)] flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
           {title && (
             <div className="min-w-0">
               <h1 className="text-xl font-semibold text-foreground">{title}</h1>
