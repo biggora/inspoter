@@ -272,6 +272,7 @@ export async function applyCheckResult(
   });
 
   if (result.flipped) {
+    // TODO(i18n): category/message are persisted to the DB as literal Russian text — migrating to translation keys needs a data migration for existing rows, out of scope for Phase C.
     await alertsService.create(service.workspaceId, {
       category: "Сервисы",
       severity: result.status === ServiceStatus.DOWN ? "critical" : "info",

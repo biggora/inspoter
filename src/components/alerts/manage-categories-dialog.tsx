@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,16 +32,16 @@ export function ManageCategoriesDialog({
   onRename,
   onDelete,
 }: ManageCategoriesDialogProps) {
+  const t = useTranslations("alerts");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Управление категориями</DialogTitle>
+          <DialogTitle>{t("manageCategoriesTitle")}</DialogTitle>
         </DialogHeader>
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Категорий пока нет. Создайте категорию, чтобы упорядочить
-            оповещения.
+            {t("categoriesEmptyDescription")}
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
@@ -56,7 +58,7 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Переименовать ${category.name}`}
+                    aria-label={t("renameCategoryLabel", { name: category.name })}
                     onClick={() => onRename(category)}
                   >
                     <Icon name="ri-edit-line" aria-hidden className="text-sm" />
@@ -65,7 +67,7 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Удалить ${category.name}`}
+                    aria-label={t("deleteCategoryLabel", { name: category.name })}
                     onClick={() => onDelete(category)}
                   >
                     <Icon name="ri-delete-bin-line" aria-hidden className="text-sm" />
@@ -77,7 +79,7 @@ export function ManageCategoriesDialog({
         )}
         <DialogFooter>
           <DialogClose render={<Button variant="outline" type="button" />}>
-            Закрыть
+            {t("closeButton")}
           </DialogClose>
         </DialogFooter>
       </DialogContent>

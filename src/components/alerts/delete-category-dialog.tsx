@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,6 +30,7 @@ export function DeleteCategoryDialog({
   onOpenChange,
   onDeleted,
 }: DeleteCategoryDialogProps) {
+  const t = useTranslations("alerts");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirm() {
@@ -36,10 +38,10 @@ export function DeleteCategoryDialog({
     setSubmitting(true);
     try {
       await alertCategoriesApi.remove(category.id);
-      toast.success("Категория удалена.");
+      toast.success(t("categoryDeletedToast"));
       onDeleted();
     } catch {
-      toast.error("Не удалось удалить категорию. Попробуйте снова.");
+      toast.error(t("deleteCategoryError"));
     } finally {
       setSubmitting(false);
     }
@@ -49,20 +51,21 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить «{category?.name}»?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("deleteCategoryTitle", { name: category?.name ?? "" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Оповещения из этой категории останутся без категории. Это действие
-            нельзя отменить.
+            {t("deleteCategoryDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Удаление…" : "Удалить категорию"}
+            {submitting ? t("deletingButton") : t("deleteCategoryButton")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
