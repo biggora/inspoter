@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { Check, Copy, Link2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -10,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -183,7 +183,7 @@ export function WebhookTokensView() {
         back={{ href: "/settings", label: "Назад к настройкам" }}
         actions={
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Новый токен
           </Button>
         }
@@ -203,7 +203,7 @@ export function WebhookTokensView() {
         </div>
       ) : tokens.length === 0 ? (
         <EmptyState
-          icon={Link2}
+          icon="ri-links-line"
           title="Нет токенов"
           description="Webhook-токенов пока нет. Создайте токен, чтобы внешние системы могли отправлять почту, сообщения, логи и оповещения в это рабочее пространство."
         />
@@ -334,9 +334,9 @@ export function WebhookTokensView() {
                   onClick={handleCopy}
                 >
                   {copied ? (
-                    <Check aria-hidden className="size-4" />
+                    <Icon name="ri-check-line" aria-hidden className="text-base" />
                   ) : (
-                    <Copy aria-hidden className="size-4" />
+                    <Icon name="ri-file-copy-line" aria-hidden className="text-base" />
                   )}
                   {copied ? "Скопировано" : "Копировать"}
                 </Button>

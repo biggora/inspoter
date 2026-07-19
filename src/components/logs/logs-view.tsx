@@ -1,13 +1,13 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { ChevronRight, FileText } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
@@ -256,7 +256,7 @@ export function LogsView() {
           <EmptyState description="Нет записей журнала, соответствующих текущим фильтрам." />
         ) : (
           <EmptyState
-            icon={FileText}
+            icon="ri-file-text-line"
             title="Логи пока отсутствуют"
             description="Отправьте первый лог через webhook:"
             action={
@@ -310,7 +310,8 @@ export function LogsView() {
                           setExpandedId(isExpanded ? null : entry.id)
                         }
                       >
-                        <ChevronRight
+                        <Icon
+                          name="ri-arrow-right-s-line"
                           aria-hidden
                           data-icon="inline-start"
                           className={cn(

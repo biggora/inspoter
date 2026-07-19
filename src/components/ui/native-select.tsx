@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 
 type NativeSelectProps = Omit<React.ComponentProps<"select">, "size"> & {
   size?: "sm" | "default" | "lg";
@@ -27,8 +27,9 @@ function NativeSelect({
         className="h-[var(--control-md)] w-full min-w-0 appearance-none rounded-lg border border-[var(--border-strong)] bg-[var(--surface-sunken)] py-1 pr-8 pl-2.5 text-sm transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-[var(--text-placeholder)] focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-0 focus-visible:ring-0 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=lg]:h-[var(--control-lg)] data-[size=sm]:h-[var(--control-sm)] data-[size=sm]:py-0.5"
         {...props}
       />
-      <ChevronDownIcon
-        className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground select-none"
+      <Icon
+        name="ri-arrow-down-s-line"
+        className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground select-none"
         aria-hidden="true"
         data-slot="native-select-icon"
       />

@@ -1,17 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Archive,
-  ChevronLeft,
-  Forward,
-  Mail,
-  MailOpen,
-  Paperclip,
-  RefreshCw,
-  Reply,
-  Trash2,
-} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -28,6 +17,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { MailBody } from "./mail-body";
@@ -142,7 +132,7 @@ export function MessagePane({
         <EmptyState
           bordered={false}
           size="sm"
-          icon={MailOpen}
+          icon="ri-mail-open-line"
           title="Выберите письмо"
           description="Нажмите на письмо слева, чтобы прочитать его"
           className="max-w-xs"
@@ -160,7 +150,7 @@ export function MessagePane({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
           <Button type="button" size="sm" onClick={onRetry}>
-            <RefreshCw aria-hidden data-icon="inline-start" />
+            <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
             Повторить
           </Button>
         </div>
@@ -243,11 +233,15 @@ export function MessagePane({
         {detail.accountKind !== "WEBHOOK" && (
           <>
             <Button type="button" variant="ghost" size="sm" onClick={onReply}>
-              <Reply aria-hidden data-icon="inline-start" />
+              <Icon name="ri-reply-line" aria-hidden data-icon="inline-start" />
               Ответить
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onForward}>
-              <Forward aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-share-forward-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               Переслать
             </Button>
             {canArchive && (
@@ -257,7 +251,7 @@ export function MessagePane({
                 size="sm"
                 onClick={onArchive}
               >
-                <Archive aria-hidden data-icon="inline-start" />
+                <Icon name="ri-archive-line" aria-hidden data-icon="inline-start" />
                 В архив
               </Button>
             )}
@@ -268,7 +262,7 @@ export function MessagePane({
             <AlertDialogTrigger
               render={<Button type="button" variant="ghost" size="sm" />}
             >
-              <Trash2 aria-hidden data-icon="inline-start" />
+              <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
               Удалить
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -295,19 +289,19 @@ export function MessagePane({
           </AlertDialog>
         ) : (
           <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
-            <Trash2 aria-hidden data-icon="inline-start" />
+            <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
             Удалить
           </Button>
         )}
         <Button type="button" variant="ghost" size="sm" onClick={onToggleRead}>
           {detail.isRead ? (
             <>
-              <Mail aria-hidden data-icon="inline-start" />
+              <Icon name="ri-mail-line" aria-hidden data-icon="inline-start" />
               Непрочитано
             </>
           ) : (
             <>
-              <MailOpen aria-hidden data-icon="inline-start" />
+              <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
               Прочитано
             </>
           )}
@@ -339,7 +333,11 @@ export function MessagePane({
                   data-icon="inline-start"
                 />
               ) : (
-                <Paperclip aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-attachment-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
               )}
               <span className="max-w-48 truncate">{attachment.filename}</span>
               <span className="text-muted-foreground">
@@ -363,7 +361,7 @@ function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <div className="shrink-0 border-b border-background-100 px-3 py-2 lg:hidden">
       <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-        <ChevronLeft aria-hidden data-icon="inline-start" />
+        <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
         Назад к списку
       </Button>
     </div>

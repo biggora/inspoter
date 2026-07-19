@@ -3,12 +3,12 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import {
   InputGroup,
   InputGroupAddon,
@@ -150,9 +150,9 @@ export function LoginForm({
                     }
                   >
                     {showPassword ? (
-                      <EyeOff aria-hidden />
+                      <Icon name="ri-eye-off-line" aria-hidden />
                     ) : (
-                      <Eye aria-hidden />
+                      <Icon name="ri-eye-line" aria-hidden />
                     )}
                   </InputGroupButton>
                 </InputGroupAddon>

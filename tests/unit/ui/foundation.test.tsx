@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CircleIcon } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import { Badge } from "@/components/ui/badge";
@@ -135,18 +134,19 @@ describe("UI foundation", () => {
     expect(spacious).toHaveFocus();
   });
 
-  it("renders Lucide empty-state icons", () => {
+  it("renders Remix Icon empty-state glyphs", () => {
     render(
       <EmptyState
-        icon={CircleIcon}
+        icon="ri-error-warning-line"
         title="No messages"
         description="Messages will appear here."
       />,
     );
 
     expect(screen.getByText("No messages")).toBeInTheDocument();
-    expect(
-      document.querySelector("[data-slot='empty-icon'] svg"),
-    ).toBeInTheDocument();
+    // Remix Icon renders as an <i class="ri-…-line"> font glyph (no <svg>).
+    const iconEl = document.querySelector("[data-slot='empty-icon'] i");
+    expect(iconEl).toBeInTheDocument();
+    expect(iconEl?.className).toMatch(/ri-error-warning-line/);
   });
 });

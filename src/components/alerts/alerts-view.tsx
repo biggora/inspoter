@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BellRing, Plus, Settings2 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
@@ -214,11 +214,11 @@ export function AlertsView() {
         actions={
           <>
             <Button variant="outline" onClick={() => setManageOpen(true)}>
-              <Settings2 aria-hidden data-icon="inline-start" />
+              <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
               Управление категориями
             </Button>
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>
-              <Plus aria-hidden data-icon="inline-start" />
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               Новая категория
             </Button>
           </>
@@ -307,7 +307,7 @@ export function AlertsView() {
           <EmptyState description="Нет алертов, соответствующих текущим фильтрам." />
         ) : (
           <EmptyState
-            icon={BellRing}
+            icon="ri-notification-3-line"
             title="Алерты пока отсутствуют"
             description="Отправьте первый алерт через webhook:"
             action={

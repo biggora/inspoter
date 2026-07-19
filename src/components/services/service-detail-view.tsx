@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -173,7 +173,7 @@ export function ServiceDetailView({
               {checking ? (
                 <Spinner aria-hidden data-icon="inline-start" />
               ) : (
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
               )}
               Проверить сейчас
             </Button>
@@ -181,11 +181,11 @@ export function ServiceDetailView({
               variant="outline"
               onClick={() => setFormState({ mode: "edit", service })}
             >
-              <Pencil aria-hidden data-icon="inline-start" />
+              <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
               Редактировать
             </Button>
             <Button variant="outline" onClick={() => setDeleteTarget(service)}>
-              <Trash2 aria-hidden data-icon="inline-start" />
+              <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
               Удалить
             </Button>
           </>
@@ -315,7 +315,7 @@ export function ServiceDetailView({
             ) : (
               <EmptyState
                 size="sm"
-                icon={Activity}
+                icon="ri-pulse-line"
                 title="Нет проверок"
                 description="История проверок пока пуста."
               />

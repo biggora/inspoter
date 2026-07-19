@@ -3,18 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Activity,
-  CircleAlert,
-  Globe,
-  Network,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
@@ -48,9 +38,9 @@ import { ServiceStatusBadge } from "./service-status-badge";
 const POLL_INTERVAL_MS = 10000;
 
 const MONITOR_TYPE_ICONS = {
-  HTTP: Globe,
-  TCP: Network,
-  PING: Activity,
+  HTTP: "ri-global-line",
+  TCP: "ri-router-line",
+  PING: "ri-pulse-line",
 } as const;
 
 function pluralizeServices(count: number): string {
@@ -128,7 +118,7 @@ export function ServicesView({
         description={`${services.length} ${pluralizeServices(services.length)}`}
         actions={
           <Button onClick={() => setFormState({ mode: "create" })}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Новый сервис
           </Button>
         }
@@ -136,12 +126,12 @@ export function ServicesView({
 
       {services.length === 0 ? (
         <EmptyState
-          icon={Activity}
+          icon="ri-pulse-line"
           title="Нет сервисов"
           description="Добавьте первый сервис — HTTP(S)-эндпоинт, TCP-порт или хост для проверки доступности — чтобы начать отслеживать его статус."
           action={
             <Button onClick={() => setFormState({ mode: "create" })}>
-              <Plus aria-hidden data-icon="inline-start" />
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               Создать сервис
             </Button>
           }
@@ -197,7 +187,8 @@ function ServiceCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const MonitorIcon = MONITOR_TYPE_ICONS[service.monitorType] ?? Globe;
+  const monitorIconClass =
+    MONITOR_TYPE_ICONS[service.monitorType] ?? "ri-global-line";
 
   return (
     <Card size="sm">
@@ -207,7 +198,11 @@ function ServiceCard({
           className="flex items-center gap-2.5 min-w-0"
         >
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-            <MonitorIcon aria-hidden className="size-4 text-secondary-600" />
+            <Icon
+              name={monitorIconClass}
+              aria-hidden
+              className="text-base text-secondary-600"
+            />
           </div>
           <div className="min-w-0">
             <CardTitle>
@@ -256,7 +251,7 @@ function ServiceCard({
         )}
         {error && (
           <Alert variant="error" className="mt-1">
-            <CircleAlert aria-hidden />
+            <Icon name="ri-alert-line" aria-hidden />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -273,7 +268,7 @@ function ServiceCard({
           {checking ? (
             <Spinner aria-hidden data-icon="inline-start" />
           ) : (
-            <RefreshCw aria-hidden data-icon="inline-start" />
+            <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
           )}
           Проверить сейчас
         </Button>
@@ -283,7 +278,7 @@ function ServiceCard({
           onClick={onEdit}
           aria-label={`Редактировать «${service.name}»`}
         >
-          <Pencil aria-hidden data-icon="inline-start" />
+          <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
         </Button>
         <Button
           variant="ghost"
@@ -291,7 +286,7 @@ function ServiceCard({
           onClick={onDelete}
           aria-label={`Удалить «${service.name}»`}
         >
-          <Trash2 aria-hidden data-icon="inline-start" />
+          <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
         </Button>
       </CardFooter>
     </Card>

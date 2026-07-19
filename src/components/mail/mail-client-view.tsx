@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MailWarning, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { MailAccountDialog } from "@/components/settings/mail-account-dialog";
@@ -9,6 +8,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   Sheet,
   SheetContent,
@@ -455,7 +455,7 @@ export function MailClientView() {
 
   const addAccountAction = (
     <Button size="sm" onClick={() => setAddAccountOpen(true)}>
-      <Plus aria-hidden data-icon="inline-start" />
+      <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
       Добавить аккаунт
     </Button>
   );
@@ -549,7 +549,7 @@ export function MailClientView() {
           <EmptyState
             bordered={false}
             tone="danger"
-            icon={MailWarning}
+            icon="ri-mail-warning-line"
             title="Не удалось загрузить почту"
             description={accountsError}
             className="max-w-sm"
@@ -558,7 +558,7 @@ export function MailClientView() {
                 type="button"
                 onClick={() => setAccountsReload((n) => n + 1)}
               >
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
                 Повторить
               </Button>
             }

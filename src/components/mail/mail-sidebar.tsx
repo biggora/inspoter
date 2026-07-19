@@ -1,23 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Archive,
-  FileText,
-  Folder,
-  Inbox,
-  RefreshCw,
-  Send,
-  Settings,
-  ShieldAlert,
-  SquarePen,
-  Trash2,
-  type LucideIcon,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   Select,
   SelectContent,
@@ -40,16 +28,15 @@ const SPECIAL_USE_NAMES: Partial<Record<MailFolderDto["specialUse"], string>> =
     ARCHIVE: "Архив",
   };
 
-const SPECIAL_USE_ICONS: Partial<
-  Record<MailFolderDto["specialUse"], LucideIcon>
-> = {
-  INBOX: Inbox,
-  SENT: Send,
-  DRAFTS: FileText,
-  TRASH: Trash2,
-  JUNK: ShieldAlert,
-  ARCHIVE: Archive,
-};
+const SPECIAL_USE_ICONS: Partial<Record<MailFolderDto["specialUse"], string>> =
+  {
+    INBOX: "ri-inbox-line",
+    SENT: "ri-send-plane-line",
+    DRAFTS: "ri-draft-line",
+    TRASH: "ri-delete-bin-line",
+    JUNK: "ri-spam-line",
+    ARCHIVE: "ri-archive-line",
+  };
 
 export function folderDisplayName(folder: MailFolderDto): string {
   return SPECIAL_USE_NAMES[folder.specialUse] ?? folder.name;
@@ -132,7 +119,7 @@ export function MailSidebar({
           }
           onClick={onCompose ?? undefined}
         >
-          <SquarePen aria-hidden data-icon="inline-start" />
+          <Icon name="ri-quill-pen-line" aria-hidden data-icon="inline-start" />
           Написать
         </Button>
 
@@ -202,7 +189,7 @@ export function MailSidebar({
             className="px-2 py-4"
             action={
               <Button type="button" size="sm" onClick={onRetryFolders}>
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
                 Повторить
               </Button>
             }
@@ -217,7 +204,8 @@ export function MailSidebar({
           />
         ) : (
           folders.map((folder) => {
-            const Icon = SPECIAL_USE_ICONS[folder.specialUse] ?? Folder;
+            const iconClass =
+              SPECIAL_USE_ICONS[folder.specialUse] ?? "ri-folder-line";
             const isSelected = folder.id === selectedFolderId;
             return (
               <Button
@@ -229,7 +217,7 @@ export function MailSidebar({
                 aria-current={isSelected ? "true" : undefined}
                 className="w-full justify-start"
               >
-                <Icon aria-hidden data-icon="inline-start" />
+                <Icon name={iconClass} aria-hidden data-icon="inline-start" />
                 <span className="min-w-0 flex-1 truncate text-left">
                   {folderDisplayName(folder)}
                 </span>
@@ -257,7 +245,7 @@ export function MailSidebar({
             {syncing ? (
               <Spinner data-icon="inline-start" aria-hidden />
             ) : (
-              <RefreshCw aria-hidden data-icon="inline-start" />
+              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
             )}
             Синхронизировать
           </Button>
@@ -269,7 +257,7 @@ export function MailSidebar({
           size="sm"
           className="w-full justify-start"
         >
-          <Settings aria-hidden data-icon="inline-start" />
+          <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
           Управление аккаунтами
         </Button>
       </div>

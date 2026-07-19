@@ -1,11 +1,10 @@
 "use client";
 
-import { Mail, MailOpen, Menu, Paperclip, RefreshCw } from "lucide-react";
-
 import { Pagination } from "@/components/shell/pagination";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -130,7 +129,7 @@ export function MessageList({
             onClick={onOpenSidebar}
             className="lg:hidden"
           >
-            <Menu aria-hidden data-icon="inline-start" />
+            <Icon name="ri-menu-line" aria-hidden data-icon="inline-start" />
           </Button>
           <Input
             value={searchInput}
@@ -149,7 +148,7 @@ export function MessageList({
             aria-label="Только непрочитанные"
             title="Только непрочитанные"
           >
-            <MailOpen aria-hidden data-icon="inline-start" />
+            <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
             Непрочитанные
           </Toggle>
           <Select
@@ -180,7 +179,7 @@ export function MessageList({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
             <Button type="button" size="sm" onClick={onRetry}>
-              <RefreshCw aria-hidden data-icon="inline-start" />
+              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
               Повторить
             </Button>
           </div>
@@ -215,7 +214,7 @@ export function MessageList({
               <EmptyState
                 bordered={false}
                 size="sm"
-                icon={Mail}
+                icon="ri-mail-line"
                 title="Входящая почта пока отсутствует"
                 description="Отправьте первое письмо через webhook:"
                 action={
@@ -233,7 +232,7 @@ export function MessageList({
               <EmptyState
                 bordered={false}
                 size="sm"
-                icon={Mail}
+                icon="ri-mail-line"
                 title="Нет писем"
                 description="В этой папке пока пусто."
               />
@@ -277,9 +276,12 @@ export function MessageList({
                         </span>
                         <span className="flex shrink-0 items-center gap-1.5 text-xs text-foreground-400">
                           {item.hasAttachments && (
-                            <Paperclip
+                            <Icon
+                              name="ri-attachment-line"
+                              aria-hidden={false}
+                              role="img"
                               aria-label="Есть вложения"
-                              className="size-3.5"
+                              className="text-sm"
                             />
                           )}
                           <span className="whitespace-nowrap">

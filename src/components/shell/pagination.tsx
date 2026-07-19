@@ -1,6 +1,5 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
 interface PaginationProps {
@@ -36,7 +35,11 @@ export function Pagination({
         onClick={onPrevious}
         disabled={!hasPrevious || disabled}
       >
-        <ChevronLeft aria-hidden data-icon="inline-start" />
+        <Icon
+          name="ri-arrow-left-s-line"
+          aria-hidden
+          data-icon="inline-start"
+        />
         Назад
       </Button>
       <span className="text-sm text-muted-foreground">Страница {page}</span>
@@ -48,7 +51,11 @@ export function Pagination({
         disabled={!hasNext || disabled}
       >
         Далее
-        <ChevronRight aria-hidden data-icon="inline-end" />
+        <Icon
+          name="ri-arrow-right-s-line"
+          aria-hidden
+          data-icon="inline-end"
+        />
       </Button>
     </div>
   );

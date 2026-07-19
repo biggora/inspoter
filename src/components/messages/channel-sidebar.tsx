@@ -1,14 +1,6 @@
 "use client";
 
 import { useId, useRef } from "react";
-import {
-  ChevronDown,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Settings,
-  Trash2,
-} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import type { ChannelDto, MessageCategoryDto } from "./api";
 
@@ -86,7 +79,8 @@ export function ChannelSidebar({
                     aria-controls={channelListId}
                     className="min-w-0 flex-1 justify-start"
                   >
-                    <ChevronDown
+                    <Icon
+                      name="ri-arrow-down-s-line"
                       data-icon="inline-start"
                       className={cn(
                         "text-foreground-400 transition-transform",
@@ -106,7 +100,7 @@ export function ChannelSidebar({
                       aria-label={`Новый канал в «${category.name}»`}
                       onClick={() => onNewChannel(category.id)}
                     >
-                      <Plus aria-hidden />
+                      <Icon name="ri-add-line" aria-hidden />
                     </Button>
                     <Button
                       type="button"
@@ -115,7 +109,7 @@ export function ChannelSidebar({
                       aria-label={`Переименовать «${category.name}»`}
                       onClick={() => onEditCategory(category)}
                     >
-                      <Pencil aria-hidden />
+                      <Icon name="ri-edit-line" aria-hidden />
                     </Button>
                     <Button
                       type="button"
@@ -124,7 +118,7 @@ export function ChannelSidebar({
                       aria-label={`Удалить «${category.name}»`}
                       onClick={() => onDeleteCategory(category)}
                     >
-                      <Trash2 aria-hidden />
+                      <Icon name="ri-delete-bin-line" aria-hidden />
                     </Button>
                   </div>
                 </div>
@@ -197,7 +191,7 @@ export function ChannelSidebar({
                               />
                             }
                           >
-                            <MoreHorizontal aria-hidden />
+                            <Icon name="ri-more-line" aria-hidden />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
@@ -210,20 +204,20 @@ export function ChannelSidebar({
                                 )
                               }
                             >
-                              <Settings aria-hidden />
+                              <Icon name="ri-settings-3-line" aria-hidden />
                               Настройки канала
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => onEditChannel(channel)}
                             >
-                              <Pencil aria-hidden />
+                              <Icon name="ri-edit-line" aria-hidden />
                               Переименовать
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => onDeleteChannel(channel)}
                             >
-                              <Trash2 aria-hidden />
+                              <Icon name="ri-delete-bin-line" aria-hidden />
                               Удалить
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -246,7 +240,7 @@ export function ChannelSidebar({
           onClick={onNewCategory}
           className="w-full justify-start"
         >
-          <Plus aria-hidden data-icon="inline-start" />
+          <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
           Новая категория
         </Button>
       </div>

@@ -1,8 +1,7 @@
 "use client";
 
-import { Menu, Settings } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import type { ChannelDto } from "./api";
 
 interface ChannelHeaderProps {
@@ -28,7 +27,7 @@ export function ChannelHeader({
         aria-label="Открыть каналы"
         onClick={onOpenNavigation}
       >
-        <Menu aria-hidden />
+        <Icon name="ri-menu-line" aria-hidden />
       </Button>
       <span className="text-lg font-semibold text-foreground-400" aria-hidden>
         #
@@ -50,7 +49,7 @@ export function ChannelHeader({
         aria-label={`Настройки канала «${channel.name}»`}
         onClick={(event) => onOpenSettings(event.currentTarget)}
       >
-        <Settings aria-hidden />
+        <Icon name="ri-settings-3-line" aria-hidden />
       </Button>
     </header>
   );

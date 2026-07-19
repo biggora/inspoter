@@ -2,18 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  CircleAlert,
-  CirclePlay,
-  CircleStop,
-  CloudOff,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  ServerIcon,
-  type LucideIcon,
-} from "lucide-react";
 import { CardGrid } from "@/components/shell/card-grid";
+import { Icon } from "@/components/ui/icon";
 import { NotificationToast } from "@/components/shell/notification-toast";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
@@ -249,12 +239,12 @@ export function ServersView() {
         actions={
           <>
             <Button onClick={() => setIsCreateProviderOpen(true)}>
-              <Plus aria-hidden data-icon="inline-start" />
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               Добавить провайдера
             </Button>
             {pageState !== "loading" ? (
               <Button variant="outline" onClick={load}>
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
                 Обновить
               </Button>
             ) : undefined}
@@ -298,12 +288,12 @@ export function ServersView() {
       {pageState === "error" && (
         <EmptyState
           tone="danger"
-          icon={CloudOff}
+          icon="ri-cloud-off-line"
           title="Hetzner недоступен"
           description="Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже."
           action={
             <Button onClick={load}>
-              <RefreshCw aria-hidden data-icon="inline-start" />
+              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
               Повторить
             </Button>
           }
@@ -312,7 +302,7 @@ export function ServersView() {
 
       {pageState === "empty" && (
         <EmptyState
-          icon={ServerIcon}
+          icon="ri-server-line"
           title="Нет серверов"
           description="Подключите провайдера в настройках — серверы появятся здесь автоматически."
           action={
@@ -388,7 +378,7 @@ const statusConfig: Record<
 interface PowerCardAction {
   action: PowerActionType;
   label: string;
-  icon: LucideIcon;
+  icon: string;
   confirmTitle: string;
   confirmText: string;
 }
@@ -424,7 +414,7 @@ function getPowerAction(
       return {
         action,
         label: "Запустить",
-        icon: CirclePlay,
+        icon: "ri-play-circle-line",
         confirmTitle: `Запустить «${server.name}»?`,
         confirmText: "Сервер будет запущен. Это может занять несколько секунд.",
       };
@@ -432,7 +422,7 @@ function getPowerAction(
       return {
         action,
         label: "Остановить",
-        icon: CircleStop,
+        icon: "ri-stop-circle-line",
         confirmTitle: `Остановить «${server.name}»?`,
         confirmText: "Сервер будет остановлен и станет недоступен.",
       };
@@ -440,7 +430,7 @@ function getPowerAction(
       return {
         action,
         label: "Перезапустить",
-        icon: RotateCcw,
+        icon: "ri-restart-line",
         confirmTitle: `Перезапустить «${server.name}»?`,
         confirmText: "Сервер перезапустится и будет ненадолго недоступен.",
       };
@@ -491,7 +481,11 @@ function ServerCard({
       <CardHeader className="border-b">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-            <ServerIcon aria-hidden className="size-4 text-secondary-600" />
+            <Icon
+              name="ri-server-line"
+              aria-hidden
+              className="text-base text-secondary-600"
+            />
           </div>
           <div className="min-w-0">
             <CardTitle>
@@ -539,7 +533,7 @@ function ServerCard({
         </div>
         {error && (
           <Alert variant="error" className="mt-1 animate-fade-in">
-            <CircleAlert aria-hidden />
+            <Icon name="ri-alert-line" aria-hidden />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -547,7 +541,6 @@ function ServerCard({
 
       <CardFooter className="gap-2">
         {availableActions.map((act) => {
-          const ActionIcon = act.icon;
           const actionBusy = busy && busyAction === act.action;
 
           return (
@@ -578,7 +571,11 @@ function ServerCard({
                 {actionBusy ? (
                   <Spinner aria-hidden data-icon="inline-start" />
                 ) : (
-                  <ActionIcon aria-hidden data-icon="inline-start" />
+                  <Icon
+                    name={act.icon}
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                 )}
                 {actionBusy ? PENDING_ACTION_LABELS[act.action] : act.label}
               </AlertDialogTrigger>

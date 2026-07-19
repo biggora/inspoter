@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +16,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,7 +117,7 @@ export function DnsRecordsView({
               setRecordDialog({ mode: "create", providerId, domainId })
             }
           >
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить запись
           </Button>
         }
@@ -137,7 +137,7 @@ export function DnsRecordsView({
         </div>
       ) : records.length === 0 && !error ? (
         <EmptyState
-          icon={FileText}
+          icon="ri-file-text-line"
           title="Нет записей"
           description="Для этого домена пока нет DNS-записей."
         />

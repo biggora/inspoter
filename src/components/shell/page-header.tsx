@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
 type PageHeaderBack =
@@ -39,7 +39,7 @@ export function PageHeader({
             size="sm"
             className="w-fit"
           >
-            <ChevronLeft aria-hidden data-icon="inline-start" />
+            <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
             {back.label}
           </Button>
         ) : (
@@ -50,7 +50,7 @@ export function PageHeader({
             onClick={back.onClick}
             className="w-fit"
           >
-            <ChevronLeft aria-hidden data-icon="inline-start" />
+            <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
             {back.label}
           </Button>
         ))}

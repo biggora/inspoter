@@ -1,6 +1,5 @@
 "use client";
 
-import { GripVertical, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import type { Bookmark } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
 import { BookmarkIcon } from "./bookmark-icon";
@@ -115,7 +115,7 @@ export function BookmarkCard({
               : "cursor-grab active:cursor-grabbing",
           )}
         >
-          <GripVertical aria-hidden data-icon="inline-start" />
+          <Icon name="ri-draggable" aria-hidden data-icon="inline-start" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -129,7 +129,7 @@ export function BookmarkCard({
             }
             aria-label={`Действия закладки «${bookmark.name}»`}
           >
-            <MoreVertical aria-hidden data-icon="inline-start" />
+            <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>

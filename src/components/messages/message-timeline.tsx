@@ -1,11 +1,11 @@
 "use client";
 
 import type { RefObject } from "react";
-import { MessageSquare, MessageSquareWarning, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MessageDto } from "./api";
 
@@ -128,13 +128,13 @@ export function MessageTimeline({
             bordered={false}
             size="sm"
             tone="danger"
-            icon={MessageSquareWarning}
+            icon="ri-error-warning-line"
             title="Не удалось загрузить сообщения"
             description={error}
             className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
             action={
               <Button type="button" size="sm" onClick={onRetry}>
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
                 Повторить
               </Button>
             }
@@ -161,7 +161,7 @@ export function MessageTimeline({
           <EmptyState
             bordered={false}
             size="sm"
-            icon={MessageSquare}
+            icon="ri-message-2-line"
             title="Нет сообщений"
             description={
               <>

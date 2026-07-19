@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { BookmarkIcon, FileSearch, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -32,6 +31,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
+import { Icon } from "@/components/ui/icon";
 import {
   InputGroup,
   InputGroupAddon,
@@ -416,7 +416,7 @@ export function BookmarksBoard({
         title="Закладки"
         actions={
           <Button onClick={() => setCategoryDialog({ mode: "create" })}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Новая категория
           </Button>
         }
@@ -425,7 +425,7 @@ export function BookmarksBoard({
           <FilterBar>
             <InputGroup className="sm:max-w-xs">
               <InputGroupAddon>
-                <Search aria-hidden />
+                <Icon name="ri-search-line" aria-hidden />
               </InputGroupAddon>
               <InputGroupInput
                 id={searchId}
@@ -442,7 +442,7 @@ export function BookmarksBoard({
                     onClick={() => setQuery("")}
                     aria-label="Очистить поиск"
                   >
-                    <X aria-hidden data-icon="inline-start" />
+                    <Icon name="ri-close-line" aria-hidden data-icon="inline-start" />
                   </InputGroupButton>
                 </InputGroupAddon>
               )}
@@ -457,19 +457,19 @@ export function BookmarksBoard({
 
       {categories.length === 0 ? (
         <EmptyState
-          icon={BookmarkIcon}
+          icon="ri-bookmark-line"
           title="Нет закладок"
           description="Создайте категорию, чтобы начать добавлять закладки."
           action={
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>
-              <Plus aria-hidden data-icon="inline-start" />
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               Создать категорию
             </Button>
           }
         />
       ) : isSearching && filteredCategories.length === 0 ? (
         <EmptyState
-          icon={FileSearch}
+          icon="ri-file-search-line"
           title="Ничего не найдено"
           description={`По запросу «${trimmedQuery}» закладок не найдено. Попробуйте изменить запрос или сбросить поиск.`}
           action={

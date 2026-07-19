@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import { logout } from "@/app/login/actions";
 
 // Top-bar operator menu (design.md §4.2 "operator menu, and Russian logout
@@ -30,7 +30,11 @@ export function OperatorMenu({ username }: { username: string }) {
           </span>
         </span>
         <span className="hidden font-medium sm:inline">{username}</span>
-        <ChevronDown aria-hidden className="size-4 text-muted-foreground" />
+        <Icon
+          name="ri-arrow-down-s-line"
+          aria-hidden
+          className="text-muted-foreground"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <div className="px-1.5 py-1.5">
@@ -46,7 +50,7 @@ export function OperatorMenu({ username }: { username: string }) {
             disabled={isPending}
             onClick={() => startTransition(() => logout())}
           >
-            <LogOut aria-hidden className="size-4" />
+            <Icon name="ri-logout-box-r-line" aria-hidden />
             Выйти
           </DropdownMenuItem>
         </DropdownMenuGroup>

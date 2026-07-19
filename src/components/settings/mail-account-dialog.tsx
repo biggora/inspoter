@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { CircleCheck, CircleX } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +20,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -406,12 +406,20 @@ export function MailAccountDialog({
             >
               {testOk ? (
                 <>
-                  <CircleCheck aria-hidden className="size-4 shrink-0" />
+                  <Icon
+                    name="ri-checkbox-circle-line"
+                    aria-hidden
+                    className="text-base shrink-0"
+                  />
                   Подключение успешно.
                 </>
               ) : (
                 <>
-                  <CircleX aria-hidden className="size-4 shrink-0" />
+                  <Icon
+                    name="ri-close-circle-line"
+                    aria-hidden
+                    className="text-base shrink-0"
+                  />
                   {testResult.error ??
                     (testResult.imapOk
                       ? "Не удалось подключиться к SMTP-серверу."

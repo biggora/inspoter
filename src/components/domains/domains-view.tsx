@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Globe2, Plus, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import {
@@ -98,7 +98,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
         title="Домены"
         actions={
           <Button onClick={() => setIsCreateProviderOpen(true)}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить провайдер
           </Button>
         }
@@ -113,7 +113,11 @@ export function DomainsView({ providers }: DomainsViewProps) {
               className="flex flex-row items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
-                <TriangleAlert aria-hidden className="size-4 shrink-0" />
+                <Icon
+                  name="ri-alert-line"
+                  aria-hidden
+                  className="text-base shrink-0"
+                />
                 <AlertDescription>
                   <span className="font-medium">
                     {providerLabel(provider.providerId)}
@@ -136,7 +140,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
 
       {domains.length === 0 ? (
         <EmptyState
-          icon={Globe2}
+          icon="ri-global-line"
           title={
             erroredProviders.length > 0
               ? "Нет доменов от исправных провайдеров"

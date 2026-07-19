@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -9,6 +8,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,7 +93,7 @@ export function ProviderCredentialsView() {
         back={{ href: "/settings", label: "Назад к настройкам" }}
         actions={
           <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить провайдер
           </Button>
         }
@@ -113,7 +113,7 @@ export function ProviderCredentialsView() {
         </div>
       ) : credentials.length === 0 ? (
         <EmptyState
-          icon={KeyRound}
+          icon="ri-key-2-line"
           title="Нет провайдеров"
           description="Провайдеры не настроены. Добавьте API-ключи для подключения к Cloudflare, Hetzner или GoDaddy."
         />
@@ -155,7 +155,7 @@ export function ProviderCredentialsView() {
                           setDialogState({ mode: "edit", credential })
                         }
                       >
-                        <Pencil aria-hidden className="size-4" />
+                        <Icon name="ri-edit-line" aria-hidden className="text-base" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -163,7 +163,7 @@ export function ProviderCredentialsView() {
                         aria-label="Удалить"
                         onClick={() => setDeleteTarget(credential)}
                       >
-                        <Trash2 aria-hidden className="size-4" />
+                        <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
                       </Button>
                     </div>
                   </TableCell>

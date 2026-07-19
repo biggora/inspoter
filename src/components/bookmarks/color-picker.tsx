@@ -2,8 +2,8 @@
 
 import type { KeyboardEvent } from "react";
 import { useId } from "react";
-import { Ban } from "lucide-react";
 
+import { Icon } from "@/components/ui/icon";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { bookmarkColorTokens } from "@/lib/validation/bookmarks";
@@ -114,7 +114,7 @@ export function ColorPicker({
                   aria-hidden
                   className="flex size-6 items-center justify-center rounded-full border border-background-300 bg-background-50 text-foreground-400"
                 >
-                  <Ban />
+                  <Icon name="ri-forbid-line" />
                 </span>
               )}
             </ToggleGroupItem>

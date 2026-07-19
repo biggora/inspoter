@@ -8,7 +8,6 @@ import {
   type FormEvent,
   type RefObject,
 } from "react";
-import { Check, Copy, Link2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -33,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -260,7 +260,7 @@ export function ChannelSettingsDialog({
                   variant="outline"
                   onClick={() => onRename(channel)}
                 >
-                  <Pencil aria-hidden data-icon="inline-start" />
+                  <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
                   Переименовать
                 </Button>
                 <Button
@@ -268,7 +268,7 @@ export function ChannelSettingsDialog({
                   variant="destructive"
                   onClick={() => onDelete(channel)}
                 >
-                  <Trash2 aria-hidden data-icon="inline-start" />
+                  <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
                   Удалить канал
                 </Button>
               </div>
@@ -311,9 +311,9 @@ export function ChannelSettingsDialog({
                         onClick={() => copyValue("url", secret.url, urlRef)}
                       >
                         {copied === "url" ? (
-                          <Check aria-hidden />
+                          <Icon name="ri-check-line" aria-hidden />
                         ) : (
-                          <Copy aria-hidden />
+                          <Icon name="ri-file-copy-line" aria-hidden />
                         )}
                         {copied === "url" ? "URL скопирован" : "Копировать URL"}
                       </Button>
@@ -337,9 +337,9 @@ export function ChannelSettingsDialog({
                         onClick={() => copyValue("curl", secret.curl, curlRef)}
                       >
                         {copied === "curl" ? (
-                          <Check aria-hidden />
+                          <Icon name="ri-check-line" aria-hidden />
                         ) : (
-                          <Copy aria-hidden />
+                          <Icon name="ri-file-copy-line" aria-hidden />
                         )}
                         {copied === "curl"
                           ? "cURL скопирован"
@@ -376,7 +376,7 @@ export function ChannelSettingsDialog({
                         </>
                       ) : (
                         <>
-                          <Plus aria-hidden />
+                          <Icon name="ri-add-line" aria-hidden />
                           Создать webhook
                         </>
                       )}
@@ -409,7 +409,7 @@ export function ChannelSettingsDialog({
                 </div>
               ) : webhooks.length === 0 && !loadError ? (
                 <EmptyState
-                  icon={Link2}
+                  icon="ri-links-line"
                   size="sm"
                   title="Вебхуков пока нет"
                   description="Создайте webhook, чтобы внешняя система могла отправлять сообщения в этот канал."

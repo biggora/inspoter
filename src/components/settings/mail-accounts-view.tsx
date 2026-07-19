@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -10,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -123,7 +123,7 @@ export function MailAccountsView() {
         back={{ href: "/settings", label: "Назад к настройкам" }}
         actions={
           <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить аккаунт
           </Button>
         }
@@ -143,7 +143,7 @@ export function MailAccountsView() {
         </div>
       ) : accounts.length === 0 ? (
         <EmptyState
-          icon={Mail}
+          icon="ri-mail-line"
           title="Нет почтовых аккаунтов"
           description="Подключите IMAP/SMTP-ящик, чтобы получать и отправлять почту из панели."
         />
@@ -185,7 +185,7 @@ export function MailAccountsView() {
                       aria-label="Изменить"
                       onClick={() => setDialogState({ mode: "edit", account })}
                     >
-                      <Pencil aria-hidden className="size-4" />
+                      <Icon name="ri-edit-line" aria-hidden className="text-base" />
                     </Button>
                     {account.kind !== "WEBHOOK" && (
                       <Button
@@ -194,7 +194,7 @@ export function MailAccountsView() {
                         aria-label="Удалить"
                         onClick={() => setDeleteTarget(account)}
                       >
-                        <Trash2 aria-hidden className="size-4" />
+                        <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
                       </Button>
                     )}
                   </div>

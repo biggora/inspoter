@@ -2,9 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 
 const subscribeNoop = () => () => {};
 
@@ -40,9 +40,9 @@ export function ThemeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
       {isDark ? (
-        <Sun aria-hidden className="size-4" />
+        <Icon name="ri-sun-line" aria-hidden />
       ) : (
-        <Moon aria-hidden className="size-4" />
+        <Icon name="ri-moon-line" aria-hidden />
       )}
     </Button>
   );

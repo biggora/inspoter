@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Icon } from "@/components/ui/icon";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -86,10 +87,7 @@ export function AppSidebar({
                         render={<Link href={item.href} />}
                       >
                         <span className="shell-icon-tile">
-                          <i
-                            aria-hidden="true"
-                            className={cn(item.icon, "text-base leading-none")}
-                          />
+                          <Icon name={item.icon} />
                         </span>
                         <span>{item.label}</span>
                       </SidebarMenuButton>

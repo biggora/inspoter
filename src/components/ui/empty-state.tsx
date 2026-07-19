@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { LucideIcon } from "lucide-react";
 
 import {
   Empty,
@@ -10,6 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Icon as RemixIcon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
 const emptyStateIconVariants = cva(
@@ -59,8 +59,8 @@ const emptyStateDescriptionVariants = cva("", {
 });
 
 interface EmptyStateProps extends VariantProps<typeof emptyStateIconVariants> {
-  /** Lucide icon component. */
-  icon?: LucideIcon;
+  /** Remix Icon class name (e.g. `"ri-inbox-line"`). */
+  icon?: string;
   align?: "center" | "start";
   /** Wraps content in the standard card (border + background + padding). */
   bordered?: boolean;
@@ -81,8 +81,6 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
-  const Icon = icon;
-
   return (
     <Empty
       data-slot="empty-state"
@@ -96,12 +94,12 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && (
+      {icon && (
         <EmptyMedia
           variant="default"
           className={cn(emptyStateIconVariants({ tone, size }))}
         >
-          <Icon aria-hidden />
+          <RemixIcon name={icon} />
         </EmptyMedia>
       )}
       {(title || description) && (

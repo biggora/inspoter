@@ -1,6 +1,5 @@
 "use client";
 
-import { GripVertical, MoreVertical, Plus } from "lucide-react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -18,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import type { Bookmark, Category } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
 import { cn } from "@/lib/utils";
@@ -107,7 +107,7 @@ export function CategorySection({
                 : "cursor-grab active:cursor-grabbing",
             )}
           >
-            <GripVertical aria-hidden data-icon="inline-start" />
+            <Icon name="ri-draggable" aria-hidden data-icon="inline-start" />
           </Button>
           <h2
             id={headingId}
@@ -123,7 +123,7 @@ export function CategorySection({
             size="sm"
             onClick={onAddBookmark}
           >
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить
           </Button>
           <DropdownMenu>
@@ -131,7 +131,7 @@ export function CategorySection({
               render={<Button type="button" variant="ghost" size="icon-sm" />}
               aria-label={`Действия категории «${category.name}»`}
             >
-              <MoreVertical aria-hidden data-icon="inline-start" />
+              <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
@@ -245,7 +245,7 @@ function SubcategorySection({
             size="sm"
             onClick={onAddBookmark}
           >
-            <Plus aria-hidden data-icon="inline-start" />
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
             Добавить
           </Button>
           <DropdownMenu>
@@ -253,7 +253,7 @@ function SubcategorySection({
               render={<Button type="button" variant="ghost" size="icon-sm" />}
               aria-label={`Действия категории «${subcategory.name}»`}
             >
-              <MoreVertical aria-hidden data-icon="inline-start" />
+              <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>

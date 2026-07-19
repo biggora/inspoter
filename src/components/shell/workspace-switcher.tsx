@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -29,6 +28,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/generated/prisma/client";
@@ -139,9 +139,10 @@ export function WorkspaceSwitcher({
           <span className="min-w-0 truncate text-sm font-semibold text-sidebar-foreground">
             {currentName}
           </span>
-          <ChevronsUpDown
+          <Icon
+            name="ri-expand-up-down-line"
             aria-hidden
-            className="size-4 shrink-0 text-muted-foreground"
+            className="shrink-0 text-muted-foreground"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -163,7 +164,9 @@ export function WorkspaceSwitcher({
                   <span className="min-w-0 flex-1 truncate">
                     {workspace.name}
                   </span>
-                  {workspace.id === currentId && <Check aria-hidden />}
+                  {workspace.id === currentId && (
+                    <Icon name="ri-check-line" aria-hidden />
+                  )}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
@@ -171,7 +174,7 @@ export function WorkspaceSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={openCreate}>
-              <Plus aria-hidden />
+              <Icon name="ri-add-line" aria-hidden />
               Создать рабочее пространство
             </DropdownMenuItem>
           </DropdownMenuGroup>

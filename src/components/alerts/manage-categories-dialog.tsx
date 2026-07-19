@@ -1,7 +1,5 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 import type { AlertCategoryDto } from "./api";
 
 interface ManageCategoriesDialogProps {
@@ -60,7 +59,7 @@ export function ManageCategoriesDialog({
                     aria-label={`Переименовать ${category.name}`}
                     onClick={() => onRename(category)}
                   >
-                    <Pencil aria-hidden className="size-3.5" />
+                    <Icon name="ri-edit-line" aria-hidden className="text-sm" />
                   </Button>
                   <Button
                     type="button"
@@ -69,7 +68,7 @@ export function ManageCategoriesDialog({
                     aria-label={`Удалить ${category.name}`}
                     onClick={() => onDelete(category)}
                   >
-                    <Trash2 aria-hidden className="size-3.5" />
+                    <Icon name="ri-delete-bin-line" aria-hidden className="text-sm" />
                   </Button>
                 </div>
               </li>

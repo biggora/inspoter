@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserMinus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -16,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import type { MemberWithOperator } from "@/lib/services/workspaces";
 import { workspacesApi } from "./api";
 
@@ -75,7 +75,7 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
               onClick={() => setRemoveTarget(member)}
               disabled={members.length <= 1}
             >
-              <UserMinus aria-hidden className="size-4" />
+              <Icon name="ri-user-unfollow-line" aria-hidden className="text-base" />
             </Button>
           </li>
         ))}

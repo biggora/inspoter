@@ -1,11 +1,11 @@
 "use client";
 
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -92,7 +92,7 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
             {pending ? (
               <Spinner aria-hidden />
             ) : (
-              <Send aria-hidden data-icon="inline-start" />
+              <Icon name="ri-send-plane-line" aria-hidden data-icon="inline-start" />
             )}
           </Button>
         </div>

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageSquare, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import {
   Sheet,
   SheetContent,
@@ -284,13 +284,13 @@ function MessagesCoordinator() {
           <EmptyState
             bordered={false}
             tone="danger"
-            icon={MessageSquareWarning}
+            icon="ri-error-warning-line"
             title="Не удалось загрузить сообщения"
             description={categoriesError}
             className="max-w-sm"
             action={
               <Button type="button" onClick={() => void loadCategories()}>
-                <RefreshCw aria-hidden data-icon="inline-start" />
+                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
                 Повторить
               </Button>
             }
@@ -317,7 +317,7 @@ function MessagesCoordinator() {
               <EmptyState
                 bordered={false}
                 size="sm"
-                icon={MessageSquare}
+                icon="ri-message-2-line"
                 title="Категорий пока нет"
                 description="Создайте категорию и канал, чтобы начать общение."
                 className="max-w-xs"
