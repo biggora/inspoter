@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
-import { logout } from "@/app/login/actions";
+import { logout } from "@/app/[locale]/login/actions";
 
 // Top-bar operator menu (design.md §4.2 "operator menu, and Russian logout
 // action"). Replaces the former sidebar-footer username + standalone

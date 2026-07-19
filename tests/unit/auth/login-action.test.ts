@@ -38,14 +38,14 @@ describe("AC-AUTH-002/003: login Server Action contract", () => {
     });
     createdOperatorIds.push(operator.id);
 
-    const { login } = await import("@/app/login/actions");
+    const { login } = await import("@/app/[locale]/login/actions");
     const result = await login(formDataFor({ username, password }));
 
     expect(result).toEqual({ ok: true });
   });
 
   it("AC-AUTH-003: invalid credentials are rejected with an error and no session row is created", async () => {
-    const { login } = await import("@/app/login/actions");
+    const { login } = await import("@/app/[locale]/login/actions");
     const before = await db.session.count();
 
     const result = await login(

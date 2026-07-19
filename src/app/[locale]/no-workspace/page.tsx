@@ -3,7 +3,7 @@ import { requireOperator } from "@/lib/auth/dal";
 import { listForOperator } from "@/lib/services/workspaces";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { logout } from "@/app/login/actions";
+import { logout } from "@/app/[locale]/login/actions";
 
 // Landing page for an authenticated Operator with zero workspace
 // memberships — e.g. a freshly auto-provisioned Authentik account before an

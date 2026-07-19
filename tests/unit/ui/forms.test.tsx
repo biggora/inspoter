@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LoginForm } from "@/app/login/login-form";
+import { LoginForm } from "@/app/[locale]/login/login-form";
 import { BookmarkDialog } from "@/components/bookmarks/bookmark-dialog";
 import { CategoryDialog } from "@/components/bookmarks/category-dialog";
 import { ServiceFormDialog } from "@/components/services/service-form-dialog";
@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }));
 
-vi.mock("@/app/login/actions", () => ({ login: mocks.login }));
+vi.mock("@/app/[locale]/login/actions", () => ({ login: mocks.login }));
 
 vi.mock("@/components/bookmarks/api", () => {
   class ApiError extends Error {
