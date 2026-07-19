@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { requireAuth } from "@/lib/auth/dal";
 import * as workspacesService from "@/lib/services/workspaces";
 import {
@@ -24,20 +26,20 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceSettingsPage() {
   const { workspace } = await requireAuth();
   const members = await workspacesService.listMembers(workspace.id);
+  const t = await getTranslations("workspace");
+  const tSettings = await getTranslations("settings");
 
   return (
     <PageBody>
       <PageHeader
-        back={{ href: "/settings", label: "Назад к настройкам" }}
-        title="Рабочее пространство"
+        back={{ href: "/settings", label: tSettings("backToSettings") }}
+        title={t("pageTitle")}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Название рабочего пространства</CardTitle>
-          <CardDescription>
-            Переименовать текущее рабочее пространство.
-          </CardDescription>
+          <CardTitle>{t("renameCardTitle")}</CardTitle>
+          <CardDescription>{t("renameCardDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <RenameWorkspaceForm
@@ -49,10 +51,8 @@ export default async function WorkspaceSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Участники</CardTitle>
-          <CardDescription>
-            Операторы с доступом к этому рабочему пространству.
-          </CardDescription>
+          <CardTitle>{t("membersCardTitle")}</CardTitle>
+          <CardDescription>{t("membersCardDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <MembersSection workspaceId={workspace.id} members={members} />
@@ -62,10 +62,8 @@ export default async function WorkspaceSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Создать новое рабочее пространство</CardTitle>
-          <CardDescription>
-            Начните новое пустое рабочее пространство и переключитесь на него.
-          </CardDescription>
+          <CardTitle>{t("createCardTitle")}</CardTitle>
+          <CardDescription>{t("createCardDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <CreateWorkspaceForm />

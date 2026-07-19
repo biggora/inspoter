@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { ApiError, workspacesApi } from "./api";
 // the sidebar WorkspaceSwitcher's create flow — so `router.refresh()` re-
 // renders this same page with the new workspace's (empty) data.
 export function CreateWorkspaceForm() {
+  const t = useTranslations("workspace");
   const router = useRouter();
   const nameId = useId();
   const errorId = useId();
@@ -32,7 +34,7 @@ export function CreateWorkspaceForm() {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Название рабочего пространства обязательно.");
+      setError(t("nameRequiredError"));
       return;
     }
 
@@ -41,18 +43,14 @@ export function CreateWorkspaceForm() {
     try {
       const workspace = await workspacesApi.create(trimmed);
       await workspacesApi.switchTo(workspace.id);
-      toast.success("Рабочее пространство создано.");
+      toast.success(t("createdToast"));
       setName("");
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setError(err.fieldErrors.name);
       } else {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось создать рабочее пространство.",
-        );
+        toast.error(err instanceof ApiError ? err.message : t("createError"));
       }
     } finally {
       setSubmitting(false);
@@ -68,7 +66,7 @@ export function CreateWorkspaceForm() {
       <FieldGroup className="sm:flex-row sm:items-end">
         <Field className="flex-1" data-invalid={!!error || undefined}>
           <FieldLabel htmlFor={nameId}>
-            Название нового рабочего пространства
+            {t("newWorkspaceNameLabel")}
           </FieldLabel>
           <Input
             id={nameId}
@@ -84,10 +82,10 @@ export function CreateWorkspaceForm() {
           {submitting ? (
             <>
               <Spinner data-icon="inline-start" aria-hidden />
-              Создание…
+              {t("creatingButton")}
             </>
           ) : (
-            "Создать рабочее пространство"
+            t("createWorkspaceButton")
           )}
         </Button>
       </FieldGroup>
