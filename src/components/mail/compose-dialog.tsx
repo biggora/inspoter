@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,14 +39,19 @@ interface ComposeDialogProps {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// This module has no i18n namespace of its own for quoteOriginal — the
+// caller (the ComposeDialog component below) passes its own "mail"
+// namespace `t`, same pattern as src/lib/format/relative-time.ts.
+type Translate = (key: string, params?: Record<string, string>) => string;
+
 function withPrefix(prefix: "Re" | "Fwd", subject: string): string {
   return new RegExp(`^${prefix}:`, "i").test(subject.trim())
     ? subject
     : `${prefix}: ${subject}`;
 }
 
-function quoteOriginal(original: MailDetailDto): string {
-  return `\n\n---- Исходное письмо ----\n${original.bodyText}`;
+function quoteOriginal(original: MailDetailDto, t: Translate): string {
+  return t("quotedMessageTemplate", { body: original.bodyText });
 }
 
 // Comma-separated address input → trimmed list (empty entries dropped).
@@ -67,6 +73,7 @@ export function ComposeDialog({
   accountId,
   onSent,
 }: ComposeDialogProps) {
+  const t = useTranslations("mail");
   const [to, setTo] = useState(
     mode === "reply" && original ? original.from : "",
   );
@@ -80,7 +87,7 @@ export function ComposeDialog({
     return "";
   });
   const [body, setBody] = useState(() =>
-    original && mode !== "new" ? quoteOriginal(original) : "",
+    original && mode !== "new" ? quoteOriginal(original, t) : "",
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +103,7 @@ export function ComposeDialog({
   ) {
     const invalid = addresses.find((address) => !EMAIL_REGEX.test(address));
     if (invalid) {
-      nextErrors[field] = `Некорректный адрес: ${invalid}`;
+      nextErrors[field] = t("invalidAddressError", { address: invalid });
     }
   }
 
@@ -109,13 +116,13 @@ export function ComposeDialog({
 
     const nextErrors: Record<string, string> = {};
     if (toList.length === 0) {
-      nextErrors.to = "Укажите хотя бы одного получателя.";
+      nextErrors.to = t("toRequiredError");
     }
     validateAddressField("to", toList, nextErrors);
     validateAddressField("cc", ccList, nextErrors);
     validateAddressField("bcc", bccList, nextErrors);
-    if (!subject.trim()) nextErrors.subject = "Тема обязательна.";
-    if (!body.trim()) nextErrors.body = "Текст письма обязателен.";
+    if (!subject.trim()) nextErrors.subject = t("subjectRequiredError");
+    if (!body.trim()) nextErrors.body = t("bodyRequiredError");
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -135,7 +142,7 @@ export function ComposeDialog({
           ? { inReplyToId: original.id }
           : {}),
       });
-      toast.success("Письмо отправлено");
+      toast.success(t("sendSuccessToast"));
       onOpenChange(false);
       onSent();
     } catch (err) {
@@ -147,9 +154,7 @@ export function ComposeDialog({
         setErrors(err.fieldErrors);
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось отправить письмо. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("errorSendMail"),
         );
       }
     } finally {
@@ -173,7 +178,7 @@ export function ComposeDialog({
           id={id}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="адрес@example.ru, адрес2@example.ru"
+          placeholder={t("addressPlaceholder")}
           autoComplete="off"
           autoFocus={autoFocus}
           aria-invalid={!!message || undefined}
@@ -186,10 +191,10 @@ export function ComposeDialog({
 
   const title =
     mode === "reply"
-      ? "Ответить"
+      ? t("replyDialogTitle")
       : mode === "forward"
-        ? "Переслать письмо"
-        : "Новое письмо";
+        ? t("forwardDialogTitle")
+        : t("newDialogTitle");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -205,7 +210,13 @@ export function ComposeDialog({
           <FieldGroup>
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1">
-                {renderAddressField("to", "Кому", to, setTo, mode !== "reply")}
+                {renderAddressField(
+                  "to",
+                  t("toLabel"),
+                  to,
+                  setTo,
+                  mode !== "reply",
+                )}
               </div>
               {!showCcBcc && (
                 <Button
@@ -214,20 +225,22 @@ export function ComposeDialog({
                   size="sm"
                   onClick={() => setShowCcBcc(true)}
                 >
-                  Копия/СК
+                  {t("ccBccButton")}
                 </Button>
               )}
             </div>
 
             {showCcBcc && (
               <>
-                {renderAddressField("cc", "Копия", cc, setCc)}
-                {renderAddressField("bcc", "Скрытая копия", bcc, setBcc)}
+                {renderAddressField("cc", t("ccLabel"), cc, setCc)}
+                {renderAddressField("bcc", t("bccLabel"), bcc, setBcc)}
               </>
             )}
 
             <Field data-invalid={!!errors.subject || undefined}>
-              <FieldLabel htmlFor={fieldId("subject")}>Тема</FieldLabel>
+              <FieldLabel htmlFor={fieldId("subject")}>
+                {t("subjectLabel")}
+              </FieldLabel>
               <Input
                 id={fieldId("subject")}
                 value={subject}
@@ -244,7 +257,9 @@ export function ComposeDialog({
             </Field>
 
             <Field data-invalid={!!errors.body || undefined}>
-              <FieldLabel htmlFor={fieldId("body")}>Текст письма</FieldLabel>
+              <FieldLabel htmlFor={fieldId("body")}>
+                {t("bodyLabel")}
+              </FieldLabel>
               <Textarea
                 id={fieldId("body")}
                 value={body}
@@ -264,16 +279,16 @@ export function ComposeDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Отправка…
+                  {t("sendingLabel")}
                 </>
               ) : (
-                "Отправить"
+                t("sendButton")
               )}
             </Button>
           </DialogFooter>

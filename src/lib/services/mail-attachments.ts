@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { getMailDriver } from "@/lib/mail";
+import mailMessages from "@/messages/ru/mail.json";
 
 // Attachment download with a lazy content cache (plan §4, Phase 7): metadata
 // rows are created during sync; the bytes are fetched from IMAP on first
@@ -19,7 +20,7 @@ export class MailAttachmentNotFoundError extends Error {
 
 export class AttachmentTooLargeError extends Error {
   constructor() {
-    super("Вложение слишком большое для скачивания");
+    super(mailMessages.errorAttachmentTooLarge);
     this.name = "AttachmentTooLargeError";
   }
 }
@@ -29,7 +30,7 @@ export class AttachmentTooLargeError extends Error {
 // them.
 export class AttachmentUnavailableError extends Error {
   constructor() {
-    super("Вложение станет доступно после синхронизации");
+    super(mailMessages.errorAttachmentUnavailable);
     this.name = "AttachmentUnavailableError";
   }
 }
