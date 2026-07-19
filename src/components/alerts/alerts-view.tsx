@@ -152,7 +152,7 @@ export function AlertsView() {
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, categoryId, severity, query, sort]);
+  }, [currentCursor, categoryId, severity, query, sort, t]);
 
   function resetToFirstPage() {
     setPageCursors([undefined]);
