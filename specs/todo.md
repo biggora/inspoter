@@ -1,4 +1,8 @@
-add hostings - hostinger https://developers.hostinger.com/#description/introduction
+
+
+Добавить новый раздел хостинги  - hostinger https://developers.hostinger.com/#description/introduction
+
+добавить возможность настройки исходящих верхуков.
 
 
 
