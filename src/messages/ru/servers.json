@@ -1,1 +1,45 @@
-{}
+{
+  "pageTitle": "Серверы",
+  "serversCount": "{count, plural, one {# сервер} few {# сервера} many {# серверов} other {# серверов}}",
+  "addProviderButton": "Добавить провайдера",
+  "refreshButton": "Обновить",
+  "retryButton": "Повторить",
+  "loadError": "Не удалось загрузить серверы",
+  "actionError": "Не удалось выполнить действие",
+  "statusUpdateError": "Не удалось обновить статус",
+  "actionSuccessToast": "{name}: действие выполнено успешно",
+
+  "providerUnavailableTitle": "Hetzner недоступен",
+  "providerUnavailableDescription": "Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже.",
+  "emptyTitle": "Нет серверов",
+  "emptyDescription": "Подключите провайдера в настройках — серверы появятся здесь автоматически.",
+
+  "statusRunning": "Работает",
+  "statusStopped": "Остановлен",
+  "statusStarting": "Запуск…",
+  "statusStopping": "Остановка…",
+  "statusRestarting": "Перезапуск…",
+  "statusUnknown": "Неизвестно",
+
+  "pendingStart": "Запускается…",
+  "pendingStop": "Останавливается…",
+  "pendingRestart": "Перезапускается…",
+
+  "startAction": "Запустить",
+  "stopAction": "Остановить",
+  "restartAction": "Перезапустить",
+  "startConfirmTitle": "Запустить «{name}»?",
+  "stopConfirmTitle": "Остановить «{name}»?",
+  "restartConfirmTitle": "Перезапустить «{name}»?",
+  "startConfirmText": "Сервер будет запущен. Это может занять несколько секунд.",
+  "stopConfirmText": "Сервер будет остановлен и станет недоступен.",
+  "restartConfirmText": "Сервер перезапустится и будет ненадолго недоступен.",
+
+  "serverCardLabel": "Сервер «{name}»",
+  "diskLabel": "Диск",
+  "osLabel": "ОС",
+  "locationLabel": "Расположение",
+  "noActionsAvailable": "Нет доступных действий",
+  "cancelButton": "Отмена",
+  "confirmButton": "Подтвердить"
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -99,7 +99,7 @@ describe("ServersView destructive actions", () => {
 
   it("cancels by button or Escape without an API call and restores trigger focus", async () => {
     const user = userEvent.setup();
-    render(<ServersView />);
+    renderWithIntl(<ServersView />);
 
     const trigger = await screen.findByRole("button", {
       name: "Перезапустить",
@@ -153,7 +153,7 @@ describe("ServersView destructive actions", () => {
       ]);
 
       const user = userEvent.setup();
-      render(<ServersView />);
+      renderWithIntl(<ServersView />);
 
       await user.click(
         await screen.findByRole("button", { name: triggerName }),
@@ -190,7 +190,7 @@ describe("ServersView destructive actions", () => {
       .mockResolvedValueOnce([serverGroup]);
 
     const user = userEvent.setup();
-    render(<ServersView />);
+    renderWithIntl(<ServersView />);
 
     await user.click(await screen.findByRole("button", { name: "Повторить" }));
 

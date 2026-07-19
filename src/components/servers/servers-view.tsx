@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CardGrid } from "@/components/shell/card-grid";
 import { Icon } from "@/components/ui/icon";
@@ -65,6 +66,7 @@ const TRANSITIONAL_STATUSES: ServerStatus[] = [
 ];
 
 export function ServersView() {
+  const t = useTranslations("servers");
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -110,13 +112,11 @@ export function ServersView() {
       setServers(flat);
       setLoadError(errors.length ? errors.join("; ") : null);
     } catch (err) {
-      setLoadError(
-        err instanceof Error ? err.message : "Не удалось загрузить серверы",
-      );
+      setLoadError(err instanceof Error ? err.message : t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -165,10 +165,7 @@ export function ServersView() {
         );
         setCardErrors((prev) => ({
           ...prev,
-          [server.id]:
-            err instanceof Error
-              ? err.message
-              : "Не удалось выполнить действие",
+          [server.id]: err instanceof Error ? err.message : t("actionError"),
         }));
         return;
       }
@@ -187,7 +184,7 @@ export function ServersView() {
             clearInterval(interval);
             pollingRef.current.delete(server.id);
             showNotification(
-              `${server.name}: действие выполнено успешно`,
+              t("actionSuccessToast", { name: server.name }),
               "success",
             );
           }
@@ -197,13 +194,13 @@ export function ServersView() {
           setCardErrors((prev) => ({
             ...prev,
             [server.id]:
-              err instanceof Error ? err.message : "Не удалось обновить статус",
+              err instanceof Error ? err.message : t("statusUpdateError"),
           }));
         }
       }, 2000);
       pollingRef.current.set(server.id, interval);
     },
-    [clearCardError, showNotification],
+    [clearCardError, showNotification, t],
   );
 
   const pageState: PageState = loading
@@ -224,28 +221,22 @@ export function ServersView() {
       )}
 
       <PageHeader
-        title="Серверы"
+        title={t("pageTitle")}
         description={
           pageState === "ready"
-            ? `${servers.length} ${
-                servers.length === 1
-                  ? "сервер"
-                  : servers.length >= 2 && servers.length <= 4
-                    ? "сервера"
-                    : "серверов"
-              }`
+            ? t("serversCount", { count: servers.length })
             : undefined
         }
         actions={
           <>
             <Button onClick={() => setIsCreateProviderOpen(true)}>
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-              Добавить провайдера
+              {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
               <Button variant="outline" onClick={load}>
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-                Обновить
+                {t("refreshButton")}
               </Button>
             ) : undefined}
           </>
@@ -289,12 +280,12 @@ export function ServersView() {
         <EmptyState
           tone="danger"
           icon="ri-cloud-off-line"
-          title="Hetzner недоступен"
-          description="Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже."
+          title={t("providerUnavailableTitle")}
+          description={t("providerUnavailableDescription")}
           action={
             <Button onClick={load}>
               <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-              Повторить
+              {t("retryButton")}
             </Button>
           }
         />
@@ -303,14 +294,14 @@ export function ServersView() {
       {pageState === "empty" && (
         <EmptyState
           icon="ri-server-line"
-          title="Нет серверов"
-          description="Подключите провайдера в настройках — серверы появятся здесь автоматически."
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
           action={
             <Button
               render={<Link href="/settings/providers" />}
               nativeButton={false}
             >
-              Добавить провайдера
+              {t("addProviderButton")}
             </Button>
           }
         />
@@ -345,42 +336,42 @@ export function ServersView() {
 const statusConfig: Record<
   ServerStatus,
   {
-    label: string;
+    labelKey: string;
     variant: "success" | "secondary" | "warning";
   }
 > = {
   running: {
-    label: "Работает",
+    labelKey: "statusRunning",
     variant: "success",
   },
   stopped: {
-    label: "Остановлен",
+    labelKey: "statusStopped",
     variant: "secondary",
   },
   starting: {
-    label: "Запуск…",
+    labelKey: "statusStarting",
     variant: "warning",
   },
   stopping: {
-    label: "Остановка…",
+    labelKey: "statusStopping",
     variant: "warning",
   },
   restarting: {
-    label: "Перезапуск…",
+    labelKey: "statusRestarting",
     variant: "warning",
   },
   unknown: {
-    label: "Неизвестно",
+    labelKey: "statusUnknown",
     variant: "secondary",
   },
 };
 
 interface PowerCardAction {
   action: PowerActionType;
-  label: string;
   icon: string;
-  confirmTitle: string;
-  confirmText: string;
+  labelKey: string;
+  confirmTitleKey: string;
+  confirmTextKey: string;
 }
 
 const PENDING_ACTION_BY_STATUS: Partial<Record<ServerStatus, PowerActionType>> =
@@ -399,47 +390,42 @@ const POWER_ACTIONS_BY_STATUS = {
   unknown: ["start"],
 } as const satisfies Record<ServerStatus, readonly PowerActionType[]>;
 
-const PENDING_ACTION_LABELS: Record<PowerActionType, string> = {
-  start: "Запускается…",
-  stop: "Останавливается…",
-  restart: "Перезапускается…",
+const PENDING_ACTION_LABEL_KEYS: Record<PowerActionType, string> = {
+  start: "pendingStart",
+  stop: "pendingStop",
+  restart: "pendingRestart",
 };
 
-function getPowerAction(
-  server: Server,
-  action: PowerActionType,
-): PowerCardAction {
-  switch (action) {
-    case "start":
-      return {
-        action,
-        label: "Запустить",
-        icon: "ri-play-circle-line",
-        confirmTitle: `Запустить «${server.name}»?`,
-        confirmText: "Сервер будет запущен. Это может занять несколько секунд.",
-      };
-    case "stop":
-      return {
-        action,
-        label: "Остановить",
-        icon: "ri-stop-circle-line",
-        confirmTitle: `Остановить «${server.name}»?`,
-        confirmText: "Сервер будет остановлен и станет недоступен.",
-      };
-    case "restart":
-      return {
-        action,
-        label: "Перезапустить",
-        icon: "ri-restart-line",
-        confirmTitle: `Перезапустить «${server.name}»?`,
-        confirmText: "Сервер перезапустится и будет ненадолго недоступен.",
-      };
-  }
-}
+const POWER_ACTION_CONFIG: Record<
+  PowerActionType,
+  Omit<PowerCardAction, "action">
+> = {
+  start: {
+    icon: "ri-play-circle-line",
+    labelKey: "startAction",
+    confirmTitleKey: "startConfirmTitle",
+    confirmTextKey: "startConfirmText",
+  },
+  stop: {
+    icon: "ri-stop-circle-line",
+    labelKey: "stopAction",
+    confirmTitleKey: "stopConfirmTitle",
+    confirmTextKey: "stopConfirmText",
+  },
+  restart: {
+    icon: "ri-restart-line",
+    labelKey: "restartAction",
+    confirmTitleKey: "restartConfirmTitle",
+    confirmTextKey: "restartConfirmText",
+  },
+};
 
 function getAvailableActions(server: Server): PowerCardAction[] {
   const actions = POWER_ACTIONS_BY_STATUS[server.status] ?? [];
-  return actions.map((action) => getPowerAction(server, action));
+  return actions.map((action) => ({
+    action,
+    ...POWER_ACTION_CONFIG[action],
+  }));
 }
 
 function ServerCard({
@@ -451,6 +437,7 @@ function ServerCard({
   onPowerAction: (server: Server, action: PowerActionType) => void;
   error?: string;
 }) {
+  const t = useTranslations("servers");
   const [pendingAction, setPendingAction] = useState<PowerActionType | null>(
     null,
   );
@@ -474,7 +461,7 @@ function ServerCard({
     <Card
       ref={cardRef}
       role="group"
-      aria-label={`Сервер «${server.name}»`}
+      aria-label={t("serverCardLabel", { name: server.name })}
       tabIndex={-1}
       size="sm"
     >
@@ -503,7 +490,7 @@ function ServerCard({
               )}
               aria-hidden="true"
             />
-            {config.label}
+            {t(config.labelKey)}
           </Badge>
         </CardAction>
       </CardHeader>
@@ -518,15 +505,15 @@ function ServerCard({
           <span className="text-foreground-800 font-medium">{server.ram}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Диск</span>
+          <span className="text-foreground-500">{t("diskLabel")}</span>
           <span className="text-foreground-800 font-medium">{server.disk}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">ОС</span>
+          <span className="text-foreground-500">{t("osLabel")}</span>
           <span className="text-foreground-800 font-medium">{server.os}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Расположение</span>
+          <span className="text-foreground-500">{t("locationLabel")}</span>
           <span className="text-foreground-800 font-medium">
             {server.location}
           </span>
@@ -577,7 +564,9 @@ function ServerCard({
                     data-icon="inline-start"
                   />
                 )}
-                {actionBusy ? PENDING_ACTION_LABELS[act.action] : act.label}
+                {actionBusy
+                  ? t(PENDING_ACTION_LABEL_KEYS[act.action])
+                  : t(act.labelKey)}
               </AlertDialogTrigger>
               <AlertDialogContent
                 finalFocus={() =>
@@ -587,18 +576,20 @@ function ServerCard({
                 }
               >
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{act.confirmTitle}</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {t(act.confirmTitleKey, { name: server.name })}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {act.confirmText}
+                    {t(act.confirmTextKey)}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
                   <AlertDialogAction
                     variant={act.action === "stop" ? "destructive" : "default"}
                     onClick={() => handleConfirm(act.action)}
                   >
-                    Подтвердить
+                    {t("confirmButton")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -607,7 +598,7 @@ function ServerCard({
         })}
         {availableActions.length === 0 && !busy && (
           <span className="text-xs text-foreground-400">
-            Нет доступных действий
+            {t("noActionsAvailable")}
           </span>
         )}
       </CardFooter>
