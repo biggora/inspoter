@@ -23,7 +23,7 @@ export function DashboardTopbar({ username }: { username: string }) {
     )?.label ?? "Inspoter";
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-4">
+    <header className="sticky top-0 z-10 flex h-[var(--topbar-height)] shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-[var(--space-4)]">
       <SidebarTrigger aria-label="Переключить навигацию" />
       <span className="text-sm font-semibold text-foreground">{title}</span>
       <div className="ml-auto flex items-center gap-1">

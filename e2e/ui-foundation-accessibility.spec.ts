@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-const fineControlHeights = { sm: 30, md: 38, lg: 42 } as const;
+const fineControlHeights = { sm: 32, md: 38, lg: 42 } as const;
 const coarseControlHeights = { sm: 44, md: 44, lg: 44 } as const;
 
 type ControlHeights = typeof fineControlHeights | typeof coarseControlHeights;

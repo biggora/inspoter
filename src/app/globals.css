@@ -153,6 +153,7 @@
   .surface-panel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-card); box-shadow: none; }
   .shell-nav-item { min-height: var(--control-md); border-radius: var(--radius-lg); color: var(--text-secondary); transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
   .shell-nav-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+  .shell-nav-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
   .shell-nav-item[data-active="true"] { background: oklch(var(--primary-100) / .72); color: oklch(var(--primary-700)); }
   .focus-action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
   .focus-control:focus-visible { border-color: var(--focus-ring); outline: 2px solid oklch(var(--primary-400) / .35); outline-offset: 0; }

@@ -23,7 +23,7 @@ export function OperatorMenu({ username }: { username: string }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex min-h-[var(--control-sm)] items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground hover:bg-[var(--surface-hover)] focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus-visible:ring-0">
+      <DropdownMenuTrigger className="flex min-h-[var(--control-md)] items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground hover:bg-[var(--surface-hover)] focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus-visible:ring-0">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-100">
           <span className="text-xs font-semibold text-primary-700">
             {initial}

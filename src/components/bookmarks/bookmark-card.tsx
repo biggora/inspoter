@@ -84,7 +84,11 @@ export function BookmarkCard({
               {bookmark.description}
             </p>
           ) : null}
-          <p className="mt-1 truncate text-xs text-foreground-400">
+          <p
+            className="mt-1 truncate text-xs text-foreground-400"
+            title={bookmark.url}
+            dir="ltr"
+          >
             {bookmark.url}
           </p>
         </div>

@@ -57,20 +57,26 @@ export function folderDisplayName(folder: MailFolderDto): string {
 
 // Sync status dot next to the account name: animated while syncing, red on
 // error (with the error text in the tooltip). Idle accounts show nothing.
+// role="img" + aria-label so screen readers announce sync state, not just color.
 function SyncStatusDot({ account }: { account: MailAccountDto }) {
   if (account.syncStatus === "SYNCING") {
     return (
       <span
+        role="img"
+        aria-label="Синхронизация почты"
         className="size-2 shrink-0 animate-pulse rounded-full bg-[var(--info-text)]"
         title="Синхронизация…"
       />
     );
   }
   if (account.syncStatus === "ERROR") {
+    const errorText = account.syncError ?? "Ошибка синхронизации";
     return (
       <span
+        role="img"
+        aria-label={`Ошибка синхронизации: ${errorText}`}
         className="size-2 shrink-0 rounded-full bg-[var(--error-text)]"
-        title={account.syncError ?? "Ошибка синхронизации"}
+        title={errorText}
       />
     );
   }

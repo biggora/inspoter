@@ -49,7 +49,7 @@ export function AppSidebar({
         <div
           role="img"
           aria-label="Inspot"
-          className="flex h-8 items-center px-2"
+          className="flex h-[var(--icon-tile-md)] items-center px-2"
         >
           <span
             aria-hidden="true"

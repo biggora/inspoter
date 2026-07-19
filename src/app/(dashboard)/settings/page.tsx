@@ -11,7 +11,7 @@ export default function SettingsPage() {
       <CardGrid columns={2}>
         <Link
           href="/settings/workspace"
-          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
           <Building2 className="size-5 text-muted-foreground" />
           <div>
@@ -24,7 +24,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/settings/webhooks"
-          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
           <Webhook className="size-5 text-muted-foreground" />
           <div>
@@ -37,7 +37,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/settings/providers"
-          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
           <KeyRound className="size-5 text-muted-foreground" />
           <div>
@@ -49,7 +49,7 @@ export default function SettingsPage() {
         </Link>
         <Link
           href="/settings/mail"
-          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
           <Mail className="size-5 text-muted-foreground" />
           <div>

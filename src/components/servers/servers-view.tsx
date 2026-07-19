@@ -314,7 +314,7 @@ export function ServersView() {
         <EmptyState
           icon={ServerIcon}
           title="Нет серверов"
-          description="Подключите провайдера Hetzner Cloud в настройках — серверы появятся здесь автоматически."
+          description="Подключите провайдера в настройках — серверы появятся здесь автоматически."
           action={
             <Button
               render={<Link href="/settings/providers" />}

@@ -316,7 +316,7 @@
   --radius-full: 9999px; /* pills, switches, avatars, status dots */
 
   /* Control heights */
-  --control-sm: 30px;  /* small buttons / filter chips */
+  --control-sm: 32px;  /* small buttons / filter chips — meets 24px AA target with margin */
   --control-md: 38px;  /* inputs, default buttons */
   --control-lg: 42px;  /* primary CTA */
 

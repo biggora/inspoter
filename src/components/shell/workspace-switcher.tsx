@@ -130,6 +130,7 @@ export function WorkspaceSwitcher({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
+          aria-label={`Рабочее пространство: ${currentName}`}
           className={cn(
             buttonVariants({ variant: "ghost" }),
             "w-full justify-between px-2 group-data-[collapsible=icon]:hidden",
