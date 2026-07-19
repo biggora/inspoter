@@ -155,6 +155,22 @@ test("mail client shows folders with unread badges, reads a message, switches fo
       page.getByRole("heading", { name: "Почта", exact: true }),
     ).toBeVisible();
 
+    const addAccountButton = page.getByRole("button", {
+      name: "Добавить аккаунт",
+      exact: true,
+    });
+    await addAccountButton.click();
+    const accountDialog = page.getByRole("dialog");
+    await expect(
+      accountDialog.getByRole("heading", { name: "Добавить аккаунт" }),
+    ).toBeVisible();
+    await accountDialog.getByLabel("Название").fill("Черновик аккаунта");
+    await accountDialog.getByRole("button", { name: "Отмена" }).click();
+    await expect(accountDialog).toBeHidden();
+    await addAccountButton.click();
+    await expect(accountDialog.getByLabel("Название")).toHaveValue("");
+    await accountDialog.getByRole("button", { name: "Отмена" }).click();
+
     // Sidebar: the MOCK IMAP account is preselected over the webhook one,
     // and INBOX carries the deterministic unread badge.
     const sidebar = page.getByRole("navigation", { name: "Папки" });

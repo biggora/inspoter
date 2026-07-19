@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MailWarning, RefreshCw } from "lucide-react";
+import { MailWarning, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { MailAccountDialog } from "@/components/settings/mail-account-dialog";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ export function MailClientView() {
 
   const [syncing, setSyncing] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [compose, setCompose] = useState<{
     mode: ComposeMode;
     original: MailDetailDto | null;
@@ -451,6 +453,23 @@ export function MailClientView() {
     }
   }
 
+  const addAccountAction = (
+    <Button size="sm" onClick={() => setAddAccountOpen(true)}>
+      <Plus aria-hidden data-icon="inline-start" />
+      Добавить аккаунт
+    </Button>
+  );
+
+  const addAccountDialog = addAccountOpen ? (
+    <MailAccountDialog
+      open
+      onOpenChange={setAddAccountOpen}
+      mode="create"
+      existing={null}
+      onSaved={() => setAccountsReload((n) => n + 1)}
+    />
+  ) : null;
+
   const sidebarProps: MailSidebarProps = {
     accounts: accounts ?? [],
     selectedAccountId,
@@ -481,7 +500,7 @@ export function MailClientView() {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-          <PageHeader title="Почта" />
+          <PageHeader title="Почта" actions={addAccountAction} />
         </div>
         <div className="flex min-h-0 flex-1">
           <div className="hidden w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 lg:flex">
@@ -515,6 +534,7 @@ export function MailClientView() {
             </p>
           </div>
         </div>
+        {addAccountDialog}
       </PageBody>
     );
   }
@@ -523,7 +543,7 @@ export function MailClientView() {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-          <PageHeader title="Почта" />
+          <PageHeader title="Почта" actions={addAccountAction} />
         </div>
         <div className="flex flex-1 items-center justify-center p-6">
           <EmptyState
@@ -544,6 +564,7 @@ export function MailClientView() {
             }
           />
         </div>
+        {addAccountDialog}
       </PageBody>
     );
   }
@@ -551,7 +572,7 @@ export function MailClientView() {
   return (
     <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-        <PageHeader title="Почта" />
+        <PageHeader title="Почта" actions={addAccountAction} />
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -628,6 +649,8 @@ export function MailClientView() {
           onSent={handleSent}
         />
       )}
+
+      {addAccountDialog}
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-72 p-0">
