@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -96,7 +96,7 @@ export function WebhookTokensView() {
   // (react-hooks/set-state-in-effect) — matches
   // src/components/domains/dns-records-view.tsx and
   // src/components/mail/mail-view.tsx.
-  function load() {
+  const load = useCallback(() => {
     return webhookTokensApi
       .list()
       .then((data) => {
@@ -105,11 +105,11 @@ export function WebhookTokensView() {
       })
       .catch(() => setError(t("loadWebhookTokensError")))
       .finally(() => setLoading(false));
-  }
+  }, [t]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   function handleCreateOpenChange(open: boolean) {
     setCreateOpen(open);

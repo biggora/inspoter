@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -90,7 +90,7 @@ function MessagesCoordinator() {
   const [messagesReloadToken, setMessagesReloadToken] = useState(0);
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  function loadCategories() {
+  const loadCategories = useCallback(() => {
     return messageCategoriesApi
       .list()
       .then((data) => {
@@ -109,11 +109,11 @@ function MessagesCoordinator() {
         return [] as MessageCategoryDto[];
       })
       .finally(() => setCategoriesLoading(false));
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadCategories();
-  }, [t]);
+  }, [loadCategories]);
 
   useEffect(() => {
     if (!selectedChannelId) {

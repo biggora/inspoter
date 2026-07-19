@@ -223,8 +223,14 @@ export function BookmarksBoard({
   // `optimisticCategories` unfiltered — zero behavior change from the
   // no-search case.
   const trimmedQuery = deferredQuery.trim();
-  const normalizedQuery = trimmedQuery.toLocaleLowerCase("ru");
-  const isSearching = normalizedQuery !== "";
+  const { normalizedQuery, isSearching } = useMemo(() => {
+    const normalized = trimmedQuery.toLocaleLowerCase("ru");
+    return {
+      normalizedQuery: normalized,
+      isSearching: normalized !== "",
+    };
+  }, [trimmedQuery]);
+
   // Phase 4: subcategory bookmarks are filtered the same way as top-level
   // ones, and a subcategory with zero matches is dropped entirely — mirrors
   // the existing top-level "no match -> not rendered" behavior exactly.

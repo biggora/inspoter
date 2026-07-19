@@ -46,7 +46,6 @@ function buildRequest(
 
 let workspaceId: string;
 let rawToken: string;
-let tokenId: string;
 
 beforeAll(async () => {
   const workspace = await db.workspace.create({
@@ -63,7 +62,6 @@ beforeAll(async () => {
     `pipeline-${randomUUID()}`,
   );
   rawToken = created.token;
-  tokenId = created.id;
 });
 
 afterAll(async () => {

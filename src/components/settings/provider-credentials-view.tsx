@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -69,7 +69,7 @@ export function ProviderCredentialsView() {
   const [deleteTarget, setDeleteTarget] = useState<CredentialDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  function load() {
+  const load = useCallback(() => {
     return credentialsApi
       .list()
       .then((data) => {
@@ -78,11 +78,11 @@ export function ProviderCredentialsView() {
       })
       .catch(() => setError(t("loadCredentialsError")))
       .finally(() => setLoading(false));
-  }
+  }, [t]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function handleDeleteConfirm() {
     if (!deleteTarget) return;

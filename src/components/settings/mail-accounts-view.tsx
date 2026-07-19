@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -89,7 +89,7 @@ export function MailAccountsView() {
   const [deleteTarget, setDeleteTarget] = useState<MailAccountDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  function load() {
+  const load = useCallback(() => {
     return mailAccountsApi
       .list()
       .then((data) => {
@@ -98,11 +98,11 @@ export function MailAccountsView() {
       })
       .catch(() => setError(t("loadMailAccountsError")))
       .finally(() => setLoading(false));
-  }
+  }, [t]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function handleDeleteConfirm() {
     if (!deleteTarget) return;
