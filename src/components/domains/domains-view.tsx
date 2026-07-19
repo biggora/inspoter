@@ -162,9 +162,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
             <TableRow>
               <TableHead>{t("domainHeader")}</TableHead>
               <TableHead>{t("providerHeader")}</TableHead>
-              <TableHead className="text-right">
-                {t("actionsHeader")}
-              </TableHead>
+              <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

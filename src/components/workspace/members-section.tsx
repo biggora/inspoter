@@ -79,7 +79,11 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
               onClick={() => setRemoveTarget(member)}
               disabled={members.length <= 1}
             >
-              <Icon name="ri-user-unfollow-line" aria-hidden className="text-base" />
+              <Icon
+                name="ri-user-unfollow-line"
+                aria-hidden
+                className="text-base"
+              />
             </Button>
           </li>
         ))}

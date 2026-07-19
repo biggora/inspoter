@@ -168,7 +168,11 @@ export function ProviderCredentialsView() {
                           setDialogState({ mode: "edit", credential })
                         }
                       >
-                        <Icon name="ri-edit-line" aria-hidden className="text-base" />
+                        <Icon
+                          name="ri-edit-line"
+                          aria-hidden
+                          className="text-base"
+                        />
                       </Button>
                       <Button
                         variant="ghost"
@@ -176,7 +180,11 @@ export function ProviderCredentialsView() {
                         aria-label={t("deleteAria")}
                         onClick={() => setDeleteTarget(credential)}
                       >
-                        <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
+                        <Icon
+                          name="ri-delete-bin-line"
+                          aria-hidden
+                          className="text-base"
+                        />
                       </Button>
                     </div>
                   </TableCell>

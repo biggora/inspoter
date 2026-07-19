@@ -549,7 +549,11 @@ export function MailClientView() {
                 type="button"
                 onClick={() => setAccountsReload((n) => n + 1)}
               >
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("retryButton")}
               </Button>
             }

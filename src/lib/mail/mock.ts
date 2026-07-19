@@ -135,16 +135,14 @@ function seedStore(): MockStore {
   return {
     folders: [
       inbox,
-      ...extra.map(
-        ([path, name, specialUse]): MockFolder => ({
-          path,
-          name,
-          delimiter: "/",
-          specialUse,
-          uidValidity: 1n,
-          messages: [],
-        }),
-      ),
+      ...extra.map(([path, name, specialUse]): MockFolder => ({
+        path,
+        name,
+        delimiter: "/",
+        specialUse,
+        uidValidity: 1n,
+        messages: [],
+      })),
     ],
   };
 }
@@ -174,9 +172,7 @@ export class MockMailDriver implements MailDriver {
   }
 
   private message(folderPath: string, uid: bigint): MockMessage {
-    const message = this.folder(folderPath).messages.find(
-      (m) => m.uid === uid,
-    );
+    const message = this.folder(folderPath).messages.find((m) => m.uid === uid);
     if (!message) {
       throw new MailTransportError(
         `Mock message not found: ${folderPath}#${uid}`,

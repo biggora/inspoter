@@ -39,7 +39,11 @@ export function PageHeader({
             size="sm"
             className="w-fit"
           >
-            <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
+            <Icon
+              name="ri-arrow-left-s-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
             {back.label}
           </Button>
         ) : (
@@ -50,7 +54,11 @@ export function PageHeader({
             onClick={back.onClick}
             className="w-fit"
           >
-            <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
+            <Icon
+              name="ri-arrow-left-s-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
             {back.label}
           </Button>
         ))}

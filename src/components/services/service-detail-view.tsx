@@ -173,7 +173,11 @@ export function ServiceDetailView({
               {checking ? (
                 <Spinner aria-hidden data-icon="inline-start" />
               ) : (
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
               )}
               {t("checkNowButton")}
             </Button>
@@ -185,7 +189,11 @@ export function ServiceDetailView({
               {t("editButton")}
             </Button>
             <Button variant="outline" onClick={() => setDeleteTarget(service)}>
-              <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-delete-bin-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("deleteButton")}
             </Button>
           </>
@@ -223,9 +231,7 @@ export function ServiceDetailView({
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">
-              {t("retriesLabel")}
-            </dt>
+            <dt className="text-xs text-foreground-500">{t("retriesLabel")}</dt>
             <dd className="font-medium text-foreground-800">
               {service.retries}
             </dd>

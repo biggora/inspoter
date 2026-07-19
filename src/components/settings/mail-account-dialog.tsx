@@ -74,16 +74,12 @@ export function MailAccountDialog({
   const [name, setName] = useState(existing?.name ?? "");
   const [email, setEmail] = useState(existing?.email ?? "");
   const [imapHost, setImapHost] = useState(existing?.imapHost ?? "");
-  const [imapPort, setImapPort] = useState(
-    String(existing?.imapPort ?? 993),
-  );
+  const [imapPort, setImapPort] = useState(String(existing?.imapPort ?? 993));
   const [imapSecurity, setImapSecurity] = useState<MailSecurity>(
     existing?.imapSecurity ?? "SSL",
   );
   const [smtpHost, setSmtpHost] = useState(existing?.smtpHost ?? "");
-  const [smtpPort, setSmtpPort] = useState(
-    String(existing?.smtpPort ?? 465),
-  );
+  const [smtpPort, setSmtpPort] = useState(String(existing?.smtpPort ?? 465));
   const [smtpSecurity, setSmtpSecurity] = useState<MailSecurity>(
     existing?.smtpSecurity ?? "SSL",
   );
@@ -115,11 +111,19 @@ export function MailAccountDialog({
     }
 
     const imapPortNumber = Number(imapPort);
-    if (!Number.isInteger(imapPortNumber) || imapPortNumber < 1 || imapPortNumber > 65535) {
+    if (
+      !Number.isInteger(imapPortNumber) ||
+      imapPortNumber < 1 ||
+      imapPortNumber > 65535
+    ) {
       nextErrors.imapPort = t("portRangeError");
     }
     const smtpPortNumber = Number(smtpPort);
-    if (!Number.isInteger(smtpPortNumber) || smtpPortNumber < 1 || smtpPortNumber > 65535) {
+    if (
+      !Number.isInteger(smtpPortNumber) ||
+      smtpPortNumber < 1 ||
+      smtpPortNumber > 65535
+    ) {
       nextErrors.smtpPort = t("portRangeError");
     }
 
@@ -185,8 +189,7 @@ export function MailAccountDialog({
         onSaved();
       } catch (err) {
         setErrors({
-          global:
-            err instanceof ApiError ? err.message : t("saveAccountError"),
+          global: err instanceof ApiError ? err.message : t("saveAccountError"),
         });
       } finally {
         setSubmitting(false);
@@ -381,9 +384,7 @@ export function MailAccountDialog({
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder={
-                      mode === "edit"
-                        ? t("passwordEditPlaceholder")
-                        : undefined
+                      mode === "edit" ? t("passwordEditPlaceholder") : undefined
                     }
                     autoComplete="off"
                     aria-invalid={!!errors.password || undefined}

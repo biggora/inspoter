@@ -264,9 +264,7 @@ export interface SendMailInput {
   inReplyToId?: string;
 }
 
-export function sendMail(
-  input: SendMailInput,
-): Promise<{ id: string | null }> {
+export function sendMail(input: SendMailInput): Promise<{ id: string | null }> {
   return request<{ id: string | null }>("/api/mail/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

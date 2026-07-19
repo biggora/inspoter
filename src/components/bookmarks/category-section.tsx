@@ -133,7 +133,11 @@ export function CategorySection({
               render={<Button type="button" variant="ghost" size="icon-sm" />}
               aria-label={t("categoryActionsLabel", { name: category.name })}
             >
-              <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-more-2-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
@@ -258,7 +262,11 @@ function SubcategorySection({
                 name: subcategory.name,
               })}
             >
-              <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-more-2-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>

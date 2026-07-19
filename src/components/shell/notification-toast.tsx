@@ -5,7 +5,10 @@ interface NotificationToastProps {
   variant: "success" | "error";
 }
 
-export function NotificationToast({ message, variant }: NotificationToastProps) {
+export function NotificationToast({
+  message,
+  variant,
+}: NotificationToastProps) {
   return (
     <div
       data-slot="notification-toast"

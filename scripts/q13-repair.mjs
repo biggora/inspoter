@@ -1,4 +1,8 @@
-import { createHash, createPublicKey, verify as verifySignature } from "node:crypto";
+import {
+  createHash,
+  createPublicKey,
+  verify as verifySignature,
+} from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Client } from "pg";
@@ -16,11 +20,16 @@ export class Q13RepairError extends Error {
 }
 
 export function canonicalize(value) {
-  if (value === null || typeof value === "boolean" || typeof value === "string") return JSON.stringify(value);
-  if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
+  if (value === null || typeof value === "boolean" || typeof value === "string")
+    return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value))
+    return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
   if (typeof value === "object") {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`).join(",")}}`;
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
+      .join(",")}}`;
   }
   throw new Q13RepairError("Canonical JSON contains an unsupported value.");
 }
@@ -30,21 +39,32 @@ export function sourceDigest(snapshot) {
 }
 
 export function signedPayload(envelope) {
-  return canonicalize({ version: envelope.version, sourceDigest: envelope.sourceDigest, plan: envelope.plan });
+  return canonicalize({
+    version: envelope.version,
+    sourceDigest: envelope.sourceDigest,
+    plan: envelope.plan,
+  });
 }
 
 export function validateEnvelope(envelope, { allowUnsigned = false } = {}) {
   assertPlainObject(envelope, "manifest");
   assertExactKeys(envelope, ENVELOPE_KEYS, "manifest");
   if (envelope.version !== 1) fail("manifest.version must equal 1.");
-  if (!/^sha256:[a-f0-9]{64}$/.test(envelope.sourceDigest)) fail("manifest.sourceDigest is invalid.");
+  if (!/^sha256:[a-f0-9]{64}$/.test(envelope.sourceDigest))
+    fail("manifest.sourceDigest is invalid.");
   assertPlainObject(envelope.plan, "manifest.plan");
   assertExactKeys(envelope.plan, PLAN_KEYS, "manifest.plan");
   assertArray(envelope.plan.memberships, "manifest.plan.memberships");
   assertArray(envelope.plan.sessions, "manifest.plan.sessions");
-  assertArray(envelope.plan.nullCategoryAlerts, "manifest.plan.nullCategoryAlerts");
+  assertArray(
+    envelope.plan.nullCategoryAlerts,
+    "manifest.plan.nullCategoryAlerts",
+  );
   assertArray(envelope.plan.orphans, "manifest.plan.orphans");
-  assertArray(envelope.plan.duplicateAlertCategories, "manifest.plan.duplicateAlertCategories");
+  assertArray(
+    envelope.plan.duplicateAlertCategories,
+    "manifest.plan.duplicateAlertCategories",
+  );
   assertPlainObject(envelope.plan.roots, "manifest.plan.roots");
   assertExactKeys(envelope.plan.roots, ROOT_MODELS, "manifest.plan.roots");
   for (const model of ROOT_MODELS) {
@@ -52,7 +72,8 @@ export function validateEnvelope(envelope, { allowUnsigned = false } = {}) {
   }
   assertPlainObject(envelope.signature, "manifest.signature");
   assertExactKeys(envelope.signature, SIGNATURE_KEYS, "manifest.signature");
-  if (envelope.signature.algorithm !== "Ed25519") fail("signature.algorithm must equal Ed25519.");
+  if (envelope.signature.algorithm !== "Ed25519")
+    fail("signature.algorithm must equal Ed25519.");
   if (envelope.signature.value === "") {
     if (!allowUnsigned) fail("signature.value must be canonical base64.");
   } else if (!isCanonicalBase64(envelope.signature.value)) {
@@ -69,26 +90,47 @@ export function verifyManifestSignature(envelope, publicKeyPem) {
   } catch {
     fail("Q13_REPAIR_PUBLIC_KEY is not a valid public key.");
   }
-  if (publicKey.asymmetricKeyType !== "ed25519") fail("Q13_REPAIR_PUBLIC_KEY must be Ed25519.");
-  const valid = verifySignature(null, Buffer.from(signedPayload(envelope), "utf8"), publicKey, Buffer.from(envelope.signature.value, "base64"));
+  if (publicKey.asymmetricKeyType !== "ed25519")
+    fail("Q13_REPAIR_PUBLIC_KEY must be Ed25519.");
+  const valid = verifySignature(
+    null,
+    Buffer.from(signedPayload(envelope), "utf8"),
+    publicKey,
+    Buffer.from(envelope.signature.value, "base64"),
+  );
   if (!valid) fail("manifest signature verification failed.");
 }
 
 export function assertMaintenanceMode(environment) {
-  if (environment.Q13_MAINTENANCE_MODE !== "1") fail("Q13_MAINTENANCE_MODE must equal 1 for apply.");
+  if (environment.Q13_MAINTENANCE_MODE !== "1")
+    fail("Q13_MAINTENANCE_MODE must equal 1 for apply.");
 }
 
-function fail(message) { throw new Q13RepairError(message); }
+function fail(message) {
+  throw new Q13RepairError(message);
+}
 function assertPlainObject(value, label) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) fail(`${label} must be an object.`);
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    fail(`${label} must be an object.`);
 }
 function assertExactKeys(value, keys, label) {
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
-  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) fail(`${label} has unknown or missing keys.`);
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  )
+    fail(`${label} has unknown or missing keys.`);
 }
 function isCanonicalBase64(value) {
-  if (typeof value !== "string" || value.length === 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return false;
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+      value,
+    )
+  )
+    return false;
   return Buffer.from(value, "base64").toString("base64") === value;
 }
 
@@ -147,12 +189,16 @@ export function parseCliArgs(argv, environment = {}) {
     if (!values["public-key"] && !environment.Q13_REPAIR_PUBLIC_KEY) {
       fail("--public-key or Q13_REPAIR_PUBLIC_KEY is required.");
     }
-    parsed.publicKeyPath = values["public-key"] ?? environment.Q13_REPAIR_PUBLIC_KEY;
+    parsed.publicKeyPath =
+      values["public-key"] ?? environment.Q13_REPAIR_PUBLIC_KEY;
   }
   return Object.freeze(parsed);
 }
 
-export async function main(argv = process.argv.slice(2), environment = process.env) {
+export async function main(
+  argv = process.argv.slice(2),
+  environment = process.env,
+) {
   const options = parseCliArgs(argv, environment);
   if (options.command === "canonicalize") {
     const manifest = validateEnvelope(
@@ -198,7 +244,12 @@ export async function main(argv = process.argv.slice(2), environment = process.e
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  main().catch((error) => { console.error(`[q13-repair] ${error instanceof Q13RepairError ? error.message : "operation failed."}`); process.exitCode = 1; });
+  main().catch((error) => {
+    console.error(
+      `[q13-repair] ${error instanceof Q13RepairError ? error.message : "operation failed."}`,
+    );
+    process.exitCode = 1;
+  });
 }
 
 // Deterministic inspection, zero-guess preflight, and locked apply follow.
@@ -225,7 +276,15 @@ export function normalizeSnapshot(snapshot) {
   assertPlainObject(snapshot, "snapshot");
   assertExactKeys(
     snapshot,
-    ["alertCategories", "children", "memberships", "operators", "roots", "sessions", "workspaces"],
+    [
+      "alertCategories",
+      "children",
+      "memberships",
+      "operators",
+      "roots",
+      "sessions",
+      "workspaces",
+    ],
     "snapshot",
   );
   return sortJson(snapshot);
@@ -239,13 +298,22 @@ async function readSnapshot(client) {
   const queries = [
     ["operators", 'SELECT "id" FROM "Operator"'],
     ["workspaces", 'SELECT "id" FROM "Workspace"'],
-    ["memberships", 'SELECT "id", "operatorId", "role", "workspaceId" FROM "WorkspaceMember"'],
-    ["sessions", 'SELECT "id", "operatorId", "activeWorkspaceId" FROM "Session"'],
+    [
+      "memberships",
+      'SELECT "id", "operatorId", "role", "workspaceId" FROM "WorkspaceMember"',
+    ],
+    [
+      "sessions",
+      'SELECT "id", "operatorId", "activeWorkspaceId" FROM "Session"',
+    ],
     ["categories", 'SELECT "id", "workspaceId" FROM "Category"'],
     ["messageCategories", 'SELECT "id", "workspaceId" FROM "MessageCategory"'],
     ["mailItems", 'SELECT "id", "workspaceId" FROM "MailItem"'],
     ["logEntries", 'SELECT "id", "workspaceId" FROM "LogEntry"'],
-    ["alertCategories", 'SELECT "id", "name", "workspaceId" FROM "AlertCategory"'],
+    [
+      "alertCategories",
+      'SELECT "id", "name", "workspaceId" FROM "AlertCategory"',
+    ],
     ["webhookTokens", 'SELECT "id", "workspaceId" FROM "WebhookToken"'],
     ["alerts", 'SELECT "id", "alertCategoryId" FROM "Alert"'],
     ["bookmarks", 'SELECT "id", "categoryId" FROM "Bookmark"'],
@@ -254,7 +322,8 @@ async function readSnapshot(client) {
     ["idempotencyKeys", 'SELECT "id", "tokenId" FROM "IdempotencyKey"'],
   ];
   const rows = {};
-  for (const [name, sql] of queries) rows[name] = (await client.query(sql)).rows;
+  for (const [name, sql] of queries)
+    rows[name] = (await client.query(sql)).rows;
   return normalizeSnapshot({
     operators: rows.operators,
     workspaces: rows.workspaces,
@@ -265,7 +334,10 @@ async function readSnapshot(client) {
       MessageCategory: rows.messageCategories,
       MailItem: rows.mailItems,
       LogEntry: rows.logEntries,
-      AlertCategory: rows.alertCategories.map(({ id, workspaceId }) => ({ id, workspaceId })),
+      AlertCategory: rows.alertCategories.map(({ id, workspaceId }) => ({
+        id,
+        workspaceId,
+      })),
       WebhookToken: rows.webhookTokens,
     },
     alertCategories: rows.alertCategories,
@@ -363,7 +435,9 @@ export async function applyRepair(client, envelope, publicKeyPem) {
     const joinedAtById = new Map(
       joinedAtRows.rows.map((row) => [row.id, row.joinedAt]),
     );
-    const deletedMemberships = await client.query('DELETE FROM "WorkspaceMember"');
+    const deletedMemberships = await client.query(
+      'DELETE FROM "WorkspaceMember"',
+    );
     if (deletedMemberships.rowCount !== envelope.plan.memberships.length) {
       fail("membership delete row count changed during repair.");
     }
@@ -384,7 +458,8 @@ export async function applyRepair(client, envelope, publicKeyPem) {
           joinedAt,
         ],
       );
-      if (result.rowCount !== 1) fail(`membership ${membership.id} was not inserted.`);
+      if (result.rowCount !== 1)
+        fail(`membership ${membership.id} was not inserted.`);
     }
 
     for (const model of ROOT_MODELS) {
@@ -405,7 +480,9 @@ export async function applyRepair(client, envelope, publicKeyPem) {
     }
 
     const sentinelWorkspaces = [
-      ...new Set(envelope.plan.nullCategoryAlerts.map((row) => row.workspaceId)),
+      ...new Set(
+        envelope.plan.nullCategoryAlerts.map((row) => row.workspaceId),
+      ),
     ].sort();
     for (const workspaceId of sentinelWorkspaces) {
       const result = await client.query(
@@ -414,7 +491,8 @@ export async function applyRepair(client, envelope, publicKeyPem) {
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
         [`${SENTINEL_ID_PREFIX}${workspaceId}`, workspaceId, SENTINEL_NAME],
       );
-      if (result.rowCount !== 1) fail(`Alert sentinel for ${workspaceId} was not inserted.`);
+      if (result.rowCount !== 1)
+        fail(`Alert sentinel for ${workspaceId} was not inserted.`);
     }
     for (const alert of envelope.plan.nullCategoryAlerts) {
       const result = await client.query(
@@ -520,7 +598,11 @@ function validateSnapshotShape(snapshot) {
     Message: "channelId",
   };
   assertPlainObject(snapshot.children, "snapshot.children");
-  assertExactKeys(snapshot.children, Object.keys(childFields), "snapshot.children");
+  assertExactKeys(
+    snapshot.children,
+    Object.keys(childFields),
+    "snapshot.children",
+  );
   for (const [model, parentField] of Object.entries(childFields)) {
     assertArray(snapshot.children[model], `snapshot.children.${model}`);
     for (const row of snapshot.children[model]) {
@@ -545,8 +627,14 @@ function validateSnapshotShape(snapshot) {
 }
 
 const ORPHAN_DEFINITIONS = {
-  Alert: { parentCollection: "alertCategories", parentField: "alertCategoryId" },
-  Bookmark: { parentCollection: ["roots", "Category"], parentField: "categoryId" },
+  Alert: {
+    parentCollection: "alertCategories",
+    parentField: "alertCategoryId",
+  },
+  Bookmark: {
+    parentCollection: ["roots", "Category"],
+    parentField: "categoryId",
+  },
   Channel: {
     parentCollection: ["roots", "MessageCategory"],
     parentField: "messageCategoryId",
@@ -555,7 +643,10 @@ const ORPHAN_DEFINITIONS = {
     parentCollection: ["roots", "WebhookToken"],
     parentField: "tokenId",
   },
-  Message: { parentCollection: ["children", "Channel"], parentField: "channelId" },
+  Message: {
+    parentCollection: ["children", "Channel"],
+    parentField: "channelId",
+  },
 };
 
 function collectionAt(snapshot, path) {
@@ -629,13 +720,16 @@ function validateMembershipPlan(snapshot, items) {
   const pairs = new Set();
   for (const item of items) {
     if (!operators.has(item.operatorId) || !workspaces.has(item.workspaceId)) {
-      fail(`membership ${item.id} references an unknown operator or workspace.`);
+      fail(
+        `membership ${item.id} references an unknown operator or workspace.`,
+      );
     }
     if (item.role !== "owner" && item.role !== "member") {
       fail("membership.role must be lowercase owner or member.");
     }
     const pair = `${item.workspaceId}\0${item.operatorId}`;
-    if (pairs.has(pair)) fail("membership workspace/operator pairs must be unique.");
+    if (pairs.has(pair))
+      fail("membership workspace/operator pairs must be unique.");
     pairs.add(pair);
   }
   for (const operatorId of operators) {
@@ -700,7 +794,9 @@ function validateSessionPlan(snapshot, sessions, memberships) {
     if (item.activeWorkspaceId === null) continue;
     const operatorId = sourceById.get(item.id).operatorId;
     if (!memberships.pairs.has(`${item.activeWorkspaceId}\0${operatorId}`)) {
-      fail(`session ${item.id} active workspace is not an operator membership.`);
+      fail(
+        `session ${item.id} active workspace is not an operator membership.`,
+      );
     }
   }
 }
@@ -709,12 +805,10 @@ function validateNullAlertPlan(snapshot, items) {
   const expected = snapshot.children.Alert.filter(
     (row) => row.alertCategoryId === null,
   ).map((row) => row.id);
-  exactCoverage(
-    items,
-    expected,
-    "plan.nullCategoryAlerts",
-    ["id", "workspaceId"],
-  );
+  exactCoverage(items, expected, "plan.nullCategoryAlerts", [
+    "id",
+    "workspaceId",
+  ]);
   const workspaces = idSet(snapshot.workspaces);
   for (const item of items) {
     if (!workspaces.has(item.workspaceId)) {
@@ -725,10 +819,7 @@ function validateNullAlertPlan(snapshot, items) {
 
 function validateSentinelCollisions(snapshot) {
   for (const row of snapshot.alertCategories) {
-    if (
-      row.name === SENTINEL_NAME ||
-      row.id.startsWith(SENTINEL_ID_PREFIX)
-    ) {
+    if (row.name === SENTINEL_NAME || row.id.startsWith(SENTINEL_ID_PREFIX)) {
       fail(`reserved sentinel collision at AlertCategory ${row.id}.`);
     }
   }
@@ -758,7 +849,9 @@ function validateOrphanPlan(snapshot, dispositions) {
     }
     const key = `${item.model}\0${item.id}`;
     if (!expectedKeys.has(key) || seen.has(key)) {
-      fail("orphan dispositions must cover detected orphans exactly once with no extras.");
+      fail(
+        "orphan dispositions must cover detected orphans exactly once with no extras.",
+      );
     }
     seen.add(key);
     if (item.action === "attach") {
@@ -851,10 +944,7 @@ function validateDuplicatePlan(
     workspaceByCategory,
   );
   const expectedByKey = new Map(
-    expected.map((group) => [
-      `${group.workspaceId}\0${group.name}`,
-      group,
-    ]),
+    expected.map((group) => [`${group.workspaceId}\0${group.name}`, group]),
   );
   const seen = new Set();
   const finalCategories = new Map(
@@ -874,7 +964,9 @@ function validateDuplicatePlan(
     const key = `${item.workspaceId}\0${item.name}`;
     const group = expectedByKey.get(key);
     if (!group || seen.has(key)) {
-      fail("duplicate AlertCategory dispositions must cover groups exactly once with no extras.");
+      fail(
+        "duplicate AlertCategory dispositions must cover groups exactly once with no extras.",
+      );
     }
     seen.add(key);
     assertExactStringSet(
@@ -904,12 +996,10 @@ function validateDuplicatePlan(
         ["action", "categoryIds", "name", "renames", "workspaceId"],
         "duplicate rename disposition",
       );
-      exactCoverage(
-        item.renames,
-        group.categoryIds,
-        "duplicate renames",
-        ["id", "name"],
-      );
+      exactCoverage(item.renames, group.categoryIds, "duplicate renames", [
+        "id",
+        "name",
+      ]);
       for (const rename of item.renames) {
         assertNonEmptyString(rename.name, "duplicate rename name");
         if (rename.name === SENTINEL_NAME) {
@@ -922,14 +1012,18 @@ function validateDuplicatePlan(
     }
   }
   if (seen.size !== expectedByKey.size) {
-    fail("duplicate AlertCategory dispositions do not cover every detected group.");
+    fail(
+      "duplicate AlertCategory dispositions do not cover every detected group.",
+    );
   }
 
   const finalKeys = new Set();
   for (const category of finalCategories.values()) {
     const key = `${category.workspaceId}\0${category.name}`;
     if (finalKeys.has(key)) {
-      fail("duplicate AlertCategory disposition does not produce unique final names.");
+      fail(
+        "duplicate AlertCategory disposition does not produce unique final names.",
+      );
     }
     finalKeys.add(key);
   }

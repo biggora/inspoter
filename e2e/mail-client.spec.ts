@@ -316,9 +316,7 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
       page.getByText("Письмо перемещено в корзину").first(),
     ).toBeVisible();
     await expect(list.getByRole("listitem")).toHaveCount(28);
-    await sidebar
-      .getByRole("button", { name: "Корзина", exact: true })
-      .click();
+    await sidebar.getByRole("button", { name: "Корзина", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(
       list.getByRole("listitem").filter({ hasText: "Итоги спринта" }),
@@ -331,9 +329,9 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
     await expect(
       composeDialog.getByRole("heading", { name: "Новое письмо" }),
     ).toBeVisible();
-    await composeDialog.getByLabel("Кому", { exact: true }).fill(
-      "dest@example.ru",
-    );
+    await composeDialog
+      .getByLabel("Кому", { exact: true })
+      .fill("dest@example.ru");
     await composeDialog
       .getByLabel("Тема", { exact: true })
       .fill("E2E тестовое письмо");

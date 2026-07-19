@@ -10,7 +10,11 @@ import {
 } from "vitest";
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
-import { MockMailDriver, mockOutbox, resetMockMailStore } from "@/lib/mail/mock";
+import {
+  MockMailDriver,
+  mockOutbox,
+  resetMockMailStore,
+} from "@/lib/mail/mock";
 import { syncAccount } from "@/lib/services/mail-sync";
 import * as mailService from "@/lib/services/mail";
 import {
@@ -135,9 +139,9 @@ describe("setRead", () => {
     const inbox = await folderByPath(account.id, "INBOX");
     const item = await itemByUid(inbox.id, 1n);
 
-    await expect(
-      setRead(item.id, otherWorkspaceId, true),
-    ).rejects.toThrow(MailItemNotFoundError);
+    await expect(setRead(item.id, otherWorkspaceId, true)).rejects.toThrow(
+      MailItemNotFoundError,
+    );
   });
 });
 
@@ -243,12 +247,8 @@ describe("sendMail", () => {
     expect(result.id).not.toBeNull();
 
     expect(mockOutbox).toHaveLength(1);
-    expect(mockOutbox[0].to.map((a) => a.address)).toEqual([
-      "dest@example.ru",
-    ]);
-    expect(mockOutbox[0].cc.map((a) => a.address)).toEqual([
-      "copy@example.ru",
-    ]);
+    expect(mockOutbox[0].to.map((a) => a.address)).toEqual(["dest@example.ru"]);
+    expect(mockOutbox[0].cc.map((a) => a.address)).toEqual(["copy@example.ru"]);
     expect(mockOutbox[0].from.address).toBe(account.email);
     expect(mockOutbox[0].subject).toBe(`${NAME_PREFIX}-send-subject`);
 
@@ -356,7 +356,9 @@ describe("sendMail", () => {
       );
     } finally {
       envRef.MAIL_SEND_RATE_LIMIT = originalLimit;
-      await db.workspace.delete({ where: { id: workspace.id } }).catch(() => {});
+      await db.workspace
+        .delete({ where: { id: workspace.id } })
+        .catch(() => {});
     }
   });
 });
@@ -377,8 +379,6 @@ describe("WEBHOOK items — DB-only actions without a transport", () => {
     // The webhook account has no TRASH folder — delete is permanent.
     const result = await deleteItem(mail.id, workspaceId);
     expect(result).toEqual({ status: "deleted" });
-    expect(
-      await db.mailItem.findUnique({ where: { id: mail.id } }),
-    ).toBeNull();
+    expect(await db.mailItem.findUnique({ where: { id: mail.id } })).toBeNull();
   });
 });

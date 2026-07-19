@@ -289,8 +289,7 @@ export async function updateAccount(
   const connectionChanged =
     password !== undefined ||
     CONNECTION_FIELDS.some(
-      (field) =>
-        input[field] !== undefined && input[field] !== existing[field],
+      (field) => input[field] !== undefined && input[field] !== existing[field],
     );
 
   let secretData = {};
@@ -298,7 +297,10 @@ export async function updateAccount(
     if (!isEncryptionConfigured()) {
       throw new EncryptionNotConfiguredError();
     }
-    const encrypted = encrypt({ type: "MAIL_PASSWORD", imapPassword: password });
+    const encrypted = encrypt({
+      type: "MAIL_PASSWORD",
+      imapPassword: password,
+    });
     secretData = {
       encryptedData: encrypted.encryptedData,
       iv: encrypted.iv,

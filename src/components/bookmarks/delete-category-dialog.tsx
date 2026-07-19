@@ -64,9 +64,7 @@ export function DeleteCategoryDialog({
           }),
         );
       } else if (directCount > 0) {
-        toast.success(
-          t("deleteCategoryToastBookmarksOnly", { directCount }),
-        );
+        toast.success(t("deleteCategoryToastBookmarksOnly", { directCount }));
       } else {
         toast.success(t("deleteCategoryToastEmpty"));
       }

@@ -188,7 +188,11 @@ export function MailAccountsView() {
                       aria-label={t("editAria")}
                       onClick={() => setDialogState({ mode: "edit", account })}
                     >
-                      <Icon name="ri-edit-line" aria-hidden className="text-base" />
+                      <Icon
+                        name="ri-edit-line"
+                        aria-hidden
+                        className="text-base"
+                      />
                     </Button>
                     {account.kind !== "WEBHOOK" && (
                       <Button
@@ -197,7 +201,11 @@ export function MailAccountsView() {
                         aria-label={t("deleteAria")}
                         onClick={() => setDeleteTarget(account)}
                       >
-                        <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
+                        <Icon
+                          name="ri-delete-bin-line"
+                          aria-hidden
+                          className="text-base"
+                        />
                       </Button>
                     )}
                   </div>
@@ -225,7 +233,9 @@ export function MailAccountsView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("deleteAccountConfirmTitle", { name: deleteTarget?.name ?? "" })}
+              {t("deleteAccountConfirmTitle", {
+                name: deleteTarget?.name ?? "",
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("deleteAccountConfirmDescription")}

@@ -16,7 +16,10 @@ export default async function SettingsPage() {
           href="/settings/workspace"
           className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
-          <Icon name="ri-building-2-line" className="text-lg text-muted-foreground" />
+          <Icon
+            name="ri-building-2-line"
+            className="text-lg text-muted-foreground"
+          />
           <div>
             <p className="font-medium">{t("workspaceCardTitle")}</p>
             <p className="text-sm text-muted-foreground">
@@ -28,7 +31,10 @@ export default async function SettingsPage() {
           href="/settings/webhooks"
           className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
-          <Icon name="ri-webhook-line" className="text-lg text-muted-foreground" />
+          <Icon
+            name="ri-webhook-line"
+            className="text-lg text-muted-foreground"
+          />
           <div>
             <p className="font-medium">{t("webhookTokensTitle")}</p>
             <p className="text-sm text-muted-foreground">
@@ -40,7 +46,10 @@ export default async function SettingsPage() {
           href="/settings/providers"
           className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
-          <Icon name="ri-key-2-line" className="text-lg text-muted-foreground" />
+          <Icon
+            name="ri-key-2-line"
+            className="text-lg text-muted-foreground"
+          />
           <div>
             <p className="font-medium">{t("providersTitle")}</p>
             <p className="text-sm text-muted-foreground">

@@ -59,11 +59,7 @@ export function Pagination({
         disabled={!hasNext || disabled}
       >
         {t("paginationNext")}
-        <Icon
-          name="ri-arrow-right-s-line"
-          aria-hidden
-          data-icon="inline-end"
-        />
+        <Icon name="ri-arrow-right-s-line" aria-hidden data-icon="inline-end" />
       </Button>
     </div>
   );

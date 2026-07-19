@@ -75,9 +75,7 @@ export function DnsRecordsView({
         setError(null);
       })
       .catch((err) => {
-        setError(
-          err instanceof ApiError ? err.message : t("loadRecordsError"),
-        );
+        setError(err instanceof ApiError ? err.message : t("loadRecordsError"));
       })
       .finally(() => setLoading(false));
   }, [providerId, domainId, t]);
@@ -147,9 +145,7 @@ export function DnsRecordsView({
               <TableHead>{t("nameLabel")}</TableHead>
               <TableHead>{t("valueLabel")}</TableHead>
               <TableHead>TTL</TableHead>
-              <TableHead className="text-right">
-                {t("actionsHeader")}
-              </TableHead>
+              <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

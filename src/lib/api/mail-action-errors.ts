@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { MailTransportError, WebhookAccountHasNoTransportError } from "@/lib/mail";
+import {
+  MailTransportError,
+  WebhookAccountHasNoTransportError,
+} from "@/lib/mail";
 import {
   MailFolderMismatchError,
   MailItemNotFoundError,

@@ -431,7 +431,11 @@ export function BookmarksBoard({
                     onClick={() => setQuery("")}
                     aria-label={t("clearSearchLabel")}
                   >
-                    <Icon name="ri-close-line" aria-hidden data-icon="inline-start" />
+                    <Icon
+                      name="ri-close-line"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
                   </InputGroupButton>
                 </InputGroupAddon>
               )}

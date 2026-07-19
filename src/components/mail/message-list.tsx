@@ -157,7 +157,11 @@ export function MessageList({
             aria-label={t("unreadOnlyAriaLabel")}
             title={t("unreadOnlyAriaLabel")}
           >
-            <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
+            <Icon
+              name="ri-mail-open-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
             {t("unreadOnlyText")}
           </Toggle>
           <Select
@@ -188,7 +192,11 @@ export function MessageList({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
             <Button type="button" size="sm" onClick={onRetry}>
-              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-refresh-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("retryButton")}
             </Button>
           </div>

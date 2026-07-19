@@ -165,9 +165,12 @@ export class ImapSmtpMailDriver implements MailDriver {
       return await fn(client);
     } catch (error) {
       if (!this.client?.usable) this.client = null;
-      throw new MailTransportError(`IMAP ${op} failed: ${errorMessage(error)}`, {
-        cause: error,
-      });
+      throw new MailTransportError(
+        `IMAP ${op} failed: ${errorMessage(error)}`,
+        {
+          cause: error,
+        },
+      );
     }
   }
 
@@ -394,9 +397,7 @@ export class ImapSmtpMailDriver implements MailDriver {
     }
     const envelope = {
       from: message.from.address,
-      to: [...message.to, ...message.cc, ...message.bcc].map(
-        (a) => a.address,
-      ),
+      to: [...message.to, ...message.cc, ...message.bcc].map((a) => a.address),
     };
     try {
       await this.getTransporter().sendMail({ envelope, raw });

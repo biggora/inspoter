@@ -95,7 +95,11 @@ function validateRecord(record, path) {
   }
   assertString(record.name, `${path}.name`, { maxBytes: 255 });
   assertString(record.value, `${path}.value`, { maxBytes: 4096 });
-  if (!Number.isInteger(record.ttl) || record.ttl < 1 || record.ttl > 2_147_483_647) {
+  if (
+    !Number.isInteger(record.ttl) ||
+    record.ttl < 1 ||
+    record.ttl > 2_147_483_647
+  ) {
     fail(`${path}.ttl`, "must be an integer from 1 through 2147483647");
   }
 
@@ -117,7 +121,8 @@ function validateDomain(resource, path) {
   if (!DOMAIN_PROVIDERS.has(resource.provider)) {
     fail(`${path}.provider`, "DOMAIN supports cloudflare, godaddy, or hetzner");
   }
-  if (!Array.isArray(resource.records)) fail(`${path}.records`, "must be an array");
+  if (!Array.isArray(resource.records))
+    fail(`${path}.records`, "must be an array");
 
   const records = resource.records.map((record, index) =>
     validateRecord(record, `${path}.records[${index}]`),
@@ -212,7 +217,8 @@ export function validateCatalog(input, label = "catalog") {
     fail(`${label}.accountKey`, `must be exactly '${ACCOUNT_KEY}'`);
   }
   assertString(input.accountKey, `${label}.accountKey`, { maxBytes: 256 });
-  if (!Array.isArray(input.resources)) fail(`${label}.resources`, "must be an array");
+  if (!Array.isArray(input.resources))
+    fail(`${label}.resources`, "must be an array");
 
   const resources = input.resources.map((resource, index) =>
     validateResource(resource, `${label}.resources[${index}]`),
@@ -388,7 +394,8 @@ if (invokedPath === import.meta.url) {
   try {
     process.stdout.write(`${runCli(process.argv.slice(2))}\n`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown validation error";
+    const message =
+      error instanceof Error ? error.message : "unknown validation error";
     process.stderr.write(`[mock-provider-catalog] ${message}\n`);
     process.exitCode = 1;
   }

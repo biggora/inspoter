@@ -138,9 +138,7 @@ export function ComposeDialog({
         bcc: bccList,
         subject: subject.trim(),
         body,
-        ...(mode === "reply" && original
-          ? { inReplyToId: original.id }
-          : {}),
+        ...(mode === "reply" && original ? { inReplyToId: original.id } : {}),
       });
       toast.success(t("sendSuccessToast"));
       onOpenChange(false);
@@ -153,9 +151,7 @@ export function ComposeDialog({
       ) {
         setErrors(err.fieldErrors);
       } else {
-        toast.error(
-          err instanceof ApiError ? err.message : t("errorSendMail"),
-        );
+        toast.error(err instanceof ApiError ? err.message : t("errorSendMail"));
       }
     } finally {
       setSubmitting(false);

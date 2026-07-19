@@ -16,7 +16,10 @@ const NAME_PREFIX = `mail-sync-${randomUUID()}`;
 let workspaceId: string;
 let otherWorkspaceId: string;
 
-async function createMockAccount(name: string, targetWorkspaceId = workspaceId) {
+async function createMockAccount(
+  name: string,
+  targetWorkspaceId = workspaceId,
+) {
   return db.mailAccount.create({
     data: {
       workspaceId: targetWorkspaceId,
@@ -90,7 +93,9 @@ describe("syncAccount — initial sync", () => {
     // Unread: mock marks index % 3 === 0 as unread → uids 1,4,…,28.
     const unread = items.filter((i) => !i.isRead);
     expect(unread).toHaveLength(10);
-    expect(unread.map((i) => i.uid).sort((a, b) => Number(a! - b!))[0]).toBe(1n);
+    expect(unread.map((i) => i.uid).sort((a, b) => Number(a! - b!))[0]).toBe(
+      1n,
+    );
 
     // Attachment metadata on uids 1/11/21 — metadata only, no content yet.
     const withAttachments = items
@@ -122,9 +127,9 @@ describe("syncAccount — initial sync", () => {
 
     const outcome = await syncAccount(account.id, workspaceId);
     expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 0 });
-    expect(
-      await db.mailItem.count({ where: { accountId: account.id } }),
-    ).toBe(30);
+    expect(await db.mailItem.count({ where: { accountId: account.id } })).toBe(
+      30,
+    );
   });
 });
 
@@ -148,9 +153,9 @@ describe("syncAccount — incremental sync", () => {
       where: { accountId: account.id, path: "INBOX" },
     });
     expect(inbox?.lastSeenUid).toBe(31n);
-    expect(
-      await db.mailItem.count({ where: { folderId: inbox!.id } }),
-    ).toBe(31);
+    expect(await db.mailItem.count({ where: { folderId: inbox!.id } })).toBe(
+      31,
+    );
   });
 });
 
@@ -228,17 +233,17 @@ describe("syncAccount — flag down-sync and deletions", () => {
       where: { folderId: inbox!.id, uid: 2n },
     });
     expect(gone).toBeNull();
-    expect(
-      await db.mailItem.count({ where: { folderId: inbox!.id } }),
-    ).toBe(29);
+    expect(await db.mailItem.count({ where: { folderId: inbox!.id } })).toBe(
+      29,
+    );
 
     // The moved message resurfaces in Archive via its incremental fetch.
     const archive = await db.mailFolder.findFirst({
       where: { accountId: account.id, path: "Archive" },
     });
-    expect(
-      await db.mailItem.count({ where: { folderId: archive!.id } }),
-    ).toBe(1);
+    expect(await db.mailItem.count({ where: { folderId: archive!.id } })).toBe(
+      1,
+    );
   });
 });
 
@@ -281,9 +286,9 @@ describe("syncAccount — errors and scoping", () => {
 
   it("throws MailAccountNotFoundError when the account belongs to another workspace", async () => {
     const account = await createMockAccount("foreign");
-    await expect(
-      syncAccount(account.id, otherWorkspaceId),
-    ).rejects.toThrow(MailAccountNotFoundError);
+    await expect(syncAccount(account.id, otherWorkspaceId)).rejects.toThrow(
+      MailAccountNotFoundError,
+    );
   });
 
   it("rejects WEBHOOK accounts — they have no IMAP transport", async () => {

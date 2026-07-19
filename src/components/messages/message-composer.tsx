@@ -92,7 +92,11 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
             {pending ? (
               <Spinner aria-hidden />
             ) : (
-              <Icon name="ri-send-plane-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-send-plane-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
             )}
           </Button>
         </div>

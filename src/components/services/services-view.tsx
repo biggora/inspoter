@@ -281,7 +281,11 @@ function ServiceCard({
           onClick={onDelete}
           aria-label={t("deleteServiceAria", { name: service.name })}
         >
-          <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
+          <Icon
+            name="ri-delete-bin-line"
+            aria-hidden
+            data-icon="inline-start"
+          />
         </Button>
       </CardFooter>
     </Card>

@@ -223,7 +223,11 @@ export function AlertsView() {
         actions={
           <>
             <Button variant="outline" onClick={() => setManageOpen(true)}>
-              <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-settings-3-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("manageCategoriesButton")}
             </Button>
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>

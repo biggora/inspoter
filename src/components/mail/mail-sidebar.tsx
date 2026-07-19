@@ -135,7 +135,10 @@ export function MailSidebar({
             accounts.map((account) => [account.id, account.name]),
           )}
         >
-          <SelectTrigger className="w-full" aria-label={t("accountSelectAriaLabel")}>
+          <SelectTrigger
+            className="w-full"
+            aria-label={t("accountSelectAriaLabel")}
+          >
             <SelectValue placeholder={t("accountSelectPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
@@ -194,7 +197,11 @@ export function MailSidebar({
             className="px-2 py-4"
             action={
               <Button type="button" size="sm" onClick={onRetryFolders}>
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("retryButton")}
               </Button>
             }
@@ -254,7 +261,11 @@ export function MailSidebar({
             {syncing ? (
               <Spinner data-icon="inline-start" aria-hidden />
             ) : (
-              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-refresh-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
             )}
             {t("syncButton")}
           </Button>
@@ -266,7 +277,11 @@ export function MailSidebar({
           size="sm"
           className="w-full justify-start"
         >
-          <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
+          <Icon
+            name="ri-settings-3-line"
+            aria-hidden
+            data-icon="inline-start"
+          />
           {t("manageAccountsButton")}
         </Button>
       </div>

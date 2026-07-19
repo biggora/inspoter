@@ -140,7 +140,11 @@ export function MessageTimeline({
             className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
             action={
               <Button type="button" size="sm" onClick={onRetry}>
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("retryButton")}
               </Button>
             }

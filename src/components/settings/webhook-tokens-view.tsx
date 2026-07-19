@@ -332,9 +332,17 @@ export function WebhookTokensView() {
                   onClick={handleCopy}
                 >
                   {copied ? (
-                    <Icon name="ri-check-line" aria-hidden className="text-base" />
+                    <Icon
+                      name="ri-check-line"
+                      aria-hidden
+                      className="text-base"
+                    />
                   ) : (
-                    <Icon name="ri-file-copy-line" aria-hidden className="text-base" />
+                    <Icon
+                      name="ri-file-copy-line"
+                      aria-hidden
+                      className="text-base"
+                    />
                   )}
                   {copied ? t("copiedLabel") : t("copyButton")}
                 </Button>

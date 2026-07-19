@@ -34,7 +34,12 @@ export type IconProps = React.HTMLAttributes<HTMLSpanElement> & {
   name: string;
 };
 
-export function Icon({ name, className, "aria-hidden": ariaHidden = true, ...props }: IconProps) {
+export function Icon({
+  name,
+  className,
+  "aria-hidden": ariaHidden = true,
+  ...props
+}: IconProps) {
   return (
     <i
       aria-hidden={ariaHidden}

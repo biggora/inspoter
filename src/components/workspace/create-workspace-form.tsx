@@ -65,9 +65,7 @@ export function CreateWorkspaceForm() {
     >
       <FieldGroup className="sm:flex-row sm:items-end">
         <Field className="flex-1" data-invalid={!!error || undefined}>
-          <FieldLabel htmlFor={nameId}>
-            {t("newWorkspaceNameLabel")}
-          </FieldLabel>
+          <FieldLabel htmlFor={nameId}>{t("newWorkspaceNameLabel")}</FieldLabel>
           <Input
             id={nameId}
             value={name}

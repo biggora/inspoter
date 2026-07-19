@@ -20,7 +20,11 @@ const SWATCHES: Array<{
   labelKey: "colorPrimary" | "colorAccent" | "colorSecondary";
   dotClassName: string;
 }> = [
-  { token: "primary", labelKey: "colorPrimary", dotClassName: "bg-primary-500" },
+  {
+    token: "primary",
+    labelKey: "colorPrimary",
+    dotClassName: "bg-primary-500",
+  },
   { token: "accent", labelKey: "colorAccent", dotClassName: "bg-accent-500" },
   {
     token: "secondary",

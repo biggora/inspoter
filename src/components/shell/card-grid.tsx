@@ -13,16 +13,9 @@ interface CardGridProps {
   children: ReactNode;
 }
 
-export function CardGrid({
-  columns = 3,
-  className,
-  children,
-}: CardGridProps) {
+export function CardGrid({ columns = 3, className, children }: CardGridProps) {
   return (
-    <div
-      data-slot="card-grid"
-      className={cn(columnStyles[columns], className)}
-    >
+    <div data-slot="card-grid" className={cn(columnStyles[columns], className)}>
       {children}
     </div>
   );

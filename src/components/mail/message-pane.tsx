@@ -123,7 +123,9 @@ export function MessagePane({
       await downloadAttachment(mailId, attachmentId, filename, t);
     } catch (error) {
       toast.error(
-        error instanceof ApiError ? error.message : t("errorDownloadAttachment"),
+        error instanceof ApiError
+          ? error.message
+          : t("errorDownloadAttachment"),
       );
     } finally {
       setDownloadingId(null);
@@ -259,7 +261,11 @@ export function MessagePane({
                 size="sm"
                 onClick={onArchive}
               >
-                <Icon name="ri-archive-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-archive-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("archiveButton")}
               </Button>
             )}
@@ -270,7 +276,11 @@ export function MessagePane({
             <AlertDialogTrigger
               render={<Button type="button" variant="ghost" size="sm" />}
             >
-              <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-delete-bin-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("deleteButton")}
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -296,7 +306,11 @@ export function MessagePane({
           </AlertDialog>
         ) : (
           <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
-            <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
+            <Icon
+              name="ri-delete-bin-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
             {t("deleteButton")}
           </Button>
         )}
@@ -308,7 +322,11 @@ export function MessagePane({
             </>
           ) : (
             <>
-              <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-mail-open-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("markReadButton")}
             </>
           )}
@@ -369,7 +387,11 @@ function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <div className="shrink-0 border-b border-background-100 px-3 py-2 lg:hidden">
       <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-        <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
+        <Icon
+          name="ri-arrow-left-s-line"
+          aria-hidden
+          data-icon="inline-start"
+        />
         {t("backToListButton")}
       </Button>
     </div>

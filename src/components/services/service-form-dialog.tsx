@@ -207,7 +207,9 @@ export function ServiceFormDialog({
       ) {
         setErrors(err.fieldErrors);
       } else {
-        toast.error(err instanceof ApiError ? err.message : t("saveErrorToast"));
+        toast.error(
+          err instanceof ApiError ? err.message : t("saveErrorToast"),
+        );
       }
     } finally {
       setSubmitting(false);
@@ -425,9 +427,7 @@ export function ServiceFormDialog({
                 className="flex-1"
                 data-invalid={!!errors.retries || undefined}
               >
-                <FieldLabel htmlFor={retriesId}>
-                  {t("retriesLabel")}
-                </FieldLabel>
+                <FieldLabel htmlFor={retriesId}>{t("retriesLabel")}</FieldLabel>
                 <Input
                   id={retriesId}
                   type="number"

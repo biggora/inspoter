@@ -290,7 +290,11 @@ function MessagesCoordinator() {
             className="max-w-sm"
             action={
               <Button type="button" onClick={() => void loadCategories()}>
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("retryButton")}
               </Button>
             }

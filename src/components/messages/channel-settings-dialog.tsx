@@ -264,7 +264,11 @@ export function ChannelSettingsDialog({
                   variant="outline"
                   onClick={() => onRename(channel)}
                 >
-                  <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
+                  <Icon
+                    name="ri-edit-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                   {t("renameButton")}
                 </Button>
                 <Button
@@ -272,7 +276,11 @@ export function ChannelSettingsDialog({
                   variant="destructive"
                   onClick={() => onDelete(channel)}
                 >
-                  <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
+                  <Icon
+                    name="ri-delete-bin-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
                   {t("deleteChannelAction")}
                 </Button>
               </div>
@@ -407,7 +415,10 @@ export function ChannelSettingsDialog({
               )}
 
               {loading ? (
-                <div className="space-y-2" aria-label={t("loadingWebhooksLabel")}>
+                <div
+                  className="space-y-2"
+                  aria-label={t("loadingWebhooksLabel")}
+                >
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>

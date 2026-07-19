@@ -58,7 +58,9 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("renameCategoryLabel", { name: category.name })}
+                    aria-label={t("renameCategoryLabel", {
+                      name: category.name,
+                    })}
                     onClick={() => onRename(category)}
                   >
                     <Icon name="ri-edit-line" aria-hidden className="text-sm" />
@@ -67,10 +69,16 @@ export function ManageCategoriesDialog({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("deleteCategoryLabel", { name: category.name })}
+                    aria-label={t("deleteCategoryLabel", {
+                      name: category.name,
+                    })}
                     onClick={() => onDelete(category)}
                   >
-                    <Icon name="ri-delete-bin-line" aria-hidden className="text-sm" />
+                    <Icon
+                      name="ri-delete-bin-line"
+                      aria-hidden
+                      className="text-sm"
+                    />
                   </Button>
                 </div>
               </li>

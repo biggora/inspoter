@@ -112,14 +112,14 @@ describe("MockMailDriver", () => {
     const driver = new MockMailDriver(KEY);
 
     await driver.setSeen("INBOX", 1n, true);
-    expect((await driver.listUidsWithFlags("INBOX", [1n])).get(1n)?.isRead).toBe(
-      true,
-    );
+    expect(
+      (await driver.listUidsWithFlags("INBOX", [1n])).get(1n)?.isRead,
+    ).toBe(true);
 
     await driver.setSeen("INBOX", 1n, false);
-    expect((await driver.listUidsWithFlags("INBOX", [1n])).get(1n)?.isRead).toBe(
-      false,
-    );
+    expect(
+      (await driver.listUidsWithFlags("INBOX", [1n])).get(1n)?.isRead,
+    ).toBe(false);
   });
 
   it("omits unknown uids from listUidsWithFlags", async () => {

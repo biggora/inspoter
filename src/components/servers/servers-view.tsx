@@ -235,7 +235,11 @@ export function ServersView() {
             </Button>
             {pageState !== "loading" ? (
               <Button variant="outline" onClick={load}>
-                <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+                <Icon
+                  name="ri-refresh-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
                 {t("refreshButton")}
               </Button>
             ) : undefined}
@@ -284,7 +288,11 @@ export function ServersView() {
           description={t("providerUnavailableDescription")}
           action={
             <Button onClick={load}>
-              <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
+              <Icon
+                name="ri-refresh-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
               {t("retryButton")}
             </Button>
           }
@@ -558,11 +566,7 @@ function ServerCard({
                 {actionBusy ? (
                   <Spinner aria-hidden data-icon="inline-start" />
                 ) : (
-                  <Icon
-                    name={act.icon}
-                    aria-hidden
-                    data-icon="inline-start"
-                  />
+                  <Icon name={act.icon} aria-hidden data-icon="inline-start" />
                 )}
                 {actionBusy
                   ? t(PENDING_ACTION_LABEL_KEYS[act.action])
