@@ -74,7 +74,7 @@ export function WorkspaceSwitcher({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   async function handleSwitch(workspaceId: string) {
     if (workspaceId === currentId || switchingId) return;
