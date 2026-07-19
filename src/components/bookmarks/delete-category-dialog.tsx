@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -31,26 +32,6 @@ interface DeleteCategoryDialogProps {
   onDeleted: () => void;
 }
 
-function bookmarkWord(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return "закладка";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "закладки";
-  }
-  return "закладок";
-}
-
-function subcategoryWord(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return "подкатегория";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "подкатегории";
-  }
-  return "подкатегорий";
-}
-
 // AC-BM-003/004 (design.md §3.3.3): warns of cascade before any request
 // fires; copy is dynamic on the category's current bookmark count, and
 // (Phase 4) on its subcategory count and their nested bookmark count.
@@ -59,6 +40,7 @@ export function DeleteCategoryDialog({
   onOpenChange,
   onDeleted,
 }: DeleteCategoryDialogProps) {
+  const t = useTranslations("bookmarks");
   const [submitting, setSubmitting] = useState(false);
   const directCount = category?.bookmarks.length ?? 0;
   const childCategories = category?.childCategories ?? [];
@@ -76,18 +58,21 @@ export function DeleteCategoryDialog({
       await categoriesApi.remove(category.id);
       if (subcategoryCount > 0) {
         toast.success(
-          `Категория, ${subcategoryCount} ${subcategoryWord(subcategoryCount)} и ${totalBookmarkCount} ${bookmarkWord(totalBookmarkCount)} внутри них удалены.`,
+          t("deleteCategoryToastWithSubcategories", {
+            subcategoryCount,
+            totalBookmarkCount,
+          }),
         );
       } else if (directCount > 0) {
         toast.success(
-          `Категория и ${directCount} ${bookmarkWord(directCount)} внутри неё удалены.`,
+          t("deleteCategoryToastBookmarksOnly", { directCount }),
         );
       } else {
-        toast.success("Категория удалена.");
+        toast.success(t("deleteCategoryToastEmpty"));
       }
       onDeleted();
     } catch {
-      toast.error("Не удалось удалить категорию. Попробуйте снова.");
+      toast.error(t("deleteCategoryError"));
     } finally {
       setSubmitting(false);
     }
@@ -97,23 +82,29 @@ export function DeleteCategoryDialog({
     <AlertDialog open={category !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить «{category?.name}»?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("deleteTitle", { name: category?.name ?? "" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {subcategoryCount > 0
-              ? `В этой категории ${directCount} ${bookmarkWord(directCount)} и ${subcategoryCount} ${subcategoryWord(subcategoryCount)} (в них ещё ${nestedBookmarkCount} ${bookmarkWord(nestedBookmarkCount)}). При удалении всё это будет удалено. Это действие нельзя отменить.`
+              ? t("deleteWithSubcategoriesDescription", {
+                  directCount,
+                  subcategoryCount,
+                  nestedBookmarkCount,
+                })
               : directCount > 0
-                ? `В этой категории ${directCount} ${bookmarkWord(directCount)}. При удалении категории также будут удалены все закладки внутри неё. Это действие нельзя отменить.`
-                : "Эта категория пуста. Это действие нельзя отменить."}
+                ? t("deleteBookmarksOnlyDescription", { directCount })
+                : t("deleteEmptyCategoryDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Удаление…" : "Удалить категорию"}
+            {submitting ? t("deletingButton") : t("deleteCategoryAction")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

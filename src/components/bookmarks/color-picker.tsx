@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 import { useId } from "react";
+import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/icon";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -16,15 +17,18 @@ import { bookmarkColorTokens } from "@/lib/validation/bookmarks";
 // name (Russian color name, not just "Цвет 1").
 const SWATCHES: Array<{
   token: (typeof bookmarkColorTokens)[number];
-  label: string;
+  labelKey: "colorPrimary" | "colorAccent" | "colorSecondary";
   dotClassName: string;
 }> = [
-  { token: "primary", label: "Терракотовый", dotClassName: "bg-primary-500" },
-  { token: "accent", label: "Бирюзовый", dotClassName: "bg-accent-500" },
-  { token: "secondary", label: "Оливковый", dotClassName: "bg-secondary-500" },
+  { token: "primary", labelKey: "colorPrimary", dotClassName: "bg-primary-500" },
+  { token: "accent", labelKey: "colorAccent", dotClassName: "bg-accent-500" },
+  {
+    token: "secondary",
+    labelKey: "colorSecondary",
+    dotClassName: "bg-secondary-500",
+  },
 ];
 
-const NONE_OPTION = { token: null, label: "Без цвета" } as const;
 const DEFAULT_TOKEN = "__default__";
 
 interface ColorPickerProps {
@@ -33,17 +37,23 @@ interface ColorPickerProps {
   label?: string;
 }
 
-export function ColorPicker({
-  value,
-  onChange,
-  label = "Цвет",
-}: ColorPickerProps) {
+export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
+  const t = useTranslations("bookmarks");
   const groupLabelId = useId();
+  const noneOption = { token: null, label: t("colorNone") } as const;
   const options: ReadonlyArray<{
     token: string | null;
     label: string;
     dotClassName?: string;
-  }> = [NONE_OPTION, ...SWATCHES];
+  }> = [
+    noneOption,
+    ...SWATCHES.map((swatch) => ({
+      token: swatch.token,
+      label: t(swatch.labelKey),
+      dotClassName: swatch.dotClassName,
+    })),
+  ];
+  const groupLabel = label ?? t("colorGroupLabel");
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (
@@ -72,7 +82,7 @@ export function ColorPicker({
   return (
     <div className="flex flex-col gap-1.5">
       <span id={groupLabelId} className="text-sm font-medium text-foreground">
-        {label}
+        {groupLabel}
       </span>
       <ToggleGroup
         value={[value ?? DEFAULT_TOKEN]}

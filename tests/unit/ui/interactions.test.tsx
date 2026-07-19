@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DndContext } from "@dnd-kit/core";
@@ -83,7 +83,7 @@ describe("standardized UI interactions", () => {
       return <ColorPicker value={value} onChange={setValue} />;
     }
 
-    render(<Harness />);
+    renderWithIntl(<Harness />);
     expect(screen.getByRole("group", { name: "Цвет" })).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(4);
     const none = screen.getByRole("button", { name: "Без цвета" });
@@ -118,7 +118,7 @@ describe("standardized UI interactions", () => {
       updatedAt: new Date(),
     } satisfies Bookmark;
 
-    render(
+    renderWithIntl(
       <DndContext>
         <SortableContext items={[bookmark.id]}>
           <BookmarkCard

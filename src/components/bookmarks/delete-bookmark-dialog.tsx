@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -28,6 +29,7 @@ export function DeleteBookmarkDialog({
   onOpenChange,
   onDeleted,
 }: DeleteBookmarkDialogProps) {
+  const t = useTranslations("bookmarks");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirm() {
@@ -35,10 +37,10 @@ export function DeleteBookmarkDialog({
     setSubmitting(true);
     try {
       await bookmarksApi.remove(bookmark.id);
-      toast.success("Закладка удалена.");
+      toast.success(t("bookmarkDeletedToast"));
       onDeleted();
     } catch {
-      toast.error("Не удалось удалить закладку. Попробуйте снова.");
+      toast.error(t("deleteBookmarkError"));
     } finally {
       setSubmitting(false);
     }
@@ -48,19 +50,21 @@ export function DeleteBookmarkDialog({
     <AlertDialog open={bookmark !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить «{bookmark?.name}»?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("deleteTitle", { name: bookmark?.name ?? "" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Эта закладка будет удалена без возможности восстановления.
+            {t("deleteBookmarkDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Удаление…" : "Удалить"}
+            {submitting ? t("deletingButton") : t("deleteAction")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

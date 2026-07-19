@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export function BookmarkDialog({
   onOpenChange,
   onSaved,
 }: BookmarkDialogProps) {
+  const t = useTranslations("bookmarks");
   const nameId = useId();
   const urlId = useId();
   const iconId = useId();
@@ -109,11 +111,10 @@ export function BookmarkDialog({
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     const nextErrors: FieldErrors = {};
-    if (!trimmedName) nextErrors.name = "Название закладки обязательно.";
-    if (!trimmedUrl) nextErrors.url = "URL обязателен.";
+    if (!trimmedName) nextErrors.name = t("nameRequiredError");
+    if (!trimmedUrl) nextErrors.url = t("urlRequiredError");
     else if (!isValidHttpUrl(trimmedUrl)) {
-      nextErrors.url =
-        "Введите корректный URL, начинающийся с http:// или https://.";
+      nextErrors.url = t("urlInvalidError");
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -130,10 +131,10 @@ export function BookmarkDialog({
       };
       if (state?.mode === "edit") {
         await bookmarksApi.update(state.bookmark.id, payload);
-        toast.success("Закладка обновлена.");
+        toast.success(t("bookmarkUpdatedToast"));
       } else {
         await bookmarksApi.create(payload);
-        toast.success("Закладка создана.");
+        toast.success(t("bookmarkCreatedToast"));
       }
       onSaved();
     } catch (err) {
@@ -145,9 +146,7 @@ export function BookmarkDialog({
         setErrors({ name: err.fieldErrors.name, url: err.fieldErrors.url });
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось сохранить закладку. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("saveBookmarkError"),
         );
       }
     } finally {
@@ -162,10 +161,10 @@ export function BookmarkDialog({
       if (result.icon) {
         setIcon(result.icon);
       } else {
-        toast.error("Не удалось подобрать значок для этого URL.");
+        toast.error(t("suggestFaviconError"));
       }
     } catch {
-      toast.error("Не удалось подобрать значок для этого URL.");
+      toast.error(t("suggestFaviconError"));
     } finally {
       setSuggesting(false);
     }
@@ -176,7 +175,7 @@ export function BookmarkDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Редактировать закладку" : "Новая закладка"}
+            {isEdit ? t("editBookmarkTitle") : t("createBookmarkTitle")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -186,7 +185,7 @@ export function BookmarkDialog({
         >
           <FieldGroup>
             <Field data-invalid={!!errors.name || undefined}>
-              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{t("nameLabel")}</FieldLabel>
               <Input
                 id={nameId}
                 value={name}
@@ -214,13 +213,13 @@ export function BookmarkDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor={iconId}>Иконка (необязательно)</FieldLabel>
+              <FieldLabel htmlFor={iconId}>{t("iconLabel")}</FieldLabel>
               <InputGroup>
                 <InputGroupInput
                   id={iconId}
                   value={icon}
                   onChange={(event) => setIcon(event.target.value)}
-                  placeholder="Эмодзи, название иконки или URL изображения"
+                  placeholder={t("iconPlaceholder")}
                 />
                 <InputGroupAddon align="inline-end">
                   <InputGroupButton
@@ -229,7 +228,7 @@ export function BookmarkDialog({
                     disabled={!isValidHttpUrl(url.trim()) || suggesting}
                     onClick={handleSuggestFavicon}
                   >
-                    {suggesting ? "Подбор…" : "Подобрать"}
+                    {suggesting ? t("suggestingButton") : t("suggestButton")}
                   </InputGroupButton>
                 </InputGroupAddon>
               </InputGroup>
@@ -239,7 +238,7 @@ export function BookmarkDialog({
 
             <Field>
               <FieldLabel htmlFor={descriptionId}>
-                Описание (необязательно)
+                {t("descriptionLabel")}
               </FieldLabel>
               <Textarea
                 id={descriptionId}
@@ -250,7 +249,9 @@ export function BookmarkDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor={categoryFieldId}>Категория</FieldLabel>
+              <FieldLabel htmlFor={categoryFieldId}>
+                {t("categoryLabel")}
+              </FieldLabel>
               <NativeSelect
                 id={categoryFieldId}
                 value={category}
@@ -269,25 +270,25 @@ export function BookmarkDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit ? (
                 submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Сохранение…
+                    {t("savingButton")}
                   </>
                 ) : (
-                  "Сохранить изменения"
+                  t("saveChangesButton")
                 )
               ) : submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Создание…
+                  {t("creatingButton")}
                 </>
               ) : (
-                "Создать"
+                t("createButton")
               )}
             </Button>
           </DialogFooter>
