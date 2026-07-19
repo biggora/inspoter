@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { renderWithIntl } from "../../test-utils";
 import { DomainsView } from "@/components/domains/domains-view";
 import type { DomainsByProvider } from "@/lib/services/domains";
 
@@ -33,7 +34,7 @@ describe("DomainsView empty state", () => {
     "opens the create-provider dialog $0",
     async (_, providers) => {
       const user = userEvent.setup();
-      render(<DomainsView providers={providers} />);
+      renderWithIntl(<DomainsView providers={providers} />);
 
       await user.click(
         screen.getByRole("button", { name: "Добавить провайдера" }),

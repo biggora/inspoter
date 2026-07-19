@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -48,6 +49,7 @@ export function WorkspaceSwitcher({
   currentName,
   currentId,
 }: WorkspaceSwitcherProps) {
+  const t = useTranslations("shell");
   const router = useRouter();
   const nameId = useId();
   const errorId = useId();
@@ -67,13 +69,12 @@ export function WorkspaceSwitcher({
         if (!cancelled) setWorkspaces(data);
       })
       .catch(() => {
-        if (!cancelled)
-          toast.error("Не удалось загрузить рабочие пространства.");
+        if (!cancelled) toast.error(t("loadWorkspacesError"));
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   async function handleSwitch(workspaceId: string) {
     if (workspaceId === currentId || switchingId) return;
@@ -82,9 +83,7 @@ export function WorkspaceSwitcher({
       await workspacesApi.switchTo(workspaceId);
       router.refresh();
     } catch {
-      toast.error(
-        "Не удалось переключить рабочее пространство. Попробуйте снова.",
-      );
+      toast.error(t("switchWorkspaceError"));
     } finally {
       setSwitchingId(null);
     }
@@ -100,7 +99,7 @@ export function WorkspaceSwitcher({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Название рабочего пространства обязательно.");
+      setError(t("createWorkspaceNameRequired"));
       return;
     }
 
@@ -108,7 +107,7 @@ export function WorkspaceSwitcher({
     setError(null);
     try {
       const workspace = await workspacesApi.create(trimmed);
-      toast.success("Рабочее пространство создано.");
+      toast.success(t("workspaceCreated"));
       setCreateOpen(false);
       await handleSwitch(workspace.id);
     } catch (err) {
@@ -116,9 +115,7 @@ export function WorkspaceSwitcher({
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось создать рабочее пространство.",
+          err instanceof ApiError ? err.message : t("createWorkspaceError"),
         );
       }
     } finally {
@@ -130,7 +127,7 @@ export function WorkspaceSwitcher({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={`Рабочее пространство: ${currentName}`}
+          aria-label={t("workspaceLabel", { name: currentName })}
           className={cn(
             buttonVariants({ variant: "ghost" }),
             "w-full justify-between px-2 group-data-[collapsible=icon]:hidden",
@@ -151,7 +148,7 @@ export function WorkspaceSwitcher({
         >
           {workspaces === null ? (
             <div className="px-1.5 py-1 text-sm text-muted-foreground">
-              Загрузка…
+              {t("loadingWorkspaces")}
             </div>
           ) : (
             <DropdownMenuGroup>
@@ -175,7 +172,7 @@ export function WorkspaceSwitcher({
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={openCreate}>
               <Icon name="ri-add-line" aria-hidden />
-              Создать рабочее пространство
+              {t("createWorkspace")}
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -184,7 +181,7 @@ export function WorkspaceSwitcher({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Создать рабочее пространство</DialogTitle>
+            <DialogTitle>{t("createWorkspace")}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate}
@@ -193,7 +190,9 @@ export function WorkspaceSwitcher({
           >
             <FieldGroup>
               <Field data-invalid={!!error || undefined}>
-                <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+                <FieldLabel htmlFor={nameId}>
+                  {t("workspaceNameFieldLabel")}
+                </FieldLabel>
                 <Input
                   id={nameId}
                   value={name}
@@ -208,16 +207,16 @@ export function WorkspaceSwitcher({
             </FieldGroup>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" type="button" />}>
-                Отмена
+                {t("cancel")}
               </DialogClose>
               <Button type="submit" disabled={submitting}>
                 {submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Создание…
+                    {t("creating")}
                   </>
                 ) : (
-                  "Создать"
+                  t("create")
                 )}
               </Button>
             </DialogFooter>

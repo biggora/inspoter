@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,25 +21,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
 import { login } from "./actions";
 
-function localizeLoginError(error: string) {
-  if (error === "Username and password are required.") {
-    return "Укажите имя пользователя и пароль.";
-  }
+// Maps the Server Action's stable, intentionally-English error codes
+// (src/app/[locale]/login/actions.ts) to auth.json translation keys.
+// Unrecognized codes fall back to a generic, translated message.
+const LOGIN_ERROR_KEYS: Record<string, string> = {
+  "Username and password are required.": "errorUsernamePasswordRequired",
+  "Invalid username or password.": "errorInvalidCredentials",
+};
 
-  if (error === "Invalid username or password.") {
-    return "Неверное имя пользователя или пароль.";
-  }
-
-  return "Не удалось выполнить вход. Проверьте данные и повторите попытку.";
-}
-
-function localizeAuthentikError(error: string) {
-  if (error === "authentik_state") {
-    return "Истекло время ожидания входа через Authentik. Попробуйте снова.";
-  }
-
-  return "Не удалось выполнить вход через Authentik. Попробуйте снова.";
-}
+const AUTHENTIK_ERROR_KEYS: Record<string, string> = {
+  authentik_state: "errorAuthentikState",
+};
 
 // AC-AUTH-002/003 UI (design.md §3.1). Client Component: owns form state,
 // the empty-field submit-disable (design's narrow, documented exception to
@@ -55,7 +48,17 @@ export function LoginForm({
   authentikEnabled?: boolean;
   authentikError?: string;
 }) {
+  const t = useTranslations("auth");
   const router = useRouter();
+
+  function localizeLoginError(error: string) {
+    return t(LOGIN_ERROR_KEYS[error] ?? "errorLoginGeneric");
+  }
+
+  function localizeAuthentikError(error: string) {
+    return t(AUTHENTIK_ERROR_KEYS[error] ?? "errorAuthentikGeneric");
+  }
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -96,7 +99,7 @@ export function LoginForm({
     <Card className="w-full max-w-95">
       <CardHeader>
         <h1 className="font-heading text-base leading-none font-medium text-foreground">
-          Войти
+          {t("loginHeading")}
         </h1>
       </CardHeader>
       <CardContent>
@@ -113,7 +116,9 @@ export function LoginForm({
 
           <FieldGroup>
             <Field data-disabled={submitting || undefined}>
-              <FieldLabel htmlFor="login-username">Имя пользователя</FieldLabel>
+              <FieldLabel htmlFor="login-username">
+                {t("usernameLabel")}
+              </FieldLabel>
               <Input
                 id="login-username"
                 name="username"
@@ -128,7 +133,9 @@ export function LoginForm({
             </Field>
 
             <Field data-disabled={submitting || undefined}>
-              <FieldLabel htmlFor="login-password">Пароль</FieldLabel>
+              <FieldLabel htmlFor="login-password">
+                {t("passwordLabel")}
+              </FieldLabel>
               <InputGroup>
                 <InputGroupInput
                   id="login-password"
@@ -146,7 +153,9 @@ export function LoginForm({
                     onClick={() => setShowPassword((value) => !value)}
                     disabled={submitting}
                     aria-label={
-                      showPassword ? "Скрыть пароль" : "Показать пароль"
+                      showPassword
+                        ? t("hidePasswordLabel")
+                        : t("showPasswordLabel")
                     }
                   >
                     {showPassword ? (
@@ -164,10 +173,10 @@ export function LoginForm({
             {submitting ? (
               <>
                 <Spinner aria-hidden data-icon="inline-start" />
-                Вход…
+                {t("signingIn")}
               </>
             ) : (
-              "Войти"
+              t("submit")
             )}
           </Button>
         </form>
@@ -176,7 +185,9 @@ export function LoginForm({
           <div className="mt-4 flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">или</span>
+              <span className="text-xs text-muted-foreground">
+                {t("orDivider")}
+              </span>
               <div className="h-px flex-1 bg-border" />
             </div>
             <Button
@@ -185,7 +196,7 @@ export function LoginForm({
               variant="outline"
               className="w-full"
             >
-              Войти через Authentik
+              {t("loginWithAuthentik")}
             </Button>
           </div>
         )}

@@ -1,0 +1,40 @@
+{
+  "pageTitle": "Рабочее пространство",
+
+  "renameCardTitle": "Название рабочего пространства",
+  "renameCardDescription": "Переименовать текущее рабочее пространство.",
+  "membersCardTitle": "Участники",
+  "membersCardDescription": "Операторы с доступом к этому рабочему пространству.",
+  "createCardTitle": "Создать новое рабочее пространство",
+  "createCardDescription": "Начните новое пустое рабочее пространство и переключитесь на него.",
+
+  "nameLabel": "Название рабочего пространства",
+  "nameRequiredError": "Название рабочего пространства обязательно.",
+  "savingButton": "Сохранение…",
+  "saveChangesButton": "Сохранить изменения",
+  "renamedToast": "Рабочее пространство переименовано.",
+  "renameError": "Не удалось переименовать рабочее пространство.",
+
+  "newWorkspaceNameLabel": "Название нового рабочего пространства",
+  "creatingButton": "Создание…",
+  "createWorkspaceButton": "Создать рабочее пространство",
+  "createdToast": "Рабочее пространство создано.",
+  "createError": "Не удалось создать рабочее пространство.",
+
+  "usernameLabel": "Имя пользователя",
+  "usernameRequiredError": "Имя пользователя обязательно.",
+  "passwordLabel": "Пароль (только для нового пользователя)",
+  "addingButton": "Добавление…",
+  "addMemberButton": "Добавить участника",
+  "memberAddedToast": "Участник добавлен.",
+  "addMemberError": "Не удалось добавить участника.",
+
+  "removeMemberLabel": "Удалить {name}",
+  "confirmRemoveTitle": "Удалить «{name}»?",
+  "confirmRemoveDescription": "Этот участник потеряет доступ к рабочему пространству.",
+  "cancelButton": "Отмена",
+  "removeButton": "Удалить",
+  "removingButton": "Удаление…",
+  "memberRemovedToast": "Участник удалён.",
+  "removeMemberError": "Не удалось удалить участника. Попробуйте снова."
+}

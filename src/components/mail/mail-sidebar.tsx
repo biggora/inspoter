@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,15 +19,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import type { MailAccountDto, MailFolderDto } from "./api";
 
-const SPECIAL_USE_NAMES: Partial<Record<MailFolderDto["specialUse"], string>> =
-  {
-    INBOX: "Входящие",
-    SENT: "Отправленные",
-    DRAFTS: "Черновики",
-    TRASH: "Корзина",
-    JUNK: "Спам",
-    ARCHIVE: "Архив",
-  };
+type Translate = (key: string, params?: Record<string, string>) => string;
+
+const SPECIAL_USE_NAME_KEYS: Partial<
+  Record<MailFolderDto["specialUse"], string>
+> = {
+  INBOX: "folderNameInbox",
+  SENT: "folderNameSent",
+  DRAFTS: "folderNameDrafts",
+  TRASH: "folderNameTrash",
+  JUNK: "folderNameJunk",
+  ARCHIVE: "folderNameArchive",
+};
 
 const SPECIAL_USE_ICONS: Partial<Record<MailFolderDto["specialUse"], string>> =
   {
@@ -38,30 +42,32 @@ const SPECIAL_USE_ICONS: Partial<Record<MailFolderDto["specialUse"], string>> =
     ARCHIVE: "ri-archive-line",
   };
 
-export function folderDisplayName(folder: MailFolderDto): string {
-  return SPECIAL_USE_NAMES[folder.specialUse] ?? folder.name;
+export function folderDisplayName(folder: MailFolderDto, t: Translate): string {
+  const key = SPECIAL_USE_NAME_KEYS[folder.specialUse];
+  return key ? t(key) : folder.name;
 }
 
 // Sync status dot next to the account name: animated while syncing, red on
 // error (with the error text in the tooltip). Idle accounts show nothing.
 // role="img" + aria-label so screen readers announce sync state, not just color.
 function SyncStatusDot({ account }: { account: MailAccountDto }) {
+  const t = useTranslations("mail");
   if (account.syncStatus === "SYNCING") {
     return (
       <span
         role="img"
-        aria-label="Синхронизация почты"
+        aria-label={t("syncStatusSyncingLabel")}
         className="size-2 shrink-0 animate-pulse rounded-full bg-[var(--info-text)]"
-        title="Синхронизация…"
+        title={t("syncStatusSyncingTitle")}
       />
     );
   }
   if (account.syncStatus === "ERROR") {
-    const errorText = account.syncError ?? "Ошибка синхронизации";
+    const errorText = account.syncError ?? t("syncStatusErrorFallback");
     return (
       <span
         role="img"
-        aria-label={`Ошибка синхронизации: ${errorText}`}
+        aria-label={t("syncStatusErrorAriaLabel", { error: errorText })}
         className="size-2 shrink-0 rounded-full bg-[var(--error-text)]"
         title={errorText}
       />
@@ -102,6 +108,7 @@ export function MailSidebar({
   syncing,
   onCompose,
 }: MailSidebarProps) {
+  const t = useTranslations("mail");
   const selectedAccount =
     accounts.find((account) => account.id === selectedAccountId) ?? null;
 
@@ -114,13 +121,11 @@ export function MailSidebar({
           type="button"
           className="w-full"
           disabled={!onCompose}
-          title={
-            onCompose ? undefined : "Добавьте IMAP-аккаунт, чтобы писать письма"
-          }
+          title={onCompose ? undefined : t("composeDisabledTitle")}
           onClick={onCompose ?? undefined}
         >
           <Icon name="ri-quill-pen-line" aria-hidden data-icon="inline-start" />
-          Написать
+          {t("composeButton")}
         </Button>
 
         <Select
@@ -130,8 +135,8 @@ export function MailSidebar({
             accounts.map((account) => [account.id, account.name]),
           )}
         >
-          <SelectTrigger className="w-full" aria-label="Почтовый аккаунт">
-            <SelectValue placeholder="Выберите аккаунт..." />
+          <SelectTrigger className="w-full" aria-label={t("accountSelectAriaLabel")}>
+            <SelectValue placeholder={t("accountSelectPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -164,14 +169,14 @@ export function MailSidebar({
               {selectedAccount.email || selectedAccount.name}
             </span>
             {selectedAccount.kind === "WEBHOOK" && (
-              <Badge variant="secondary">Системный</Badge>
+              <Badge variant="secondary">{t("webhookAccountBadge")}</Badge>
             )}
           </div>
         )}
       </div>
 
       <nav
-        aria-label="Папки"
+        aria-label={t("foldersNavLabel")}
         className="flex-1 space-y-0.5 overflow-y-auto p-2"
       >
         {foldersLoading ? (
@@ -190,7 +195,7 @@ export function MailSidebar({
             action={
               <Button type="button" size="sm" onClick={onRetryFolders}>
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-                Повторить
+                {t("retryButton")}
               </Button>
             }
           />
@@ -199,7 +204,7 @@ export function MailSidebar({
             size="xs"
             align="start"
             bordered={false}
-            description="Папок пока нет. Запустите синхронизацию."
+            description={t("foldersEmptyDescription")}
             className="px-2 py-4"
           />
         ) : (
@@ -219,10 +224,14 @@ export function MailSidebar({
               >
                 <Icon name={iconClass} aria-hidden data-icon="inline-start" />
                 <span className="min-w-0 flex-1 truncate text-left">
-                  {folderDisplayName(folder)}
+                  {folderDisplayName(folder, t)}
                 </span>
                 {folder.unreadCount > 0 && (
-                  <Badge aria-label={`Непрочитанных: ${folder.unreadCount}`}>
+                  <Badge
+                    aria-label={t("folderUnreadAriaLabel", {
+                      count: folder.unreadCount,
+                    })}
+                  >
                     {folder.unreadCount}
                   </Badge>
                 )}
@@ -247,7 +256,7 @@ export function MailSidebar({
             ) : (
               <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
             )}
-            Синхронизировать
+            {t("syncButton")}
           </Button>
         )}
         <Button
@@ -258,7 +267,7 @@ export function MailSidebar({
           className="w-full justify-start"
         >
           <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
-          Управление аккаунтами
+          {t("manageAccountsButton")}
         </Button>
       </div>
     </div>

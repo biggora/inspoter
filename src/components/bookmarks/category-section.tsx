@@ -7,6 +7,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -54,6 +55,7 @@ export function CategorySection({
   onDeleteSubcategory,
   onAddBookmarkToSubcategory,
 }: CategorySectionProps) {
+  const t = useTranslations("bookmarks");
   const headingId = `category-${category.id}-heading`;
 
   // Category-level sortable — reorder ownership (`onDragEnd`) lives in
@@ -99,7 +101,7 @@ export function CategorySection({
             size="icon-sm"
             {...attributes}
             {...listeners}
-            aria-label={`Изменить порядок категории «${category.name}»`}
+            aria-label={t("categoryDragHandleLabel", { name: category.name })}
             className={cn(
               "shrink-0 touch-none",
               dragDisabled
@@ -124,22 +126,22 @@ export function CategorySection({
             onClick={onAddBookmark}
           >
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить
+            {t("addBookmarkButton")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button type="button" variant="ghost" size="icon-sm" />}
-              aria-label={`Действия категории «${category.name}»`}
+              aria-label={t("categoryActionsLabel", { name: category.name })}
             >
               <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={onRename}>
-                  Переименовать категорию
+                  {t("renameCategoryAction")}
                 </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                  Удалить категорию
+                  {t("deleteCategoryAction")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -151,7 +153,7 @@ export function CategorySection({
           size="xs"
           align="start"
           bordered={false}
-          description="Нет закладок в этой категории"
+          description={t("emptyCategoryDescription")}
           className="py-3"
         />
       ) : (
@@ -212,6 +214,7 @@ function SubcategorySection({
   onEditBookmark,
   onDeleteBookmark,
 }: SubcategorySectionProps) {
+  const t = useTranslations("bookmarks");
   const headingId = `category-${subcategory.id}-heading`;
   const bookmarkIds = subcategory.bookmarks.map((bookmark) => bookmark.id);
 
@@ -246,22 +249,24 @@ function SubcategorySection({
             onClick={onAddBookmark}
           >
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить
+            {t("addBookmarkButton")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button type="button" variant="ghost" size="icon-sm" />}
-              aria-label={`Действия категории «${subcategory.name}»`}
+              aria-label={t("categoryActionsLabel", {
+                name: subcategory.name,
+              })}
             >
               <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={onRename}>
-                  Переименовать категорию
+                  {t("renameCategoryAction")}
                 </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                  Удалить категорию
+                  {t("deleteCategoryAction")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -273,7 +278,7 @@ function SubcategorySection({
           size="xs"
           align="start"
           bordered={false}
-          description="Нет закладок в этой категории"
+          description={t("emptyCategoryDescription")}
           className="py-3"
         />
       ) : (

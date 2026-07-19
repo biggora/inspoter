@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -30,6 +31,7 @@ interface MembersSectionProps {
 // a full Dialog, since removing a member is a single, low-cost destructive
 // action.
 export function MembersSection({ workspaceId, members }: MembersSectionProps) {
+  const t = useTranslations("workspace");
   const router = useRouter();
   const [removeTarget, setRemoveTarget] = useState<MemberWithOperator | null>(
     null,
@@ -41,11 +43,11 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
     setSubmitting(true);
     try {
       await workspacesApi.removeMember(workspaceId, removeTarget.id);
-      toast.success("Участник удалён.");
+      toast.success(t("memberRemovedToast"));
       setRemoveTarget(null);
       router.refresh();
     } catch {
-      toast.error("Не удалось удалить участника. Попробуйте снова.");
+      toast.error(t("removeMemberError"));
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +73,9 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`Удалить ${member.operator.username}`}
+              aria-label={t("removeMemberLabel", {
+                name: member.operator.username,
+              })}
               onClick={() => setRemoveTarget(member)}
               disabled={members.length <= 1}
             >
@@ -88,20 +92,22 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Удалить «{removeTarget?.operator.username}»?
+              {t("confirmRemoveTitle", {
+                name: removeTarget?.operator.username ?? "",
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Этот участник потеряет доступ к рабочему пространству.
+              {t("confirmRemoveDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleConfirmRemove}
               disabled={submitting}
             >
-              {submitting ? "Удаление…" : "Удалить"}
+              {submitting ? t("removingButton") : t("removeButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

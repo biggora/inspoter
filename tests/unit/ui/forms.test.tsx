@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LoginForm } from "@/app/login/login-form";
+import { renderWithIntl } from "../../test-utils";
+import { LoginForm } from "@/app/[locale]/login/login-form";
 import { BookmarkDialog } from "@/components/bookmarks/bookmark-dialog";
 import { CategoryDialog } from "@/components/bookmarks/category-dialog";
 import { ServiceFormDialog } from "@/components/services/service-form-dialog";
@@ -30,7 +31,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }));
 
-vi.mock("@/app/login/actions", () => ({ login: mocks.login }));
+vi.mock("@/app/[locale]/login/actions", () => ({ login: mocks.login }));
 
 vi.mock("@/components/bookmarks/api", () => {
   class ApiError extends Error {
@@ -113,7 +114,7 @@ describe("standardized form contracts", () => {
   it("keeps the login reveal action non-submit and submits once on Enter", async () => {
     const user = userEvent.setup();
 
-    render(<LoginForm />);
+    renderWithIntl(<LoginForm />);
     const username = screen.getByLabelText("Имя пользователя");
     const password = screen.getByLabelText("Пароль");
     const reveal = screen.getByRole("button", { name: "Показать пароль" });
@@ -140,7 +141,7 @@ describe("standardized form contracts", () => {
     }>();
     mocks.login.mockReturnValueOnce(loginResult.promise);
 
-    render(<LoginForm />);
+    renderWithIntl(<LoginForm />);
     const username = screen.getByLabelText("Имя пользователя");
     const password = screen.getByLabelText("Пароль");
     const reveal = screen.getByRole("button", { name: "Показать пароль" });
@@ -170,7 +171,7 @@ describe("standardized form contracts", () => {
     const next = "//evil.example/steal?token=1";
     mocks.login.mockResolvedValueOnce({ ok: true });
 
-    render(<LoginForm next={next} authentikEnabled />);
+    renderWithIntl(<LoginForm next={next} authentikEnabled />);
     expect(
       screen.getByRole("button", { name: "Войти через Authentik" }),
     ).toHaveAttribute(
@@ -189,7 +190,7 @@ describe("standardized form contracts", () => {
   it("submits the selected category from the real bookmark dialog", async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithIntl(
       <BookmarkDialog
         state={{ mode: "create", categoryId: "category-a" }}
         categories={[
@@ -237,7 +238,7 @@ describe("standardized form contracts", () => {
       },
     ];
 
-    const createView = render(
+    const createView = renderWithIntl(
       <CategoryDialog
         state={{ mode: "create" }}
         topLevelCategories={categories}
@@ -274,7 +275,7 @@ describe("standardized form contracts", () => {
       childCategories: [child],
     };
 
-    render(
+    renderWithIntl(
       <CategoryDialog
         state={{ mode: "edit", category: categoryWithChild }}
         topLevelCategories={[categoryWithChild]}
@@ -293,7 +294,7 @@ describe("standardized form contracts", () => {
   it("toggles the service checkbox by label and Space and submits a boolean", async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithIntl(
       <ServiceFormDialog
         state={{ mode: "create" }}
         onOpenChange={vi.fn()}
@@ -330,7 +331,7 @@ describe("standardized form contracts", () => {
   it("associates provider, label, and dynamic secret errors with their controls", async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithIntl(
       <ProviderCredentialDialog
         open
         mode="create"
@@ -375,7 +376,7 @@ describe("standardized form contracts", () => {
       new CredentialApiError("Провайдер временно недоступен."),
     );
 
-    render(
+    renderWithIntl(
       <ProviderCredentialDialog
         open
         mode="create"

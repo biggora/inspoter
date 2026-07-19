@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -54,17 +55,6 @@ function matchesQuery(bookmark: Bookmark, query: string): boolean {
   return [bookmark.name, bookmark.description, bookmark.url].some((value) =>
     value?.toLocaleLowerCase("ru").includes(query),
   );
-}
-
-// Russian plural form for "закладка" driven by the standard one/few/many
-// cardinal rule (matches the плитка/сервер pattern in servers-view.tsx).
-function pluralizeBookmarks(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 14) return "закладок";
-  if (mod10 === 1) return "закладка";
-  if (mod10 >= 2 && mod10 <= 4) return "закладки";
-  return "закладок";
 }
 
 // Phase 4: a single node anywhere in the (exactly one level deep) category
@@ -172,6 +162,7 @@ export function BookmarksBoard({
 }: {
   categories: CategoryWithBookmarks[];
 }) {
+  const t = useTranslations("bookmarks");
   const router = useRouter();
   const [categoryDialog, setCategoryDialog] =
     useState<CategoryDialogState | null>(null);
@@ -287,8 +278,8 @@ export function BookmarksBoard({
   const liveRegionMessage = !isSearching
     ? ""
     : matchCount === 0
-      ? "Ничего не найдено"
-      : `Найдено ${matchCount} ${pluralizeBookmarks(matchCount)}`;
+      ? t("noResultsTitle")
+      : t("foundCount", { count: matchCount });
 
   // Dragging is inert while a search query is active: reordering a
   // filtered subset would silently corrupt the true position sequence for
@@ -330,9 +321,7 @@ export function BookmarksBoard({
         try {
           await categoriesApi.reorder(order);
         } catch {
-          toast.error(
-            "Не удалось изменить порядок категорий. Попробуйте снова.",
-          );
+          toast.error(t("reorderCategoriesError"));
         }
         router.refresh();
       });
@@ -404,7 +393,7 @@ export function BookmarksBoard({
       try {
         await bookmarksApi.reorder(payload);
       } catch {
-        toast.error("Не удалось изменить порядок закладок. Попробуйте снова.");
+        toast.error(t("reorderBookmarksError"));
       }
       router.refresh();
     });
@@ -413,11 +402,11 @@ export function BookmarksBoard({
   return (
     <PageBody>
       <PageHeader
-        title="Закладки"
+        title={t("pageTitle")}
         actions={
           <Button onClick={() => setCategoryDialog({ mode: "create" })}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Новая категория
+            {t("newCategoryButton")}
           </Button>
         }
       >
@@ -432,15 +421,15 @@ export function BookmarksBoard({
                 type="text"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Название, описание или URL"
-                aria-label="Поиск закладок"
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchLabel")}
               />
               {query && (
                 <InputGroupAddon align="inline-end">
                   <InputGroupButton
                     size="icon-xs"
                     onClick={() => setQuery("")}
-                    aria-label="Очистить поиск"
+                    aria-label={t("clearSearchLabel")}
                   >
                     <Icon name="ri-close-line" aria-hidden data-icon="inline-start" />
                   </InputGroupButton>
@@ -458,23 +447,23 @@ export function BookmarksBoard({
       {categories.length === 0 ? (
         <EmptyState
           icon="ri-bookmark-line"
-          title="Нет закладок"
-          description="Создайте категорию, чтобы начать добавлять закладки."
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
           action={
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-              Создать категорию
+              {t("createCategoryButton")}
             </Button>
           }
         />
       ) : isSearching && filteredCategories.length === 0 ? (
         <EmptyState
           icon="ri-file-search-line"
-          title="Ничего не найдено"
-          description={`По запросу «${trimmedQuery}» закладок не найдено. Попробуйте изменить запрос или сбросить поиск.`}
+          title={t("noResultsTitle")}
+          description={t("noResultsDescription", { query: trimmedQuery })}
           action={
             <Button variant="outline" onClick={() => setQuery("")}>
-              Сбросить поиск
+              {t("resetSearchButton")}
             </Button>
           }
         />

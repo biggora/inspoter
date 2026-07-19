@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -29,15 +30,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { Format } from "@/lib/format/relative-time";
 import { mailAccountsApi, type MailAccountDto } from "./mail-accounts-api";
 import { MailAccountDialog } from "./mail-account-dialog";
 
 type DialogState =
   { mode: "create" } | { mode: "edit"; account: MailAccountDto };
 
-function formatLastSyncAt(value: string | null): string {
+function formatLastSyncAt(value: string | null, format: Format): string {
   if (!value) return "—";
-  return new Date(value).toLocaleString("ru-RU", {
+  return format.dateTime(new Date(value), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -47,23 +49,24 @@ function formatLastSyncAt(value: string | null): string {
 }
 
 function StatusBadges({ account }: { account: MailAccountDto }) {
+  const t = useTranslations("settings");
   return (
     <div className="flex flex-wrap items-center gap-1">
       {account.kind === "WEBHOOK" ? (
-        <Badge variant="secondary">Системный</Badge>
+        <Badge variant="secondary">{t("statusSystem")}</Badge>
       ) : account.isValid === true ? (
-        <Badge variant="success">Подключён</Badge>
+        <Badge variant="success">{t("statusConnected")}</Badge>
       ) : account.isValid === false ? (
-        <Badge variant="error">Ошибка подключения</Badge>
+        <Badge variant="error">{t("statusConnectionError")}</Badge>
       ) : (
-        <Badge variant="outline">Не проверен</Badge>
+        <Badge variant="outline">{t("statusNotChecked")}</Badge>
       )}
       {account.syncStatus === "SYNCING" && (
-        <Badge variant="info">Синхронизация…</Badge>
+        <Badge variant="info">{t("statusSyncing")}</Badge>
       )}
       {account.syncStatus === "ERROR" && (
         <Badge variant="warning" title={account.syncError ?? undefined}>
-          Ошибка синхронизации
+          {t("statusSyncError")}
         </Badge>
       )}
     </div>
@@ -76,6 +79,8 @@ function StatusBadges({ account }: { account: MailAccountDto }) {
 // settings that must stay off server-rendered props, matching
 // src/components/settings/provider-credentials-view.tsx.
 export function MailAccountsView() {
+  const t = useTranslations("settings");
+  const format = useFormatter();
   const [accounts, setAccounts] = useState<MailAccountDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +96,7 @@ export function MailAccountsView() {
         setAccounts(data);
         setError(null);
       })
-      .catch(() =>
-        setError("Не удалось загрузить почтовые аккаунты. Попробуйте снова."),
-      )
+      .catch(() => setError(t("loadMailAccountsError")))
       .finally(() => setLoading(false));
   }
 
@@ -106,11 +109,11 @@ export function MailAccountsView() {
     setDeleting(true);
     try {
       await mailAccountsApi.remove(deleteTarget.id);
-      toast.success("Аккаунт удалён.");
+      toast.success(t("accountDeletedToast"));
       setDeleteTarget(null);
       load();
     } catch {
-      toast.error("Не удалось удалить аккаунт. Попробуйте снова.");
+      toast.error(t("deleteAccountError"));
     } finally {
       setDeleting(false);
     }
@@ -119,12 +122,12 @@ export function MailAccountsView() {
   return (
     <PageBody>
       <PageHeader
-        title="Почтовые аккаунты"
-        back={{ href: "/settings", label: "Назад к настройкам" }}
+        title={t("mailAccountsTitle")}
+        back={{ href: "/settings", label: t("backToSettings") }}
         actions={
           <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить аккаунт
+            {t("addAccountButton")}
           </Button>
         }
       />
@@ -144,19 +147,19 @@ export function MailAccountsView() {
       ) : accounts.length === 0 ? (
         <EmptyState
           icon="ri-mail-line"
-          title="Нет почтовых аккаунтов"
-          description="Подключите IMAP/SMTP-ящик, чтобы получать и отправлять почту из панели."
+          title={t("emptyMailAccountsTitle")}
+          description={t("emptyMailAccountsDescription")}
         />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Название</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Сервер</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead>Синхронизация</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead>{t("nameHeader")}</TableHead>
+              <TableHead>{t("emailHeader")}</TableHead>
+              <TableHead>{t("serverHeader")}</TableHead>
+              <TableHead>{t("statusHeader")}</TableHead>
+              <TableHead>{t("syncHeader")}</TableHead>
+              <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -175,14 +178,14 @@ export function MailAccountsView() {
                   <StatusBadges account={account} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {formatLastSyncAt(account.lastSyncAt)}
+                  {formatLastSyncAt(account.lastSyncAt, format)}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Изменить"
+                      aria-label={t("editAria")}
                       onClick={() => setDialogState({ mode: "edit", account })}
                     >
                       <Icon name="ri-edit-line" aria-hidden className="text-base" />
@@ -191,7 +194,7 @@ export function MailAccountsView() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Удалить"
+                        aria-label={t("deleteAria")}
                         onClick={() => setDeleteTarget(account)}
                       >
                         <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
@@ -222,21 +225,20 @@ export function MailAccountsView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Удалить аккаунт «{deleteTarget?.name}»?
+              {t("deleteAccountConfirmTitle", { name: deleteTarget?.name ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Все синхронизированные папки и письма этого аккаунта будут
-              удалены из панели. Это действие нельзя отменить.
+              {t("deleteAccountConfirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={deleting}
             >
-              {deleting ? "Удаление…" : "Удалить"}
+              {deleting ? t("deletingLabel") : t("deleteButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

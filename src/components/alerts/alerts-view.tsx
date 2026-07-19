@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -42,17 +43,17 @@ import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
 
-const SEVERITY_ITEMS: Record<string, string> = {
-  all: "Все уровни",
-  info: "Информация",
-  warning: "Предупреждение",
-  error: "Ошибка",
-  critical: "Критическая",
+const SEVERITY_KEYS: Record<string, string> = {
+  all: "severityAllOption",
+  info: "severityInfoOption",
+  warning: "severityWarningOption",
+  error: "severityErrorOption",
+  critical: "severityCriticalOption",
 };
 
-const SORT_ITEMS: Record<string, string> = {
-  desc: "Сначала новые",
-  asc: "Сначала старые",
+const SORT_KEYS: Record<string, string> = {
+  desc: "sortDescOption",
+  asc: "sortAscOption",
 };
 
 function formatTimestamp(iso: string): string {
@@ -74,6 +75,7 @@ function formatTimestamp(iso: string): string {
 // the list rather than as a separate page since Alerts has no persistent
 // category-tree screen.
 export function AlertsView() {
+  const t = useTranslations("alerts");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -141,8 +143,7 @@ export function AlertsView() {
         setItems(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled)
-          setError("Не удалось загрузить оповещения. Попробуйте снова.");
+        if (!cancelled) setError(t("loadAlertsError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -200,9 +201,17 @@ export function AlertsView() {
   }
 
   const categoryItems: Record<string, string> = {
-    all: "Все категории",
+    all: t("allCategoriesOption"),
     ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
   };
+
+  const severityItems: Record<string, string> = Object.fromEntries(
+    Object.entries(SEVERITY_KEYS).map(([value, key]) => [value, t(key)]),
+  );
+
+  const sortItems: Record<string, string> = Object.fromEntries(
+    Object.entries(SORT_KEYS).map(([value, key]) => [value, t(key)]),
+  );
 
   const hasActiveFilters =
     query !== "" || categoryId !== "all" || severity !== "all";
@@ -210,16 +219,16 @@ export function AlertsView() {
   return (
     <PageBody>
       <PageHeader
-        title="Оповещения"
+        title={t("pageTitle")}
         actions={
           <>
             <Button variant="outline" onClick={() => setManageOpen(true)}>
               <Icon name="ri-settings-3-line" aria-hidden data-icon="inline-start" />
-              Управление категориями
+              {t("manageCategoriesButton")}
             </Button>
             <Button onClick={() => setCategoryDialog({ mode: "create" })}>
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-              Новая категория
+              {t("newCategoryButton")}
             </Button>
           </>
         }
@@ -228,8 +237,8 @@ export function AlertsView() {
           <Input
             value={searchInput}
             onChange={(event) => handleSearchChange(event.target.value)}
-            placeholder="Поиск по сообщению..."
-            aria-label="Поиск по сообщениям оповещений"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchLabel")}
             className="sm:max-w-xs"
           />
           <Select
@@ -237,7 +246,7 @@ export function AlertsView() {
             onValueChange={(v) => handleCategoryChange(v as string)}
             items={categoryItems}
           >
-            <SelectTrigger size="sm" aria-label="Фильтр по категории">
+            <SelectTrigger size="sm" aria-label={t("categoryFilterLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -253,14 +262,14 @@ export function AlertsView() {
           <Select
             value={severity}
             onValueChange={(v) => handleSeverityChange(v as string)}
-            items={SEVERITY_ITEMS}
+            items={severityItems}
           >
-            <SelectTrigger size="sm" aria-label="Фильтр по уровню важности">
+            <SelectTrigger size="sm" aria-label={t("severityFilterLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {Object.entries(SEVERITY_ITEMS).map(([value, label]) => (
+                {Object.entries(severityItems).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -271,14 +280,14 @@ export function AlertsView() {
           <Select
             value={sort}
             onValueChange={(v) => handleSortChange(v as "asc" | "desc")}
-            items={SORT_ITEMS}
+            items={sortItems}
           >
-            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+            <SelectTrigger size="sm" aria-label={t("sortOrderLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                {Object.entries(sortItems).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -304,12 +313,12 @@ export function AlertsView() {
         </div>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <EmptyState description="Нет алертов, соответствующих текущим фильтрам." />
+          <EmptyState description={t("noResultsDescription")} />
         ) : (
           <EmptyState
             icon="ri-notification-3-line"
-            title="Алерты пока отсутствуют"
-            description="Отправьте первый алерт через webhook:"
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
             action={
               <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
                 {`curl -X POST http://your-host/api/webhooks/alert \\
@@ -324,11 +333,11 @@ export function AlertsView() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Уровень</TableHead>
-              <TableHead>Категория</TableHead>
-              <TableHead>Источник</TableHead>
-              <TableHead>Сообщение</TableHead>
-              <TableHead>Время</TableHead>
+              <TableHead>{t("severityColumn")}</TableHead>
+              <TableHead>{t("categoryColumn")}</TableHead>
+              <TableHead>{t("sourceColumn")}</TableHead>
+              <TableHead>{t("messageColumn")}</TableHead>
+              <TableHead>{t("timeColumn")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -338,7 +347,7 @@ export function AlertsView() {
                   <SeverityBadge severity={alert.severity} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {alert.alertCategory?.name ?? "Без категории"}
+                  {alert.alertCategory?.name ?? t("noCategoryLabel")}
                 </TableCell>
                 <TableCell className="font-mono">{alert.source}</TableCell>
                 <TableCell className="max-w-md truncate font-mono">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import {
   DropdownMenu,
@@ -11,13 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
-import { logout } from "@/app/login/actions";
+import { logout } from "@/app/[locale]/login/actions";
 
 // Top-bar operator menu (design.md §4.2 "operator menu, and Russian logout
 // action"). Replaces the former sidebar-footer username + standalone
 // LogoutButton with a single dropdown, matching the prototype's topbar
 // pattern (specs/prototype/src/components/feature/AppLayout.tsx).
 export function OperatorMenu({ username }: { username: string }) {
+  const t = useTranslations("shell");
   const [isPending, startTransition] = useTransition();
   const initial = username.charAt(0).toUpperCase();
 
@@ -41,7 +43,7 @@ export function OperatorMenu({ username }: { username: string }) {
           <p className="truncate text-sm font-medium text-foreground">
             {username}
           </p>
-          <p className="text-xs text-muted-foreground">Оператор</p>
+          <p className="text-xs text-muted-foreground">{t("operatorRole")}</p>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -51,7 +53,7 @@ export function OperatorMenu({ username }: { username: string }) {
             onClick={() => startTransition(() => logout())}
           >
             <Icon name="ri-logout-box-r-line" aria-hidden />
-            Выйти
+            {t("logout")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

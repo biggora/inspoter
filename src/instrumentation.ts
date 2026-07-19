@@ -13,6 +13,7 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("@/lib/config/env");
+    await import("@/lib/validation/error-map");
 
     const { startServiceScheduler } = await import("@/lib/services/scheduler");
     startServiceScheduler();

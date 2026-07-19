@@ -1,20 +1,23 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import type { ServiceStatusValue } from "./api";
 
 const STATUS_CONFIG: Record<
   ServiceStatusValue,
-  { label: string; variant: "secondary" | "success" | "critical" }
+  { labelKey: string; variant: "secondary" | "success" | "critical" }
 > = {
   PENDING: {
-    label: "Ожидание",
+    labelKey: "statusPending",
     variant: "secondary",
   },
   UP: {
-    label: "Работает",
+    labelKey: "statusUp",
     variant: "success",
   },
   DOWN: {
-    label: "Недоступен",
+    labelKey: "statusDown",
     variant: "critical",
   },
 };
@@ -26,6 +29,7 @@ export function ServiceStatusBadge({
   status: ServiceStatusValue;
   className?: string;
 }) {
+  const t = useTranslations("services");
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
   return (
     <Badge variant={config.variant} className={className}>
@@ -33,7 +37,7 @@ export function ServiceStatusBadge({
         className="size-1.5 shrink-0 rounded-full bg-current"
         aria-hidden="true"
       />
-      {config.label}
+      {t(config.labelKey)}
     </Badge>
   );
 }

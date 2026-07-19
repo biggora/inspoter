@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function RenameWorkspaceForm({
   workspaceId,
   currentName,
 }: RenameWorkspaceFormProps) {
+  const t = useTranslations("workspace");
   const router = useRouter();
   const nameId = useId();
   const errorId = useId();
@@ -39,7 +41,7 @@ export function RenameWorkspaceForm({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Название рабочего пространства обязательно.");
+      setError(t("nameRequiredError"));
       return;
     }
 
@@ -47,17 +49,13 @@ export function RenameWorkspaceForm({
     setError(null);
     try {
       await workspacesApi.rename(workspaceId, trimmed);
-      toast.success("Рабочее пространство переименовано.");
+      toast.success(t("renamedToast"));
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setError(err.fieldErrors.name);
       } else {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось переименовать рабочее пространство.",
-        );
+        toast.error(err instanceof ApiError ? err.message : t("renameError"));
       }
     } finally {
       setSubmitting(false);
@@ -68,9 +66,7 @@ export function RenameWorkspaceForm({
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
       <FieldGroup>
         <Field data-invalid={!!error || undefined}>
-          <FieldLabel htmlFor={nameId}>
-            Название рабочего пространства
-          </FieldLabel>
+          <FieldLabel htmlFor={nameId}>{t("nameLabel")}</FieldLabel>
           <Input
             id={nameId}
             value={name}
@@ -90,10 +86,10 @@ export function RenameWorkspaceForm({
           {submitting ? (
             <>
               <Spinner data-icon="inline-start" aria-hidden />
-              Сохранение…
+              {t("savingButton")}
             </>
           ) : (
-            "Сохранить изменения"
+            t("saveChangesButton")
           )}
         </Button>
       </div>

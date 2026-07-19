@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -22,6 +23,7 @@ function useMounted() {
 }
 
 export function ThemeToggle() {
+  const t = useTranslations("shell");
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
 
@@ -36,7 +38,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon-sm"
-      aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+      aria-label={isDark ? t("enableLightTheme") : t("enableDarkTheme")}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
       {isDark ? (

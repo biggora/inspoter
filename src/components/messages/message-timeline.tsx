@@ -1,12 +1,14 @@
 "use client";
 
 import type { RefObject } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatRelativeTime, type Format } from "@/lib/format/relative-time";
 import type { MessageDto } from "./api";
 
 const AUTHOR_COLOR_PALETTE = [
@@ -22,25 +24,20 @@ const AUTHOR_COLOR_PALETTE = [
   "oklch(0.55 0.19 350)",
 ];
 
-function formatMessageTime(iso: string): string {
+function formatMessageTime(
+  iso: string,
+  t: (key: string, params?: Record<string, number>) => string,
+  format: Format,
+): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  const diffMs = Date.now() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  const diffHours = Math.floor(diffMs / 3_600_000);
-  const diffDays = Math.floor(diffMs / 86_400_000);
-
-  if (diffMins < 1) return "Только что";
-  if (diffMins < 60) return `${diffMins} мин. назад`;
-  if (diffHours < 24) return `${diffHours} ч. назад`;
-  if (diffDays < 7) return `${diffDays} дн. назад`;
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return formatRelativeTime(date, t, format);
 }
 
-function formatMessageFull(iso: string): string {
+function formatMessageFull(iso: string, format: Format): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ru-RU", {
+  return format.dateTime(date, {
     day: "numeric",
     month: "long",
     hour: "2-digit",
@@ -48,12 +45,16 @@ function formatMessageFull(iso: string): string {
   });
 }
 
-function formatDateSeparator(iso: string): string {
+function formatDateSeparator(
+  iso: string,
+  t: (key: string) => string,
+  format: Format,
+): string {
   const date = new Date(iso);
   const diffDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
-  if (diffDays === 0) return "Сегодня";
-  if (diffDays === 1) return "Вчера";
-  return date.toLocaleDateString("ru-RU", {
+  if (diffDays === 0) return t("today");
+  if (diffDays === 1) return t("yesterday");
+  return format.dateTime(date, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -78,10 +79,13 @@ function getAuthorColor(author: string | null): string {
   return AUTHOR_COLOR_PALETTE[hash % AUTHOR_COLOR_PALETTE.length];
 }
 
-function originLabel(origin: MessageDto["origin"] | undefined): string {
-  if (origin === "OPERATOR") return "Оператор";
-  if (origin === "WEBHOOK") return "Внешний источник";
-  return "Источник не определён";
+function originLabel(
+  origin: MessageDto["origin"] | undefined,
+  t: (key: string) => string,
+): string {
+  if (origin === "OPERATOR") return t("originOperator");
+  if (origin === "WEBHOOK") return t("originWebhook");
+  return t("originUnknown");
 }
 
 function shouldShowDateSeparator(items: MessageDto[], index: number): boolean {
@@ -115,6 +119,8 @@ export function MessageTimeline({
   onRetry,
   onLoadPrevious,
 }: MessageTimelineProps) {
+  const t = useTranslations("messages");
+  const format = useFormatter();
   return (
     <div
       ref={scrollRef}
@@ -129,13 +135,13 @@ export function MessageTimeline({
             size="sm"
             tone="danger"
             icon="ri-error-warning-line"
-            title="Не удалось загрузить сообщения"
+            title={t("loadErrorTitle")}
             description={error}
             className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
             action={
               <Button type="button" size="sm" onClick={onRetry}>
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-                Повторить
+                {t("retryButton")}
               </Button>
             }
           />
@@ -162,12 +168,11 @@ export function MessageTimeline({
             bordered={false}
             size="sm"
             icon="ri-message-2-line"
-            title="Нет сообщений"
-            description={
-              <>
-                В канале <strong>#{channelName}</strong> пока нет сообщений.
-              </>
-            }
+            title={t("noMessagesTitle")}
+            description={t.rich("noMessagesDescription", {
+              channelName,
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
             className="animate-in fade-in-0 zoom-in-95 duration-200"
           />
         </div>
@@ -182,7 +187,9 @@ export function MessageTimeline({
                 disabled={loadingPrevious}
                 onClick={onLoadPrevious}
               >
-                {loadingPrevious ? "Загрузка…" : "Загрузить предыдущие"}
+                {loadingPrevious
+                  ? t("loadingPreviousButton")
+                  : t("loadPreviousButton")}
               </Button>
             </div>
           )}
@@ -194,7 +201,7 @@ export function MessageTimeline({
                   <div className="my-4 flex items-center gap-3 first:mt-0">
                     <div className="h-px flex-1 bg-background-200" />
                     <span className="text-[11px] font-medium tracking-wide text-foreground-400 uppercase whitespace-nowrap">
-                      {formatDateSeparator(message.createdAt)}
+                      {formatDateSeparator(message.createdAt, t, format)}
                     </span>
                     <div className="h-px flex-1 bg-background-200" />
                   </div>
@@ -210,20 +217,20 @@ export function MessageTimeline({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-semibold text-foreground-900">
-                        {message.author ?? "Неизвестно"}
+                        {message.author ?? t("unknownAuthor")}
                       </span>
                       <Badge
                         variant="outline"
                         className="h-4 px-1.5 text-[10px]"
                       >
-                        {originLabel(message.origin)}
+                        {originLabel(message.origin, t)}
                       </Badge>
                       <time
                         className="text-[11px] text-foreground-400 whitespace-nowrap"
                         dateTime={message.createdAt}
-                        title={formatMessageFull(message.createdAt)}
+                        title={formatMessageFull(message.createdAt, format)}
                       >
-                        {formatMessageTime(message.createdAt)}
+                        {formatMessageTime(message.createdAt, t, format)}
                       </time>
                     </div>
                     <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800">

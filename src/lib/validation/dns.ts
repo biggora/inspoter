@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { VALIDATION_RU } from "@/lib/validation/error-map";
 
 // Zod schemas — DNS record input validation (AC-DOM-008): type-specific
 // value formats are rejected before reaching the provider. Mirrors the
-// refine-based style of validation/bookmarks.ts.
+// refine-based style of validation/bookmarks.ts. Messages are Russian
+// because they surface directly as fieldErrors in the DNS record dialog.
 
 const RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV"] as const;
 
@@ -24,28 +26,28 @@ function checkValueForType(
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: "A record value must be a valid IPv4 address",
+      message: VALIDATION_RU.dns.ipv4Invalid,
     });
   }
   if (type === "AAAA" && !ipv6Regex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: "AAAA record value must be a valid IPv6 address",
+      message: VALIDATION_RU.dns.ipv6Invalid,
     });
   }
   if ((type === "CNAME" || type === "NS") && !hostnameRegex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: `${type} record value must be a valid hostname`,
+      message: VALIDATION_RU.dns.hostnameInvalid.replace("{type}", type),
     });
   }
   if (type === "MX" && !hostnameRegex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: "MX record value must be a valid mail-server hostname",
+      message: VALIDATION_RU.dns.mxHostnameInvalid,
     });
   }
 }
@@ -53,9 +55,18 @@ function checkValueForType(
 export const dnsRecordInputSchema = z
   .object({
     type: z.enum(RECORD_TYPES),
-    name: z.string().trim().min(1, "Name is required"),
-    value: z.string().trim().min(1, "Value is required"),
-    ttl: z.coerce.number().int().positive("TTL must be a positive integer"),
+    name: z
+      .string()
+      .trim()
+      .min(1, { error: () => VALIDATION_RU.dns.nameRequired }),
+    value: z
+      .string()
+      .trim()
+      .min(1, { error: () => VALIDATION_RU.dns.valueRequired }),
+    ttl: z.coerce
+      .number()
+      .int()
+      .positive({ error: () => VALIDATION_RU.dns.ttlInvalid }),
     priority: z.coerce.number().int().nonnegative().optional(),
   })
   .superRefine((data, ctx) => {
@@ -64,7 +75,7 @@ export const dnsRecordInputSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["priority"],
-        message: "MX record requires a numeric priority",
+        message: VALIDATION_RU.dns.mxPriorityRequired,
       });
     }
   });
@@ -80,7 +91,7 @@ export const dnsRecordPatchSchema = z
       data.value !== undefined ||
       data.ttl !== undefined ||
       data.priority !== undefined,
-    { message: "At least one field must be provided" },
+    { error: () => VALIDATION_RU.dns.atLeastOneFieldRequired },
   );
 
 export type DnsRecordInputPayload = z.infer<typeof dnsRecordInputSchema>;

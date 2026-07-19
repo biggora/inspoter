@@ -214,10 +214,15 @@ export function moveMailItem(
 // Attachment download (Phase 7). A plain <a href> cannot carry the workspace
 // header, so fetch the bytes, then hand them to the browser via a transient
 // object URL + programmatic <a download> click.
+//
+// This is a plain (non-component) module, so the caller passes its own
+// "mail" namespace `t` for the fallback error message, same pattern as
+// src/lib/format/relative-time.ts.
 export async function downloadAttachment(
   mailId: string,
   attachmentId: string,
   filename: string,
+  t: (key: string) => string,
 ): Promise<void> {
   const res = await fetch(
     `/api/mail/${encodeURIComponent(mailId)}/attachments/${encodeURIComponent(attachmentId)}`,
@@ -226,7 +231,7 @@ export async function downloadAttachment(
     },
   );
   if (!res.ok) {
-    let message = "Не удалось скачать вложение. Попробуйте снова.";
+    let message = t("errorDownloadAttachment");
     try {
       const body = (await res.json()) as { error?: unknown };
       if (typeof body?.error === "string") message = body.error;

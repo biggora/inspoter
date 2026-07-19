@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -38,28 +39,41 @@ import {
   type UpsertCredentialInput,
 } from "./credentials-api";
 
+// "DNS" isn't Russian prose so it stays as a plain literal string; "Хостинг"
+// does need translation and holds a translation key instead, resolved via
+// categoryLabel() below (same convention as services/format.ts's
+// MONITOR_TYPE_LABELS/getMonitorTypeLabel).
 const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
   DNS: "DNS",
-  HOSTING: "Хостинг",
+  HOSTING: "categoryHosting",
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  apiToken: "API-токен",
-  apiKey: "API-ключ",
-  apiSecret: "API-секрет",
+function categoryLabel(
+  category: "DNS" | "HOSTING",
+  t: (key: string) => string,
+): string {
+  return category === "HOSTING"
+    ? t(CATEGORY_LABELS.HOSTING)
+    : CATEGORY_LABELS.DNS;
+}
+
+// Holds translation keys, resolved via fieldLabel() below (same "store the
+// key in the map, resolve with t() at render" convention as
+// services/format.ts's MONITOR_TYPE_LABELS).
+const FIELD_LABEL_KEYS: Record<string, string> = {
+  apiToken: "fieldApiToken",
+  apiKey: "fieldApiKey",
+  apiSecret: "fieldApiSecret",
 };
+
+function fieldLabel(field: string, t: (key: string) => string): string {
+  const key = FIELD_LABEL_KEYS[field];
+  return key ? t(key) : field;
+}
 
 const PROVIDER_OPTIONS = (Object.keys(PROVIDER_REGISTRY) as ProviderType[]).map(
   (provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }),
 );
-
-const PROVIDER_SELECT_ITEMS = [
-  { label: "Выберите провайдера", value: null },
-  ...PROVIDER_OPTIONS.map((option) => ({
-    label: `${option.label} (${CATEGORY_LABELS[option.category]})`,
-    value: option.provider,
-  })),
-];
 
 interface ProviderCredentialDialogProps {
   open: boolean;
@@ -80,6 +94,8 @@ export function ProviderCredentialDialog({
   existing,
   onSaved,
 }: ProviderCredentialDialogProps) {
+  const t = useTranslations("settings");
+
   // Rendered only while a dialog is open (see provider-credentials-view.tsx's
   // guard), so it fully remounts on each open — these initial values don't
   // need to be re-synced via an effect.
@@ -98,21 +114,29 @@ export function ProviderCredentialDialog({
 
   const activeFields = provider ? PROVIDER_REGISTRY[provider].fields : [];
 
+  const providerSelectItems = [
+    { label: t("selectProviderPlaceholder"), value: null },
+    ...PROVIDER_OPTIONS.map((option) => ({
+      label: `${option.label} (${categoryLabel(option.category, t)})`,
+      value: option.provider,
+    })),
+  ];
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!provider) {
-      setErrors({ provider: "Выберите провайдера." });
+      setErrors({ provider: t("selectProviderError") });
       return;
     }
     const trimmedLabel = label.trim();
     if (!trimmedLabel) {
-      setErrors({ label: "Название обязательно." });
+      setErrors({ label: t("nameRequiredError") });
       return;
     }
     for (const field of activeFields) {
       if (!secrets[field]?.trim()) {
         setErrors({
-          [field]: `Поле «${FIELD_LABELS[field] ?? field}» обязательно.`,
+          [field]: t("fieldRequiredError", { field: fieldLabel(field, t) }),
         });
         return;
       }
@@ -134,7 +158,7 @@ export function ProviderCredentialDialog({
       } else {
         await credentialsApi.update(existing!.id, payload);
       }
-      toast.success("Учётные данные сохранены.");
+      toast.success(t("credentialsSavedToast"));
       onOpenChange(false);
       onSaved();
     } catch (err) {
@@ -147,7 +171,7 @@ export function ProviderCredentialDialog({
               global:
                 err instanceof ApiError
                   ? err.message
-                  : "Не удалось сохранить учётные данные. Попробуйте снова.",
+                  : t("saveCredentialsError"),
             },
       );
     } finally {
@@ -161,8 +185,8 @@ export function ProviderCredentialDialog({
         <DialogHeader>
           <DialogTitle>
             {mode === "create"
-              ? "Добавить провайдера"
-              : `Изменить «${existing?.label}»`}
+              ? t("addProviderTitle")
+              : t("editProviderTitle", { label: existing?.label ?? "" })}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -175,13 +199,13 @@ export function ProviderCredentialDialog({
               data-disabled={mode === "edit" || undefined}
               data-invalid={!!errors.provider || undefined}
             >
-              <FieldLabel htmlFor={providerId}>Провайдер</FieldLabel>
+              <FieldLabel htmlFor={providerId}>{t("providerLabel")}</FieldLabel>
               <Select
                 value={provider || null}
                 onValueChange={(value) =>
                   setProvider((value ?? "") as ProviderType | "")
                 }
-                items={PROVIDER_SELECT_ITEMS}
+                items={providerSelectItems}
                 disabled={mode === "edit"}
               >
                 <SelectTrigger
@@ -198,7 +222,7 @@ export function ProviderCredentialDialog({
                   <SelectGroup>
                     {PROVIDER_OPTIONS.map((option) => (
                       <SelectItem key={option.provider} value={option.provider}>
-                        {option.label} ({CATEGORY_LABELS[option.category]})
+                        {option.label} ({categoryLabel(option.category, t)})
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -210,12 +234,12 @@ export function ProviderCredentialDialog({
             </Field>
 
             <Field data-invalid={!!errors.label || undefined}>
-              <FieldLabel htmlFor={labelId}>Название</FieldLabel>
+              <FieldLabel htmlFor={labelId}>{t("nameLabel")}</FieldLabel>
               <Input
                 id={labelId}
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
-                placeholder='например, "Основной аккаунт"'
+                placeholder={t("namePlaceholder")}
                 autoFocus={mode === "edit"}
                 aria-invalid={!!errors.label || undefined}
                 aria-describedby={errors.label ? `${labelId}-error` : undefined}
@@ -230,7 +254,7 @@ export function ProviderCredentialDialog({
               return (
                 <Field key={field} data-invalid={!!message || undefined}>
                   <FieldLabel htmlFor={fieldId}>
-                    {FIELD_LABELS[field] ?? field}
+                    {fieldLabel(field, t)}
                   </FieldLabel>
                   <Input
                     id={fieldId}
@@ -260,16 +284,16 @@ export function ProviderCredentialDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Сохранение…
+                  {t("savingLabel")}
                 </>
               ) : (
-                "Сохранить"
+                t("saveButton")
               )}
             </Button>
           </DialogFooter>

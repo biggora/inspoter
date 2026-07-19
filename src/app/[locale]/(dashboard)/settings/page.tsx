@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { CardGrid } from "@/components/shell/card-grid";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Icon } from "@/components/ui/icon";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const t = await getTranslations("settings");
+
   return (
     <PageBody>
-      <PageHeader title="Настройки" />
+      <PageHeader title={t("settingsTitle")} />
       <CardGrid columns={2}>
         <Link
           href="/settings/workspace"
@@ -15,10 +18,9 @@ export default function SettingsPage() {
         >
           <Icon name="ri-building-2-line" className="text-lg text-muted-foreground" />
           <div>
-            <p className="font-medium">Рабочее пространство</p>
+            <p className="font-medium">{t("workspaceCardTitle")}</p>
             <p className="text-sm text-muted-foreground">
-              Управление названием рабочего пространства, участниками и создание
-              новых пространств
+              {t("workspaceCardDescription")}
             </p>
           </div>
         </Link>
@@ -28,10 +30,9 @@ export default function SettingsPage() {
         >
           <Icon name="ri-webhook-line" className="text-lg text-muted-foreground" />
           <div>
-            <p className="font-medium">Webhook-токены</p>
+            <p className="font-medium">{t("webhookTokensTitle")}</p>
             <p className="text-sm text-muted-foreground">
-              Управление токенами для внешних систем, отправляющих почту,
-              сообщения, логи и оповещения
+              {t("webhookTokensCardDescription")}
             </p>
           </div>
         </Link>
@@ -41,9 +42,9 @@ export default function SettingsPage() {
         >
           <Icon name="ri-key-2-line" className="text-lg text-muted-foreground" />
           <div>
-            <p className="font-medium">Провайдеры</p>
+            <p className="font-medium">{t("providersTitle")}</p>
             <p className="text-sm text-muted-foreground">
-              API-ключи для Cloudflare, Hetzner и GoDaddy
+              {t("providersCardDescription")}
             </p>
           </div>
         </Link>
@@ -53,9 +54,9 @@ export default function SettingsPage() {
         >
           <Icon name="ri-mail-line" className="text-lg text-muted-foreground" />
           <div>
-            <p className="font-medium">Почтовые аккаунты</p>
+            <p className="font-medium">{t("mailAccountsTitle")}</p>
             <p className="text-sm text-muted-foreground">
-              Подключение IMAP/SMTP-ящиков для приёма и отправки почты
+              {t("mailAccountsCardDescription")}
             </p>
           </div>
         </Link>

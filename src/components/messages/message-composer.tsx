@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface MessageComposerProps {
 }
 
 export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
+  const t = useTranslations("messages");
   const inputId = useId();
   const helpId = useId();
   const errorId = useId();
@@ -33,12 +35,10 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
     try {
       await onSend(content);
       setDraft("");
-      setAnnouncement("Сообщение отправлено.");
+      setAnnouncement(t("messageSentAnnouncement"));
     } catch (caught) {
       const message =
-        caught instanceof Error
-          ? caught.message
-          : "Не удалось отправить сообщение. Попробуйте снова.";
+        caught instanceof Error ? caught.message : t("sendMessageError");
       setError(message);
       toast.error(message);
     } finally {
@@ -66,7 +66,7 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
     >
       <Field data-invalid={!!error || undefined}>
         <FieldLabel htmlFor={inputId} className="sr-only">
-          Сообщение в канале #{channelName}
+          {t("composerLabel", { channelName })}
         </FieldLabel>
         <div className="flex min-w-0 items-end gap-2">
           <Textarea
@@ -74,7 +74,7 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Написать в #${channelName}...`}
+            placeholder={t("composerPlaceholder", { channelName })}
             rows={2}
             maxLength={4000}
             disabled={pending}
@@ -87,7 +87,7 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
             size="icon"
             className="mb-0.5 shrink-0"
             disabled={pending || !draft.trim()}
-            aria-label="Отправить сообщение"
+            aria-label={t("sendButtonLabel")}
           >
             {pending ? (
               <Spinner aria-hidden />
@@ -97,7 +97,7 @@ export function MessageComposer({ channelName, onSend }: MessageComposerProps) {
           </Button>
         </div>
         <p id={helpId} className="text-xs text-muted-foreground">
-          Enter — новая строка, Ctrl+Enter — отправить
+          {t("composerHelpText")}
         </p>
         <FieldError id={errorId}>{error}</FieldError>
       </Field>

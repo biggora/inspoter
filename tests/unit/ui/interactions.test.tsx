@@ -1,17 +1,20 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DndContext } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
+import { NextIntlClientProvider } from "next-intl";
 
+import { renderWithIntl } from "../../test-utils";
 import { BookmarkCard } from "@/components/bookmarks/bookmark-card";
 import { ColorPicker } from "@/components/bookmarks/color-picker";
 import { LogsView } from "@/components/logs/logs-view";
 import { MessagesView } from "@/components/messages/messages-view";
 import type { Bookmark } from "@/generated/prisma/client";
+import { ruMessages } from "@/i18n/messages";
 
 const mocks = vi.hoisted(() => ({
   fetchLogs: vi.fn(),
@@ -80,7 +83,7 @@ describe("standardized UI interactions", () => {
       return <ColorPicker value={value} onChange={setValue} />;
     }
 
-    render(<Harness />);
+    renderWithIntl(<Harness />);
     expect(screen.getByRole("group", { name: "Цвет" })).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(4);
     const none = screen.getByRole("button", { name: "Без цвета" });
@@ -115,7 +118,7 @@ describe("standardized UI interactions", () => {
       updatedAt: new Date(),
     } satisfies Bookmark;
 
-    render(
+    renderWithIntl(
       <DndContext>
         <SortableContext items={[bookmark.id]}>
           <BookmarkCard
@@ -164,7 +167,7 @@ describe("standardized UI interactions", () => {
       nextCursor: null,
     });
 
-    render(<LogsView />);
+    renderWithIntl(<LogsView />);
     const expand = await screen.findByRole("button", {
       name: "Показать детали записи журнала",
     });
@@ -196,7 +199,7 @@ describe("standardized UI interactions", () => {
     mocks.fetchMessages.mockResolvedValue({ items: [], nextCursor: null });
     mocks.sendMessage.mockResolvedValue({ id: "message-1" });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const composer = await screen.findByPlaceholderText(
       "Написать в #general...",
     );
@@ -238,7 +241,7 @@ describe("standardized UI interactions", () => {
     mocks.fetchMessages.mockResolvedValue({ items: [], nextCursor: null });
     mocks.sendMessage.mockRejectedValue(new Error("Сервис недоступен"));
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const composer = await screen.findByRole("textbox", {
       name: "Сообщение в канале #general",
     });
@@ -278,7 +281,7 @@ describe("standardized UI interactions", () => {
       url: "/api/webhooks/channels/webhook-1/one-time-secret",
     });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const headerOpener = await screen.findByRole("button", {
       name: "Настройки канала «general»",
     });
@@ -332,7 +335,7 @@ describe("standardized UI interactions", () => {
     ]);
     mocks.fetchMessages.mockResolvedValue({ items: [], nextCursor: null });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await screen.findByRole("heading", { name: "general" });
     const rowOpener = screen.getByRole("button", {
       name: "Действия канала «general»",
@@ -366,7 +369,7 @@ describe("standardized UI interactions", () => {
     ]);
     mocks.fetchMessages.mockResolvedValue({ items: [], nextCursor: null });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await user.click(
       await screen.findByRole("button", { name: "Открыть каналы" }),
     );
@@ -446,7 +449,7 @@ describe("standardized UI interactions", () => {
       url: "/api/webhooks/channels/webhook-a/transient-value",
     });
 
-    const view = render(<MessagesView workspaceId="workspace-a" />);
+    const view = renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const draft = await screen.findByRole("textbox", {
       name: "Сообщение в канале #канал-a",
     });
@@ -474,7 +477,11 @@ describe("standardized UI interactions", () => {
       await within(settings).findByRole("textbox", { name: "URL webhook" }),
     ).toBeInTheDocument();
 
-    view.rerender(<MessagesView workspaceId="workspace-b" />);
+    view.rerender(
+      <NextIntlClientProvider locale="ru" messages={ruMessages}>
+        <MessagesView workspaceId="workspace-b" />
+      </NextIntlClientProvider>,
+    );
 
     const workspaceBDraft = await screen.findByRole("textbox", {
       name: "Сообщение в канале #канал-b",
@@ -543,7 +550,7 @@ describe("standardized UI interactions", () => {
       nextCursor: null,
     });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
 
     expect(await screen.findByText("Внешний источник")).toBeInTheDocument();
     expect(screen.getByText("Оператор")).toBeInTheDocument();
@@ -601,7 +608,7 @@ describe("standardized UI interactions", () => {
         };
       });
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const loadPrevious = await screen.findByRole("button", {
       name: "Загрузить предыдущие",
     });
@@ -639,7 +646,7 @@ describe("standardized UI interactions", () => {
       },
     ]);
 
-    render(<MessagesView workspaceId="workspace-a" />);
+    renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await user.click(
       await screen.findByRole("button", { name: "Открыть каналы" }),
     );

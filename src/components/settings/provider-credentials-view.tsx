@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -32,10 +33,23 @@ import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
 import { credentialsApi, type CredentialDto } from "./credentials-api";
 import { ProviderCredentialDialog } from "./provider-credential-dialog";
 
+// "DNS" isn't Russian prose so it stays as a plain literal string; "Хостинг"
+// does need translation and holds a translation key instead, resolved via
+// categoryLabel() below (same convention as services/format.ts's
+// MONITOR_TYPE_LABELS/getMonitorTypeLabel).
 const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
   DNS: "DNS",
-  HOSTING: "Хостинг",
+  HOSTING: "categoryHosting",
 };
+
+function categoryLabel(
+  category: "DNS" | "HOSTING",
+  t: (key: string) => string,
+): string {
+  return category === "HOSTING"
+    ? t(CATEGORY_LABELS.HOSTING)
+    : CATEGORY_LABELS.DNS;
+}
 
 type DialogState =
   { mode: "create" } | { mode: "edit"; credential: CredentialDto };
@@ -46,6 +60,7 @@ type DialogState =
 // round-trip through a server-rendered prop, matching
 // src/components/settings/webhook-tokens-view.tsx.
 export function ProviderCredentialsView() {
+  const t = useTranslations("settings");
   const [credentials, setCredentials] = useState<CredentialDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +76,7 @@ export function ProviderCredentialsView() {
         setCredentials(data);
         setError(null);
       })
-      .catch(() =>
-        setError("Не удалось загрузить учётные данные. Попробуйте снова."),
-      )
+      .catch(() => setError(t("loadCredentialsError")))
       .finally(() => setLoading(false));
   }
 
@@ -76,11 +89,11 @@ export function ProviderCredentialsView() {
     setDeleting(true);
     try {
       await credentialsApi.remove(deleteTarget.id);
-      toast.success("Провайдер удалён.");
+      toast.success(t("providerDeletedToast"));
       setDeleteTarget(null);
       load();
     } catch {
-      toast.error("Не удалось удалить провайдера. Попробуйте снова.");
+      toast.error(t("deleteProviderError"));
     } finally {
       setDeleting(false);
     }
@@ -89,12 +102,12 @@ export function ProviderCredentialsView() {
   return (
     <PageBody>
       <PageHeader
-        title="Провайдеры"
-        back={{ href: "/settings", label: "Назад к настройкам" }}
+        title={t("providersTitle")}
+        back={{ href: "/settings", label: t("backToSettings") }}
         actions={
           <Button size="sm" onClick={() => setDialogState({ mode: "create" })}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить провайдер
+            {t("addProviderButton")}
           </Button>
         }
       />
@@ -114,18 +127,18 @@ export function ProviderCredentialsView() {
       ) : credentials.length === 0 ? (
         <EmptyState
           icon="ri-key-2-line"
-          title="Нет провайдеров"
-          description="Провайдеры не настроены. Добавьте API-ключи для подключения к Cloudflare, Hetzner или GoDaddy."
+          title={t("emptyProvidersTitle")}
+          description={t("emptyProvidersDescription")}
         />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Провайдер</TableHead>
-              <TableHead>Название</TableHead>
-              <TableHead>Ключ</TableHead>
-              <TableHead>Категория</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead>{t("providerHeader")}</TableHead>
+              <TableHead>{t("nameHeader")}</TableHead>
+              <TableHead>{t("keyHeader")}</TableHead>
+              <TableHead>{t("categoryHeader")}</TableHead>
+              <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -143,14 +156,14 @@ export function ProviderCredentialsView() {
                     {credential.maskedHint}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {CATEGORY_LABELS[meta.category]}
+                    {categoryLabel(meta.category, t)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Изменить"
+                        aria-label={t("editAria")}
                         onClick={() =>
                           setDialogState({ mode: "edit", credential })
                         }
@@ -160,7 +173,7 @@ export function ProviderCredentialsView() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Удалить"
+                        aria-label={t("deleteAria")}
                         onClick={() => setDeleteTarget(credential)}
                       >
                         <Icon name="ri-delete-bin-line" aria-hidden className="text-base" />
@@ -191,21 +204,22 @@ export function ProviderCredentialsView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Удалить провайдер «{deleteTarget?.label}»?
+              {t("deleteProviderConfirmTitle", {
+                label: deleteTarget?.label ?? "",
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Связанные домены и серверы потеряют доступ к этому аккаунту. Это
-              действие нельзя отменить.
+              {t("deleteProviderConfirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={deleting}
             >
-              {deleting ? "Удаление…" : "Удалить"}
+              {deleting ? t("deletingLabel") : t("deleteButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { MailAccountDialog } from "@/components/settings/mail-account-dialog";
@@ -43,6 +44,7 @@ import { MessagePane } from "./message-pane";
 // Desktop (lg+) shows all three columns; below lg the list and the detail
 // swap in place and the sidebar lives in a Sheet.
 export function MailClientView() {
+  const t = useTranslations("mail");
   const [accounts, setAccounts] = useState<MailAccountDto[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [accountsReload, setAccountsReload] = useState(0);
@@ -106,9 +108,7 @@ export function MailClientView() {
         });
       } catch {
         if (!cancelled) {
-          setAccountsError(
-            "Не удалось загрузить почтовые аккаунты. Попробуйте снова.",
-          );
+          setAccountsError(t("errorLoadAccounts"));
         }
       }
     }
@@ -116,7 +116,7 @@ export function MailClientView() {
     return () => {
       cancelled = true;
     };
-  }, [accountsReload]);
+  }, [accountsReload, t]);
 
   // Folders per selected account; the account's INBOX becomes the default
   // folder selection.
@@ -138,7 +138,7 @@ export function MailClientView() {
         });
       } catch {
         if (!cancelled) {
-          setFoldersError("Не удалось загрузить папки. Попробуйте снова.");
+          setFoldersError(t("errorLoadFolders"));
         }
       } finally {
         if (!cancelled) setFoldersLoading(false);
@@ -148,7 +148,7 @@ export function MailClientView() {
     return () => {
       cancelled = true;
     };
-  }, [selectedAccountId, foldersReload]);
+  }, [selectedAccountId, foldersReload, t]);
 
   useEffect(() => {
     const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
@@ -184,7 +184,7 @@ export function MailClientView() {
         setNextCursor(result.nextCursor);
       } catch {
         if (!cancelled) {
-          setListError("Не удалось загрузить письма. Попробуйте снова.");
+          setListError(t("errorLoadMessages"));
         }
       } finally {
         if (!cancelled) setListLoading(false);
@@ -202,6 +202,7 @@ export function MailClientView() {
     sort,
     currentCursor,
     listReload,
+    t,
   ]);
 
   // Message detail. Opening an unread message optimistically PATCHes
@@ -243,15 +244,13 @@ export function MailClientView() {
           } catch (error) {
             applyRead(false);
             toast.error(
-              error instanceof ApiError
-                ? error.message
-                : "Не удалось отметить письмо прочитанным.",
+              error instanceof ApiError ? error.message : t("errorMarkRead"),
             );
           }
         }
       } catch {
         if (!cancelled) {
-          setDetailError("Не удалось загрузить письмо. Попробуйте снова.");
+          setDetailError(t("errorLoadMessage"));
         }
       } finally {
         if (!cancelled) setDetailLoading(false);
@@ -261,7 +260,7 @@ export function MailClientView() {
     return () => {
       cancelled = true;
     };
-  }, [selectedMessageId, detailReload]);
+  }, [selectedMessageId, detailReload, t]);
 
   function resetToFirstPage() {
     setPageCursors([undefined]);
@@ -329,14 +328,14 @@ export function MailClientView() {
     setSyncing(true);
     try {
       await syncAccount(selectedAccountId);
-      toast.success("Синхронизация завершена.");
+      toast.success(t("syncCompleteToast"));
       setFoldersReload((n) => n + 1);
       setListReload((n) => n + 1);
     } catch (error) {
       if (error instanceof ApiError && error.message === SYNC_IN_PROGRESS) {
-        toast.info("Синхронизация уже выполняется.");
+        toast.info(t("syncInProgressToast"));
       } else {
-        toast.error("Не удалось синхронизировать аккаунт. Попробуйте снова.");
+        toast.error(t("errorSyncAccount"));
       }
     } finally {
       setSyncing(false);
@@ -376,9 +375,7 @@ export function MailClientView() {
         ),
       );
       toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Не удалось изменить статус письма.",
+        error instanceof ApiError ? error.message : t("errorToggleRead"),
       );
     }
   }
@@ -388,16 +385,12 @@ export function MailClientView() {
     try {
       const { status } = await deleteMailItem(detail.id);
       toast.success(
-        status === "trashed"
-          ? "Письмо перемещено в корзину"
-          : "Письмо удалено",
+        status === "trashed" ? t("itemTrashedToast") : t("itemDeletedToast"),
       );
       handleItemRemoved(detail.id);
     } catch (error) {
       toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Не удалось удалить письмо. Попробуйте снова.",
+        error instanceof ApiError ? error.message : t("errorDeleteItem"),
       );
     }
   }
@@ -409,13 +402,11 @@ export function MailClientView() {
     if (!detail || !archiveFolder) return;
     try {
       await moveMailItem(detail.id, archiveFolder.id);
-      toast.success("Письмо перемещено в архив");
+      toast.success(t("itemArchivedToast"));
       handleItemRemoved(detail.id);
     } catch (error) {
       toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Не удалось переместить письмо. Попробуйте снова.",
+        error instanceof ApiError ? error.message : t("errorArchiveItem"),
       );
     }
   }
@@ -456,7 +447,7 @@ export function MailClientView() {
   const addAccountAction = (
     <Button size="sm" onClick={() => setAddAccountOpen(true)}>
       <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-      Добавить аккаунт
+      {t("addAccountButton")}
     </Button>
   );
 
@@ -500,7 +491,7 @@ export function MailClientView() {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-          <PageHeader title="Почта" actions={addAccountAction} />
+          <PageHeader title={t("pageTitle")} actions={addAccountAction} />
         </div>
         <div className="flex min-h-0 flex-1">
           <div className="hidden w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 lg:flex">
@@ -530,7 +521,7 @@ export function MailClientView() {
           </div>
           <div className="hidden flex-1 items-center justify-center bg-background-50 p-8 lg:flex">
             <p className="animate-pulse text-sm text-foreground-400">
-              Загрузка...
+              {t("loadingLabel")}
             </p>
           </div>
         </div>
@@ -543,14 +534,14 @@ export function MailClientView() {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-          <PageHeader title="Почта" actions={addAccountAction} />
+          <PageHeader title={t("pageTitle")} actions={addAccountAction} />
         </div>
         <div className="flex flex-1 items-center justify-center p-6">
           <EmptyState
             bordered={false}
             tone="danger"
             icon="ri-mail-warning-line"
-            title="Не удалось загрузить почту"
+            title={t("errorLoadMailTitle")}
             description={accountsError}
             className="max-w-sm"
             action={
@@ -559,7 +550,7 @@ export function MailClientView() {
                 onClick={() => setAccountsReload((n) => n + 1)}
               >
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-                Повторить
+                {t("retryButton")}
               </Button>
             }
           />
@@ -572,7 +563,7 @@ export function MailClientView() {
   return (
     <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
-        <PageHeader title="Почта" actions={addAccountAction} />
+        <PageHeader title={t("pageTitle")} actions={addAccountAction} />
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -655,7 +646,7 @@ export function MailClientView() {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="border-b border-background-100">
-            <SheetTitle>Аккаунты и папки</SheetTitle>
+            <SheetTitle>{t("accountsAndFoldersLabel")}</SheetTitle>
           </SheetHeader>
           <MailSidebar {...sidebarProps} />
         </SheetContent>

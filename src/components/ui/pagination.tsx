@@ -1,14 +1,19 @@
+"use client";
+
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
+  const t = useTranslations("ui");
+
   return (
     <nav
       role="navigation"
-      aria-label="Пагинация"
+      aria-label={t("paginationNavLabel")}
       data-slot="pagination"
       className={cn("mx-auto flex w-full justify-center", className)}
       {...props}
@@ -64,35 +69,41 @@ function PaginationLink({
 
 function PaginationPrevious({
   className,
-  text = "Назад",
+  text,
   ...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+  const t = useTranslations("ui");
+
   return (
     <PaginationLink
-      aria-label="На предыдущую страницу"
+      aria-label={t("paginationPreviousLabel")}
       size="default"
       className={cn("pl-1.5!", className)}
       {...props}
     >
       <Icon name="ri-arrow-left-s-line" data-icon="inline-start" />
-      <span className="hidden sm:block">{text}</span>
+      <span className="hidden sm:block">
+        {text ?? t("paginationPreviousText")}
+      </span>
     </PaginationLink>
   );
 }
 
 function PaginationNext({
   className,
-  text = "Далее",
+  text,
   ...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+  const t = useTranslations("ui");
+
   return (
     <PaginationLink
-      aria-label="На следующую страницу"
+      aria-label={t("paginationNextLabel")}
       size="default"
       className={cn("pr-1.5!", className)}
       {...props}
     >
-      <span className="hidden sm:block">{text}</span>
+      <span className="hidden sm:block">{text ?? t("paginationNextText")}</span>
       <Icon name="ri-arrow-right-s-line" data-icon="inline-end" />
     </PaginationLink>
   );
@@ -102,6 +113,8 @@ function PaginationEllipsis({
   className,
   ...props
 }: React.ComponentProps<"span">) {
+  const t = useTranslations("ui");
+
   return (
     <span
       aria-hidden
@@ -113,7 +126,7 @@ function PaginationEllipsis({
       {...props}
     >
       <Icon name="ri-more-line" />
-      <span className="sr-only">Больше страниц</span>
+      <span className="sr-only">{t("paginationMorePages")}</span>
     </span>
   );
 }

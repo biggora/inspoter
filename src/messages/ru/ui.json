@@ -1,0 +1,12 @@
+{
+  "close": "Закрыть",
+  "paginationNavLabel": "Пагинация",
+  "paginationPreviousLabel": "На предыдущую страницу",
+  "paginationNextLabel": "На следующую страницу",
+  "paginationPreviousText": "Назад",
+  "paginationNextText": "Далее",
+  "paginationMorePages": "Больше страниц",
+  "sidebarToggle": "Переключить боковую панель",
+  "sidebarTitle": "Боковая панель",
+  "sidebarDescription": "Отображает мобильную боковую панель."
+}

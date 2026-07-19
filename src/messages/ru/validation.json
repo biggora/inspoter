@@ -1,0 +1,82 @@
+{
+  "generic": {
+    "required": "Обязательное поле",
+    "invalidType": "Неверный тип значения",
+    "tooSmall": "Значение слишком маленькое",
+    "tooBig": "Значение слишком большое",
+    "invalidFormat": "Некорректное значение",
+    "invalidValue": "Недопустимое значение",
+    "notMultipleOf": "Значение должно быть кратным допустимому шагу",
+    "unrecognizedKeys": "Обнаружены недопустимые поля",
+    "invalidUnion": "Значение не соответствует ни одному из допустимых вариантов",
+    "invalidKey": "Недопустимый ключ",
+    "invalidElement": "Недопустимый элемент",
+    "custom": "Некорректное значение"
+  },
+  "mailAccount": {
+    "hostRequired": "Укажите адрес сервера",
+    "hostTooLong": "Адрес сервера слишком длинный",
+    "hostInvalidFormat": "Укажите корректное имя хоста или IP-адрес",
+    "portMustBeNumber": "Порт должен быть числом",
+    "portMustBeInteger": "Порт должен быть целым числом",
+    "portOutOfRange": "Порт должен быть в диапазоне 1–65535",
+    "invalidSecurity": "Допустимые значения защиты: SSL или STARTTLS",
+    "nameRequired": "Название обязательно",
+    "nameTooLong": "Название не должно превышать 100 символов",
+    "emailInvalid": "Укажите корректный e-mail",
+    "usernameRequired": "Логин обязателен",
+    "passwordRequired": "Пароль обязателен"
+  },
+  "mailItem": {
+    "isReadMustBeBoolean": "isRead должен быть булевым значением",
+    "targetFolderRequired": "Укажите папку назначения"
+  },
+  "mailSend": {
+    "recipientEmailInvalid": "Укажите корректный e-mail",
+    "tooManyRecipients": "Не более 50 адресов",
+    "accountRequired": "Укажите аккаунт",
+    "atLeastOneRecipientRequired": "Укажите хотя бы одного получателя",
+    "subjectRequired": "Тема обязательна",
+    "subjectTooLong": "Тема не должна превышать 500 символов",
+    "bodyRequired": "Текст письма обязателен",
+    "bodyTooLong": "Текст письма не должен превышать 500 000 символов"
+  },
+  "bookmark": {
+    "nameRequired": "Название обязательно",
+    "urlRequired": "URL обязателен",
+    "urlInvalidFormat": "URL должен быть корректным адресом http(s)",
+    "categoryIdRequired": "Укажите категорию"
+  },
+  "dns": {
+    "nameRequired": "Укажите имя записи",
+    "valueRequired": "Укажите значение записи",
+    "ttlInvalid": "TTL должен быть положительным целым числом",
+    "ipv4Invalid": "Значение записи A должно быть корректным IPv4-адресом",
+    "ipv6Invalid": "Значение записи AAAA должно быть корректным IPv6-адресом",
+    "hostnameInvalid": "Значение записи {type} должно быть корректным именем хоста",
+    "mxHostnameInvalid": "Значение записи MX должно быть корректным именем почтового сервера",
+    "mxPriorityRequired": "Для записи MX необходимо указать числовой приоритет",
+    "atLeastOneFieldRequired": "Необходимо указать хотя бы одно поле"
+  },
+  "service": {
+    "urlRequired": "URL обязателен",
+    "urlInvalidFormat": "URL должен быть корректным адресом http(s)",
+    "hostRequired": "Укажите хост",
+    "portOutOfRange": "Порт должен быть в диапазоне 1–65535",
+    "statusCodesInvalidFormat": "Укажите список кодов через запятую, например 200-299",
+    "intervalTooSmall": "Интервал должен быть не менее 10 секунд",
+    "intervalTooBig": "Интервал должен быть не более 86400 секунд",
+    "timeoutTooSmall": "Таймаут должен быть не менее 1000 мс",
+    "timeoutTooBig": "Таймаут должен быть не более 30000 мс",
+    "retriesTooSmall": "Количество попыток должно быть не менее 1",
+    "retriesTooBig": "Количество попыток должно быть не более 10",
+    "nameRequired": "Название обязательно",
+    "urlRequiredForHttp": "URL обязателен для HTTP-мониторов",
+    "hostRequiredForTcp": "Хост обязателен для TCP-мониторов",
+    "portRequiredForTcp": "Порт обязателен для TCP-мониторов",
+    "hostRequiredForPing": "Хост обязателен для PING-мониторов"
+  },
+  "webhookToken": {
+    "nameRequired": "Название обязательно"
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface FieldErrors {
 // workspaces.ts addMember); adding an existing operator by username needs
 // no password.
 export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
+  const t = useTranslations("workspace");
   const router = useRouter();
   const usernameId = useId();
   const passwordId = useId();
@@ -41,7 +43,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
     event.preventDefault();
     const trimmedUsername = username.trim();
     if (!trimmedUsername) {
-      setErrors({ username: "Имя пользователя обязательно." });
+      setErrors({ username: t("usernameRequiredError") });
       return;
     }
 
@@ -52,7 +54,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         username: trimmedUsername,
         password: password.trim() || undefined,
       });
-      toast.success("Участник добавлен.");
+      toast.success(t("memberAddedToast"));
       setUsername("");
       setPassword("");
       router.refresh();
@@ -68,9 +70,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
         });
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось добавить участника.",
+          err instanceof ApiError ? err.message : t("addMemberError"),
         );
       }
     } finally {
@@ -86,7 +86,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
     >
       <FieldGroup className="sm:flex-row sm:items-end">
         <Field className="flex-1" data-invalid={!!errors.username || undefined}>
-          <FieldLabel htmlFor={usernameId}>Имя пользователя</FieldLabel>
+          <FieldLabel htmlFor={usernameId}>{t("usernameLabel")}</FieldLabel>
           <Input
             id={usernameId}
             value={username}
@@ -98,9 +98,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
           <FieldError id={usernameErrorId}>{errors.username}</FieldError>
         </Field>
         <Field className="flex-1" data-invalid={!!errors.password || undefined}>
-          <FieldLabel htmlFor={passwordId}>
-            Пароль (только для нового пользователя)
-          </FieldLabel>
+          <FieldLabel htmlFor={passwordId}>{t("passwordLabel")}</FieldLabel>
           <Input
             id={passwordId}
             type="password"
@@ -115,10 +113,10 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
           {submitting ? (
             <>
               <Spinner data-icon="inline-start" aria-hidden />
-              Добавление…
+              {t("addingButton")}
             </>
           ) : (
-            "Добавить участника"
+            t("addMemberButton")
           )}
         </Button>
       </FieldGroup>

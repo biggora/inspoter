@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -29,10 +30,13 @@ import {
   type MailDetailDto,
 } from "./api";
 
-function formatFullDate(iso: string): string {
+type Format = ReturnType<typeof useFormatter>;
+type Translate = (key: string) => string;
+
+function formatFullDate(iso: string, format: Format): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ru-RU", {
+  return format.dateTime(date, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -51,14 +55,14 @@ function formatAddressList(addresses: MailAddressDto[]): string {
   return addresses.map(formatAddress).join(", ");
 }
 
-function formatBytes(sizeBytes: number): string {
+function formatBytes(sizeBytes: number, t: Translate): string {
   if (sizeBytes >= 1024 * 1024) {
-    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} МБ`;
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} ${t("byteUnitMb")}`;
   }
   if (sizeBytes >= 1024) {
-    return `${Math.round(sizeBytes / 1024)} КБ`;
+    return `${Math.round(sizeBytes / 1024)} ${t("byteUnitKb")}`;
   }
-  return `${sizeBytes} Б`;
+  return `${sizeBytes} ${t("byteUnitB")}`;
 }
 
 export interface MessagePaneProps {
@@ -99,6 +103,8 @@ export function MessagePane({
   canArchive,
   isInTrash,
 }: MessagePaneProps) {
+  const t = useTranslations("mail");
+  const format = useFormatter();
   // Permanent-delete confirm (trash only) — controlled so the confirm button
   // reliably closes the dialog before the row disappears.
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -114,12 +120,10 @@ export function MessagePane({
     if (downloadingId) return;
     setDownloadingId(attachmentId);
     try {
-      await downloadAttachment(mailId, attachmentId, filename);
+      await downloadAttachment(mailId, attachmentId, filename, t);
     } catch (error) {
       toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Не удалось скачать вложение. Попробуйте снова.",
+        error instanceof ApiError ? error.message : t("errorDownloadAttachment"),
       );
     } finally {
       setDownloadingId(null);
@@ -133,8 +137,8 @@ export function MessagePane({
           bordered={false}
           size="sm"
           icon="ri-mail-open-line"
-          title="Выберите письмо"
-          description="Нажмите на письмо слева, чтобы прочитать его"
+          title={t("selectMessageTitle")}
+          description={t("selectMessageDescription")}
           className="max-w-xs"
         />
       </div>
@@ -151,7 +155,7 @@ export function MessagePane({
           </Alert>
           <Button type="button" size="sm" onClick={onRetry}>
             <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-            Повторить
+            {t("retryButton")}
           </Button>
         </div>
       </div>
@@ -211,7 +215,9 @@ export function MessagePane({
                 className="truncate text-xs text-foreground-400"
                 title={formatAddressList(detail.to)}
               >
-                Кому: {formatAddressList(detail.to)}
+                {t("toAddressesLabel", {
+                  addresses: formatAddressList(detail.to),
+                })}
               </p>
             )}
             {detail.cc.length > 0 && (
@@ -219,11 +225,13 @@ export function MessagePane({
                 className="truncate text-xs text-foreground-400"
                 title={formatAddressList(detail.cc)}
               >
-                Копия: {formatAddressList(detail.cc)}
+                {t("ccAddressesLabel", {
+                  addresses: formatAddressList(detail.cc),
+                })}
               </p>
             )}
             <p className="mt-0.5 text-xs text-foreground-400">
-              {formatFullDate(detail.receivedAt)}
+              {formatFullDate(detail.receivedAt, format)}
             </p>
           </div>
         </div>
@@ -234,7 +242,7 @@ export function MessagePane({
           <>
             <Button type="button" variant="ghost" size="sm" onClick={onReply}>
               <Icon name="ri-reply-line" aria-hidden data-icon="inline-start" />
-              Ответить
+              {t("replyButton")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onForward}>
               <Icon
@@ -242,7 +250,7 @@ export function MessagePane({
                 aria-hidden
                 data-icon="inline-start"
               />
-              Переслать
+              {t("forwardButton")}
             </Button>
             {canArchive && (
               <Button
@@ -252,7 +260,7 @@ export function MessagePane({
                 onClick={onArchive}
               >
                 <Icon name="ri-archive-line" aria-hidden data-icon="inline-start" />
-                В архив
+                {t("archiveButton")}
               </Button>
             )}
           </>
@@ -263,18 +271,17 @@ export function MessagePane({
               render={<Button type="button" variant="ghost" size="sm" />}
             >
               <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
-              Удалить
+              {t("deleteButton")}
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Удалить навсегда?</AlertDialogTitle>
+                <AlertDialogTitle>{t("deleteForeverTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Письмо находится в корзине и будет удалено без возможности
-                  восстановления.
+                  {t("deleteForeverDescription")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   onClick={() => {
@@ -282,7 +289,7 @@ export function MessagePane({
                     onDelete();
                   }}
                 >
-                  Удалить
+                  {t("deleteButton")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -290,19 +297,19 @@ export function MessagePane({
         ) : (
           <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
             <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
-            Удалить
+            {t("deleteButton")}
           </Button>
         )}
         <Button type="button" variant="ghost" size="sm" onClick={onToggleRead}>
           {detail.isRead ? (
             <>
               <Icon name="ri-mail-line" aria-hidden data-icon="inline-start" />
-              Непрочитано
+              {t("markUnreadButton")}
             </>
           ) : (
             <>
               <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
-              Прочитано
+              {t("markReadButton")}
             </>
           )}
         </Button>
@@ -329,7 +336,7 @@ export function MessagePane({
             >
               {downloadingId === attachment.id ? (
                 <Spinner
-                  aria-label="Скачивание вложения"
+                  aria-label={t("downloadingAttachmentAriaLabel")}
                   data-icon="inline-start"
                 />
               ) : (
@@ -341,7 +348,7 @@ export function MessagePane({
               )}
               <span className="max-w-48 truncate">{attachment.filename}</span>
               <span className="text-muted-foreground">
-                {formatBytes(attachment.sizeBytes)}
+                {formatBytes(attachment.sizeBytes, t)}
               </span>
             </Button>
           ))}
@@ -358,11 +365,12 @@ export function MessagePane({
 // Mobile-only return control — on lg+ the list stays visible next to the
 // pane, so the button is hidden there.
 function BackButton({ onBack }: { onBack: () => void }) {
+  const t = useTranslations("mail");
   return (
     <div className="shrink-0 border-b border-background-100 px-3 py-2 lg:hidden">
       <Button type="button" variant="ghost" size="sm" onClick={onBack}>
         <Icon name="ri-arrow-left-s-line" aria-hidden data-icon="inline-start" />
-        Назад к списку
+        {t("backToListButton")}
       </Button>
     </div>
   );

@@ -1,14 +1,17 @@
 import { z } from "zod";
+import { VALIDATION_RU } from "@/lib/validation/error-map";
 
 // Zod schemas — single source of input validation for Bookmarks (ADR-011),
 // shared by the /api/{categories,bookmarks} route handlers (architecture
 // §6.1). AC-BM-005 (category name required/trimmed), AC-BM-007 (bookmark
-// name+url required), AC-BM-008 (url must be http(s)).
+// name+url required), AC-BM-008 (url must be http(s)). Messages are Russian
+// because they surface directly as fieldErrors in the bookmarks/categories
+// dialogs.
 
 export const httpUrlSchema = z
   .string()
   .trim()
-  .min(1, "URL is required")
+  .min(1, { error: () => VALIDATION_RU.bookmark.urlRequired })
   .refine(
     (value) => {
       try {
@@ -18,7 +21,7 @@ export const httpUrlSchema = z
         return false;
       }
     },
-    { message: "URL must be a valid http(s) URL" },
+    { error: () => VALIDATION_RU.bookmark.urlInvalidFormat },
   );
 
 // AC-BM-0xx: category hierarchy (Phase 4) — a category may optionally belong
@@ -27,7 +30,10 @@ export const httpUrlSchema = z
 // parent (promotes the category back to top-level); omitting the field
 // leaves the current parent assignment untouched on update.
 export const categorySchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.bookmark.nameRequired }),
   parentCategoryId: z.string().min(1).optional().nullable(),
 });
 
@@ -40,16 +46,25 @@ export const categoryUpdateSchema = categorySchema;
 export const bookmarkColorTokens = ["primary", "accent", "secondary"] as const;
 
 export const bookmarkSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.bookmark.nameRequired }),
   url: httpUrlSchema,
   icon: z.string().trim().min(1).optional().nullable(),
   color: z.enum(bookmarkColorTokens).optional().nullable(),
   description: z.string().trim().optional().nullable(),
-  categoryId: z.string().min(1, "categoryId is required"),
+  categoryId: z
+    .string()
+    .min(1, { error: () => VALIDATION_RU.bookmark.categoryIdRequired }),
 });
 
 export const bookmarkUpdateSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.bookmark.nameRequired })
+    .optional(),
   url: httpUrlSchema.optional(),
   icon: z.string().trim().min(1).optional().nullable(),
   color: z.enum(bookmarkColorTokens).optional().nullable(),

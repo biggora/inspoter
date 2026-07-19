@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ export function BookmarkCard({
   onEdit,
   onDelete,
 }: BookmarkCardProps) {
+  const t = useTranslations("bookmarks");
   // Bookmark-level sortable — reorder ownership (`onDragEnd`) lives in
   // bookmarks-board.tsx; this component only registers as a sortable item.
   // `disabled: dragDisabled` (true while a search query is active) makes
@@ -107,7 +109,7 @@ export function BookmarkCard({
           size="icon-sm"
           {...attributes}
           {...listeners}
-          aria-label={`Изменить порядок: «${bookmark.name}»`}
+          aria-label={t("bookmarkDragHandleLabel", { name: bookmark.name })}
           className={cn(
             "touch-none opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
             dragDisabled
@@ -127,15 +129,17 @@ export function BookmarkCard({
                 className="opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100"
               />
             }
-            aria-label={`Действия закладки «${bookmark.name}»`}
+            aria-label={t("bookmarkActionsLabel", { name: bookmark.name })}
           >
             <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={onEdit}>Изменить</DropdownMenuItem>
+              <DropdownMenuItem onClick={onEdit}>
+                {t("editAction")}
+              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                Удалить
+                {t("deleteAction")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>

@@ -3,6 +3,7 @@ import { env } from "@/lib/config/env";
 import type { Prisma } from "@/generated/prisma/client";
 import { getMailDriver, type MailAddress, type MailDriver } from "@/lib/mail";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import mailMessages from "@/messages/ru/mail.json";
 
 // Mail item actions + send (plan §4/§5, Phase 6). Server-first ordering: the
 // IMAP mutation runs before the local DB write, so a transport failure never
@@ -19,7 +20,7 @@ export class MailItemNotFoundError extends Error {
 // Move target must be a folder of the same account (and workspace).
 export class MailFolderMismatchError extends Error {
   constructor() {
-    super("Папка назначения не принадлежит этому аккаунту");
+    super(mailMessages.errorFolderMismatch);
     this.name = "MailFolderMismatchError";
   }
 }
@@ -27,14 +28,14 @@ export class MailFolderMismatchError extends Error {
 // Sending requires an IMAP/SMTP account — the webhook mailbox is inbound-only.
 export class MailSendNotAllowedError extends Error {
   constructor() {
-    super("Отправка писем доступна только для IMAP-аккаунтов");
+    super(mailMessages.errorSendNotAllowed);
     this.name = "MailSendNotAllowedError";
   }
 }
 
 export class MailSendRateLimitError extends Error {
   constructor() {
-    super("Превышен лимит отправки писем. Попробуйте позже.");
+    super(mailMessages.errorSendRateLimit);
     this.name = "MailSendRateLimitError";
   }
 }

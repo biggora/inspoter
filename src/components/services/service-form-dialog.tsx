@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { Service } from "@/generated/prisma/client";
 import { ApiError, servicesApi, type MonitorTypeValue } from "./api";
-import { MONITOR_TYPE_LABELS } from "./format";
+import { getMonitorTypeLabel } from "./format";
 
 export type ServiceFormDialogState =
   { mode: "create" } | { mode: "edit"; service: Service };
@@ -77,6 +78,7 @@ export function ServiceFormDialog({
   onOpenChange,
   onSaved,
 }: ServiceFormDialogProps) {
+  const t = useTranslations("services");
   const nameId = useId();
   const descriptionId = useId();
   const monitorTypeId = useId();
@@ -151,18 +153,17 @@ export function ServiceFormDialog({
     const trimmedPort = port.trim();
 
     const nextErrors: FieldErrors = {};
-    if (!trimmedName) nextErrors.name = "Название обязательно.";
+    if (!trimmedName) nextErrors.name = t("nameRequired");
     if (monitorType === "HTTP") {
-      if (!trimmedUrl) nextErrors.url = "URL обязателен.";
+      if (!trimmedUrl) nextErrors.url = t("urlRequired");
       else if (!isValidHttpUrl(trimmedUrl)) {
-        nextErrors.url =
-          "Введите корректный URL, начинающийся с http:// или https://.";
+        nextErrors.url = t("urlInvalid");
       }
     } else if (monitorType === "TCP") {
-      if (!trimmedHost) nextErrors.host = "Хост обязателен.";
-      if (!trimmedPort) nextErrors.port = "Порт обязателен.";
+      if (!trimmedHost) nextErrors.host = t("hostRequired");
+      if (!trimmedPort) nextErrors.port = t("portRequired");
     } else {
-      if (!trimmedHost) nextErrors.host = "Хост обязателен.";
+      if (!trimmedHost) nextErrors.host = t("hostRequired");
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -192,10 +193,10 @@ export function ServiceFormDialog({
     try {
       if (state?.mode === "edit") {
         await servicesApi.update(state.service.id, payload);
-        toast.success("Сервис обновлён.");
+        toast.success(t("updateSuccessToast"));
       } else {
         await servicesApi.create(payload);
-        toast.success("Сервис создан.");
+        toast.success(t("createSuccessToast"));
       }
       onSaved();
     } catch (err) {
@@ -206,26 +207,25 @@ export function ServiceFormDialog({
       ) {
         setErrors(err.fieldErrors);
       } else {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось сохранить сервис. Попробуйте снова.",
-        );
+        toast.error(err instanceof ApiError ? err.message : t("saveErrorToast"));
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  const monitorTypeItems: Record<MonitorTypeValue, string> =
-    MONITOR_TYPE_LABELS;
+  const monitorTypeItems: Record<MonitorTypeValue, string> = {
+    HTTP: getMonitorTypeLabel("HTTP", t),
+    TCP: getMonitorTypeLabel("TCP", t),
+    PING: getMonitorTypeLabel("PING", t),
+  };
 
   return (
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Редактировать сервис" : "Новый сервис"}
+            {isEdit ? t("editDialogTitle") : t("createDialogTitle")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -235,7 +235,7 @@ export function ServiceFormDialog({
         >
           <FieldGroup>
             <Field data-invalid={!!errors.name || undefined}>
-              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{t("nameLabel")}</FieldLabel>
               <Input
                 id={nameId}
                 value={name}
@@ -250,7 +250,7 @@ export function ServiceFormDialog({
 
             <Field>
               <FieldLabel htmlFor={descriptionId}>
-                Описание (необязательно)
+                {t("descriptionLabel")}
               </FieldLabel>
               <Textarea
                 id={descriptionId}
@@ -261,7 +261,9 @@ export function ServiceFormDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor={monitorTypeId}>Тип монитора</FieldLabel>
+              <FieldLabel htmlFor={monitorTypeId}>
+                {t("monitorTypeLabel")}
+              </FieldLabel>
               <Select
                 value={monitorType}
                 onValueChange={(value) =>
@@ -301,7 +303,7 @@ export function ServiceFormDialog({
                 </Field>
                 <Field data-invalid={!!errors.expectedStatusCodes || undefined}>
                   <FieldLabel htmlFor={expectedStatusCodesId}>
-                    Ожидаемые коды ответа (необязательно)
+                    {t("expectedStatusCodesLabel")}
                   </FieldLabel>
                   <Input
                     id={expectedStatusCodesId}
@@ -328,7 +330,7 @@ export function ServiceFormDialog({
                   className="flex-1"
                   data-invalid={!!errors.host || undefined}
                 >
-                  <FieldLabel htmlFor={hostId}>Хост</FieldLabel>
+                  <FieldLabel htmlFor={hostId}>{t("hostLabel")}</FieldLabel>
                   <Input
                     id={hostId}
                     value={host}
@@ -347,7 +349,9 @@ export function ServiceFormDialog({
                   data-invalid={!!errors.port || undefined}
                 >
                   <FieldLabel htmlFor={portId}>
-                    Порт{monitorType === "PING" ? " (необязательно)" : ""}
+                    {monitorType === "PING"
+                      ? t("portLabelOptional")
+                      : t("portLabel")}
                   </FieldLabel>
                   <Input
                     id={portId}
@@ -374,7 +378,7 @@ export function ServiceFormDialog({
                 data-invalid={!!errors.intervalSeconds || undefined}
               >
                 <FieldLabel htmlFor={intervalSecondsId}>
-                  Интервал (сек)
+                  {t("intervalFieldLabel")}
                 </FieldLabel>
                 <Input
                   id={intervalSecondsId}
@@ -398,7 +402,9 @@ export function ServiceFormDialog({
                 className="flex-1"
                 data-invalid={!!errors.timeoutMs || undefined}
               >
-                <FieldLabel htmlFor={timeoutMsId}>Таймаут (мс)</FieldLabel>
+                <FieldLabel htmlFor={timeoutMsId}>
+                  {t("timeoutFieldLabel")}
+                </FieldLabel>
                 <Input
                   id={timeoutMsId}
                   type="number"
@@ -419,7 +425,9 @@ export function ServiceFormDialog({
                 className="flex-1"
                 data-invalid={!!errors.retries || undefined}
               >
-                <FieldLabel htmlFor={retriesId}>Попыток до сбоя</FieldLabel>
+                <FieldLabel htmlFor={retriesId}>
+                  {t("retriesLabel")}
+                </FieldLabel>
                 <Input
                   id={retriesId}
                   type="number"
@@ -448,32 +456,32 @@ export function ServiceFormDialog({
                 htmlFor={isActiveId}
                 className="cursor-pointer font-normal"
               >
-                Активен (проверять по расписанию)
+                {t("activeCheckboxLabel")}
               </FieldLabel>
             </Field>
           </FieldGroup>
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit ? (
                 submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Сохранение…
+                    {t("savingLabel")}
                   </>
                 ) : (
-                  "Сохранить изменения"
+                  t("saveChangesButton")
                 )
               ) : submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Создание…
+                  {t("creatingLabel")}
                 </>
               ) : (
-                "Создать"
+                t("createButton")
               )}
             </Button>
           </DialogFooter>

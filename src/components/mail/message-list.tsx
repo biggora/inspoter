@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { Pagination } from "@/components/shell/pagination";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -19,9 +21,9 @@ import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { MailListItemDto } from "./api";
 
-const SORT_ITEMS: Record<string, string> = {
-  desc: "Сначала новые",
-  asc: "Сначала старые",
+const SORT_LABEL_KEYS: Record<"desc" | "asc", string> = {
+  desc: "sortDesc",
+  asc: "sortAsc",
 };
 
 // Deterministic avatar color from the sender string (prototype
@@ -49,20 +51,22 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+type Format = ReturnType<typeof useFormatter>;
+
 // Relative list timestamp: today — HH:MM, otherwise a short RU date (with the
 // year when it differs from the current one).
-function formatListDate(iso: string): string {
+function formatListDate(iso: string, format: Format): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const now = new Date();
   if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString("ru-RU", {
+    return format.dateTime(date, {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
-  return date.toLocaleDateString(
-    "ru-RU",
+  return format.dateTime(
+    date,
     date.getFullYear() === now.getFullYear()
       ? { day: "numeric", month: "short" }
       : { day: "numeric", month: "short", year: "numeric" },
@@ -117,6 +121,11 @@ export function MessageList({
   isWebhookAccount,
   onOpenSidebar,
 }: MessageListProps) {
+  const t = useTranslations("mail");
+  const format = useFormatter();
+  const sortItems: Record<string, string> = Object.fromEntries(
+    Object.entries(SORT_LABEL_KEYS).map(([value, key]) => [value, t(key)]),
+  );
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 space-y-2 border-b border-background-100 p-3">
@@ -125,7 +134,7 @@ export function MessageList({
             type="button"
             variant="outline"
             size="icon"
-            aria-label="Аккаунты и папки"
+            aria-label={t("accountsAndFoldersLabel")}
             onClick={onOpenSidebar}
             className="lg:hidden"
           >
@@ -134,8 +143,8 @@ export function MessageList({
           <Input
             value={searchInput}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Поиск по теме или отправителю..."
-            aria-label="Поиск по почте"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchAriaLabel")}
             className="flex-1"
           />
         </div>
@@ -145,23 +154,23 @@ export function MessageList({
             onPressedChange={onUnreadOnlyChange}
             variant="outline"
             size="sm"
-            aria-label="Только непрочитанные"
-            title="Только непрочитанные"
+            aria-label={t("unreadOnlyAriaLabel")}
+            title={t("unreadOnlyAriaLabel")}
           >
             <Icon name="ri-mail-open-line" aria-hidden data-icon="inline-start" />
-            Непрочитанные
+            {t("unreadOnlyText")}
           </Toggle>
           <Select
             value={sort}
             onValueChange={(value) => onSortChange(value as "asc" | "desc")}
-            items={SORT_ITEMS}
+            items={sortItems}
           >
-            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+            <SelectTrigger size="sm" aria-label={t("sortOrderAriaLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                {Object.entries(sortItems).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -180,7 +189,7 @@ export function MessageList({
             </Alert>
             <Button type="button" size="sm" onClick={onRetry}>
               <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-              Повторить
+              {t("retryButton")}
             </Button>
           </div>
         ) : loading ? (
@@ -205,8 +214,8 @@ export function MessageList({
               <EmptyState
                 bordered={false}
                 size="sm"
-                title="Ничего не найдено"
-                description="Нет писем, соответствующих текущим фильтрам."
+                title={t("emptyFilteredTitle")}
+                description={t("emptyFilteredDescription")}
               />
             </div>
           ) : isWebhookAccount ? (
@@ -215,8 +224,8 @@ export function MessageList({
                 bordered={false}
                 size="sm"
                 icon="ri-mail-line"
-                title="Входящая почта пока отсутствует"
-                description="Отправьте первое письмо через webhook:"
+                title={t("webhookEmptyTitle")}
+                description={t("webhookEmptyDescription")}
                 action={
                   <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
                     {`curl -X POST http://your-host/api/webhooks/mail \\
@@ -233,13 +242,13 @@ export function MessageList({
                 bordered={false}
                 size="sm"
                 icon="ri-mail-line"
-                title="Нет писем"
-                description="В этой папке пока пусто."
+                title={t("emptyTitle")}
+                description={t("emptyDescription")}
               />
             </div>
           )
         ) : (
-          <ul aria-label="Список писем" className="flex flex-col">
+          <ul aria-label={t("messageListAriaLabel")} className="flex flex-col">
             {items.map((item) => {
               const displayName = item.fromName || item.from;
               const isSelected = item.id === selectedMessageId;
@@ -280,12 +289,12 @@ export function MessageList({
                               name="ri-attachment-line"
                               aria-hidden={false}
                               role="img"
-                              aria-label="Есть вложения"
+                              aria-label={t("hasAttachmentsAriaLabel")}
                               className="text-sm"
                             />
                           )}
                           <span className="whitespace-nowrap">
-                            {formatListDate(item.receivedAt)}
+                            {formatListDate(item.receivedAt, format)}
                           </span>
                         </span>
                       </span>
@@ -307,7 +316,7 @@ export function MessageList({
                     </span>
                     {!item.isRead && (
                       <span
-                        aria-label="Непрочитанное"
+                        aria-label={t("unreadAriaLabel")}
                         className="mt-1.5 size-2 shrink-0 rounded-full bg-primary-500"
                       />
                     )}

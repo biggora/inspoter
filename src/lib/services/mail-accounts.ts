@@ -80,6 +80,8 @@ export async function getOrCreateWebhookAccount(
           accountId: account.id,
           accountWorkspaceId: workspaceId,
           path: "INBOX",
+          // TODO(i18n): DB-persisted default folder name — migrating needs a
+          // data migration for existing rows, out of scope for Phase C.
           name: "Входящие",
           specialUse: "INBOX",
           position: 0,
