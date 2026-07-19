@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -52,6 +53,7 @@ export function DnsRecordsView({
   domainName,
   onBack,
 }: DnsRecordsViewProps) {
+  const t = useTranslations("domains");
   const [records, setRecords] = useState<DnsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,13 +76,11 @@ export function DnsRecordsView({
       })
       .catch((err) => {
         setError(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось загрузить DNS-записи. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("loadRecordsError"),
         );
       })
       .finally(() => setLoading(false));
-  }, [providerId, domainId]);
+  }, [providerId, domainId, t]);
 
   useEffect(() => {
     load();
@@ -91,14 +91,12 @@ export function DnsRecordsView({
     setDeleting(true);
     try {
       await deleteRecord(providerId, domainId, deleteTarget.id);
-      toast.success("DNS-запись удалена.");
+      toast.success(t("deleteRecordSuccessToast"));
       setDeleteTarget(null);
       load();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Не удалось удалить DNS-запись. Попробуйте снова.",
+        err instanceof ApiError ? err.message : t("deleteRecordError"),
       );
     } finally {
       setDeleting(false);
@@ -108,7 +106,7 @@ export function DnsRecordsView({
   return (
     <PageBody>
       <PageHeader
-        back={{ onClick: onBack, label: "Домены" }}
+        back={{ onClick: onBack, label: t("pageTitle") }}
         title={domainName}
         actions={
           <Button
@@ -118,7 +116,7 @@ export function DnsRecordsView({
             }
           >
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить запись
+            {t("addRecordButton")}
           </Button>
         }
       />
@@ -138,18 +136,20 @@ export function DnsRecordsView({
       ) : records.length === 0 && !error ? (
         <EmptyState
           icon="ri-file-text-line"
-          title="Нет записей"
-          description="Для этого домена пока нет DNS-записей."
+          title={t("emptyRecordsTitle")}
+          description={t("emptyRecordsDescription")}
         />
       ) : records.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Тип</TableHead>
-              <TableHead>Название</TableHead>
-              <TableHead>Значение</TableHead>
+              <TableHead>{t("typeLabel")}</TableHead>
+              <TableHead>{t("nameLabel")}</TableHead>
+              <TableHead>{t("valueLabel")}</TableHead>
               <TableHead>TTL</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead className="text-right">
+                {t("actionsHeader")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -173,14 +173,14 @@ export function DnsRecordsView({
                         })
                       }
                     >
-                      Изменить
+                      {t("editButton")}
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() => setDeleteTarget(record)}
                     >
-                      Удалить
+                      {t("deleteButton")}
                     </Button>
                   </div>
                 </TableCell>
@@ -206,21 +206,23 @@ export function DnsRecordsView({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Удалить эту запись {deleteTarget?.type}?
+              {t("deleteConfirmTitle", { type: deleteTarget?.type ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Запись «{deleteTarget?.name}» будет удалена из домена {domainName}
-              . Это действие нельзя отменить.
+              {t("deleteConfirmDescription", {
+                name: deleteTarget?.name ?? "",
+                domainName,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={deleting}
             >
-              {deleting ? "Удаление…" : "Удалить"}
+              {deleting ? t("deletingLabel") : t("deleteButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

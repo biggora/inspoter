@@ -4,6 +4,12 @@
 // still parsed defensively (see api.ts) as a second line of defense for any
 // rule this client copy doesn't cover. Pattern matches
 // src/components/bookmarks/validation.ts.
+//
+// This module has no i18n namespace of its own (it's not a component) — the
+// caller passes its own "domains" namespace `t` for the messages, same
+// pattern as src/lib/format/relative-time.ts.
+
+type Translate = (key: string, params?: Record<string, string>) => string;
 
 export const DNS_RECORD_TYPES = [
   "A",
@@ -30,37 +36,41 @@ const hostnameRegex =
 export function validateRecordValue(
   type: DnsRecordType,
   value: string,
+  t: Translate,
 ): string | null {
-  if (!value.trim()) return "Значение обязательно";
+  if (!value.trim()) return t("valueRequiredError");
   if (type === "A" && !ipv4Regex.test(value)) {
-    return "Значение записи A должно быть корректным IPv4-адресом";
+    return t("valueInvalidIpv4Error");
   }
   if (type === "AAAA" && !ipv6Regex.test(value)) {
-    return "Значение записи AAAA должно быть корректным IPv6-адресом";
+    return t("valueInvalidIpv6Error");
   }
   if ((type === "CNAME" || type === "NS") && !hostnameRegex.test(value)) {
-    return `Значение записи ${type} должно быть корректным именем хоста`;
+    return t("valueInvalidHostnameError", { type });
   }
   if (type === "MX" && !hostnameRegex.test(value)) {
-    return "Значение записи MX должно быть корректным именем почтового сервера";
+    return t("valueInvalidMxError");
   }
   return null;
 }
 
-export function validateTtl(ttl: string): string | null {
-  if (!ttl.trim()) return "TTL обязателен";
+export function validateTtl(ttl: string, t: Translate): string | null {
+  if (!ttl.trim()) return t("ttlRequiredError");
   const parsed = Number(ttl);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    return "TTL должен быть положительным целым числом";
+    return t("ttlInvalidError");
   }
   return null;
 }
 
-export function validatePriority(priority: string): string | null {
-  if (!priority.trim()) return "Для записи MX требуется числовой приоритет";
+export function validatePriority(
+  priority: string,
+  t: Translate,
+): string | null {
+  if (!priority.trim()) return t("priorityRequiredError");
   const parsed = Number(priority);
   if (!Number.isInteger(parsed) || parsed < 0) {
-    return "Приоритет должен быть неотрицательным целым числом";
+    return t("priorityInvalidError");
   }
   return null;
 }

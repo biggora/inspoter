@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ export function DnsRecordDialog({
   onOpenChange,
   onSaved,
 }: DnsRecordDialogProps) {
+  const t = useTranslations("domains");
   const typeFieldId = useId();
   const nameId = useId();
   const valueId = useId();
@@ -128,14 +130,14 @@ export function DnsRecordDialog({
     const nextErrors: FieldErrors = {};
 
     if (state.mode === "create" && !trimmedName) {
-      nextErrors.name = "Название обязательно";
+      nextErrors.name = t("nameRequiredError");
     }
-    const valueError = validateRecordValue(type, trimmedValue);
+    const valueError = validateRecordValue(type, trimmedValue, t);
     if (valueError) nextErrors.value = valueError;
-    const ttlError = validateTtl(ttl);
+    const ttlError = validateTtl(ttl, t);
     if (ttlError) nextErrors.ttl = ttlError;
     if (isMx) {
-      const priorityError = validatePriority(priority);
+      const priorityError = validatePriority(priority, t);
       if (priorityError) nextErrors.priority = priorityError;
     }
 
@@ -150,7 +152,7 @@ export function DnsRecordDialog({
           ttl: Number(ttl),
           ...(isMx ? { priority: Number(priority) } : {}),
         });
-        toast.success("DNS-запись обновлена.");
+        toast.success(t("updateRecordSuccessToast"));
       } else {
         await createRecord(state.providerId, state.domainId, {
           type,
@@ -159,7 +161,7 @@ export function DnsRecordDialog({
           ttl: Number(ttl),
           ...(isMx ? { priority: Number(priority) } : {}),
         });
-        toast.success("DNS-запись создана.");
+        toast.success(t("createRecordSuccessToast"));
       }
       onSaved();
     } catch (err) {
@@ -176,9 +178,7 @@ export function DnsRecordDialog({
         });
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось сохранить DNS-запись. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("saveRecordError"),
         );
       }
     } finally {
@@ -191,7 +191,7 @@ export function DnsRecordDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Изменить DNS-запись" : "Добавить DNS-запись"}
+            {isEdit ? t("editDialogTitle") : t("createDialogTitle")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -201,7 +201,7 @@ export function DnsRecordDialog({
         >
           <FieldGroup>
             <Field data-disabled={isEdit || undefined}>
-              <FieldLabel htmlFor={typeFieldId}>Тип</FieldLabel>
+              <FieldLabel htmlFor={typeFieldId}>{t("typeLabel")}</FieldLabel>
               <Select
                 value={type}
                 onValueChange={(next) => setType(next as DnsRecordType)}
@@ -227,7 +227,7 @@ export function DnsRecordDialog({
               data-disabled={isEdit || undefined}
               data-invalid={!!errors.name || undefined}
             >
-              <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{t("nameLabel")}</FieldLabel>
               <Input
                 id={nameId}
                 value={name}
@@ -236,7 +236,7 @@ export function DnsRecordDialog({
                 aria-required="true"
                 aria-invalid={!!errors.name || undefined}
                 aria-describedby={errors.name ? nameErrorId : undefined}
-                placeholder="@ или поддомен"
+                placeholder={t("namePlaceholder")}
                 autoFocus={!isEdit}
                 className="font-mono"
               />
@@ -244,7 +244,7 @@ export function DnsRecordDialog({
             </Field>
 
             <Field data-invalid={!!errors.value || undefined}>
-              <FieldLabel htmlFor={valueId}>Значение</FieldLabel>
+              <FieldLabel htmlFor={valueId}>{t("valueLabel")}</FieldLabel>
               <Input
                 id={valueId}
                 value={value}
@@ -259,7 +259,7 @@ export function DnsRecordDialog({
             </Field>
 
             <Field data-invalid={!!errors.ttl || undefined}>
-              <FieldLabel htmlFor={ttlId}>TTL (секунды)</FieldLabel>
+              <FieldLabel htmlFor={ttlId}>{t("ttlLabel")}</FieldLabel>
               <Input
                 id={ttlId}
                 type="number"
@@ -276,7 +276,9 @@ export function DnsRecordDialog({
 
             {isMx && (
               <Field data-invalid={!!errors.priority || undefined}>
-                <FieldLabel htmlFor={priorityId}>Приоритет</FieldLabel>
+                <FieldLabel htmlFor={priorityId}>
+                  {t("priorityLabel")}
+                </FieldLabel>
                 <Input
                   id={priorityId}
                   type="number"
@@ -297,25 +299,25 @@ export function DnsRecordDialog({
 
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit ? (
                 submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Сохранение…
+                    {t("savingLabel")}
                   </>
                 ) : (
-                  "Сохранить изменения"
+                  t("saveChangesButton")
                 )
               ) : submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Создание…
+                  {t("creatingLabel")}
                 </>
               ) : (
-                "Создать"
+                t("createButton")
               )}
             </Button>
           </DialogFooter>

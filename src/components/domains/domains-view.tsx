@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -32,18 +33,19 @@ const PROVIDER_LABELS: Record<string, string> = {
   godaddy: "GoDaddy",
 };
 
-const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
-  "Provider unreachable": "Провайдер недоступен.",
-  "Authentication failed": "Ошибка аутентификации провайдера.",
-  "Rate limited": "Превышен лимит запросов к провайдеру.",
-  "Provider error": "Ошибка провайдера.",
+const PROVIDER_ERROR_KEYS: Record<string, string> = {
+  "Provider unreachable": "errorProviderUnreachable",
+  "Authentication failed": "errorAuthFailed",
+  "Rate limited": "errorRateLimited",
+  "Provider error": "errorProviderGeneric",
 };
 
-function providerErrorMessage(error: string | null): string {
-  return (
-    (error && PROVIDER_ERROR_MESSAGES[error]) ||
-    "Не удалось получить данные от провайдера."
-  );
+function providerErrorMessage(
+  error: string | null,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  const key = error && PROVIDER_ERROR_KEYS[error];
+  return key ? t(key) : t("errorProviderFallback");
 }
 
 function providerLabel(providerId: string): string {
@@ -62,6 +64,7 @@ interface SelectedDomain {
 // component via router.refresh() since a single provider can't be
 // refetched in isolation (the /api/domains route aggregates all of them).
 export function DomainsView({ providers }: DomainsViewProps) {
+  const t = useTranslations("domains");
   const router = useRouter();
   const [isRetrying, startTransition] = useTransition();
   const [selected, setSelected] = useState<SelectedDomain | null>(null);
@@ -95,11 +98,11 @@ export function DomainsView({ providers }: DomainsViewProps) {
   return (
     <PageBody>
       <PageHeader
-        title="Домены"
+        title={t("pageTitle")}
         actions={
           <Button onClick={() => setIsCreateProviderOpen(true)}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Добавить провайдер
+            {t("addProviderButton")}
           </Button>
         }
       />
@@ -122,7 +125,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                   <span className="font-medium">
                     {providerLabel(provider.providerId)}
                   </span>{" "}
-                  — {providerErrorMessage(provider.error)}
+                  — {providerErrorMessage(provider.error, t)}
                 </AlertDescription>
               </div>
               <Button
@@ -131,7 +134,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                 onClick={handleRetry}
                 disabled={isRetrying}
               >
-                {isRetrying ? "Повтор…" : "Повторить"}
+                {isRetrying ? t("retryingLabel") : t("retryButton")}
               </Button>
             </Alert>
           ))}
@@ -143,13 +146,13 @@ export function DomainsView({ providers }: DomainsViewProps) {
           icon="ri-global-line"
           title={
             erroredProviders.length > 0
-              ? "Нет доменов от исправных провайдеров"
-              : "Доменов пока нет"
+              ? t("emptyTitleErrored")
+              : t("emptyTitle")
           }
-          description="Домены появятся автоматически при подключении DNS-провайдера в настройках."
+          description={t("emptyDescription")}
           action={
             <Button onClick={() => setIsCreateProviderOpen(true)}>
-              Добавить провайдера
+              {t("addProviderAction")}
             </Button>
           }
         />
@@ -157,9 +160,11 @@ export function DomainsView({ providers }: DomainsViewProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Домен</TableHead>
-              <TableHead>Провайдер</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead>{t("domainHeader")}</TableHead>
+              <TableHead>{t("providerHeader")}</TableHead>
+              <TableHead className="text-right">
+                {t("actionsHeader")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -183,7 +188,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                       })
                     }
                   >
-                    Просмотр DNS
+                    {t("viewDnsButton")}
                   </Button>
                 </TableCell>
               </TableRow>
