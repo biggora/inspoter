@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function ChannelDialog({
   onOpenChange,
   onSaved,
 }: ChannelDialogProps) {
+  const t = useTranslations("messages");
   const nameId = useId();
   const errorId = useId();
   const [name, setName] = useState("");
@@ -58,7 +60,7 @@ export function ChannelDialog({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Название канала обязательно.");
+      setError(t("channelNameRequiredError"));
       return;
     }
 
@@ -67,10 +69,10 @@ export function ChannelDialog({
     try {
       if (state?.mode === "edit") {
         await channelsApi.rename(state.channel.id, trimmed);
-        toast.success("Канал переименован.");
+        toast.success(t("channelRenamedToast"));
       } else if (state?.mode === "create") {
         await channelsApi.create(state.categoryId, trimmed);
-        toast.success("Канал создан.");
+        toast.success(t("channelCreatedToast"));
       }
       onSaved();
     } catch (err) {
@@ -78,9 +80,7 @@ export function ChannelDialog({
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось сохранить канал. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("saveChannelError"),
         );
       }
     } finally {
@@ -93,7 +93,7 @@ export function ChannelDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Переименовать канал" : "Новый канал"}
+            {isEdit ? t("renameChannelTitle") : t("newChannelTitle")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -103,7 +103,7 @@ export function ChannelDialog({
         >
           <FieldGroup>
             <Field data-invalid={!!error || undefined}>
-              <FieldLabel htmlFor={nameId}>Название канала</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{t("channelNameLabel")}</FieldLabel>
               <Input
                 id={nameId}
                 value={name}
@@ -118,25 +118,25 @@ export function ChannelDialog({
           </FieldGroup>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit ? (
                 submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Сохранение…
+                    {t("savingButton")}
                   </>
                 ) : (
-                  "Сохранить"
+                  t("saveButton")
                 )
               ) : submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Создание…
+                  {t("creatingButton")}
                 </>
               ) : (
-                "Создать"
+                t("createButton")
               )}
             </Button>
           </DialogFooter>

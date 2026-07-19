@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,14 +44,15 @@ export function ChannelSidebar({
   onEditChannel,
   onDeleteChannel,
 }: ChannelSidebarProps) {
+  const t = useTranslations("messages");
   const instanceId = useId();
   const channelActionTriggers = useRef(new Map<string, HTMLButtonElement>());
 
   return (
-    <nav className="flex h-full flex-col" aria-label="Каналы сообщений">
+    <nav className="flex h-full flex-col" aria-label={t("sidebarNavLabel")}>
       <div className="border-b border-background-100 px-4 py-3">
         <h2 className="font-heading text-sm font-semibold text-foreground-900">
-          Каналы
+          {t("channelsHeading")}
         </h2>
       </div>
 
@@ -60,7 +62,7 @@ export function ChannelSidebar({
             size="xs"
             align="start"
             bordered={false}
-            description="Категорий пока нет."
+            description={t("noCategoriesSidebarText")}
             className="px-2 py-4"
           />
         ) : (
@@ -97,7 +99,9 @@ export function ChannelSidebar({
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      aria-label={`Новый канал в «${category.name}»`}
+                      aria-label={t("newChannelInCategoryLabel", {
+                        name: category.name,
+                      })}
                       onClick={() => onNewChannel(category.id)}
                     >
                       <Icon name="ri-add-line" aria-hidden />
@@ -106,7 +110,9 @@ export function ChannelSidebar({
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      aria-label={`Переименовать «${category.name}»`}
+                      aria-label={t("renameCategoryLabel", {
+                        name: category.name,
+                      })}
                       onClick={() => onEditCategory(category)}
                     >
                       <Icon name="ri-edit-line" aria-hidden />
@@ -115,7 +121,9 @@ export function ChannelSidebar({
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      aria-label={`Удалить «${category.name}»`}
+                      aria-label={t("deleteCategoryLabel", {
+                        name: category.name,
+                      })}
                       onClick={() => onDeleteCategory(category)}
                     >
                       <Icon name="ri-delete-bin-line" aria-hidden />
@@ -136,7 +144,7 @@ export function ChannelSidebar({
                       size="xs"
                       align="start"
                       bordered={false}
-                      description="Нет каналов"
+                      description={t("noChannelsText")}
                       className="px-3 py-1"
                     />
                   ) : (
@@ -175,7 +183,9 @@ export function ChannelSidebar({
                                 variant="ghost"
                                 size="icon-xs"
                                 className="mr-1 opacity-100 transition-opacity group-hover/channel:opacity-100 group-focus-within/channel:opacity-100 lg:opacity-0"
-                                aria-label={`Действия канала «${channel.name}»`}
+                                aria-label={t("channelActionsLabel", {
+                                  name: channel.name,
+                                })}
                                 ref={(element) => {
                                   if (element) {
                                     channelActionTriggers.current.set(
@@ -205,20 +215,20 @@ export function ChannelSidebar({
                               }
                             >
                               <Icon name="ri-settings-3-line" aria-hidden />
-                              Настройки канала
+                              {t("channelSettingsMenuItem")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => onEditChannel(channel)}
                             >
                               <Icon name="ri-edit-line" aria-hidden />
-                              Переименовать
+                              {t("renameMenuItem")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => onDeleteChannel(channel)}
                             >
                               <Icon name="ri-delete-bin-line" aria-hidden />
-                              Удалить
+                              {t("deleteMenuItem")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -241,7 +251,7 @@ export function ChannelSidebar({
           className="w-full justify-start"
         >
           <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-          Новая категория
+          {t("newCategoryButton")}
         </Button>
       </div>
     </nav>

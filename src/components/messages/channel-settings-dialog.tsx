@@ -8,6 +8,7 @@ import {
   type FormEvent,
   type RefObject,
 } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -58,11 +59,13 @@ interface ChannelSettingsDialogProps {
   onDelete: (channel: ChannelDto) => void;
 }
 
-function formatDate(iso: string | null): string {
+type Format = ReturnType<typeof useFormatter>;
+
+function formatDate(iso: string | null, format: Format): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ru-RU", {
+  return format.dateTime(date, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -71,18 +74,21 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function buildOneTimeSecret(path: string): OneTimeSecret {
+function buildOneTimeSecret(
+  path: string,
+  t: (key: string) => string,
+): OneTimeSecret {
   if (!path.startsWith("/") || path.startsWith("//")) {
-    throw new Error("Сервер вернул некорректный адрес webhook.");
+    throw new Error(t("invalidWebhookUrlError"));
   }
   const url = new URL(path, window.location.origin);
   if (url.origin !== window.location.origin) {
-    throw new Error("Сервер вернул некорректный адрес webhook.");
+    throw new Error(t("invalidWebhookUrlError"));
   }
   const absoluteUrl = url.toString();
   return {
     url: absoluteUrl,
-    curl: `curl -X POST '${absoluteUrl}' -H 'Content-Type: application/json' -d '{"content":"Сообщение из интеграции"}'`,
+    curl: `curl -X POST '${absoluteUrl}' -H 'Content-Type: application/json' -d '{"content":"${t("integrationMessagePlaceholder")}"}'`,
   };
 }
 
@@ -92,6 +98,8 @@ export function ChannelSettingsDialog({
   onRename,
   onDelete,
 }: ChannelSettingsDialogProps) {
+  const t = useTranslations("messages");
+  const format = useFormatter();
   const nameId = useId();
   const nameErrorId = useId();
   const urlRef = useRef<HTMLTextAreaElement>(null);
@@ -121,7 +129,7 @@ export function ChannelSettingsDialog({
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadError("Не удалось загрузить вебхуки. Попробуйте снова.");
+          setLoadError(t("loadWebhooksError"));
         }
       })
       .finally(() => {
@@ -130,7 +138,7 @@ export function ChannelSettingsDialog({
     return () => {
       cancelled = true;
     };
-  }, [channel.id]);
+  }, [channel.id, t]);
 
   function loadWebhooks() {
     setLoading(true);
@@ -140,9 +148,7 @@ export function ChannelSettingsDialog({
         setWebhooks(items);
         setLoadError(null);
       })
-      .catch(() =>
-        setLoadError("Не удалось загрузить вебхуки. Попробуйте снова."),
-      )
+      .catch(() => setLoadError(t("loadWebhooksError")))
       .finally(() => setLoading(false));
   }
 
@@ -161,7 +167,7 @@ export function ChannelSettingsDialog({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setNameError("Название обязательно.");
+      setNameError(t("nameRequiredError"));
       return;
     }
 
@@ -169,19 +175,17 @@ export function ChannelSettingsDialog({
     setNameError(null);
     try {
       const created = await channelWebhooksApi.create(channel.id, trimmed);
-      const oneTimeSecret = buildOneTimeSecret(created.url);
+      const oneTimeSecret = buildOneTimeSecret(created.url, t);
       setSecret(oneTimeSecret);
       setWebhooks((current) => [created.webhook, ...current]);
       setName("");
-      toast.success("Webhook создан.");
+      toast.success(t("webhookCreatedToast"));
     } catch (error) {
       if (error instanceof ApiError && error.fieldErrors?.name) {
         setNameError(error.fieldErrors.name);
       } else {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : "Не удалось создать webhook. Попробуйте снова.",
+          error instanceof Error ? error.message : t("createWebhookError"),
         );
       }
     } finally {
@@ -197,13 +201,11 @@ export function ChannelSettingsDialog({
     try {
       await navigator.clipboard.writeText(value);
       setCopied(kind);
-      toast.success("Скопировано в буфер обмена.");
+      toast.success(t("copiedToast"));
     } catch {
       target.current?.focus();
       target.current?.select();
-      toast.error(
-        "Не удалось скопировать. Текст выделен для ручного копирования.",
-      );
+      toast.error(t("copyFailedError"));
     }
   }
 
@@ -220,9 +222,9 @@ export function ChannelSettingsDialog({
         ),
       );
       setRevokeTarget(null);
-      toast.success("Webhook отозван.");
+      toast.success(t("webhookRevokedToast"));
     } catch {
-      toast.error("Не удалось отозвать webhook. Попробуйте снова.");
+      toast.error(t("revokeWebhookError"));
     } finally {
       setRevoking(false);
     }
@@ -233,16 +235,18 @@ export function ChannelSettingsDialog({
       <Dialog open onOpenChange={handleOpenChange}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Настройки канала #{channel.name}</DialogTitle>
+            <DialogTitle>
+              {t("settingsDialogTitle", { name: channel.name })}
+            </DialogTitle>
             <DialogDescription>
-              Управление каналом и входящими интеграциями.
+              {t("settingsDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="overview">
-            <TabsList variant="line" aria-label="Разделы настроек канала">
-              <TabsTrigger value="overview">Обзор</TabsTrigger>
-              <TabsTrigger value="webhooks">Вебхуки</TabsTrigger>
+            <TabsList variant="line" aria-label={t("settingsTabsLabel")}>
+              <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
+              <TabsTrigger value="webhooks">{t("webhooksTab")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 pt-3">
@@ -251,7 +255,7 @@ export function ChannelSettingsDialog({
                   #{channel.name}
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  Название канала видно всем участникам рабочего пространства.
+                  {t("channelVisibilityNote")}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -261,7 +265,7 @@ export function ChannelSettingsDialog({
                   onClick={() => onRename(channel)}
                 >
                   <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
-                  Переименовать
+                  {t("renameButton")}
                 </Button>
                 <Button
                   type="button"
@@ -269,7 +273,7 @@ export function ChannelSettingsDialog({
                   onClick={() => onDelete(channel)}
                 >
                   <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
-                  Удалить канал
+                  {t("deleteChannelAction")}
                 </Button>
               </div>
             </TabsContent>
@@ -277,24 +281,20 @@ export function ChannelSettingsDialog({
             <TabsContent value="webhooks" className="space-y-5 pt-3">
               <div>
                 <h3 className="font-heading font-medium text-foreground-900">
-                  Входящие вебхуки
+                  {t("incomingWebhooksTitle")}
                 </h3>
                 <p className="mt-1 text-muted-foreground">
-                  Внешние системы смогут публиковать сообщения только в этот
-                  канал.
+                  {t("incomingWebhooksDescription")}
                 </p>
               </div>
 
               {secret && (
                 <Alert variant="warning">
                   <AlertDescription className="space-y-3">
-                    <p className="font-medium">
-                      Скопируйте адрес сейчас — после закрытия окна он больше не
-                      будет показан.
-                    </p>
+                    <p className="font-medium">{t("oneTimeSecretWarning")}</p>
                     <div className="space-y-1.5">
                       <Label htmlFor={`${nameId}-url`} className="font-medium">
-                        URL webhook
+                        {t("urlLabel")}
                       </Label>
                       <Textarea
                         ref={urlRef}
@@ -315,12 +315,14 @@ export function ChannelSettingsDialog({
                         ) : (
                           <Icon name="ri-file-copy-line" aria-hidden />
                         )}
-                        {copied === "url" ? "URL скопирован" : "Копировать URL"}
+                        {copied === "url"
+                          ? t("urlCopiedButton")
+                          : t("copyUrlButton")}
                       </Button>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor={`${nameId}-curl`} className="font-medium">
-                        Готовая команда cURL
+                        {t("curlLabel")}
                       </Label>
                       <Textarea
                         ref={curlRef}
@@ -342,8 +344,8 @@ export function ChannelSettingsDialog({
                           <Icon name="ri-file-copy-line" aria-hidden />
                         )}
                         {copied === "curl"
-                          ? "cURL скопирован"
-                          : "Копировать cURL"}
+                          ? t("curlCopiedButton")
+                          : t("copyCurlButton")}
                       </Button>
                     </div>
                   </AlertDescription>
@@ -352,14 +354,16 @@ export function ChannelSettingsDialog({
 
               <form onSubmit={handleCreate} className="space-y-3" noValidate>
                 <Field data-invalid={!!nameError || undefined}>
-                  <FieldLabel htmlFor={nameId}>Название webhook</FieldLabel>
+                  <FieldLabel htmlFor={nameId}>
+                    {t("webhookNameLabel")}
+                  </FieldLabel>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       id={nameId}
                       value={name}
                       maxLength={80}
                       onChange={(event) => setName(event.target.value)}
-                      placeholder="например, CI pipeline"
+                      placeholder={t("webhookNamePlaceholder")}
                       aria-required="true"
                       aria-invalid={!!nameError || undefined}
                       aria-describedby={nameError ? nameErrorId : undefined}
@@ -372,12 +376,12 @@ export function ChannelSettingsDialog({
                       {creating ? (
                         <>
                           <Spinner aria-hidden />
-                          Создание…
+                          {t("creatingButton")}
                         </>
                       ) : (
                         <>
                           <Icon name="ri-add-line" aria-hidden />
-                          Создать webhook
+                          {t("createWebhookButton")}
                         </>
                       )}
                     </Button>
@@ -396,14 +400,14 @@ export function ChannelSettingsDialog({
                       size="sm"
                       onClick={() => void loadWebhooks()}
                     >
-                      Повторить
+                      {t("retryButton")}
                     </Button>
                   </AlertDescription>
                 </Alert>
               )}
 
               {loading ? (
-                <div className="space-y-2" aria-label="Загрузка вебхуков">
+                <div className="space-y-2" aria-label={t("loadingWebhooksLabel")}>
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -411,11 +415,11 @@ export function ChannelSettingsDialog({
                 <EmptyState
                   icon="ri-links-line"
                   size="sm"
-                  title="Вебхуков пока нет"
-                  description="Создайте webhook, чтобы внешняя система могла отправлять сообщения в этот канал."
+                  title={t("noWebhooksTitle")}
+                  description={t("noWebhooksDescription")}
                 />
               ) : (
-                <ul className="space-y-2" aria-label="Вебхуки канала">
+                <ul className="space-y-2" aria-label={t("webhooksListLabel")}>
                   {webhooks.map((webhook) => {
                     const revoked = webhook.revokedAt !== null;
                     return (
@@ -429,15 +433,22 @@ export function ChannelSettingsDialog({
                               {webhook.name}
                             </span>
                             <Badge variant={revoked ? "outline" : "success"}>
-                              {revoked ? "Отозван" : "Активен"}
+                              {revoked ? t("revokedBadge") : t("activeBadge")}
                             </Badge>
                           </div>
                           <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
-                            Префикс: {webhook.tokenPrefix}…
+                            {t("tokenPrefixLabel", {
+                              tokenPrefix: webhook.tokenPrefix,
+                            })}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Создан: {formatDate(webhook.createdAt)} · Последнее
-                            использование: {formatDate(webhook.lastUsedAt)}
+                            {t("createdUsedLabel", {
+                              createdAt: formatDate(webhook.createdAt, format),
+                              lastUsedAt: formatDate(
+                                webhook.lastUsedAt,
+                                format,
+                              ),
+                            })}
                           </p>
                         </div>
                         {!revoked && (
@@ -448,7 +459,7 @@ export function ChannelSettingsDialog({
                             className="shrink-0"
                             onClick={() => setRevokeTarget(webhook)}
                           >
-                            Отозвать
+                            {t("revokeButton")}
                           </Button>
                         )}
                       </li>
@@ -468,21 +479,20 @@ export function ChannelSettingsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Отозвать webhook «{revokeTarget?.name}»?
+              {t("revokeConfirmTitle", { name: revokeTarget?.name ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Все запросы с этим адресом будут немедленно отклонены. Это
-              действие нельзя отменить.
+              {t("revokeConfirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={revoking}
               onClick={handleRevoke}
             >
-              {revoking ? "Отзыв…" : "Отозвать"}
+              {revoking ? t("revokingButton") : t("revokeButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

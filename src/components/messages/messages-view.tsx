@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -55,6 +56,7 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 }
 
 function MessagesCoordinator() {
+  const t = useTranslations("messages");
   const [categories, setCategories] = useState<MessageCategoryDto[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -103,7 +105,7 @@ function MessagesCoordinator() {
         return data;
       })
       .catch(() => {
-        setCategoriesError("Не удалось загрузить каналы. Попробуйте снова.");
+        setCategoriesError(t("loadCategoriesError"));
         return [] as MessageCategoryDto[];
       })
       .finally(() => setCategoriesLoading(false));
@@ -111,7 +113,7 @@ function MessagesCoordinator() {
 
   useEffect(() => {
     void loadCategories();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!selectedChannelId) {
@@ -135,7 +137,7 @@ function MessagesCoordinator() {
         });
       } catch {
         if (!cancelled) {
-          setMessagesError("Не удалось загрузить сообщения. Попробуйте снова.");
+          setMessagesError(t("loadMessagesError"));
         }
       } finally {
         if (!cancelled) setMessagesLoading(false);
@@ -146,7 +148,7 @@ function MessagesCoordinator() {
     return () => {
       cancelled = true;
     };
-  }, [selectedChannelId, messagesReloadToken]);
+  }, [selectedChannelId, messagesReloadToken, t]);
 
   function toggleCategory(categoryId: string) {
     setCollapsedCategories((current) => {
@@ -201,7 +203,7 @@ function MessagesCoordinator() {
         });
       });
     } catch {
-      toast.error("Не удалось загрузить предыдущие сообщения.");
+      toast.error(t("loadPreviousError"));
     } finally {
       setLoadingPrevious(false);
     }
@@ -221,9 +223,7 @@ function MessagesCoordinator() {
         }
       });
     } catch {
-      toast.error(
-        "Сообщение отправлено, но ленту не удалось обновить. Повторите загрузку.",
-      );
+      toast.error(t("sendRefreshError"));
     }
   }
 
@@ -278,20 +278,20 @@ function MessagesCoordinator() {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
-          <PageHeader title="Сообщения" />
+          <PageHeader title={t("pageTitle")} />
         </div>
         <div className="flex flex-1 items-center justify-center p-6">
           <EmptyState
             bordered={false}
             tone="danger"
             icon="ri-error-warning-line"
-            title="Не удалось загрузить сообщения"
+            title={t("loadErrorTitle")}
             description={categoriesError}
             className="max-w-sm"
             action={
               <Button type="button" onClick={() => void loadCategories()}>
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-                Повторить
+                {t("retryButton")}
               </Button>
             }
           />
@@ -303,7 +303,7 @@ function MessagesCoordinator() {
   return (
     <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
-        <PageHeader title="Сообщения" />
+        <PageHeader title={t("pageTitle")} />
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -318,8 +318,8 @@ function MessagesCoordinator() {
                 bordered={false}
                 size="sm"
                 icon="ri-message-2-line"
-                title="Категорий пока нет"
-                description="Создайте категорию и канал, чтобы начать общение."
+                title={t("noCategoriesTitle")}
+                description={t("noCategoriesDescription")}
                 className="max-w-xs"
                 action={
                   <Button
@@ -328,7 +328,7 @@ function MessagesCoordinator() {
                     className="lg:hidden"
                     onClick={() => setMobileNavOpen(true)}
                   >
-                    Открыть каналы
+                    {t("openChannelsButton")}
                   </Button>
                 }
               />
@@ -370,7 +370,7 @@ function MessagesCoordinator() {
           className="w-72 max-w-[calc(100vw-2rem)] p-0 text-[var(--text-primary)] duration-0 data-ending-style:opacity-100 data-starting-style:opacity-100"
         >
           <SheetHeader className="border-b border-background-100">
-            <SheetTitle>Категории и каналы</SheetTitle>
+            <SheetTitle>{t("channelsSheetTitle")}</SheetTitle>
           </SheetHeader>
           <ChannelSidebar {...sidebarProps} />
         </SheetContent>
@@ -425,10 +425,11 @@ function MessagesCoordinator() {
 }
 
 function MessagesLoading() {
+  const t = useTranslations("messages");
   return (
     <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
-        <PageHeader title="Сообщения" />
+        <PageHeader title={t("pageTitle")} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">

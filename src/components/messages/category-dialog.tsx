@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export function CategoryDialog({
   onOpenChange,
   onSaved,
 }: CategoryDialogProps) {
+  const t = useTranslations("messages");
   const nameId = useId();
   const errorId = useId();
   const [name, setName] = useState("");
@@ -57,7 +59,7 @@ export function CategoryDialog({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Название категории обязательно.");
+      setError(t("categoryNameRequiredError"));
       return;
     }
 
@@ -66,10 +68,10 @@ export function CategoryDialog({
     try {
       if (state?.mode === "edit") {
         await messageCategoriesApi.rename(state.category.id, trimmed);
-        toast.success("Категория переименована.");
+        toast.success(t("categoryRenamedToast"));
       } else {
         await messageCategoriesApi.create(trimmed);
-        toast.success("Категория создана.");
+        toast.success(t("categoryCreatedToast"));
       }
       onSaved();
     } catch (err) {
@@ -77,9 +79,7 @@ export function CategoryDialog({
         setError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось сохранить категорию. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("saveCategoryError"),
         );
       }
     } finally {
@@ -92,7 +92,7 @@ export function CategoryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Переименовать категорию" : "Новая категория"}
+            {isEdit ? t("renameCategoryTitle") : t("newCategoryTitle")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -102,7 +102,7 @@ export function CategoryDialog({
         >
           <FieldGroup>
             <Field data-invalid={!!error || undefined}>
-              <FieldLabel htmlFor={nameId}>Название категории</FieldLabel>
+              <FieldLabel htmlFor={nameId}>{t("categoryNameLabel")}</FieldLabel>
               <Input
                 id={nameId}
                 value={name}
@@ -117,25 +117,25 @@ export function CategoryDialog({
           </FieldGroup>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting}>
               {isEdit ? (
                 submitting ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Сохранение…
+                    {t("savingButton")}
                   </>
                 ) : (
-                  "Сохранить"
+                  t("saveButton")
                 )
               ) : submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Создание…
+                  {t("creatingButton")}
                 </>
               ) : (
-                "Создать"
+                t("createButton")
               )}
             </Button>
           </DialogFooter>

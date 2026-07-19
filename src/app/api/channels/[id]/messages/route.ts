@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
@@ -31,8 +32,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const body = await request.json().catch(() => null);
   const content = typeof body?.content === "string" ? body.content.trim() : "";
   if (!content) {
+    const t = await getTranslations("messages");
     return jsonResponse(
-      { error: "Содержание сообщения не может быть пустым." },
+      { error: t("emptyMessageContentError") },
       { status: 400 },
     );
   }

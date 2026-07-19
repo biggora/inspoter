@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -28,6 +29,7 @@ export function DeleteChannelDialog({
   onOpenChange,
   onDeleted,
 }: DeleteChannelDialogProps) {
+  const t = useTranslations("messages");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirm() {
@@ -35,10 +37,10 @@ export function DeleteChannelDialog({
     setSubmitting(true);
     try {
       await channelsApi.remove(channel.id);
-      toast.success("Канал удалён.");
+      toast.success(t("channelDeletedToast"));
       onDeleted();
     } catch {
-      toast.error("Не удалось удалить канал. Попробуйте снова.");
+      toast.error(t("deleteChannelError"));
     } finally {
       setSubmitting(false);
     }
@@ -48,19 +50,21 @@ export function DeleteChannelDialog({
     <AlertDialog open={channel !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить #{channel?.name}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("deleteChannelTitle", { name: channel?.name ?? "" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Сообщения этого канала будут удалены. Это действие необратимо.
+            {t("deleteChannelDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Удаление…" : "Удалить канал"}
+            {submitting ? t("deletingButton") : t("deleteChannelAction")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

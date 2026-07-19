@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { ChannelDto } from "./api";
@@ -17,6 +19,7 @@ export function ChannelHeader({
   onOpenNavigation,
   onOpenSettings,
 }: ChannelHeaderProps) {
+  const t = useTranslations("messages");
   return (
     <header className="flex min-w-0 shrink-0 items-center gap-2 border-b border-background-100 px-3 py-2.5 sm:px-5 sm:py-3">
       <Button
@@ -24,7 +27,7 @@ export function ChannelHeader({
         variant="ghost"
         size="icon-sm"
         className="lg:hidden"
-        aria-label="Открыть каналы"
+        aria-label={t("openChannelsButton")}
         onClick={onOpenNavigation}
       >
         <Icon name="ri-menu-line" aria-hidden />
@@ -46,7 +49,7 @@ export function ChannelHeader({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label={`Настройки канала «${channel.name}»`}
+        aria-label={t("channelSettingsAriaLabel", { name: channel.name })}
         onClick={(event) => onOpenSettings(event.currentTarget)}
       >
         <Icon name="ri-settings-3-line" aria-hidden />
