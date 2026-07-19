@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,6 +65,7 @@ export function MailAccountDialog({
   existing,
   onSaved,
 }: MailAccountDialogProps) {
+  const t = useTranslations("settings");
   const isWebhook = existing?.kind === "WEBHOOK";
 
   // Rendered only while a dialog is open (see mail-accounts-view.tsx's
@@ -103,22 +105,22 @@ export function MailAccountDialog({
     errors: Record<string, string>;
   } {
     const nextErrors: Record<string, string> = {};
-    if (!name.trim()) nextErrors.name = "Название обязательно.";
-    if (!email.trim()) nextErrors.email = "Укажите e-mail.";
-    if (!imapHost.trim()) nextErrors.imapHost = "Укажите IMAP-сервер.";
-    if (!smtpHost.trim()) nextErrors.smtpHost = "Укажите SMTP-сервер.";
-    if (!username.trim()) nextErrors.username = "Логин обязателен.";
+    if (!name.trim()) nextErrors.name = t("nameRequiredError");
+    if (!email.trim()) nextErrors.email = t("emailRequiredError");
+    if (!imapHost.trim()) nextErrors.imapHost = t("imapHostRequiredError");
+    if (!smtpHost.trim()) nextErrors.smtpHost = t("smtpHostRequiredError");
+    if (!username.trim()) nextErrors.username = t("usernameRequiredError");
     if (opts.requirePassword && !password) {
-      nextErrors.password = "Пароль обязателен.";
+      nextErrors.password = t("passwordRequiredError");
     }
 
     const imapPortNumber = Number(imapPort);
     if (!Number.isInteger(imapPortNumber) || imapPortNumber < 1 || imapPortNumber > 65535) {
-      nextErrors.imapPort = "Порт должен быть в диапазоне 1–65535.";
+      nextErrors.imapPort = t("portRangeError");
     }
     const smtpPortNumber = Number(smtpPort);
     if (!Number.isInteger(smtpPortNumber) || smtpPortNumber < 1 || smtpPortNumber > 65535) {
-      nextErrors.smtpPort = "Порт должен быть в диапазоне 1–65535.";
+      nextErrors.smtpPort = t("portRangeError");
     }
 
     return {
@@ -145,8 +147,7 @@ export function MailAccountDialog({
     });
     if (Object.keys(validationErrors).length > 0) {
       if (mode === "edit" && validationErrors.password) {
-        validationErrors.password =
-          "Введите пароль, чтобы проверить подключение.";
+        validationErrors.password = t("enterPasswordToTestError");
       }
       setErrors(validationErrors);
       return;
@@ -159,9 +160,7 @@ export function MailAccountDialog({
     } catch (err) {
       setErrors({
         global:
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось проверить подключение. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("testConnectionError"),
       });
     } finally {
       setTesting(false);
@@ -174,22 +173,20 @@ export function MailAccountDialog({
     if (isWebhook) {
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setErrors({ name: "Название обязательно." });
+        setErrors({ name: t("nameRequiredError") });
         return;
       }
       setSubmitting(true);
       setErrors({});
       try {
         await mailAccountsApi.update(existing!.id, { name: trimmedName });
-        toast.success("Аккаунт сохранён.");
+        toast.success(t("accountSavedToast"));
         onOpenChange(false);
         onSaved();
       } catch (err) {
         setErrors({
           global:
-            err instanceof ApiError
-              ? err.message
-              : "Не удалось сохранить аккаунт. Попробуйте снова.",
+            err instanceof ApiError ? err.message : t("saveAccountError"),
         });
       } finally {
         setSubmitting(false);
@@ -216,7 +213,7 @@ export function MailAccountDialog({
           ...(password ? {} : { password: undefined }),
         });
       }
-      toast.success("Аккаунт сохранён.");
+      toast.success(t("accountSavedToast"));
       onOpenChange(false);
       onSaved();
     } catch (err) {
@@ -227,9 +224,7 @@ export function MailAccountDialog({
           ? err.fieldErrors
           : {
               global:
-                err instanceof ApiError
-                  ? err.message
-                  : "Не удалось сохранить аккаунт. Попробуйте снова.",
+                err instanceof ApiError ? err.message : t("saveAccountError"),
             },
       );
     } finally {
@@ -270,7 +265,7 @@ export function MailAccountDialog({
     const id = fieldId(field);
     return (
       <Field>
-        <FieldLabel htmlFor={id}>Защита</FieldLabel>
+        <FieldLabel htmlFor={id}>{t("securityLabel")}</FieldLabel>
         <Select
           value={value}
           onValueChange={(next) => setValue((next ?? "SSL") as MailSecurity)}
@@ -301,8 +296,8 @@ export function MailAccountDialog({
         <DialogHeader>
           <DialogTitle>
             {mode === "create"
-              ? "Добавить аккаунт"
-              : `Изменить «${existing?.name}»`}
+              ? t("addAccountTitle")
+              : t("editAccountTitle", { name: existing?.name ?? "" })}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -311,30 +306,34 @@ export function MailAccountDialog({
           className="flex flex-col gap-4"
         >
           <FieldGroup>
-            {renderTextField("name", "Название", name, setName, {
-              placeholder: 'например, "Рабочая почта"',
+            {renderTextField("name", t("nameLabel"), name, setName, {
+              placeholder: t("accountNamePlaceholder"),
               autoFocus: true,
             })}
 
             {!isWebhook && (
               <>
-                {renderTextField("email", "E-mail", email, setEmail, {
+                {renderTextField("email", t("emailLabel"), email, setEmail, {
                   type: "email",
-                  placeholder: "user@example.ru",
+                  placeholder: t("emailPlaceholder"),
                   autoComplete: "off",
                 })}
 
                 <div className="grid grid-cols-[1fr_6rem_8rem] gap-2">
                   {renderTextField(
                     "imapHost",
-                    "IMAP-сервер",
+                    t("imapHostLabel"),
                     imapHost,
                     setImapHost,
-                    { placeholder: "imap.example.ru" },
+                    { placeholder: t("imapHostPlaceholder") },
                   )}
-                  {renderTextField("imapPort", "Порт", imapPort, setImapPort, {
-                    inputMode: "numeric",
-                  })}
+                  {renderTextField(
+                    "imapPort",
+                    t("portLabel"),
+                    imapPort,
+                    setImapPort,
+                    { inputMode: "numeric" },
+                  )}
                   {renderSecurityField(
                     "imapSecurity",
                     imapSecurity,
@@ -345,14 +344,18 @@ export function MailAccountDialog({
                 <div className="grid grid-cols-[1fr_6rem_8rem] gap-2">
                   {renderTextField(
                     "smtpHost",
-                    "SMTP-сервер",
+                    t("smtpHostLabel"),
                     smtpHost,
                     setSmtpHost,
-                    { placeholder: "smtp.example.ru" },
+                    { placeholder: t("smtpHostPlaceholder") },
                   )}
-                  {renderTextField("smtpPort", "Порт", smtpPort, setSmtpPort, {
-                    inputMode: "numeric",
-                  })}
+                  {renderTextField(
+                    "smtpPort",
+                    t("portLabel"),
+                    smtpPort,
+                    setSmtpPort,
+                    { inputMode: "numeric" },
+                  )}
                   {renderSecurityField(
                     "smtpSecurity",
                     smtpSecurity,
@@ -360,12 +363,18 @@ export function MailAccountDialog({
                   )}
                 </div>
 
-                {renderTextField("username", "Логин", username, setUsername, {
-                  autoComplete: "off",
-                })}
+                {renderTextField(
+                  "username",
+                  t("usernameLabel"),
+                  username,
+                  setUsername,
+                  { autoComplete: "off" },
+                )}
 
                 <Field data-invalid={!!errors.password || undefined}>
-                  <FieldLabel htmlFor={fieldId("password")}>Пароль</FieldLabel>
+                  <FieldLabel htmlFor={fieldId("password")}>
+                    {t("passwordLabel")}
+                  </FieldLabel>
                   <Input
                     id={fieldId("password")}
                     type="password"
@@ -373,7 +382,7 @@ export function MailAccountDialog({
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder={
                       mode === "edit"
-                        ? "Оставьте пустым, чтобы не менять"
+                        ? t("passwordEditPlaceholder")
                         : undefined
                     }
                     autoComplete="off"
@@ -385,7 +394,7 @@ export function MailAccountDialog({
                     }
                   />
                   <FieldDescription>
-                    Используйте пароль приложения, а не основной пароль почты.
+                    {t("passwordDescription")}
                   </FieldDescription>
                   <FieldError id={`${fieldId("password")}-error`}>
                     {errors.password}
@@ -411,7 +420,7 @@ export function MailAccountDialog({
                     aria-hidden
                     className="text-base shrink-0"
                   />
-                  Подключение успешно.
+                  {t("connectionSuccess")}
                 </>
               ) : (
                 <>
@@ -422,8 +431,8 @@ export function MailAccountDialog({
                   />
                   {testResult.error ??
                     (testResult.imapOk
-                      ? "Не удалось подключиться к SMTP-серверу."
-                      : "Не удалось подключиться к IMAP-серверу.")}
+                      ? t("smtpConnectionError")
+                      : t("imapConnectionError"))}
                 </>
               )}
             </p>
@@ -446,24 +455,24 @@ export function MailAccountDialog({
                 {testing ? (
                   <>
                     <Spinner data-icon="inline-start" aria-hidden />
-                    Проверка…
+                    {t("testingLabel")}
                   </>
                 ) : (
-                  "Проверить подключение"
+                  t("testConnectionButton")
                 )}
               </Button>
             )}
             <DialogClose render={<Button variant="outline" type="button" />}>
-              Отмена
+              {t("cancelButton")}
             </DialogClose>
             <Button type="submit" disabled={submitting || testing}>
               {submitting ? (
                 <>
                   <Spinner data-icon="inline-start" aria-hidden />
-                  Сохранение…
+                  {t("savingLabel")}
                 </>
               ) : (
-                "Сохранить"
+                t("saveButton")
               )}
             </Button>
           </DialogFooter>

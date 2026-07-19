@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -68,6 +69,7 @@ function formatDate(iso: string | null): string {
 // AC-WH-008/009). Client-fetched (no server-component data hand-off) since
 // the raw secret must never round-trip through a server-rendered prop.
 export function WebhookTokensView() {
+  const t = useTranslations("settings");
   const [tokens, setTokens] = useState<WebhookTokenDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +103,7 @@ export function WebhookTokensView() {
         setTokens(data);
         setError(null);
       })
-      .catch(() =>
-        setError("Не удалось загрузить webhook-токены. Попробуйте снова."),
-      )
+      .catch(() => setError(t("loadWebhookTokensError")))
       .finally(() => setLoading(false));
   }
 
@@ -126,7 +126,7 @@ export function WebhookTokensView() {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setNameError("Название обязательно.");
+      setNameError(t("nameRequiredError"));
       return;
     }
     setSubmitting(true);
@@ -134,15 +134,13 @@ export function WebhookTokensView() {
     try {
       const created = await webhookTokensApi.create(trimmed);
       setCreatedToken(created);
-      toast.success("Webhook-токен создан.");
+      toast.success(t("tokenCreatedToast"));
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setNameError(err.fieldErrors.name);
       } else {
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Не удалось создать webhook-токен. Попробуйте снова.",
+          err instanceof ApiError ? err.message : t("createTokenError"),
         );
       }
     } finally {
@@ -155,9 +153,9 @@ export function WebhookTokensView() {
     try {
       await navigator.clipboard.writeText(createdToken.token);
       setCopied(true);
-      toast.success("Скопировано в буфер обмена.");
+      toast.success(t("copiedToClipboardToast"));
     } catch {
-      toast.error("Не удалось скопировать. Скопируйте токен вручную.");
+      toast.error(t("copyFailedError"));
     }
   }
 
@@ -166,11 +164,11 @@ export function WebhookTokensView() {
     setRevoking(true);
     try {
       await webhookTokensApi.revoke(revokeTarget.id);
-      toast.success("Webhook-токен отозван.");
+      toast.success(t("tokenRevokedToast"));
       setRevokeTarget(null);
       load();
     } catch {
-      toast.error("Не удалось отозвать webhook-токен. Попробуйте снова.");
+      toast.error(t("revokeTokenError"));
     } finally {
       setRevoking(false);
     }
@@ -179,12 +177,12 @@ export function WebhookTokensView() {
   return (
     <PageBody>
       <PageHeader
-        title="Webhook-токены"
-        back={{ href: "/settings", label: "Назад к настройкам" }}
+        title={t("webhookTokensTitle")}
+        back={{ href: "/settings", label: t("backToSettings") }}
         actions={
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Новый токен
+            {t("newTokenButton")}
           </Button>
         }
       />
@@ -204,19 +202,19 @@ export function WebhookTokensView() {
       ) : tokens.length === 0 ? (
         <EmptyState
           icon="ri-links-line"
-          title="Нет токенов"
-          description="Webhook-токенов пока нет. Создайте токен, чтобы внешние системы могли отправлять почту, сообщения, логи и оповещения в это рабочее пространство."
+          title={t("emptyTokensTitle")}
+          description={t("emptyTokensDescription")}
         />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Название</TableHead>
-              <TableHead>Префикс</TableHead>
-              <TableHead>Создан</TableHead>
-              <TableHead>Последнее использование</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead>{t("nameHeader")}</TableHead>
+              <TableHead>{t("prefixHeader")}</TableHead>
+              <TableHead>{t("createdHeader")}</TableHead>
+              <TableHead>{t("lastUsedHeader")}</TableHead>
+              <TableHead>{t("statusHeader")}</TableHead>
+              <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -244,7 +242,7 @@ export function WebhookTokensView() {
                           : "bg-(--success-bg) text-(--success-text)",
                       )}
                     >
-                      {isRevoked ? "Отозван" : "Активен"}
+                      {isRevoked ? t("statusRevoked") : t("statusActive")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -254,7 +252,7 @@ export function WebhookTokensView() {
                         size="sm"
                         onClick={() => setRevokeTarget(token)}
                       >
-                        Отозвать
+                        {t("revokeButton")}
                       </Button>
                     )}
                   </TableCell>
@@ -270,7 +268,7 @@ export function WebhookTokensView() {
           {!createdToken ? (
             <>
               <DialogHeader>
-                <DialogTitle>Новый webhook-токен</DialogTitle>
+                <DialogTitle>{t("newWebhookTokenTitle")}</DialogTitle>
               </DialogHeader>
               <form
                 onSubmit={handleCreateSubmit}
@@ -279,12 +277,12 @@ export function WebhookTokensView() {
               >
                 <FieldGroup>
                   <Field data-invalid={!!nameError || undefined}>
-                    <FieldLabel htmlFor={nameId}>Название</FieldLabel>
+                    <FieldLabel htmlFor={nameId}>{t("nameLabel")}</FieldLabel>
                     <Input
                       id={nameId}
                       value={name}
                       onChange={(event) => setName(event.target.value)}
-                      placeholder='например, "CI pipeline"'
+                      placeholder={t("tokenNamePlaceholder")}
                       aria-required="true"
                       aria-invalid={!!nameError || undefined}
                       aria-describedby={nameError ? nameErrorId : undefined}
@@ -297,16 +295,16 @@ export function WebhookTokensView() {
                   <DialogClose
                     render={<Button variant="outline" type="button" />}
                   >
-                    Отмена
+                    {t("cancelButton")}
                   </DialogClose>
                   <Button type="submit" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Spinner data-icon="inline-start" aria-hidden />
-                        Создание…
+                        {t("creatingLabel")}
                       </>
                     ) : (
-                      "Создать"
+                      t("createButton")
                     )}
                   </Button>
                 </DialogFooter>
@@ -315,11 +313,11 @@ export function WebhookTokensView() {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Токен создан</DialogTitle>
+                <DialogTitle>{t("tokenCreatedTitle")}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-medium text-(--warning-text)">
-                  Скопируйте этот токен сейчас — он больше не будет показан.
+                  {t("copyTokenWarning")}
                 </p>
                 <div className="rounded-md border border-border bg-(--bg-sunken) p-3">
                   <code className="block break-all font-mono text-sm text-foreground">
@@ -338,12 +336,12 @@ export function WebhookTokensView() {
                   ) : (
                     <Icon name="ri-file-copy-line" aria-hidden className="text-base" />
                   )}
-                  {copied ? "Скопировано" : "Копировать"}
+                  {copied ? t("copiedLabel") : t("copyButton")}
                 </Button>
               </div>
               <DialogFooter>
                 <DialogClose render={<Button type="button" />}>
-                  Готово
+                  {t("doneButton")}
                 </DialogClose>
               </DialogFooter>
             </>
@@ -358,21 +356,20 @@ export function WebhookTokensView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Отозвать «{revokeTarget?.name}»?
+              {t("revokeConfirmTitle", { name: revokeTarget?.name ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Все запросы с этим токеном будут немедленно отклонены. Это
-              действие нельзя отменить.
+              {t("revokeConfirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleRevokeConfirm}
               disabled={revoking}
             >
-              {revoking ? "Отзыв…" : "Отозвать"}
+              {revoking ? t("revokingLabel") : t("revokeButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
