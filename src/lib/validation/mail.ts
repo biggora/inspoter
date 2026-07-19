@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { VALIDATION_RU } from "@/lib/validation/error-map";
 
 // Zod schemas for the mail accounts API (plan §4) — single source of input
 // validation, shared by the /api/mail/accounts route handlers. Messages are
@@ -12,35 +13,42 @@ const HOSTNAME_REGEX =
 const hostSchema = z
   .string()
   .trim()
-  .min(1, "Укажите адрес сервера")
-  .max(253, "Адрес сервера слишком длинный")
-  .regex(HOSTNAME_REGEX, "Укажите корректное имя хоста или IP-адрес");
+  .min(1, { error: () => VALIDATION_RU.mailAccount.hostRequired })
+  .max(253, { error: () => VALIDATION_RU.mailAccount.hostTooLong })
+  .regex(HOSTNAME_REGEX, {
+    error: () => VALIDATION_RU.mailAccount.hostInvalidFormat,
+  });
 
 const portSchema = z
-  .number("Порт должен быть числом")
-  .int("Порт должен быть целым числом")
-  .min(1, "Порт должен быть в диапазоне 1–65535")
-  .max(65535, "Порт должен быть в диапазоне 1–65535");
+  .number({ error: () => VALIDATION_RU.mailAccount.portMustBeNumber })
+  .int({ error: () => VALIDATION_RU.mailAccount.portMustBeInteger })
+  .min(1, { error: () => VALIDATION_RU.mailAccount.portOutOfRange })
+  .max(65535, { error: () => VALIDATION_RU.mailAccount.portOutOfRange });
 
 const securitySchema = z.enum(["SSL", "STARTTLS"], {
-  message: "Допустимые значения защиты: SSL или STARTTLS",
+  error: () => VALIDATION_RU.mailAccount.invalidSecurity,
 });
 
 export const createMailAccountSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Название обязательно")
-    .max(100, "Название не должно превышать 100 символов"),
-  email: z.email("Укажите корректный e-mail"),
+    .min(1, { error: () => VALIDATION_RU.mailAccount.nameRequired })
+    .max(100, { error: () => VALIDATION_RU.mailAccount.nameTooLong }),
+  email: z.email({ error: () => VALIDATION_RU.mailAccount.emailInvalid }),
   imapHost: hostSchema,
   imapPort: portSchema.default(993),
   imapSecurity: securitySchema.default("SSL"),
   smtpHost: hostSchema,
   smtpPort: portSchema.default(465),
   smtpSecurity: securitySchema.default("SSL"),
-  username: z.string().trim().min(1, "Логин обязателен"),
-  password: z.string().min(1, "Пароль обязателен"),
+  username: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.mailAccount.usernameRequired }),
+  password: z
+    .string()
+    .min(1, { error: () => VALIDATION_RU.mailAccount.passwordRequired }),
   mode: z.enum(["MOCK", "REAL"]).default("REAL"),
 });
 
@@ -52,17 +60,23 @@ export const updateMailAccountSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Название обязательно")
-    .max(100, "Название не должно превышать 100 символов")
+    .min(1, { error: () => VALIDATION_RU.mailAccount.nameRequired })
+    .max(100, { error: () => VALIDATION_RU.mailAccount.nameTooLong })
     .optional(),
-  email: z.email("Укажите корректный e-mail").optional(),
+  email: z
+    .email({ error: () => VALIDATION_RU.mailAccount.emailInvalid })
+    .optional(),
   imapHost: hostSchema.optional(),
   imapPort: portSchema.optional(),
   imapSecurity: securitySchema.optional(),
   smtpHost: hostSchema.optional(),
   smtpPort: portSchema.optional(),
   smtpSecurity: securitySchema.optional(),
-  username: z.string().trim().min(1, "Логин обязателен").optional(),
+  username: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.mailAccount.usernameRequired })
+    .optional(),
   password: z.string().optional(),
 });
 
@@ -77,34 +91,42 @@ export type TestMailAccountInput = z.infer<typeof testMailAccountSchema>;
 // --- Mail item actions + send (plan §4, Phase 6) ---
 
 export const patchMailItemSchema = z.object({
-  isRead: z.boolean("isRead должен быть булевым значением"),
+  isRead: z.boolean({
+    error: () => VALIDATION_RU.mailItem.isReadMustBeBoolean,
+  }),
 });
 
 export type PatchMailItemInput = z.infer<typeof patchMailItemSchema>;
 
 export const moveMailItemSchema = z.object({
-  targetFolderId: z.string().min(1, "Укажите папку назначения"),
+  targetFolderId: z
+    .string()
+    .min(1, { error: () => VALIDATION_RU.mailItem.targetFolderRequired }),
 });
 
 export type MoveMailItemInput = z.infer<typeof moveMailItemSchema>;
 
 const recipientListSchema = z
-  .array(z.email("Укажите корректный e-mail"))
-  .max(50, "Не более 50 адресов");
+  .array(z.email({ error: () => VALIDATION_RU.mailSend.recipientEmailInvalid }))
+  .max(50, { error: () => VALIDATION_RU.mailSend.tooManyRecipients });
 
 export const sendMailSchema = z.object({
-  accountId: z.string().min(1, "Укажите аккаунт"),
-  to: recipientListSchema.min(1, "Укажите хотя бы одного получателя"),
+  accountId: z
+    .string()
+    .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
+  to: recipientListSchema.min(1, {
+    error: () => VALIDATION_RU.mailSend.atLeastOneRecipientRequired,
+  }),
   cc: recipientListSchema.default([]),
   bcc: recipientListSchema.default([]),
   subject: z
     .string()
-    .min(1, "Тема обязательна")
-    .max(500, "Тема не должна превышать 500 символов"),
+    .min(1, { error: () => VALIDATION_RU.mailSend.subjectRequired })
+    .max(500, { error: () => VALIDATION_RU.mailSend.subjectTooLong }),
   body: z
     .string()
-    .min(1, "Текст письма обязателен")
-    .max(500_000, "Текст письма не должен превышать 500 000 символов"),
+    .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
+    .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
   inReplyToId: z.string().optional(),
 });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MonitorType } from "@/generated/prisma/client";
+import { VALIDATION_RU } from "@/lib/validation/error-map";
 
 // Zod schemas — single source of input validation for Services (Uptime
 // Kuma-style monitoring), shared by the /api/services route handlers.
@@ -8,12 +9,13 @@ import { MonitorType } from "@/generated/prisma/client";
 // create (mirrors src/lib/validation/credentials.ts's per-provider
 // discriminated union) and via superRefine on update (partial payload —
 // type-specific fields are only required when monitorType itself is being
-// changed in the same request).
+// changed in the same request). Messages are Russian because they surface
+// directly as fieldErrors in the service form dialog.
 
 const httpUrlSchema = z
   .string()
   .trim()
-  .min(1, "URL is required")
+  .min(1, { error: () => VALIDATION_RU.service.urlRequired })
   .refine(
     (value) => {
       try {
@@ -23,16 +25,19 @@ const httpUrlSchema = z
         return false;
       }
     },
-    { message: "URL must be a valid http(s) URL" },
+    { error: () => VALIDATION_RU.service.urlInvalidFormat },
   );
 
-const hostSchema = z.string().trim().min(1, "Host is required");
+const hostSchema = z
+  .string()
+  .trim()
+  .min(1, { error: () => VALIDATION_RU.service.hostRequired });
 
 const portSchema = z.coerce
   .number()
   .int()
-  .min(1, "Port must be between 1 and 65535")
-  .max(65535, "Port must be between 1 and 65535");
+  .min(1, { error: () => VALIDATION_RU.service.portOutOfRange })
+  .max(65535, { error: () => VALIDATION_RU.service.portOutOfRange });
 
 // e.g. "200-299" or a list of ranges/codes "200,204,301-399" — the default
 // ("200-299") is applied at the service layer, not enforced here.
@@ -40,31 +45,33 @@ const expectedStatusCodesSchema = z
   .string()
   .trim()
   .min(1)
-  .regex(
-    /^\d{3}(-\d{3})?(,\d{3}(-\d{3})?)*$/,
-    "Must be a comma-separated list of 3-digit codes or ranges, e.g. 200-299",
-  );
+  .regex(/^\d{3}(-\d{3})?(,\d{3}(-\d{3})?)*$/, {
+    error: () => VALIDATION_RU.service.statusCodesInvalidFormat,
+  });
 
 const intervalSecondsSchema = z.coerce
   .number()
   .int()
-  .min(10, "Interval must be at least 10 seconds")
-  .max(86400, "Interval must be at most 86400 seconds");
+  .min(10, { error: () => VALIDATION_RU.service.intervalTooSmall })
+  .max(86400, { error: () => VALIDATION_RU.service.intervalTooBig });
 
 const timeoutMsSchema = z.coerce
   .number()
   .int()
-  .min(1000, "Timeout must be at least 1000ms")
-  .max(30000, "Timeout must be at most 30000ms");
+  .min(1000, { error: () => VALIDATION_RU.service.timeoutTooSmall })
+  .max(30000, { error: () => VALIDATION_RU.service.timeoutTooBig });
 
 const retriesSchema = z.coerce
   .number()
   .int()
-  .min(1, "Retries must be at least 1")
-  .max(10, "Retries must be at most 10");
+  .min(1, { error: () => VALIDATION_RU.service.retriesTooSmall })
+  .max(10, { error: () => VALIDATION_RU.service.retriesTooBig });
 
 const commonFields = {
-  name: z.string().trim().min(1, "Name is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, { error: () => VALIDATION_RU.service.nameRequired }),
   description: z.string().trim().min(1).optional().nullable(),
   intervalSeconds: intervalSecondsSchema.optional(),
   timeoutMs: timeoutMsSchema.optional(),
@@ -107,7 +114,7 @@ export const serviceUpdateSchema = z
     if (data.monitorType === MonitorType.HTTP && !data.url) {
       ctx.addIssue({
         code: "custom",
-        message: "url is required for HTTP monitors",
+        message: VALIDATION_RU.service.urlRequiredForHttp,
         path: ["url"],
       });
     }
@@ -115,14 +122,14 @@ export const serviceUpdateSchema = z
       if (!data.host) {
         ctx.addIssue({
           code: "custom",
-          message: "host is required for TCP monitors",
+          message: VALIDATION_RU.service.hostRequiredForTcp,
           path: ["host"],
         });
       }
       if (!data.port) {
         ctx.addIssue({
           code: "custom",
-          message: "port is required for TCP monitors",
+          message: VALIDATION_RU.service.portRequiredForTcp,
           path: ["port"],
         });
       }
@@ -130,7 +137,7 @@ export const serviceUpdateSchema = z
     if (data.monitorType === MonitorType.PING && !data.host) {
       ctx.addIssue({
         code: "custom",
-        message: "host is required for PING monitors",
+        message: VALIDATION_RU.service.hostRequiredForPing,
         path: ["host"],
       });
     }
