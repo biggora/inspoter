@@ -63,7 +63,7 @@ export function ChannelSidebar({
             align="start"
             bordered={false}
             description={t("noCategoriesSidebarText")}
-            className="px-2 py-4"
+            className="py-4 pr-2 pl-[26px]"
           />
         ) : (
           categories.map((category) => {
@@ -71,7 +71,7 @@ export function ChannelSidebar({
             const channelListId = `${instanceId}-${category.id}-channels`;
             return (
               <div key={category.id} className="group/category">
-                <div className="flex items-center gap-1 px-2 py-1.5">
+                <div className="flex items-center gap-1 py-1.5">
                   <Button
                     type="button"
                     variant="ghost"
@@ -85,7 +85,7 @@ export function ChannelSidebar({
                       name="ri-arrow-down-s-line"
                       data-icon="inline-start"
                       className={cn(
-                        "text-foreground-400 transition-transform",
+                        "w-4 shrink-0 text-foreground-400 transition-transform",
                         isCollapsed && "-rotate-90",
                       )}
                       aria-hidden
@@ -94,7 +94,7 @@ export function ChannelSidebar({
                       {category.name}
                     </span>
                   </Button>
-                  <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity group-hover/category:opacity-100 group-focus-within/category:opacity-100 lg:opacity-0">
+                  <div className="flex shrink-0 items-center gap-0.5 rounded-[var(--radius-lg)] bg-background-100 p-0.5 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/category:opacity-100 lg:group-focus-within/category:opacity-100">
                     <Button
                       type="button"
                       variant="ghost"
@@ -145,7 +145,7 @@ export function ChannelSidebar({
                       align="start"
                       bordered={false}
                       description={t("noChannelsText")}
-                      className="px-3 py-1"
+                      className="py-1 pr-2 pl-[26px]"
                     />
                   ) : (
                     category.channels.map((channel) => (
@@ -170,7 +170,11 @@ export function ChannelSidebar({
                           }
                           className="min-w-0 flex-1 justify-start"
                         >
-                          <span className="shrink-0 text-base font-medium text-foreground-400">
+                          <span
+                            data-icon="inline-start"
+                            aria-hidden
+                            className="inline-flex w-4 shrink-0 items-center justify-center text-base font-medium text-foreground-400"
+                          >
                             #
                           </span>
                           <span className="truncate">{channel.name}</span>
@@ -182,7 +186,7 @@ export function ChannelSidebar({
                                 type="button"
                                 variant="ghost"
                                 size="icon-xs"
-                                className="mr-1 opacity-100 transition-opacity group-hover/channel:opacity-100 group-focus-within/channel:opacity-100 lg:opacity-0"
+                                className="mr-1 bg-background-100 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/channel:opacity-100 lg:group-focus-within/channel:opacity-100"
                                 aria-label={t("channelActionsLabel", {
                                   name: channel.name,
                                 })}
