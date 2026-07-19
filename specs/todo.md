@@ -1,9 +1,11 @@
 
-Добавить новый раздел хостинги  - hostinger https://developers.hostinger.com/#description/introduction
+Добавить новый раздел хостинги - hostinger https://developers.hostinger.com/#description/introduction
 
-добавить возможность настройки исходящих верхуков.
+Добавить раздел напоминания (подписки, регулярные платежи и так далее)
 
-добавить раздел заметки
+Добавить возможность настройки исходящих вебхуков.
+
+Добавить раздел заметки
 
 
 commit and merge to main
