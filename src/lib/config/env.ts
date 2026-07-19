@@ -41,7 +41,14 @@ const envSchema = z
       .positive()
       .default(3_600_000),
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
-    OPERATOR_PASSWORD_HASH: z.string().min(1).optional(),
+    // Preprocessed so an explicitly blanked "" (scripts/test-env.mjs blanks
+    // this in test child environments to stop prisma.config.ts's dotenv
+    // import from leaking a developer's real .env value into test seeding)
+    // is treated the same as "not set", not as an invalid value.
+    OPERATOR_PASSWORD_HASH: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().min(1).optional(),
+    ),
     OPERATOR_PASSWORD: z.string().min(1).optional(),
     // --- Authentik SSO (third-party auth, optional — absent = disabled) ---
     AUTHENTIK_ISSUER: z.string().url().optional(),

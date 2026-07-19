@@ -28,6 +28,16 @@ const PROVIDER_CREDENTIAL_KEYS = [
   "HCLOUD_TOKEN",
 ];
 
+// .env.test.example intentionally omits OPERATOR_PASSWORD_HASH (tests seed
+// via OPERATOR_PASSWORD instead), so unlike the other TEST_ENV_KEYS it is
+// never "already set" by the time prisma.config.ts's dotenv import runs
+// inside the seed child process — leaving it open to being silently filled
+// from the developer's real .env (see .env.example's OPERATOR_PASSWORD_HASH).
+const DOTENV_LEAK_GUARD_KEYS = [
+  ...PROVIDER_CREDENTIAL_KEYS,
+  "OPERATOR_PASSWORD_HASH",
+];
+
 function readKnownValues(path) {
   if (!existsSync(path)) {
     return {};
@@ -61,12 +71,14 @@ export function loadTestEnvironment({
 }
 
 /**
- * Provider variables are explicitly blanked in child processes so Prisma's
- * dotenv loading cannot import real provider credentials from developer .env.
+ * These variables are explicitly blanked in child processes so Prisma's
+ * dotenv loading (prisma.config.ts's unconditional `import "dotenv/config"`)
+ * cannot import real provider credentials or the developer's operator
+ * password hash from their local .env.
  */
 export function createTestChildEnvironment(environment) {
   const childEnvironment = { ...environment };
-  for (const key of PROVIDER_CREDENTIAL_KEYS) {
+  for (const key of DOTENV_LEAK_GUARD_KEYS) {
     childEnvironment[key] = "";
   }
   return childEnvironment;
