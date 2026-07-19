@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { renderWithIntl } from "../../test-utils";
 import { ServersView } from "@/components/servers/servers-view";
 
 const apiMocks = vi.hoisted(() => ({
@@ -56,7 +57,7 @@ describe("ServersView destructive actions", () => {
 
   it("opens the create-provider dialog from the header and reloads after save", async () => {
     const user = userEvent.setup();
-    render(<ServersView />);
+    renderWithIntl(<ServersView />);
 
     const addProvider = await screen.findByRole("button", {
       name: "Добавить провайдера",

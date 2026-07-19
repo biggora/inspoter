@@ -4,6 +4,7 @@ import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslations } from "next-intl";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -162,6 +163,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const t = useTranslations("ui");
 
   if (collapsible === "none") {
     return (
@@ -195,10 +197,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Боковая панель</SheetTitle>
-            <SheetDescription>
-              Отображает мобильную боковую панель.
-            </SheetDescription>
+            <SheetTitle>{t("sidebarTitle")}</SheetTitle>
+            <SheetDescription>{t("sidebarDescription")}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -258,6 +258,7 @@ function SidebarTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();
+  const t = useTranslations("ui");
 
   return (
     <Button
@@ -273,22 +274,23 @@ function SidebarTrigger({
       {...props}
     >
       <i className="ri-menu-line" aria-hidden="true" />
-      <span className="sr-only">Переключить боковую панель</span>
+      <span className="sr-only">{t("sidebarToggle")}</span>
     </Button>
   );
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar();
+  const t = useTranslations("ui");
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Переключить боковую панель"
+      aria-label={t("sidebarToggle")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Переключить боковую панель"
+      title={t("sidebarToggle")}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
