@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,6 +30,7 @@ export function DeleteServiceDialog({
   onOpenChange,
   onDeleted,
 }: DeleteServiceDialogProps) {
+  const t = useTranslations("services");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirm() {
@@ -36,10 +38,10 @@ export function DeleteServiceDialog({
     setSubmitting(true);
     try {
       await servicesApi.remove(service.id);
-      toast.success("Сервис удалён.");
+      toast.success(t("deleteSuccessToast"));
       onDeleted();
     } catch {
-      toast.error("Не удалось удалить сервис. Попробуйте снова.");
+      toast.error(t("deleteErrorToast"));
     } finally {
       setSubmitting(false);
     }
@@ -49,20 +51,21 @@ export function DeleteServiceDialog({
     <AlertDialog open={service !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Удалить «{service?.name}»?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("deleteConfirmTitle", { name: service?.name ?? "" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Сервис и вся история его проверок будут удалены без возможности
-            восстановления.
+            {t("deleteConfirmDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Удаление…" : "Удалить"}
+            {submitting ? t("deletingLabel") : t("deleteButton")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

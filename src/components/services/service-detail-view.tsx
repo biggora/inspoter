@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageBody } from "@/components/shell/page-body";
@@ -27,7 +28,7 @@ import {
   formatRelativeTime,
   formatResponseTime,
   formatTarget,
-  MONITOR_TYPE_LABELS,
+  getMonitorTypeLabel,
 } from "./format";
 import {
   ServiceFormDialog,
@@ -49,6 +50,8 @@ export function ServiceDetailView({
 }: {
   initialService: Service;
 }) {
+  const t = useTranslations("services");
+  const format = useFormatter();
   const router = useRouter();
   const service = initialService;
 
@@ -75,11 +78,11 @@ export function ServiceDetailView({
       setChecks(result.items);
       setNextCursor(result.nextCursor);
     } catch {
-      setChecksError("Не удалось загрузить историю проверок.");
+      setChecksError(t("loadChecksError"));
     } finally {
       setLoadingChecks(false);
     }
-  }, [service.id]);
+  }, [service.id, t]);
 
   // Data fetch runs from a locally-defined async function rather than
   // directly in the effect body, so the loading/error resets aren't flagged
@@ -98,8 +101,7 @@ export function ServiceDetailView({
         setChecks(result.items);
         setNextCursor(result.nextCursor);
       } catch {
-        if (!cancelled)
-          setChecksError("Не удалось загрузить историю проверок.");
+        if (!cancelled) setChecksError(t("loadChecksError"));
       } finally {
         if (!cancelled) setLoadingChecks(false);
       }
@@ -108,7 +110,7 @@ export function ServiceDetailView({
     return () => {
       cancelled = true;
     };
-  }, [service.id]);
+  }, [service.id, t]);
 
   // Same ~10s polling as ServicesView, paused while the tab is hidden.
   // Resets the checks list back to its first page on every tick — a
@@ -136,7 +138,7 @@ export function ServiceDetailView({
       setChecks((prev) => [...prev, ...result.items]);
       setNextCursor(result.nextCursor);
     } catch {
-      setChecksError("Не удалось загрузить историю проверок.");
+      setChecksError(t("loadChecksError"));
     } finally {
       setLoadingMore(false);
     }
@@ -150,9 +152,7 @@ export function ServiceDetailView({
       router.refresh();
       loadFirstPage();
     } catch (err) {
-      setCheckError(
-        err instanceof Error ? err.message : "Не удалось выполнить проверку",
-      );
+      setCheckError(err instanceof Error ? err.message : t("checkNowError"));
     } finally {
       setChecking(false);
     }
@@ -163,7 +163,7 @@ export function ServiceDetailView({
   return (
     <PageBody>
       <PageHeader
-        back={{ href: "/services", label: "Назад к сервисам" }}
+        back={{ href: "/services", label: t("backToServices") }}
         title={service.name}
         description={service.description}
         actions={
@@ -175,18 +175,18 @@ export function ServiceDetailView({
               ) : (
                 <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
               )}
-              Проверить сейчас
+              {t("checkNowButton")}
             </Button>
             <Button
               variant="outline"
               onClick={() => setFormState({ mode: "edit", service })}
             >
               <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
-              Редактировать
+              {t("editButton")}
             </Button>
             <Button variant="outline" onClick={() => setDeleteTarget(service)}>
               <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
-              Удалить
+              {t("deleteButton")}
             </Button>
           </>
         }
@@ -195,56 +195,70 @@ export function ServiceDetailView({
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
-            <dt className="text-xs text-foreground-500">Тип монитора</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("monitorTypeLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
-              {MONITOR_TYPE_LABELS[service.monitorType]}
+              {getMonitorTypeLabel(service.monitorType, t)}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-xs text-foreground-500">Цель</dt>
+            <dt className="text-xs text-foreground-500">{t("targetLabel")}</dt>
             <dd className="font-medium text-foreground-800 truncate">
               {formatTarget(service)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Интервал</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("intervalLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
-              {service.intervalSeconds} с
+              {t("secondsValue", { value: service.intervalSeconds })}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Таймаут</dt>
+            <dt className="text-xs text-foreground-500">{t("timeoutLabel")}</dt>
             <dd className="font-medium text-foreground-800">
-              {service.timeoutMs} мс
+              {t("msValue", { value: service.timeoutMs })}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Попыток до сбоя</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("retriesLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
               {service.retries}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Последняя проверка</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("lastCheckedLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
-              {formatRelativeTime(service.lastCheckedAt)}
+              {formatRelativeTime(service.lastCheckedAt, t, format)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Время отклика</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("responseTimeLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
-              {formatResponseTime(service.lastResponseTimeMs)}
+              {formatResponseTime(service.lastResponseTimeMs, t)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-foreground-500">Мониторинг</dt>
+            <dt className="text-xs text-foreground-500">
+              {t("monitoringLabel")}
+            </dt>
             <dd className="font-medium text-foreground-800">
-              {service.isActive ? "Включен" : "Отключен"}
+              {service.isActive ? t("enabledLabel") : t("disabledLabel")}
             </dd>
           </div>
           {service.monitorType === "HTTP" && service.expectedStatusCodes && (
             <div>
-              <dt className="text-xs text-foreground-500">Ожидаемые коды</dt>
+              <dt className="text-xs text-foreground-500">
+                {t("expectedCodesLabel")}
+              </dt>
               <dd className="font-medium text-foreground-800">
                 {service.expectedStatusCodes}
               </dd>
@@ -274,7 +288,7 @@ export function ServiceDetailView({
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
         <h2 className="font-heading text-sm font-semibold text-foreground-900">
-          История проверок
+          {t("checkHistoryTitle")}
         </h2>
 
         {loadingChecks ? (
@@ -283,7 +297,7 @@ export function ServiceDetailView({
             className="flex items-center gap-2 text-sm text-muted-foreground"
           >
             <Spinner aria-hidden />
-            Загрузка…
+            {t("loadingLabel")}
           </div>
         ) : (
           <>
@@ -291,16 +305,16 @@ export function ServiceDetailView({
               <div
                 className="flex items-end gap-0.5"
                 role="img"
-                aria-label="Полоса последних проверок: зелёный — работает, красный — недоступен"
+                aria-label={t("heartbeatAriaLabel")}
               >
                 {heartbeatChecks.map((check) => (
                   <span
                     key={check.id}
-                    title={`${formatDateTime(check.checkedAt)} — ${
-                      check.status === "UP" ? "Работает" : "Недоступен"
+                    title={`${formatDateTime(check.checkedAt, format)} — ${
+                      check.status === "UP" ? t("statusUp") : t("statusDown")
                     }${
                       check.responseTimeMs !== null
-                        ? `, ${check.responseTimeMs} мс`
+                        ? `, ${t("msValue", { value: check.responseTimeMs })}`
                         : ""
                     }`}
                     className={cn(
@@ -316,8 +330,8 @@ export function ServiceDetailView({
               <EmptyState
                 size="sm"
                 icon="ri-pulse-line"
-                title="Нет проверок"
-                description="История проверок пока пуста."
+                title={t("emptyChecksTitle")}
+                description={t("emptyChecksDescription")}
               />
             )}
 
@@ -331,23 +345,23 @@ export function ServiceDetailView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Время</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Отклик</TableHead>
-                    <TableHead>Сообщение</TableHead>
+                    <TableHead>{t("tableTimeHeader")}</TableHead>
+                    <TableHead>{t("tableStatusHeader")}</TableHead>
+                    <TableHead>{t("tableResponseHeader")}</TableHead>
+                    <TableHead>{t("tableMessageHeader")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {checks.map((check) => (
                     <TableRow key={check.id}>
                       <TableCell className="font-mono text-muted-foreground">
-                        {formatDateTime(check.checkedAt)}
+                        {formatDateTime(check.checkedAt, format)}
                       </TableCell>
                       <TableCell>
                         <ServiceStatusBadge status={check.status} />
                       </TableCell>
                       <TableCell className="font-mono">
-                        {formatResponseTime(check.responseTimeMs)}
+                        {formatResponseTime(check.responseTimeMs, t)}
                       </TableCell>
                       <TableCell className="max-w-md truncate">
                         {check.message ?? "—"}
@@ -369,10 +383,10 @@ export function ServiceDetailView({
                 {loadingMore ? (
                   <>
                     <Spinner aria-hidden data-icon="inline-start" />
-                    Загрузка…
+                    {t("loadingLabel")}
                   </>
                 ) : (
-                  "Показать ещё"
+                  t("loadMoreButton")
                 )}
               </Button>
             )}

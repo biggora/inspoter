@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -27,7 +28,7 @@ import {
   formatRelativeTime,
   formatResponseTime,
   formatTarget,
-  MONITOR_TYPE_LABELS,
+  getMonitorTypeLabel,
 } from "./format";
 import {
   ServiceFormDialog,
@@ -43,16 +44,6 @@ const MONITOR_TYPE_ICONS = {
   PING: "ri-pulse-line",
 } as const;
 
-function pluralizeServices(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return "сервис";
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) {
-    return "сервиса";
-  }
-  return "сервисов";
-}
-
 // Services list (plan.md "Frontend"). Card grid modeled on
 // servers/servers-view.tsx (status badge top-right, stat rows, footer
 // actions), driven by router.refresh() instead of client-held state — the
@@ -63,6 +54,7 @@ export function ServicesView({
 }: {
   initialServices: Service[];
 }) {
+  const t = useTranslations("services");
   const router = useRouter();
   const services = initialServices;
 
@@ -95,10 +87,7 @@ export function ServicesView({
       } catch (err) {
         setCheckErrors((prev) => ({
           ...prev,
-          [service.id]:
-            err instanceof Error
-              ? err.message
-              : "Не удалось выполнить проверку",
+          [service.id]: err instanceof Error ? err.message : t("checkNowError"),
         }));
       } finally {
         setCheckingIds((prev) => {
@@ -108,18 +97,18 @@ export function ServicesView({
         });
       }
     },
-    [router],
+    [router, t],
   );
 
   return (
     <PageBody>
       <PageHeader
-        title="Сервисы"
-        description={`${services.length} ${pluralizeServices(services.length)}`}
+        title={t("pageTitle")}
+        description={t("count", { count: services.length })}
         actions={
           <Button onClick={() => setFormState({ mode: "create" })}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            Новый сервис
+            {t("newServiceButton")}
           </Button>
         }
       />
@@ -127,12 +116,12 @@ export function ServicesView({
       {services.length === 0 ? (
         <EmptyState
           icon="ri-pulse-line"
-          title="Нет сервисов"
-          description="Добавьте первый сервис — HTTP(S)-эндпоинт, TCP-порт или хост для проверки доступности — чтобы начать отслеживать его статус."
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
           action={
             <Button onClick={() => setFormState({ mode: "create" })}>
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-              Создать сервис
+              {t("createServiceButton")}
             </Button>
           }
         />
@@ -187,6 +176,8 @@ function ServiceCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("services");
+  const format = useFormatter();
   const monitorIconClass =
     MONITOR_TYPE_ICONS[service.monitorType] ?? "ri-global-line";
 
@@ -209,7 +200,7 @@ function ServiceCard({
               <h2 className="truncate">{service.name}</h2>
             </CardTitle>
             <CardDescription className="truncate text-xs">
-              {MONITOR_TYPE_LABELS[service.monitorType]} ·{" "}
+              {getMonitorTypeLabel(service.monitorType, t)} ·{" "}
               {formatTarget(service)}
             </CardDescription>
           </div>
@@ -224,21 +215,25 @@ function ServiceCard({
 
       <CardContent className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Последняя проверка</span>
+          <span className="text-foreground-500">{t("lastCheckedLabel")}</span>
           <span className="text-foreground-800 font-medium">
-            {formatRelativeTime(service.lastCheckedAt)}
+            {formatRelativeTime(service.lastCheckedAt, t, format)}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">Время отклика</span>
+          <span className="text-foreground-500">{t("responseTimeLabel")}</span>
           <span className="text-foreground-800 font-medium">
-            {formatResponseTime(service.lastResponseTimeMs)}
+            {formatResponseTime(service.lastResponseTimeMs, t)}
           </span>
         </div>
         {!service.isActive && (
           <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground-500">Статус мониторинга</span>
-            <span className="text-foreground-800 font-medium">Отключен</span>
+            <span className="text-foreground-500">
+              {t("monitoringStatusLabel")}
+            </span>
+            <span className="text-foreground-800 font-medium">
+              {t("disabledLabel")}
+            </span>
           </div>
         )}
         {service.lastMessage && service.currentStatus === "DOWN" && (
@@ -270,13 +265,13 @@ function ServiceCard({
           ) : (
             <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
           )}
-          Проверить сейчас
+          {t("checkNowButton")}
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={onEdit}
-          aria-label={`Редактировать «${service.name}»`}
+          aria-label={t("editServiceAria", { name: service.name })}
         >
           <Icon name="ri-edit-line" aria-hidden data-icon="inline-start" />
         </Button>
@@ -284,7 +279,7 @@ function ServiceCard({
           variant="ghost"
           size="icon-sm"
           onClick={onDelete}
-          aria-label={`Удалить «${service.name}»`}
+          aria-label={t("deleteServiceAria", { name: service.name })}
         >
           <Icon name="ri-delete-bin-line" aria-hidden data-icon="inline-start" />
         </Button>
