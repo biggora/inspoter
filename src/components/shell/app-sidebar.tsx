@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { setActiveWorkspaceId } from "@/lib/client/active-workspace";
@@ -33,6 +34,7 @@ export function AppSidebar({
   workspaceName: string;
   workspaceId: string;
 }) {
+  const t = useTranslations("shell");
   const pathname = usePathname();
   const isSectionActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`);
@@ -71,7 +73,7 @@ export function AppSidebar({
         />
       </SidebarHeader>
       <SidebarContent>
-        <nav aria-label="Основная навигация">
+        <nav aria-label={t("mainNavigationLabel")}>
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -81,7 +83,7 @@ export function AppSidebar({
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
-                        tooltip={item.label}
+                        tooltip={t(item.labelKey)}
                         data-active={active ? "true" : "false"}
                         className="shell-nav-item"
                         render={<Link href={item.href} />}
@@ -89,7 +91,7 @@ export function AppSidebar({
                         <span className="shell-icon-tile">
                           <Icon name={item.icon} />
                         </span>
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey)}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -106,7 +108,7 @@ export function AppSidebar({
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={isSectionActive(SETTINGS_NAV_ITEM.href)}
-                    tooltip={SETTINGS_NAV_ITEM.label}
+                    tooltip={t(SETTINGS_NAV_ITEM.labelKey)}
                     data-active={
                       isSectionActive(SETTINGS_NAV_ITEM.href) ? "true" : "false"
                     }
@@ -122,7 +124,7 @@ export function AppSidebar({
                         )}
                       />
                     </span>
-                    <span>{SETTINGS_NAV_ITEM.label}</span>
+                    <span>{t(SETTINGS_NAV_ITEM.labelKey)}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -23,6 +27,8 @@ export function Pagination({
   disabled,
   className,
 }: PaginationProps) {
+  const t = useTranslations("shell");
+
   return (
     <div
       data-slot="pagination"
@@ -40,9 +46,11 @@ export function Pagination({
           aria-hidden
           data-icon="inline-start"
         />
-        Назад
+        {t("paginationPrevious")}
       </Button>
-      <span className="text-sm text-muted-foreground">Страница {page}</span>
+      <span className="text-sm text-muted-foreground">
+        {t("paginationPage", { page })}
+      </span>
       <Button
         type="button"
         variant="outline"
@@ -50,7 +58,7 @@ export function Pagination({
         onClick={onNext}
         disabled={!hasNext || disabled}
       >
-        Далее
+        {t("paginationNext")}
         <Icon
           name="ri-arrow-right-s-line"
           aria-hidden

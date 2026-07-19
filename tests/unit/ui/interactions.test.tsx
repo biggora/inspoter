@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DndContext } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
 
+import { renderWithIntl } from "../../test-utils";
 import { BookmarkCard } from "@/components/bookmarks/bookmark-card";
 import { ColorPicker } from "@/components/bookmarks/color-picker";
 import { LogsView } from "@/components/logs/logs-view";
@@ -164,7 +165,7 @@ describe("standardized UI interactions", () => {
       nextCursor: null,
     });
 
-    render(<LogsView />);
+    renderWithIntl(<LogsView />);
     const expand = await screen.findByRole("button", {
       name: "Показать детали записи журнала",
     });
