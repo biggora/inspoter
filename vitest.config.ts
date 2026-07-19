@@ -24,6 +24,11 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     env: testEnvironment,
+    // DB-integration tests normally finish in <500ms, but the dockerized
+    // Postgres on Windows occasionally stalls a query for several seconds
+    // during I/O (e.g. checkpoints), which can trip the 5s default. Widen the
+    // margin so rare host-level variance does not fail an otherwise-green run.
+    testTimeout: 15000,
     fileParallelism: false,
     maxWorkers: 1,
     allowOnly: false,
