@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -32,17 +33,17 @@ import {
 import { cn } from "@/lib/utils";
 import { fetchLogs, type LogEntryDto } from "./api";
 
-const LEVEL_ITEMS: Record<string, string> = {
-  all: "Все уровни",
-  info: "Информация",
-  warning: "Предупреждение",
-  error: "Ошибка",
-  critical: "Критическая",
+const LEVEL_LABEL_KEYS: Record<string, string> = {
+  all: "levelAll",
+  info: "levelInfo",
+  warning: "levelWarning",
+  error: "levelError",
+  critical: "levelCritical",
 };
 
-const SORT_ITEMS: Record<string, string> = {
-  desc: "Сначала новые",
-  asc: "Сначала старые",
+const SORT_LABEL_KEYS: Record<string, string> = {
+  desc: "sortDesc",
+  asc: "sortAsc",
 };
 
 // §2.5 severity scale (design.md) — unmapped level strings fall back to the
@@ -77,6 +78,7 @@ function formatTimestamp(iso: string): string {
 // pages are tracked as a client-held stack of cursors rather than a
 // "Page X of Y" total.
 export function LogsView() {
+  const t = useTranslations("logs");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("all");
@@ -142,8 +144,7 @@ export function LogsView() {
         });
       })
       .catch(() => {
-        if (!cancelled)
-          setError("Не удалось загрузить логи. Попробуйте снова.");
+        if (!cancelled) setError(t("loadError"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -151,7 +152,7 @@ export function LogsView() {
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, level, source, query, sort]);
+  }, [currentCursor, level, source, query, sort, t]);
 
   function handleNext() {
     if (!nextCursor) return;
@@ -163,8 +164,16 @@ export function LogsView() {
     setPageIndex((prev) => Math.max(0, prev - 1));
   }
 
+  const levelItems: Record<string, string> = Object.fromEntries(
+    Object.entries(LEVEL_LABEL_KEYS).map(([value, key]) => [value, t(key)]),
+  );
+
+  const sortItems: Record<string, string> = Object.fromEntries(
+    Object.entries(SORT_LABEL_KEYS).map(([value, key]) => [value, t(key)]),
+  );
+
   const sourceItems: Record<string, string> = {
-    all: "Все источники",
+    all: t("sourceAllLabel"),
     ...Object.fromEntries(knownSources.map((value) => [value, value])),
   };
 
@@ -172,26 +181,26 @@ export function LogsView() {
 
   return (
     <PageBody>
-      <PageHeader title="Логи">
+      <PageHeader title={t("pageTitle")}>
         <FilterBar>
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Поиск по сообщению..."
-            aria-label="Поиск по сообщениям журнала"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchAriaLabel")}
             className="sm:max-w-xs"
           />
           <Select
             value={level}
             onValueChange={(v) => setLevel(v as string)}
-            items={LEVEL_ITEMS}
+            items={levelItems}
           >
-            <SelectTrigger size="sm" aria-label="Фильтр по уровню">
+            <SelectTrigger size="sm" aria-label={t("levelFilterAriaLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {Object.entries(LEVEL_ITEMS).map(([value, label]) => (
+                {Object.entries(levelItems).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -204,7 +213,7 @@ export function LogsView() {
             onValueChange={(v) => setSource(v as string)}
             items={sourceItems}
           >
-            <SelectTrigger size="sm" aria-label="Фильтр по источнику">
+            <SelectTrigger size="sm" aria-label={t("sourceFilterAriaLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -220,14 +229,14 @@ export function LogsView() {
           <Select
             value={sort}
             onValueChange={(v) => setSort(v as "asc" | "desc")}
-            items={SORT_ITEMS}
+            items={sortItems}
           >
-            <SelectTrigger size="sm" aria-label="Порядок сортировки">
+            <SelectTrigger size="sm" aria-label={t("sortAriaLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                {Object.entries(sortItems).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -253,12 +262,12 @@ export function LogsView() {
         </div>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <EmptyState description="Нет записей журнала, соответствующих текущим фильтрам." />
+          <EmptyState description={t("emptyFilteredDescription")} />
         ) : (
           <EmptyState
             icon="ri-file-text-line"
-            title="Логи пока отсутствуют"
-            description="Отправьте первый лог через webhook:"
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
             action={
               <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
                 {`curl -X POST http://your-host/api/webhooks/log \\
@@ -273,12 +282,12 @@ export function LogsView() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Время</TableHead>
-              <TableHead>Уровень</TableHead>
-              <TableHead>Источник</TableHead>
-              <TableHead>Сообщение</TableHead>
+              <TableHead>{t("timeHeader")}</TableHead>
+              <TableHead>{t("levelHeader")}</TableHead>
+              <TableHead>{t("sourceHeader")}</TableHead>
+              <TableHead>{t("messageHeader")}</TableHead>
               <TableHead>
-                <span className="sr-only">Детали</span>
+                <span className="sr-only">{t("detailsSrOnly")}</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -305,7 +314,11 @@ export function LogsView() {
                         size="icon-sm"
                         aria-expanded={isExpanded}
                         aria-controls={`${entry.id}-detail`}
-                        aria-label={`${isExpanded ? "Скрыть" : "Показать"} детали записи журнала`}
+                        aria-label={t("toggleDetailsAriaLabel", {
+                          action: isExpanded
+                            ? t("hideAction")
+                            : t("showAction"),
+                        })}
                         onClick={() =>
                           setExpandedId(isExpanded ? null : entry.id)
                         }
