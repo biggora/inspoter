@@ -114,7 +114,7 @@ describe("standardized form contracts", () => {
   it("keeps the login reveal action non-submit and submits once on Enter", async () => {
     const user = userEvent.setup();
 
-    render(<LoginForm />);
+    renderWithIntl(<LoginForm />);
     const username = screen.getByLabelText("Имя пользователя");
     const password = screen.getByLabelText("Пароль");
     const reveal = screen.getByRole("button", { name: "Показать пароль" });
@@ -141,7 +141,7 @@ describe("standardized form contracts", () => {
     }>();
     mocks.login.mockReturnValueOnce(loginResult.promise);
 
-    render(<LoginForm />);
+    renderWithIntl(<LoginForm />);
     const username = screen.getByLabelText("Имя пользователя");
     const password = screen.getByLabelText("Пароль");
     const reveal = screen.getByRole("button", { name: "Показать пароль" });
@@ -171,7 +171,7 @@ describe("standardized form contracts", () => {
     const next = "//evil.example/steal?token=1";
     mocks.login.mockResolvedValueOnce({ ok: true });
 
-    render(<LoginForm next={next} authentikEnabled />);
+    renderWithIntl(<LoginForm next={next} authentikEnabled />);
     expect(
       screen.getByRole("button", { name: "Войти через Authentik" }),
     ).toHaveAttribute(

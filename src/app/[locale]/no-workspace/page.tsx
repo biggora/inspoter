@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireOperator } from "@/lib/auth/dal";
 import { listForOperator } from "@/lib/services/workspaces";
 import { Button } from "@/components/ui/button";
@@ -19,26 +20,27 @@ export default async function NoWorkspacePage() {
     redirect("/bookmarks");
   }
 
+  const t = await getTranslations("auth");
+
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4 py-12">
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-2xl font-semibold text-foreground">Inspoter</span>
-        <p className="text-sm text-muted-foreground">Панель управления</p>
+        <p className="text-sm text-muted-foreground">{t("tagline")}</p>
       </div>
       <Card className="w-full max-w-[380px]">
         <CardHeader>
           <h1 className="font-heading text-base leading-none font-medium text-foreground">
-            Нет доступа к рабочему пространству
+            {t("noWorkspaceHeading")}
           </h1>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Ваша учётная запись создана, но пока не добавлена ни в одно рабочее
-            пространство. Обратитесь к администратору, чтобы вас добавили.
+            {t("noWorkspaceDescription")}
           </p>
           <form action={logout}>
             <Button type="submit" variant="outline" className="w-full">
-              Выйти
+              {t("logout")}
             </Button>
           </form>
         </CardContent>
