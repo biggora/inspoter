@@ -12,3 +12,8 @@ Hostinger https://developers.hostinger.com/#description/introduction
 commit and merge to main
 
 /model claude-opus-4-6[1m]
+
+Hetzner API
+https://robot.hetzner.com/doc/webservice/en.html#general
+Hostinger API 
+https://developers.hostinger.com/#description/introduction
