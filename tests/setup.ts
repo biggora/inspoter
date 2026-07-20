@@ -23,19 +23,21 @@ vi.mock("next/navigation", () => ({
 // Mock next-intl/navigation (client-side routing helper)
 // This needs to use the mocked next/navigation if available
 vi.mock("next-intl/navigation", async () => {
-  let nextNavigation: any;
+  let nextNavigation: Record<string, unknown> | null;
   try {
-    nextNavigation = await vi.importMock("next/navigation");
+    nextNavigation =
+      await vi.importMock<Record<string, unknown>>("next/navigation");
   } catch {
     // Fallback if next/navigation mock is not yet loaded
     nextNavigation = null;
   }
 
   return {
-    createNavigation: (routing: unknown) => {
+    createNavigation: () => {
       // Try to get useRouter from next/navigation mock
       const useRouterImpl =
-        nextNavigation?.useRouter || (() => ({
+        nextNavigation?.useRouter ||
+        (() => ({
           push: vi.fn(),
           replace: vi.fn(),
           refresh: vi.fn(),
@@ -44,8 +46,8 @@ vi.mock("next-intl/navigation", async () => {
         }));
 
       return {
-        Link: ({ href, children }: any) => children,
-        redirect: ({ href, locale }: any) => {
+        Link: ({ children }: { children: unknown }) => children,
+        redirect: ({ href, locale }: { href: string; locale: string }) => {
           throw new Error(`redirect to ${href} with locale ${locale}`);
         },
         usePathname: () => "/",
