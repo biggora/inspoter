@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import {
@@ -36,6 +36,32 @@ export function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
+
+  // Switching locale forces next-themes' FOUC-prevention <script> to be
+  // freshly client-rendered instead of hydrated, which React 19 flags as
+  // "Encountered a script tag while rendering React component" — a known,
+  // harmless next-themes/React 19 incompatibility; theming keeps working:
+  // https://github.com/pacocoursey/next-themes/issues/387
+  // Suppress only that one message, and only for the transition's duration,
+  // rather than patching console.error for the whole page lifetime.
+  useEffect(() => {
+    if (!isPending || process.env.NODE_ENV === "production") return;
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (
+        typeof args[0] === "string" &&
+        args[0].includes(
+          "Encountered a script tag while rendering React component",
+        )
+      ) {
+        return;
+      }
+      originalError(...args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, [isPending]);
 
   function handleSelect(nextLocale: string) {
     if (nextLocale === locale) return;
