@@ -9,7 +9,15 @@ export type CredentialData =
   | { type: "HETZNER_DNS"; apiToken: string }
   | { type: "HETZNER_CLOUD"; apiToken: string }
   | { type: "GODADDY_DNS"; apiKey: string; apiSecret: string }
-  | { type: "MAIL_PASSWORD"; imapPassword: string; smtpPassword?: string };
+  | { type: "MAIL_PASSWORD"; imapPassword: string; smtpPassword?: string }
+  | { type: "HOSTINGER"; apiToken: string }
+  | { type: "CPANEL_WHM"; hostname: string; username: string; apiToken: string }
+  | {
+      type: "CPANEL_UAPI";
+      hostname: string;
+      username: string;
+      apiToken: string;
+    };
 
 export interface EncryptedPayload {
   encryptedData: string; // hex

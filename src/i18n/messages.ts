@@ -2,6 +2,7 @@ import shell from "@/messages/ru/shell.json";
 import auth from "@/messages/ru/auth.json";
 import bookmarks from "@/messages/ru/bookmarks.json";
 import servers from "@/messages/ru/servers.json";
+import hosting from "@/messages/ru/hosting.json";
 import services from "@/messages/ru/services.json";
 import logs from "@/messages/ru/logs.json";
 import domains from "@/messages/ru/domains.json";
@@ -19,6 +20,7 @@ export const ruMessages = {
   auth,
   bookmarks,
   servers,
+  hosting,
   services,
   logs,
   domains,

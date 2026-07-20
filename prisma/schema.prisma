@@ -544,6 +544,9 @@ enum ProviderType {
   HETZNER_DNS
   HETZNER_CLOUD
   GODADDY_DNS
+  HOSTINGER
+  CPANEL_WHM
+  CPANEL_UAPI
 }
 
 model ProviderCredential {

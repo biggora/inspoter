@@ -23,6 +23,21 @@ export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
     category: "DNS",
     fields: ["apiKey", "apiSecret"],
   },
+  HOSTINGER: {
+    label: "Hostinger",
+    category: "HOSTING",
+    fields: ["apiToken"],
+  },
+  CPANEL_WHM: {
+    label: "cPanel (WHM)",
+    category: "HOSTING",
+    fields: ["hostname", "username", "apiToken"],
+  },
+  CPANEL_UAPI: {
+    label: "cPanel (UAPI)",
+    category: "HOSTING",
+    fields: ["hostname", "username", "apiToken"],
+  },
 } as const;
 
 export const DNS_PROVIDER_TYPES: ProviderType[] = [
@@ -31,4 +46,9 @@ export const DNS_PROVIDER_TYPES: ProviderType[] = [
   "GODADDY_DNS",
 ];
 
-export const HOSTING_PROVIDER_TYPES: ProviderType[] = ["HETZNER_CLOUD"];
+export const HOSTING_PROVIDER_TYPES: ProviderType[] = [
+  "HETZNER_CLOUD",
+  "HOSTINGER",
+  "CPANEL_WHM",
+  "CPANEL_UAPI",
+];
