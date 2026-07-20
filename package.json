@@ -2,6 +2,21 @@
   "name": "inspoter",
   "version": "0.1.0",
   "private": true,
+  "description": "Inspoter is a self-hosted dashboard for domains, DNS, servers, hosting, uptime monitoring, mail, webhooks, logs, alerts, and team workspaces.",
+  "keywords": [
+    "self-hosted",
+    "infrastructure-dashboard",
+    "devops",
+    "nextjs",
+    "typescript",
+    "postgresql",
+    "prisma",
+    "dns-management",
+    "server-management",
+    "uptime-monitoring",
+    "webhooks",
+    "mail-client"
+  ],
   "scripts": {
     "dev": "next dev --turbopack -p 3800",
     "build": "next build --turbopack",
