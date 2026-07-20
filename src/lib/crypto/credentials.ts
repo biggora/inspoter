@@ -17,7 +17,8 @@ export type CredentialData =
       hostname: string;
       username: string;
       apiToken: string;
-    };
+    }
+  | { type: "WEBHOOK_SECRET"; secret: string };
 
 export interface EncryptedPayload {
   encryptedData: string; // hex

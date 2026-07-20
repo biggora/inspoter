@@ -5,6 +5,7 @@ import {
   type Alert,
   type AlertCategory,
 } from "@/generated/prisma/client";
+import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 export interface CreateAlertInput {
   category: string;
@@ -91,6 +92,13 @@ export async function create(
       message: input.message,
       ...(input.timestamp ? { timestamp: new Date(input.timestamp) } : {}),
     },
+  });
+  await emitWebhookEvent(workspaceId, "ALERT_CREATED", {
+    alertId: entry.id,
+    severity: input.severity,
+    source: input.source,
+    message: input.message,
+    category: input.category,
   });
   return { id: entry.id };
 }

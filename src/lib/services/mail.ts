@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { Prisma, type MailAccountKind } from "@/generated/prisma/client";
 import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
+import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 // External webhook contract shape (src/lib/validation/webhooks.ts mailSchema):
 // `sender`/`body` are mapped to the renamed `fromAddress`/`bodyText` columns
@@ -108,6 +109,12 @@ export async function create(
       isRead: false,
       ...(input.receivedAt ? { receivedAt: new Date(input.receivedAt) } : {}),
     },
+  });
+  await emitWebhookEvent(workspaceId, "MAIL_RECEIVED", {
+    mailItemId: entry.id,
+    fromAddress: input.sender,
+    subject: input.subject,
+    snippet: makeSnippet(input.body),
   });
   return { id: entry.id };
 }

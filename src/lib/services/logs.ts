@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { Prisma, type LogEntry } from "@/generated/prisma/client";
+import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 // Logs service (FR-LOG-001/002). Keyset (cursor) pagination on
 // (timestamp, id) — architecture.md §2.4, AC-LOG-003/004. First and
@@ -75,6 +76,12 @@ export async function create(
       message: input.message,
       ...(input.timestamp ? { timestamp: new Date(input.timestamp) } : {}),
     },
+  });
+  await emitWebhookEvent(workspaceId, "LOG_CREATED", {
+    logId: entry.id,
+    level: input.level,
+    source: input.source,
+    message: input.message,
   });
   return { id: entry.id };
 }
