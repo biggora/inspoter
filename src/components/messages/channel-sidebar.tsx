@@ -191,7 +191,11 @@ export function ChannelSidebar({
                                 type="button"
                                 variant="ghost"
                                 size="icon-xs"
-                                className="mr-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/channel:opacity-100 lg:group-focus-within/channel:opacity-100"
+                                className={cn(
+                                  "mr-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/channel:opacity-100 lg:group-focus-within/channel:opacity-100",
+                                  channel.id === selectedChannelId &&
+                                    "hover:bg-[oklch(var(--secondary-200))] aria-expanded:bg-[oklch(var(--secondary-200))]",
+                                )}
                                 aria-label={t("channelActionsLabel", {
                                   name: channel.name,
                                 })}
