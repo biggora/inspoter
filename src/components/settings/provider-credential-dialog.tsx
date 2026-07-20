@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -16,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -66,6 +69,7 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
   apiSecret: "fieldApiSecret",
   hostname: "fieldHostname",
   username: "fieldUsername",
+  allowInsecure: "fieldAllowInsecure",
 };
 
 // Non-secret fields (host/username) render as plain text; secrets as password.
@@ -109,6 +113,18 @@ export function ProviderCredentialDialog({
   );
   const [label, setLabel] = useState(existing?.label ?? "");
   const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [flags, setFlags] = useState<Record<string, boolean>>(
+    mode === "edit"
+      ? Object.fromEntries(
+          (PROVIDER_REGISTRY[existing!.provider].booleanFields ?? []).map(
+            (field) => [
+              field,
+              field === "allowInsecure" ? existing!.allowInsecure : false,
+            ],
+          ),
+        )
+      : {},
+  );
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -118,6 +134,9 @@ export function ProviderCredentialDialog({
   const globalErrorId = useId();
 
   const activeFields = provider ? PROVIDER_REGISTRY[provider].fields : [];
+  const activeBooleanFields = provider
+    ? (PROVIDER_REGISTRY[provider].booleanFields ?? [])
+    : [];
 
   const providerSelectItems = [
     { label: t("selectProviderPlaceholder"), value: null },
@@ -152,6 +171,9 @@ export function ProviderCredentialDialog({
       label: trimmedLabel,
       ...Object.fromEntries(
         activeFields.map((field) => [field, secrets[field].trim()]),
+      ),
+      ...Object.fromEntries(
+        activeBooleanFields.map((field) => [field, flags[field] ?? false]),
       ),
     } as UpsertCredentialInput;
 
@@ -276,6 +298,33 @@ export function ProviderCredentialDialog({
                     aria-describedby={message ? `${fieldId}-error` : undefined}
                   />
                   <FieldError id={`${fieldId}-error`}>{message}</FieldError>
+                </Field>
+              );
+            })}
+
+            {activeBooleanFields.map((field) => {
+              const fieldId = `${fieldBaseId}-${field}`;
+
+              return (
+                <Field key={field} orientation="horizontal">
+                  <Checkbox
+                    id={fieldId}
+                    checked={flags[field] ?? false}
+                    onCheckedChange={(value) =>
+                      setFlags((prev) => ({ ...prev, [field]: value === true }))
+                    }
+                  />
+                  <FieldContent>
+                    <FieldLabel
+                      htmlFor={fieldId}
+                      className="cursor-pointer font-normal"
+                    >
+                      {fieldLabel(field, t)}
+                    </FieldLabel>
+                    <FieldDescription>
+                      {t("allowInsecureHelpText")}
+                    </FieldDescription>
+                  </FieldContent>
                 </Field>
               );
             })}

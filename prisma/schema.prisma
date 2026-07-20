@@ -630,6 +630,7 @@ model ProviderCredential {
   iv            String
   authTag       String
   maskedHint    String
+  allowInsecure Boolean      @default(false)
   isValid       Boolean?
   lastCheckedAt DateTime?
   createdAt     DateTime     @default(now())

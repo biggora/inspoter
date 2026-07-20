@@ -239,3 +239,42 @@ describe("getDecryptedCredentialById for a non-existent credential", () => {
     expect(decrypted).toBeNull();
   });
 });
+
+describe("createCredential + updateCredential with allowInsecure", () => {
+  it("persists and updates the allowInsecure flag for cPanel credentials", async () => {
+    const created = await credentialsService.createCredential(
+      workspaceId,
+      "CPANEL_WHM",
+      `${NAME_PREFIX}-cpanel-whm-insecure`,
+      {
+        type: "CPANEL_WHM",
+        hostname: "srv.example.com",
+        username: "root",
+        apiToken: "cpanel-token-value",
+        allowInsecure: true,
+      },
+    );
+
+    expect(created.allowInsecure).toBe(true);
+
+    const list = await credentialsService.listCredentials(workspaceId);
+    const found = list.find((c) => c.id === created.id);
+    expect(found).toBeTruthy();
+    expect(found?.allowInsecure).toBe(true);
+
+    const updated = await credentialsService.updateCredential(
+      created.id,
+      workspaceId,
+      `${NAME_PREFIX}-cpanel-whm-insecure-v2`,
+      {
+        type: "CPANEL_WHM",
+        hostname: "srv.example.com",
+        username: "root",
+        apiToken: "cpanel-token-value-2",
+        allowInsecure: false,
+      },
+    );
+
+    expect(updated.allowInsecure).toBe(false);
+  });
+});

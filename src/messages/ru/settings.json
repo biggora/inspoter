@@ -85,6 +85,8 @@
   "fieldApiSecret": "API-секрет",
   "fieldHostname": "Хост / URL",
   "fieldUsername": "Имя пользователя",
+  "fieldAllowInsecure": "Разрешить самоподписанные сертификаты",
+  "allowInsecureHelpText": "Отключает проверку TLS-сертификата для этого подключения. Используйте только если сервер cPanel использует самоподписанный или несоответствующий домену сертификат — это снижает защиту от подмены сервера (MITM).",
   "selectProviderPlaceholder": "Выберите провайдера",
   "selectProviderError": "Выберите провайдера.",
   "fieldRequiredError": "Поле «{field}» обязательно.",

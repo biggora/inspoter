@@ -15,6 +15,7 @@ export interface CredentialDto {
   provider: ProviderType;
   label: string;
   maskedHint: string;
+  allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: string | null;
   createdAt: string;
@@ -39,6 +40,7 @@ export type UpsertCredentialInput =
       hostname: string;
       username: string;
       apiToken: string;
+      allowInsecure?: boolean;
     };
 
 export class ApiError extends Error {

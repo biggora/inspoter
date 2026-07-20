@@ -37,6 +37,7 @@ export const upsertCredentialSchema = z.discriminatedUnion("provider", [
     hostname: z.string().trim().min(1).max(255),
     username: z.string().trim().min(1).max(100),
     apiToken: z.string().min(1),
+    allowInsecure: z.boolean().optional().default(false),
   }),
   z.object({
     provider: z.literal("CPANEL_UAPI"),
@@ -44,6 +45,7 @@ export const upsertCredentialSchema = z.discriminatedUnion("provider", [
     hostname: z.string().trim().min(1).max(255),
     username: z.string().trim().min(1).max(100),
     apiToken: z.string().min(1),
+    allowInsecure: z.boolean().optional().default(false),
   }),
 ]);
 
@@ -71,6 +73,7 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
         hostname: input.hostname,
         username: input.username,
         apiToken: input.apiToken,
+        allowInsecure: input.allowInsecure,
       };
     case "CPANEL_UAPI":
       return {
@@ -78,6 +81,7 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
         hostname: input.hostname,
         username: input.username,
         apiToken: input.apiToken,
+        allowInsecure: input.allowInsecure,
       };
   }
 }

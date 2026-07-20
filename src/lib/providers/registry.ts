@@ -4,6 +4,7 @@ export interface ProviderMeta {
   label: string;
   category: "DNS" | "HOSTING";
   fields: readonly string[];
+  booleanFields?: readonly string[];
 }
 
 export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
@@ -32,11 +33,13 @@ export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
     label: "cPanel (WHM)",
     category: "HOSTING",
     fields: ["hostname", "username", "apiToken"],
+    booleanFields: ["allowInsecure"],
   },
   CPANEL_UAPI: {
     label: "cPanel (UAPI)",
     category: "HOSTING",
     fields: ["hostname", "username", "apiToken"],
+    booleanFields: ["allowInsecure"],
   },
 } as const;
 

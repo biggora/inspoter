@@ -3,6 +3,7 @@
 // failure into a ProviderResult so providers never throw to callers.
 
 import type { ProviderResult } from "@/lib/providers/result";
+import { Agent } from "undici";
 
 const MAX_ATTEMPTS = 3;
 const BACKOFF_MS = [1000, 2000, 4000];
@@ -11,6 +12,7 @@ export interface ProviderHttpClientOptions {
   baseUrl?: string;
   headers?: Record<string, string>;
   timeout?: number;
+  allowInsecure?: boolean;
 }
 
 export interface ProviderHttpRequestOptions {
@@ -37,6 +39,12 @@ export function createProviderHttpClient(
 ): ProviderHttpClient {
   const { baseUrl = "", headers: baseHeaders = {}, timeout = 10_000 } = options;
 
+  // Narrow, opt-in security trade-off for self-signed cPanel servers — never
+  // default this to true, and never let it leak to other providers.
+  const insecureDispatcher = options.allowInsecure
+    ? new Agent({ connect: { rejectUnauthorized: false } })
+    : undefined;
+
   async function request<T>(
     reqOptions: ProviderHttpRequestOptions,
   ): Promise<ProviderResult<T>> {
@@ -56,6 +64,7 @@ export function createProviderHttpClient(
               ? JSON.stringify(reqOptions.body)
               : undefined,
           signal: AbortSignal.timeout(timeout),
+          ...(insecureDispatcher ? { dispatcher: insecureDispatcher } : {}),
         });
       } catch {
         return {
