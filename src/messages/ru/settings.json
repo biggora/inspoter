@@ -83,6 +83,8 @@
   "fieldApiToken": "API-токен",
   "fieldApiKey": "API-ключ",
   "fieldApiSecret": "API-секрет",
+  "fieldHostname": "Хост / URL",
+  "fieldUsername": "Имя пользователя",
   "selectProviderPlaceholder": "Выберите провайдера",
   "selectProviderError": "Выберите провайдера.",
   "fieldRequiredError": "Поле «{field}» обязательно.",

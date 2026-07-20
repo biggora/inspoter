@@ -26,6 +26,25 @@ export const upsertCredentialSchema = z.discriminatedUnion("provider", [
     apiKey: z.string().min(1),
     apiSecret: z.string().min(1),
   }),
+  z.object({
+    provider: z.literal("HOSTINGER"),
+    label: z.string().trim().min(1).max(100),
+    apiToken: z.string().min(1),
+  }),
+  z.object({
+    provider: z.literal("CPANEL_WHM"),
+    label: z.string().trim().min(1).max(100),
+    hostname: z.string().trim().min(1).max(255),
+    username: z.string().trim().min(1).max(100),
+    apiToken: z.string().min(1),
+  }),
+  z.object({
+    provider: z.literal("CPANEL_UAPI"),
+    label: z.string().trim().min(1).max(100),
+    hostname: z.string().trim().min(1).max(255),
+    username: z.string().trim().min(1).max(100),
+    apiToken: z.string().min(1),
+  }),
 ]);
 
 export type UpsertCredentialInput = z.infer<typeof upsertCredentialSchema>;
@@ -43,6 +62,22 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
         type: "GODADDY_DNS",
         apiKey: input.apiKey,
         apiSecret: input.apiSecret,
+      };
+    case "HOSTINGER":
+      return { type: "HOSTINGER", apiToken: input.apiToken };
+    case "CPANEL_WHM":
+      return {
+        type: "CPANEL_WHM",
+        hostname: input.hostname,
+        username: input.username,
+        apiToken: input.apiToken,
+      };
+    case "CPANEL_UAPI":
+      return {
+        type: "CPANEL_UAPI",
+        hostname: input.hostname,
+        username: input.username,
+        apiToken: input.apiToken,
       };
   }
 }

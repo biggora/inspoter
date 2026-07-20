@@ -12,6 +12,7 @@ export const SECTION_NAV_ITEMS: NavItem[] = [
   { href: "/bookmarks", labelKey: "navBookmarks", icon: "ri-bookmark-line" },
   { href: "/domains", labelKey: "navDomains", icon: "ri-global-line" },
   { href: "/servers", labelKey: "navServers", icon: "ri-server-line" },
+  { href: "/hosting", labelKey: "navHosting", icon: "ri-cloud-line" },
   { href: "/services", labelKey: "navServices", icon: "ri-pulse-line" },
   { href: "/mail", labelKey: "navMail", icon: "ri-mail-line" },
   { href: "/messages", labelKey: "navMessages", icon: "ri-message-2-line" },

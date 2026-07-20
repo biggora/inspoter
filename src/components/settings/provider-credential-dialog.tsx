@@ -64,7 +64,12 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
   apiToken: "fieldApiToken",
   apiKey: "fieldApiKey",
   apiSecret: "fieldApiSecret",
+  hostname: "fieldHostname",
+  username: "fieldUsername",
 };
+
+// Non-secret fields (host/username) render as plain text; secrets as password.
+const SECRET_FIELDS = new Set(["apiToken", "apiKey", "apiSecret"]);
 
 function fieldLabel(field: string, t: (key: string) => string): string {
   const key = FIELD_LABEL_KEYS[field];
@@ -258,7 +263,7 @@ export function ProviderCredentialDialog({
                   </FieldLabel>
                   <Input
                     id={fieldId}
-                    type="password"
+                    type={SECRET_FIELDS.has(field) ? "password" : "text"}
                     value={secrets[field] ?? ""}
                     onChange={(event) =>
                       setSecrets((prev) => ({

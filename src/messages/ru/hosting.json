@@ -1,0 +1,44 @@
+{
+  "pageTitle": "Хостинги",
+  "accountsCount": "{count, plural, one {# аккаунт} few {# аккаунта} many {# аккаунтов} other {# аккаунтов}}",
+  "addProviderButton": "Добавить провайдера",
+  "refreshButton": "Обновить",
+  "retryButton": "Повторить",
+  "loadError": "Не удалось загрузить хостинг-аккаунты",
+  "actionError": "Не удалось выполнить действие",
+  "statusUpdateError": "Не удалось обновить статус",
+  "suspendSuccessToast": "{name}: аккаунт приостановлен",
+  "unsuspendSuccessToast": "{name}: аккаунт возобновлён",
+
+  "providerUnavailableTitle": "Провайдер недоступен",
+  "providerUnavailableDescription": "Не удалось получить данные о хостинг-аккаунтах. Проверьте подключение или попробуйте позже.",
+  "emptyTitle": "Нет хостинг-аккаунтов",
+  "emptyDescription": "Подключите провайдера (Hostinger или cPanel) в настройках — аккаунты появятся здесь автоматически.",
+
+  "statusActive": "Активен",
+  "statusSuspended": "Приостановлен",
+  "statusUnknown": "Неизвестно",
+
+  "accountCardLabel": "Хостинг-аккаунт «{name}»",
+  "planLabel": "Тариф",
+  "diskLabel": "Диск",
+  "bandwidthLabel": "Трафик",
+  "databasesLabel": "Базы данных",
+  "emailLabel": "Почта",
+  "ipLabel": "IP",
+  "expiresLabel": "Действует до",
+  "valueNone": "—",
+  "valueUnlimited": "∞",
+
+  "suspendAction": "Приостановить",
+  "unsuspendAction": "Возобновить",
+  "suspendingLabel": "Приостановка…",
+  "unsuspendingLabel": "Возобновление…",
+  "suspendConfirmTitle": "Приостановить «{name}»?",
+  "unsuspendConfirmTitle": "Возобновить «{name}»?",
+  "suspendConfirmText": "Аккаунт будет приостановлен, сайт станет недоступен.",
+  "unsuspendConfirmText": "Аккаунт снова станет активным и доступным.",
+
+  "cancelButton": "Отмена",
+  "confirmButton": "Подтвердить"
+}

@@ -23,7 +23,7 @@ export interface CredentialDto {
 
 export type UpsertCredentialInput =
   | {
-      provider: "CLOUDFLARE_DNS" | "HETZNER_DNS" | "HETZNER_CLOUD";
+      provider: "CLOUDFLARE_DNS" | "HETZNER_DNS" | "HETZNER_CLOUD" | "HOSTINGER";
       label: string;
       apiToken: string;
     }
@@ -32,6 +32,13 @@ export type UpsertCredentialInput =
       label: string;
       apiKey: string;
       apiSecret: string;
+    }
+  | {
+      provider: "CPANEL_WHM" | "CPANEL_UAPI";
+      label: string;
+      hostname: string;
+      username: string;
+      apiToken: string;
     };
 
 export class ApiError extends Error {
