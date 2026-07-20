@@ -402,6 +402,189 @@ describe("retryDelivery()", () => {
   });
 });
 
+describe("pruneOldDeliveries()", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  async function makeDelivery(overrides: {
+    webhookId: string;
+    wsId: string;
+    status: service.WebhookDeliverySummary["status"];
+    createdAt: Date;
+  }) {
+    return db.webhookDelivery.create({
+      data: {
+        workspaceId: overrides.wsId,
+        webhookId: overrides.webhookId,
+        webhookWorkspaceId: overrides.wsId,
+        event: "ALERT_CREATED",
+        payload: { alertId: "x" },
+        status: overrides.status,
+        createdAt: overrides.createdAt,
+        updatedAt: overrides.createdAt,
+      },
+    });
+  }
+
+  it("prunes only terminal (DELIVERED/FAILED) rows past the cutoff", async () => {
+    const wsId = (
+      await db.workspace.create({
+        data: {
+          name: "prune",
+          slug: `prune-${randomUUID()}`,
+          updatedAt: new Date(),
+        },
+      })
+    ).id;
+    try {
+      const hook = await service.create(wsId, baseInput());
+      const old = Date.now() - 40 * DAY_MS;
+      const oldDelivered = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "DELIVERED",
+        createdAt: new Date(old),
+      });
+      const oldFailed = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "FAILED",
+        createdAt: new Date(old),
+      });
+      const recentDelivered = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "DELIVERED",
+        createdAt: new Date(),
+      });
+
+      const cutoff = new Date(Date.now() - 30 * DAY_MS);
+      const deleted = await service.pruneOldDeliveries(cutoff, 50);
+
+      expect(deleted).toBe(2);
+      expect(
+        await db.webhookDelivery.findUnique({ where: { id: oldDelivered.id } }),
+      ).toBeNull();
+      expect(
+        await db.webhookDelivery.findUnique({ where: { id: oldFailed.id } }),
+      ).toBeNull();
+      expect(
+        await db.webhookDelivery.findUnique({
+          where: { id: recentDelivered.id },
+        }),
+      ).not.toBeNull();
+    } finally {
+      await db.workspace.delete({ where: { id: wsId } }).catch(() => {});
+    }
+  });
+
+  it("never touches PENDING/DELIVERING rows regardless of age", async () => {
+    const wsId = (
+      await db.workspace.create({
+        data: {
+          name: "prune-active",
+          slug: `prune-active-${randomUUID()}`,
+          updatedAt: new Date(),
+        },
+      })
+    ).id;
+    try {
+      const hook = await service.create(wsId, baseInput());
+      const veryOld = new Date(Date.now() - 100 * DAY_MS);
+      const pending = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "PENDING",
+        createdAt: veryOld,
+      });
+      const delivering = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "DELIVERING",
+        createdAt: veryOld,
+      });
+
+      const cutoff = new Date(Date.now() - 30 * DAY_MS);
+      const deleted = await service.pruneOldDeliveries(cutoff, 50);
+
+      expect(deleted).toBe(0);
+      expect(
+        await db.webhookDelivery.findUnique({ where: { id: pending.id } }),
+      ).not.toBeNull();
+      expect(
+        await db.webhookDelivery.findUnique({ where: { id: delivering.id } }),
+      ).not.toBeNull();
+    } finally {
+      await db.workspace.delete({ where: { id: wsId } }).catch(() => {});
+    }
+  });
+
+  it("retains a row exactly at the cutoff (strict less-than boundary)", async () => {
+    const wsId = (
+      await db.workspace.create({
+        data: {
+          name: "prune-boundary",
+          slug: `prune-boundary-${randomUUID()}`,
+          updatedAt: new Date(),
+        },
+      })
+    ).id;
+    try {
+      const hook = await service.create(wsId, baseInput());
+      const cutoff = new Date(Date.now() - 30 * DAY_MS);
+      const atCutoff = await makeDelivery({
+        webhookId: hook.id,
+        wsId,
+        status: "FAILED",
+        createdAt: cutoff,
+      });
+
+      const deleted = await service.pruneOldDeliveries(cutoff, 50);
+
+      expect(deleted).toBe(0);
+      expect(
+        await db.webhookDelivery.findUnique({ where: { id: atCutoff.id } }),
+      ).not.toBeNull();
+    } finally {
+      await db.workspace.delete({ where: { id: wsId } }).catch(() => {});
+    }
+  });
+
+  it("respects batchSize, draining a backlog over multiple calls", async () => {
+    const wsId = (
+      await db.workspace.create({
+        data: {
+          name: "prune-batch",
+          slug: `prune-batch-${randomUUID()}`,
+          updatedAt: new Date(),
+        },
+      })
+    ).id;
+    try {
+      const hook = await service.create(wsId, baseInput());
+      const old = new Date(Date.now() - 40 * DAY_MS);
+      for (let i = 0; i < 5; i++) {
+        await makeDelivery({
+          webhookId: hook.id,
+          wsId,
+          status: "FAILED",
+          createdAt: old,
+        });
+      }
+
+      const cutoff = new Date(Date.now() - 30 * DAY_MS);
+      const deleted = await service.pruneOldDeliveries(cutoff, 3);
+
+      expect(deleted).toBe(3);
+      const remaining = await db.webhookDelivery.count({
+        where: { workspaceId: wsId },
+      });
+      expect(remaining).toBe(2);
+    } finally {
+      await db.workspace.delete({ where: { id: wsId } }).catch(() => {});
+    }
+  });
+});
+
 describe("emission from domain services", () => {
   it("enqueues a delivery when an alert is created for a subscribed webhook", async () => {
     const wsId = (

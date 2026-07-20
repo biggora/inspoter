@@ -48,6 +48,21 @@ const envSchema = z
       .positive()
       .default(30_000),
     WEBHOOK_DELIVERY_BATCH: z.coerce.number().int().positive().default(50),
+    WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30),
+    WEBHOOK_DELIVERY_RETENTION_BATCH: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(500),
+    WEBHOOK_DELIVERY_RETENTION_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000), // hourly — a cleanup sweep, not latency sensitive
     // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
     MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
     MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),

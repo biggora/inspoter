@@ -25,5 +25,9 @@ export async function register() {
     const { startWebhookScheduler } =
       await import("@/lib/services/webhook-scheduler");
     startWebhookScheduler();
+
+    const { startWebhookRetentionScheduler } =
+      await import("@/lib/services/webhook-retention-scheduler");
+    startWebhookRetentionScheduler();
   }
 }
