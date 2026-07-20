@@ -1,7 +1,7 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.7
-**Status:** Public webhook OpenAPI and protected Swagger UI amendment
+**Version:** 1.8
+**Status:** Workspace backup/restore amendment
 **Owner:** Architect
 **Date:** 2026-07-20
 **Normative inputs:** `docs/prd.md` v3.8, `docs/design.md` v2.9, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.8 (2026-07-20):** documents the implemented workspace backup/restore slice as CURRENT: the `.inspot-backup` v1 binary container (AES-256-GCM + scrypt + gzip, `src/lib/backup/format.ts`), the versioned JSON payload and section→model mapping (`src/lib/backup/serialization.ts`), the owner-only `/settings/backup` page and `POST /api/backup/{export,import}` routes, single-transaction import with id regeneration/global collision skips, the `BACKUP_MAX_IMPORT_BYTES` / `BACKUP_IMPORT_TX_TIMEOUT_MS` env variables, and the streaming-NDJSON future-work boundary. New section §7B.
 - **v1.7 (2026-07-20):** adds the checked-in OpenAPI 3.1.1 contract for the two public webhook ingress operations, the authenticated `/settings/api-docs` Swagger UI, and CI contract validation. Internal dashboard APIs, OIDC, and webhook-management routes remain outside the public specification.
 - **v1.6 (2026-07-18):** documents the source-present channel-scoped webhook migration, management/public API contracts, atomic channel-message idempotency, structured message origin, legacy null-channel compatibility, and tokenized-path redaction requirement. Runtime status remains pending.
 - **v1.5 (2026-07-18):** documents the implemented Q-14 multi-account mail client as CURRENT: the four-model mail cluster (`MailAccount`, `MailFolder`, extended `MailItem`, `MailAttachment`) with the `20260718130000_mail_client_multi_account` migration and webhook-mailbox backfill; the `src/lib/mail/` transport driver boundary (MOCK/REAL, imapflow + mailparser + nodemailer); the lease-locked sync engine and second in-process scheduler; the full `/api/mail/**` surface; new `MAIL_*` env variables; `serverExternalPackages` and the ES2020 TypeScript target; and the mail security posture (credential encryption, DOMPurify, attachment Content-Type allowlist, send rate limit, accepted private-range SSRF trade-off). Updates page/route/model counters and relaxes the Slice-0 "one migration" P-1 note (see §4.1). New section §7A.
@@ -104,24 +105,25 @@ flowchart LR
 
 ### 3.1 Complete current page tree
 
-**CURRENT (2026-07-20):** The application contains 20 `page.tsx` files. The `(dashboard)` route group does not add a URL segment. Beyond the v1.3 table below, later slices added `/services`, `/services/[id]`, `/settings/providers`, `/settings/api-docs`, `/no-workspace`, and — with the Q-14 mail client — `/settings/mail`.
+**CURRENT (2026-07-20):** The application contains 21 `page.tsx` files. The `(dashboard)` route group does not add a URL segment. Beyond the v1.3 table below, later slices added `/services`, `/services/[id]`, `/settings/providers`, `/settings/api-docs`, `/no-workspace`, `/settings/backup`, and — with the Q-14 mail client — `/settings/mail`.
 
-| Label   | URL                   | File                                                      | Boundary and data source                                                                                      |
-| ------- | --------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| CURRENT | `/`                   | `src/app/page.tsx`                                        | Server Component; redirects to `/bookmarks`                                                                   |
-| CURRENT | `/login`              | `src/app/login/page.tsx`                                  | Server Component; awaits `searchParams`, renders Client `LoginForm`                                           |
-| CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`                  | Server Component; `requireAuth()` plus workspace-scoped service read                                          |
-| CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`                    | Server Component; `requireAuth()` plus provider aggregation                                                   |
-| CURRENT | `/servers`            | `src/app/(dashboard)/servers/page.tsx`                    | Authenticated Server Component shell; Client view fetches API                                                 |
-| CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`                       | Authenticated Server Component shell; Client three-pane mail client (`MailClientView`) fetches API            |
-| CURRENT | `/settings/mail`      | `src/app/(dashboard)/settings/mail/page.tsx`              | Authenticated Server Component shell; Client mail-account management (owner-gated mutations)                  |
-| CURRENT | `/messages`           | `src/app/(dashboard)/messages/page.tsx`                   | Authenticated Server Component shell; Client view fetches API                                                 |
-| CURRENT | `/logs`               | `src/app/(dashboard)/logs/page.tsx`                       | Authenticated Server Component shell; Client view fetches API                                                 |
-| CURRENT | `/alerts`             | `src/app/(dashboard)/alerts/page.tsx`                     | Authenticated Server Component shell; Client view fetches API                                                 |
-| CURRENT | `/settings`           | `src/app/(dashboard)/settings/page.tsx`                   | Server Component under authenticated dashboard layout; links to active settings destinations                  |
-| CURRENT | `/settings/api-docs`  | `src/app/[locale]/(dashboard)/settings/api-docs/page.tsx` | Authenticated Server Component imports the checked-in spec and passes it to a narrow Swagger Client Component |
-| CURRENT | `/settings/workspace` | `src/app/(dashboard)/settings/workspace/page.tsx`         | Server Component; workspace/member service read, Client mutation forms                                        |
-| CURRENT | `/settings/webhooks`  | `src/app/(dashboard)/settings/webhooks/page.tsx`          | Authenticated Server Component shell; Client token management                                                 |
+| Label   | URL                   | File                                                      | Boundary and data source                                                                                       |
+| ------- | --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| CURRENT | `/`                   | `src/app/page.tsx`                                        | Server Component; redirects to `/bookmarks`                                                                    |
+| CURRENT | `/login`              | `src/app/login/page.tsx`                                  | Server Component; awaits `searchParams`, renders Client `LoginForm`                                            |
+| CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`                  | Server Component; `requireAuth()` plus workspace-scoped service read                                           |
+| CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`                    | Server Component; `requireAuth()` plus provider aggregation                                                    |
+| CURRENT | `/servers`            | `src/app/(dashboard)/servers/page.tsx`                    | Authenticated Server Component shell; Client view fetches API                                                  |
+| CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`                       | Authenticated Server Component shell; Client three-pane mail client (`MailClientView`) fetches API             |
+| CURRENT | `/settings/mail`      | `src/app/(dashboard)/settings/mail/page.tsx`              | Authenticated Server Component shell; Client mail-account management (owner-gated mutations)                   |
+| CURRENT | `/messages`           | `src/app/(dashboard)/messages/page.tsx`                   | Authenticated Server Component shell; Client view fetches API                                                  |
+| CURRENT | `/logs`               | `src/app/(dashboard)/logs/page.tsx`                       | Authenticated Server Component shell; Client view fetches API                                                  |
+| CURRENT | `/alerts`             | `src/app/(dashboard)/alerts/page.tsx`                     | Authenticated Server Component shell; Client view fetches API                                                  |
+| CURRENT | `/settings`           | `src/app/(dashboard)/settings/page.tsx`                   | Server Component under authenticated dashboard layout; links to active settings destinations                   |
+| CURRENT | `/settings/api-docs`  | `src/app/[locale]/(dashboard)/settings/api-docs/page.tsx` | Authenticated Server Component imports the checked-in spec and passes it to a narrow Swagger Client Component  |
+| CURRENT | `/settings/backup`    | `src/app/[locale]/(dashboard)/settings/backup/page.tsx`   | Authenticated Server Component computes the owner role; owner sees Client export/import forms, member a notice |
+| CURRENT | `/settings/workspace` | `src/app/(dashboard)/settings/workspace/page.tsx`         | Server Component; workspace/member service read, Client mutation forms                                         |
+| CURRENT | `/settings/webhooks`  | `src/app/(dashboard)/settings/webhooks/page.tsx`          | Authenticated Server Component shell; Client token management                                                  |
 
 ### 3.2 Complete current route-handler families
 
@@ -138,6 +140,7 @@ flowchart LR
 | CURRENT | Logs                                   | `GET /api/logs`                                                                                                                                                                                                                                                                                                                           | 1 / 1            |
 | CURRENT | Alerts and alert categories            | `GET /api/alerts`; `GET,POST /api/alert-categories`; `PATCH,DELETE /api/alert-categories/[id]`                                                                                                                                                                                                                                            | 3 / 5            |
 | CURRENT | Webhook tokens                         | `GET,POST /api/webhook-tokens`; `DELETE /api/webhook-tokens/[id]`                                                                                                                                                                                                                                                                         | 2 / 3            |
+| CURRENT | Workspace backup (§7B)                 | `POST /api/backup/export`; `POST /api/backup/import`                                                                                                                                                                                                                                                                                      | 2 / 2            |
 | CURRENT | Public webhook ingest                  | `POST /api/webhooks/[type]`                                                                                                                                                                                                                                                                                                               | 1 / 1            |
 
 **GAP:** `src/app/api/channels/[id]/messages/route.ts` exports GET only. No authenticated human-message POST exists, so FR-MSG-003 and AC-MSG-009…014 are not implemented.
@@ -629,6 +632,77 @@ All validated in `src/lib/config/env.ts` with defaults and documented in `.env.e
 
 Local-only `isAnswered` on reply (overwritten by the next flag down-sync); possible transient duplicate after move/trash until a `Message-ID`-based match is implemented (moved rows carry `uid: null` and are skipped by deletion detection); in-memory per-process send rate limit; plain-text compose without attachment forwarding; no OAuth; webhook-mailbox compose falls back to the first IMAP account.
 
+## 7B. Workspace backup and restore — CURRENT (2026-07-20)
+
+Per-workspace manual export/import: an owner seals selected sections of the active workspace into one encrypted `.inspot-backup` file and later restores it into any workspace on any deployment. Surface: `/settings/backup` (owner-only forms, member notice), `POST /api/backup/export` (JSON `{passphrase, sections}` → binary download `inspot-backup-<slug>-<timestamp>.inspot-backup`), `POST /api/backup/import` (multipart `{file, passphrase, mode: replace|merge}` → JSON summary `{mode, imported, skipped}`). Both routes use `requireAuthWithWorkspaceHeader` plus `requireWorkspaceOwner` (403), and 503 when `CREDENTIAL_ENCRYPTION_KEY` is not configured. New modules: `src/lib/backup/{format,serialization}.ts`, `src/lib/services/backup.ts`, `src/lib/validation/backup.ts`, `src/app/api/backup/{errors.ts,export,import}`, `src/components/backup/{api.ts,export-form.tsx,import-form.tsx}`.
+
+### 7B.1 Archive binary container (format v1)
+
+`src/lib/backup/format.ts` — fixed 53-byte header followed by ciphertext:
+
+| Offset | Length | Field                                                                    |
+| ------ | ------ | ------------------------------------------------------------------------ |
+| 0–7    | 8      | Magic `INSPOTBK` (ASCII)                                                 |
+| 8      | 1      | Format version byte (`1`)                                                |
+| 9–24   | 16     | scrypt salt (random per archive)                                         |
+| 25–36  | 12     | AES-GCM IV                                                               |
+| 37–52  | 16     | AES-GCM auth tag                                                         |
+| 53–…   | n      | Ciphertext = AES-256-GCM(key = scrypt(passphrase, salt, 32), gzip(JSON)) |
+
+Open-side errors: bad magic or a file shorter than the header → `BackupInvalidFileError` (`BACKUP_INVALID_FILE`); version ≠ 1 → `BackupUnsupportedVersionError` (`BACKUP_UNSUPPORTED_VERSION`); any decipher/auth failure → `BackupPassphraseInvalidError` (`BACKUP_PASSPHRASE_INVALID_OR_CORRUPT`). A wrong passphrase and a tampered/truncated ciphertext are deliberately indistinguishable — AES-GCM authentication fails identically for both.
+
+### 7B.2 Payload schema and serialization rules
+
+`src/lib/backup/serialization.ts` — the sealed JSON is `{ manifest, data }`, validated with Zod (`backupPayloadSchema`, `schemaVersion` literal 1):
+
+- **manifest:** `schemaVersion`, `exportedAt`, `appVersion` (from `package.json`), `workspace {id, name, slug, hiddenSections}`, `sections` (the exported subset), `counts` (per-model row counts).
+- **data:** one optional record array per model; only the models of the selected sections are present. Per-model schemas mirror `prisma/schema.prisma` minus `workspaceId`/composite `*WorkspaceId` shadow columns (recomputed at import) and minus at-rest secret ciphertext.
+- **Serialization:** `Date` → ISO-8601 string, `BigInt` (`uid`, `uidValidity`, `lastSeenUid`) → decimal string, `Bytes` (attachment content) → base64, `Json` columns pass through.
+
+### 7B.3 Section → model mapping
+
+| Section             | Models exported                                           |
+| ------------------- | --------------------------------------------------------- |
+| `bookmarks`         | `Category`, `Bookmark`                                    |
+| `messages`          | `MessageCategory`, `Channel`, `Message`                   |
+| `mail`              | `MailAccount`, `MailFolder`, `MailItem`, `MailAttachment` |
+| `logs`              | `LogEntry`                                                |
+| `alerts`            | `AlertCategory`, `Alert`                                  |
+| `services`          | `Service`, `ServiceCheck`                                 |
+| `webhooks`          | `WebhookToken`, `OutgoingWebhook`                         |
+| `providers`         | `ProviderResourceBinding`, `ProviderCredential`           |
+| `workspaceSettings` | none — lives in `manifest.workspace`, not `data`          |
+
+### 7B.4 Inclusion/exclusion rationale
+
+- **Excluded:** `Operator`, `WorkspaceMember`, `Session`, `ExternalIdentity` (identity/auth is deployment-local, never portable), `WebhookDelivery` (transient delivery attempts), `IdempotencyKey` (replay-protection state is meaningless after token ids change), and the `Workspace` row itself — import targets an existing workspace; only `hiddenSections` from the manifest is applied, and only in replace mode.
+- **Secrets travel decrypted inside the sealed archive:** `MailAccount` passwords, `OutgoingWebhook` signing secrets, and `ProviderCredential` payloads are decrypted at export into `secretData` and re-encrypted with the **local** `CREDENTIAL_ENCRYPTION_KEY` at import. The archive passphrase is the sole in-transit protection, which is exactly what makes an archive portable across deployments with different encryption keys. A secret that fails to decrypt at export raises `BACKUP_SECRET_DECRYPT_FAILED` (500).
+
+### 7B.5 Import semantics: id regeneration, deletion order, collision skips
+
+`src/lib/services/backup.ts` runs the whole import in **one interactive transaction** (`db.$transaction(..., { timeout: BACKUP_IMPORT_TX_TIMEOUT_MS, maxWait: 10 s })`; export snapshots reads in a transaction with the same timeout):
+
+- **Both modes regenerate every id** (`crypto.randomUUID()`) with in-memory FK remap maps, inserting in dependency tiers: self-referential `Category` (topological) → independent parents → children → `MailItem`/`Message` → `MailAttachment`. `createMany` is chunked by 500.
+- **Replace deletes only the sections present in the archive**, children first (`MailAttachment`/`WebhookDelivery`/`IdempotencyKey` → `Message`/`MailItem`/`ServiceCheck`/`Bookmark`/`WebhookToken`/`Alert` → `Channel`/`MailFolder`/`Category` → category/account/service/webhook/provider parents), then applies `manifest.workspace.hiddenSections` to the target workspace.
+- **Transient state is reset:** mail `syncStatus` → `IDLE`, `syncError`/`syncLeaseExpiresAt` → null, `nextSyncAt` → now; `Service.nextCheckAt` → now; `ProviderResourceBinding.operationState` → `IDLE` with all operation-lease fields nulled and `version` reset to 1.
+- **Collision rules:** `WebhookToken.tokenHash` is globally unique → colliding rows are skipped and counted in `skipped.webhookTokens`; `ProviderResourceBinding` global natural key `(provider, accountKey, resourceType, mode, remoteId)` → skip + `skipped.providerResourceBindings`; a same-name `AlertCategory` is reused in merge; a WEBHOOK-kind `MailAccount` in merge is remapped onto the workspace's existing system account (partial unique index allows only one) with folders reused by `path`. **The token/binding guards are global to the instance:** importing an archive while its source workspace still exists on the same instance skips those rows. This is intended — the disaster-recovery path (source workspace gone) imports them fully.
+- A webhooks-only archive imported without the `messages` section nulls `WebhookToken.channelId` (the channel cannot be remapped), preserving the token as a legacy workspace-wide credential.
+
+### 7B.6 Bounds, environment variables, error codes
+
+v1 is **memory-bound**: the whole archive (and its parsed payload) is held in memory on both export and import. Validated in `src/lib/config/env.ts`, documented in `.env.example` and the README:
+
+| Variable                      | Default             | Meaning                                           |
+| ----------------------------- | ------------------- | ------------------------------------------------- |
+| `BACKUP_MAX_IMPORT_BYTES`     | 536870912 (512 MiB) | max accepted import archive size → 413            |
+| `BACKUP_IMPORT_TX_TIMEOUT_MS` | 300000 (5 min)      | interactive-transaction timeout for export/import |
+
+Error mapping (`src/app/api/backup/errors.ts`): `BACKUP_INVALID_FILE` / `BACKUP_UNSUPPORTED_VERSION` / `BACKUP_PASSPHRASE_INVALID_OR_CORRUPT` → 400, `BACKUP_TOO_LARGE` → 413, `BACKUP_SECRET_DECRYPT_FAILED` → 500, `WorkspaceOwnerRequiredError` → 403, `EncryptionNotConfiguredError` → 503. The export response is `application/octet-stream` with RFC 6266/5987 `Content-Disposition` and `Cache-Control: private, no-store`.
+
+**Future work (out of v1):** a streaming NDJSON payload (record-per-line inside the same sealed container) to lift the whole-archive-in-memory bound for very large workspaces; no scheduled/automatic backups — export is a manual owner action.
+
+Tests: `tests/unit/backup/format.test.ts` (10 — container round-trip, tamper/truncation/magic/version rejects, payload schema) and `tests/unit/services/backup.test.ts` (29 on a real test database — AC-BCK-001..008).
+
 ## 8. Request sequences
 
 ### 8.1 Authenticated dashboard read and mutation — CURRENT
@@ -762,6 +836,7 @@ src/
 | ADR-023 | TARGET R2.1a                     | Generate checked-in mock SQL from versioned canonical JSON and enforce version/SHA/byte/checksum parity.                                                                                                                                                                                                                                                  |
 | ADR-024 | CURRENT (Q-14)                   | Mail uses a driver boundary (`src/lib/mail/`, MOCK/REAL like providers) with locally persisted mail state and a lease-locked pull-sync engine on a second in-process scheduler. Actions are server-first (driver, then database; 502 on driver failure). Attachments store lazily-fetched bytea in PostgreSQL. Accepted trade-offs are recorded in §7A.7. |
 | ADR-025 | CURRENT SOURCE / PENDING RUNTIME | Preserve legacy null-channel webhook tokens and their `/api/webhooks/[type]` contract; create all channel webhooks as one-channel message capabilities using token-in-URL delivery. All workspace members may manage them. The channel pipeline uses transactional idempotency; reverse-proxy full-path redaction is mandatory.                           |
+| ADR-026 | CURRENT                          | Workspace backup is an owner-only, passphrase-sealed single-file export/import (§7B): AES-256-GCM + scrypt + gzip container, decrypted secrets inside the sealed archive re-encrypted with the local key at import, full id regeneration in one interactive transaction, global collision skips, memory-bound v1 with streaming NDJSON as future work.    |
 
 ## 11. Decision and requirement traceability
 

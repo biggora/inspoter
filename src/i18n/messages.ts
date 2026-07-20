@@ -1,5 +1,6 @@
 import shell from "@/messages/ru/shell.json";
 import auth from "@/messages/ru/auth.json";
+import backup from "@/messages/ru/backup.json";
 import bookmarks from "@/messages/ru/bookmarks.json";
 import servers from "@/messages/ru/servers.json";
 import hosting from "@/messages/ru/hosting.json";
@@ -17,6 +18,7 @@ import validation from "@/messages/ru/validation.json";
 
 import enShell from "@/messages/en/shell.json";
 import enAuth from "@/messages/en/auth.json";
+import enBackup from "@/messages/en/backup.json";
 import enBookmarks from "@/messages/en/bookmarks.json";
 import enServers from "@/messages/en/servers.json";
 import enHosting from "@/messages/en/hosting.json";
@@ -35,6 +37,7 @@ import enValidation from "@/messages/en/validation.json";
 export const ruMessages = {
   shell,
   auth,
+  backup,
   bookmarks,
   servers,
   hosting,
@@ -54,6 +57,7 @@ export const ruMessages = {
 export const enMessages = {
   shell: enShell,
   auth: enAuth,
+  backup: enBackup,
   bookmarks: enBookmarks,
   servers: enServers,
   hosting: enHosting,

@@ -87,6 +87,17 @@ const envSchema = z
       z.string().min(1).optional(),
     ),
     OPERATOR_PASSWORD: z.string().min(1).optional(),
+    // --- Workspace backup / restore (export + import) ---
+    BACKUP_MAX_IMPORT_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(536_870_912),
+    BACKUP_IMPORT_TX_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300_000),
     // --- Authentik SSO (third-party auth, optional — absent = disabled) ---
     AUTHENTIK_ISSUER: z.string().url().optional(),
     AUTHENTIK_CLIENT_ID: z.string().min(1).optional(),

@@ -1,0 +1,87 @@
+{
+  "pageTitle": "Backup & restore",
+  "pageDescription": "Export workspace data to an encrypted file, or restore it from an archive.",
+  "ownerOnlyTitle": "Owner only",
+  "ownerOnly": "Exporting and importing workspace data is only available to the workspace owner.",
+
+  "exportCardTitle": "Export",
+  "exportCardDescription": "Save the selected workspace sections to an encrypted .inspot-backup file.",
+  "importCardTitle": "Import",
+  "importCardDescription": "Restore workspace data from a previously created .inspot-backup file.",
+
+  "sectionsLabel": "What to export",
+  "sectionsRequiredError": "Select at least one section",
+  "sections": {
+    "bookmarks": "Bookmarks",
+    "messages": "Messages",
+    "mail": "Mail",
+    "logs": "Logs",
+    "alerts": "Alerts",
+    "services": "Services",
+    "webhooks": "Webhooks",
+    "providers": "Providers",
+    "workspaceSettings": "Workspace settings"
+  },
+
+  "passphraseLabel": "Archive passphrase",
+  "confirmPassphraseLabel": "Confirm passphrase",
+  "passphraseTooShortError": "Passphrase must be at least 10 characters",
+  "passphraseMismatchError": "Passphrases do not match",
+
+  "exportButton": "Export",
+  "exportingButton": "Exporting…",
+  "exportSuccessToast": "Backup downloaded.",
+
+  "fileLabel": "Archive file",
+  "fileHint": "Choose an .inspot-backup file",
+  "modeLabel": "Import mode",
+  "modeMergeOption": "Merge (safe)",
+  "modeReplaceOption": "Replace",
+  "modeMergeDescription": "New records are added alongside existing data. Duplicates (webhook tokens and provider resource bindings) are skipped.",
+  "modeReplaceDescription": "Data for the sections included in the archive will be deleted and replaced with its contents.",
+
+  "importButton": "Import",
+  "importingButton": "Importing…",
+  "importSuccessToast": "Import complete.",
+
+  "replaceConfirmTitle": "Replace data?",
+  "replaceConfirmDescription": "Data for the sections included in the archive will be permanently replaced with its contents. This action cannot be undone.",
+  "replaceConfirmAction": "Replace",
+  "cancelButton": "Cancel",
+
+  "summaryTitle": "Imported",
+  "skippedTitle": "Skipped (duplicates)",
+  "skippedWebhookTokens": "Webhook tokens",
+  "skippedProviderResourceBindings": "Provider resource bindings",
+
+  "models": {
+    "categories": "Bookmark categories",
+    "bookmarks": "Bookmarks",
+    "messageCategories": "Message categories",
+    "channels": "Channels",
+    "messages": "Messages",
+    "mailAccounts": "Mail accounts",
+    "mailFolders": "Mail folders",
+    "mailItems": "Mail items",
+    "mailAttachments": "Mail attachments",
+    "logEntries": "Log entries",
+    "alertCategories": "Alert categories",
+    "alerts": "Alerts",
+    "services": "Services",
+    "serviceChecks": "Service checks",
+    "webhookTokens": "Webhook tokens",
+    "outgoingWebhooks": "Outgoing webhooks",
+    "providerResourceBindings": "Provider resource bindings",
+    "providerCredentials": "Provider credentials"
+  },
+
+  "errors": {
+    "BACKUP_INVALID_FILE": "The file is corrupt or is not an Inspoter backup.",
+    "BACKUP_UNSUPPORTED_VERSION": "This archive's format is not supported by the current version of the app.",
+    "BACKUP_PASSPHRASE_INVALID_OR_CORRUPT": "The passphrase is incorrect or the archive file is corrupt.",
+    "BACKUP_TOO_LARGE": "The archive file exceeds the maximum allowed size.",
+    "BACKUP_SECRET_DECRYPT_FAILED": "Could not decrypt one of the workspace's secrets.",
+    "ENCRYPTION_NOT_CONFIGURED": "Encryption is not configured on the server. Contact an administrator.",
+    "generic": "Something went wrong. Please try again."
+  }
+}

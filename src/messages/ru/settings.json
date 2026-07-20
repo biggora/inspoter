@@ -15,6 +15,8 @@
   "providersCardDescription": "API-ключи для Cloudflare, Hetzner и GoDaddy",
   "mailAccountsTitle": "Почтовые аккаунты",
   "mailAccountsCardDescription": "Подключение IMAP/SMTP-ящиков для приёма и отправки почты",
+  "backupTitle": "Резервное копирование",
+  "backupCardDescription": "Экспорт данных рабочего пространства в зашифрованный файл и восстановление из архива",
   "backToSettings": "Назад к настройкам",
   "cancelButton": "Отмена",
   "deleteButton": "Удалить",

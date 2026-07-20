@@ -1,0 +1,87 @@
+{
+  "pageTitle": "Резервное копирование",
+  "pageDescription": "Экспортируйте данные рабочего пространства в зашифрованный файл или восстановите их из архива.",
+  "ownerOnlyTitle": "Только для владельца",
+  "ownerOnly": "Экспорт и импорт данных рабочего пространства доступны только владельцу этого рабочего пространства.",
+
+  "exportCardTitle": "Экспорт",
+  "exportCardDescription": "Сохраните выбранные разделы рабочего пространства в зашифрованный файл .inspot-backup.",
+  "importCardTitle": "Импорт",
+  "importCardDescription": "Восстановите данные рабочего пространства из ранее созданного файла .inspot-backup.",
+
+  "sectionsLabel": "Что экспортировать",
+  "sectionsRequiredError": "Выберите хотя бы один раздел",
+  "sections": {
+    "bookmarks": "Закладки",
+    "messages": "Сообщения",
+    "mail": "Почта",
+    "logs": "Логи",
+    "alerts": "Алерты",
+    "services": "Сервисы",
+    "webhooks": "Вебхуки",
+    "providers": "Провайдеры",
+    "workspaceSettings": "Настройки рабочего пространства"
+  },
+
+  "passphraseLabel": "Пароль архива",
+  "confirmPassphraseLabel": "Повторите пароль",
+  "passphraseTooShortError": "Пароль должен содержать не менее 10 символов",
+  "passphraseMismatchError": "Пароли не совпадают",
+
+  "exportButton": "Экспортировать",
+  "exportingButton": "Экспорт…",
+  "exportSuccessToast": "Резервная копия скачана.",
+
+  "fileLabel": "Файл архива",
+  "fileHint": "Выберите файл .inspot-backup",
+  "modeLabel": "Режим импорта",
+  "modeMergeOption": "Слияние (безопасно)",
+  "modeReplaceOption": "Замена",
+  "modeMergeDescription": "Новые записи добавляются к существующим данным. Дубликаты (вебхук-токены и привязки ресурсов провайдеров) пропускаются.",
+  "modeReplaceDescription": "Данные разделов, входящих в архив, будут удалены и заменены его содержимым.",
+
+  "importButton": "Импортировать",
+  "importingButton": "Импорт…",
+  "importSuccessToast": "Импорт завершён.",
+
+  "replaceConfirmTitle": "Заменить данные?",
+  "replaceConfirmDescription": "Данные разделов, входящих в архив, будут безвозвратно заменены его содержимым. Это действие нельзя отменить.",
+  "replaceConfirmAction": "Заменить",
+  "cancelButton": "Отмена",
+
+  "summaryTitle": "Импортировано",
+  "skippedTitle": "Пропущено (дубликаты)",
+  "skippedWebhookTokens": "Webhook-токены",
+  "skippedProviderResourceBindings": "Привязки ресурсов провайдеров",
+
+  "models": {
+    "categories": "Категории закладок",
+    "bookmarks": "Закладки",
+    "messageCategories": "Категории сообщений",
+    "channels": "Каналы",
+    "messages": "Сообщения",
+    "mailAccounts": "Почтовые аккаунты",
+    "mailFolders": "Папки почты",
+    "mailItems": "Письма",
+    "mailAttachments": "Вложения писем",
+    "logEntries": "Записи логов",
+    "alertCategories": "Категории алертов",
+    "alerts": "Алерты",
+    "services": "Сервисы",
+    "serviceChecks": "Проверки сервисов",
+    "webhookTokens": "Webhook-токены",
+    "outgoingWebhooks": "Исходящие вебхуки",
+    "providerResourceBindings": "Привязки ресурсов провайдеров",
+    "providerCredentials": "Учётные данные провайдеров"
+  },
+
+  "errors": {
+    "BACKUP_INVALID_FILE": "Файл повреждён или не является резервной копией Inspoter.",
+    "BACKUP_UNSUPPORTED_VERSION": "Формат этого архива не поддерживается текущей версией приложения.",
+    "BACKUP_PASSPHRASE_INVALID_OR_CORRUPT": "Неверный пароль или файл архива повреждён.",
+    "BACKUP_TOO_LARGE": "Файл архива превышает допустимый размер.",
+    "BACKUP_SECRET_DECRYPT_FAILED": "Не удалось расшифровать один из секретов рабочего пространства.",
+    "ENCRYPTION_NOT_CONFIGURED": "Шифрование не настроено на сервере. Обратитесь к администратору.",
+    "generic": "Что-то пошло не так. Попробуйте снова."
+  }
+}

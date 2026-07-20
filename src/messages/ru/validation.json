@@ -86,5 +86,11 @@
     "urlInvalid": "Укажите корректный HTTPS-адрес",
     "eventsRequired": "Выберите хотя бы одно событие",
     "eventInvalid": "Недопустимое событие"
+  },
+  "backup": {
+    "passphraseRequired": "Укажите пароль",
+    "passphraseTooShort": "Пароль должен содержать не менее 10 символов",
+    "passphraseTooLong": "Пароль слишком длинный",
+    "sectionsRequired": "Выберите хотя бы один раздел"
   }
 }

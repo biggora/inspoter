@@ -15,6 +15,8 @@
   "providersCardDescription": "API keys for Cloudflare, Hetzner, and GoDaddy",
   "mailAccountsTitle": "Mail Accounts",
   "mailAccountsCardDescription": "Connect IMAP/SMTP mailboxes for receiving and sending mail",
+  "backupTitle": "Backup & Restore",
+  "backupCardDescription": "Export workspace data to an encrypted file and restore it from an archive",
   "backToSettings": "Back to settings",
   "cancelButton": "Cancel",
   "deleteButton": "Delete",

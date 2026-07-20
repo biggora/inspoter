@@ -99,6 +99,21 @@ export default async function SettingsPage() {
             </p>
           </div>
         </Link>
+        <Link
+          href="/settings/backup"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+        >
+          <Icon
+            name="ri-archive-line"
+            className="text-lg text-muted-foreground"
+          />
+          <div>
+            <p className="font-medium">{t("backupTitle")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("backupCardDescription")}
+            </p>
+          </div>
+        </Link>
       </CardGrid>
     </PageBody>
   );

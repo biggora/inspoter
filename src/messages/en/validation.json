@@ -86,5 +86,11 @@
     "urlInvalid": "Enter a valid HTTPS address",
     "eventsRequired": "Select at least one event",
     "eventInvalid": "Invalid event"
+  },
+  "backup": {
+    "passphraseRequired": "Password is required",
+    "passphraseTooShort": "Password must be at least 10 characters",
+    "passphraseTooLong": "Password is too long",
+    "sectionsRequired": "Select at least one section"
   }
 }
