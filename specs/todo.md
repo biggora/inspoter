@@ -1,5 +1,6 @@
 
-Добавить новый раздел хостинги - hostinger https://developers.hostinger.com/#description/introduction
+Добавить новый раздел хостинги, для мониторинга и управления хостингами с поддержкой API  cPanel,
+Hostinger https://developers.hostinger.com/#description/introduction
 
 Добавить раздел напоминания (подписки, регулярные платежи и так далее)
 
