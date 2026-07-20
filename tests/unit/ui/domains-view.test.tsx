@@ -23,7 +23,8 @@ describe("DomainsView empty state", () => {
       "with an errored provider",
       [
         {
-          providerId: "cloudflare",
+          providerId: "cred-1",
+          providerType: "cloudflare",
           mode: "mock",
           domains: [],
           error: "Provider unreachable",

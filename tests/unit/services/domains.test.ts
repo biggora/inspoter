@@ -67,6 +67,7 @@ describe("listDomains()", () => {
 
     expect(byProvider["mock-cloudflare"]).toEqual({
       providerId: "mock-cloudflare",
+      providerType: "cloudflare",
       mode: "mock",
       domains: [],
       error: "Error: network unreachable",
@@ -94,6 +95,7 @@ describe("listDomains()", () => {
     );
     expect(cloudflareResult).toEqual({
       providerId: "mock-cloudflare",
+      providerType: "cloudflare",
       mode: "mock",
       domains: [],
       error: "auth failed",

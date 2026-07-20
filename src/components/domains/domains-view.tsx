@@ -86,6 +86,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
     provider.domains.map((domain) => ({
       ...domain,
       providerId: provider.providerId,
+      providerType: provider.providerType,
     })),
   );
 
@@ -123,7 +124,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                 />
                 <AlertDescription>
                   <span className="font-medium">
-                    {providerLabel(provider.providerId)}
+                    {providerLabel(provider.providerType)}
                   </span>{" "}
                   — {providerErrorMessage(provider.error, t)}
                 </AlertDescription>
@@ -171,7 +172,7 @@ export function DomainsView({ providers }: DomainsViewProps) {
                 <TableCell className="font-mono">{domain.name}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {providerLabel(domain.providerId)}
+                    {providerLabel(domain.providerType)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
