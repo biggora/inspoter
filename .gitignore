@@ -21,6 +21,7 @@
 # next.js
 /.next/
 /out/
+/public/vendor/swagger-ui/
 
 # production
 /build

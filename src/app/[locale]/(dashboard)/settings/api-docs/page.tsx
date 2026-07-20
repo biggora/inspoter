@@ -18,7 +18,14 @@ export default async function ApiDocsPage() {
       <Alert variant="warning">
         <AlertDescription>{t("apiDocsCredentialWarning")}</AlertDescription>
       </Alert>
-      <SwaggerDocumentation spec={publicApiSpec} />
+      <SwaggerDocumentation
+        spec={publicApiSpec}
+        runtimeErrors={{
+          load: t("apiDocsRuntimeLoadError"),
+          unavailable: t("apiDocsRuntimeUnavailableError"),
+          initialization: t("apiDocsInitializationError"),
+        }}
+      />
     </PageBody>
   );
 }

@@ -18,7 +18,10 @@
     "mail-client"
   ],
   "scripts": {
+    "swagger-ui:assets": "node scripts/prepare-swagger-ui-assets.mjs",
+    "predev": "pnpm run swagger-ui:assets",
     "dev": "next dev --turbopack -p 3800",
+    "prebuild": "pnpm run swagger-ui:assets",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint && node scripts/check-native-controls.mjs",

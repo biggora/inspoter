@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".claude/**",
     "src/generated/**",
+    "public/vendor/swagger-ui/**",
     // Pre-existing reference material outside this app's scope (not touched by scaffolding).
     "specs/**",
     "docs/**",
