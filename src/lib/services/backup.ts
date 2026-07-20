@@ -26,6 +26,7 @@ import {
   sealArchive,
   openArchive,
   BackupInvalidFileError,
+  BackupTooLargeError,
 } from "@/lib/backup/format";
 import {
   BACKUP_SCHEMA_VERSION,
@@ -75,13 +76,9 @@ export class BackupSecretDecryptError extends Error {
   }
 }
 
-export class BackupTooLargeError extends Error {
-  readonly code = "BACKUP_TOO_LARGE" as const;
-  constructor() {
-    super("Backup file exceeds the maximum allowed size");
-    this.name = "BackupTooLargeError";
-  }
-}
+// Re-exported so existing imports (e.g. src/app/api/backup/errors.ts) keep
+// working now that the class lives alongside openArchive's size guard.
+export { BackupTooLargeError };
 
 export interface BackupImportSummary {
   mode: BackupImportMode;
@@ -692,7 +689,11 @@ export async function exportWorkspace(
         counts.providerCredentials = providerCredentials.length;
       }
     },
-    { timeout: env.BACKUP_IMPORT_TX_TIMEOUT_MS, maxWait: 10_000 },
+    {
+      timeout: env.BACKUP_IMPORT_TX_TIMEOUT_MS,
+      maxWait: 10_000,
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+    },
   );
 
   const manifest: BackupManifest = {
@@ -749,7 +750,12 @@ export async function importWorkspace(
     throw new BackupTooLargeError();
   }
 
-  const raw = openArchive(input.file, input.passphrase);
+  const raw = openArchive(input.file, input.passphrase, {
+    // 4x the compressed size cap is a pragmatic bound on decompressed
+    // output — enough headroom for legitimate JSON payloads while still
+    // guarding against a gzip bomb inflating a small archive unbounded.
+    maxDecompressedBytes: env.BACKUP_MAX_IMPORT_BYTES * 4,
+  });
   const parsed = backupPayloadSchema.safeParse(raw);
   if (!parsed.success) {
     throw new BackupInvalidFileError();

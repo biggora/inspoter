@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ export function ImportForm() {
   const modeId = useId();
   const passphraseId = useId();
   const passphraseErrorId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<BackupImportMode>("merge");
@@ -61,10 +62,14 @@ export function ImportForm() {
     if (!file) return;
     setSubmitting(true);
     setPassphraseError(null);
+    setSummary(null);
     try {
       const result = await importBackup(file, mode, passphrase);
       setSummary(result);
       toast.success(t("importSuccessToast"));
+      setPassphrase("");
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.passphrase) {
@@ -104,9 +109,13 @@ export function ImportForm() {
             <FieldLabel htmlFor={fileId}>{t("fileLabel")}</FieldLabel>
             <Input
               id={fileId}
+              ref={fileInputRef}
               type="file"
               accept=".inspot-backup"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setSummary(null);
+              }}
               aria-required="true"
             />
             <FieldDescription>
@@ -119,9 +128,10 @@ export function ImportForm() {
             <NativeSelect
               id={modeId}
               value={mode}
-              onChange={(event) =>
-                setMode(event.target.value as BackupImportMode)
-              }
+              onChange={(event) => {
+                setMode(event.target.value as BackupImportMode);
+                setSummary(null);
+              }}
             >
               <NativeSelectOption value="merge">
                 {t("modeMergeOption")}
@@ -146,7 +156,10 @@ export function ImportForm() {
               type="password"
               autoComplete="new-password"
               value={passphrase}
-              onChange={(event) => setPassphrase(event.target.value)}
+              onChange={(event) => {
+                setPassphrase(event.target.value);
+                setSummary(null);
+              }}
               aria-required="true"
               aria-invalid={!!passphraseError || undefined}
               aria-describedby={passphraseError ? passphraseErrorId : undefined}

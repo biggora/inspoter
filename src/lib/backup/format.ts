@@ -51,6 +51,14 @@ export class BackupPassphraseInvalidError extends Error {
   }
 }
 
+export class BackupTooLargeError extends Error {
+  readonly code = "BACKUP_TOO_LARGE" as const;
+  constructor() {
+    super("Backup file exceeds the maximum allowed size");
+    this.name = "BackupTooLargeError";
+  }
+}
+
 export function sealArchive(payload: unknown, passphrase: string): Buffer {
   const compressed = gzipSync(Buffer.from(JSON.stringify(payload), "utf8"));
 
@@ -72,7 +80,11 @@ export function sealArchive(payload: unknown, passphrase: string): Buffer {
   ]);
 }
 
-export function openArchive(file: Buffer, passphrase: string): unknown {
+export function openArchive(
+  file: Buffer,
+  passphrase: string,
+  options?: { maxDecompressedBytes?: number },
+): unknown {
   if (
     file.length < HEADER_LENGTH ||
     !file.subarray(0, MAGIC_END).equals(BACKUP_MAGIC)
@@ -101,8 +113,26 @@ export function openArchive(file: Buffer, passphrase: string): unknown {
     throw new BackupPassphraseInvalidError();
   }
 
+  let decompressed: Buffer;
   try {
-    return JSON.parse(gunzipSync(compressed).toString("utf8"));
+    decompressed =
+      options?.maxDecompressedBytes !== undefined
+        ? gunzipSync(compressed, {
+            maxOutputLength: options.maxDecompressedBytes,
+          })
+        : gunzipSync(compressed);
+  } catch (error) {
+    if (
+      error instanceof RangeError &&
+      (error as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE"
+    ) {
+      throw new BackupTooLargeError();
+    }
+    throw new BackupInvalidFileError();
+  }
+
+  try {
+    return JSON.parse(decompressed.toString("utf8"));
   } catch {
     throw new BackupInvalidFileError();
   }

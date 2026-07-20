@@ -14,6 +14,12 @@ export async function POST(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const { workspace, operator } = authResult;
 
+  try {
+    await requireWorkspaceOwner(workspace.id, operator.id);
+  } catch (error) {
+    return mapBackupError(error);
+  }
+
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > env.BACKUP_MAX_IMPORT_BYTES) {
     return jsonResponse({ error: "BACKUP_TOO_LARGE" }, { status: 413 });
@@ -43,7 +49,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await requireWorkspaceOwner(workspace.id, operator.id);
     const summary = await importWorkspace(workspace.id, {
       mode: parsed.data.mode,
       passphrase: parsed.data.passphrase,
