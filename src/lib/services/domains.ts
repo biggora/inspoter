@@ -14,6 +14,7 @@ import type { ProviderResult } from "@/lib/providers/result";
 
 export interface DomainsByProvider {
   providerId: DnsProvider["id"];
+  providerType: DnsProvider["providerType"];
   mode: DnsProvider["mode"];
   domains: Domain[];
   error: string | null;
@@ -32,6 +33,7 @@ export async function listDomains(
     if (result.status === "rejected") {
       return {
         providerId: provider.id,
+        providerType: provider.providerType,
         mode: provider.mode,
         domains: [],
         error: String(result.reason),
@@ -41,6 +43,7 @@ export async function listDomains(
     if (!providerResult.ok) {
       return {
         providerId: provider.id,
+        providerType: provider.providerType,
         mode: provider.mode,
         domains: [],
         error:
@@ -51,6 +54,7 @@ export async function listDomains(
     }
     return {
       providerId: provider.id,
+      providerType: provider.providerType,
       mode: provider.mode,
       domains: providerResult.data,
       error: null,
