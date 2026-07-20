@@ -5,6 +5,7 @@ import {
   BACKUP_MAGIC,
   BackupInvalidFileError,
   BackupPassphraseInvalidError,
+  BackupTooLargeError,
   BackupUnsupportedVersionError,
   openArchive,
   sealArchive,
@@ -97,6 +98,19 @@ describe("backup archive format", () => {
 
   it("BACKUP_FORMAT_VERSION is 1", () => {
     expect(BACKUP_FORMAT_VERSION).toBe(1);
+  });
+
+  it("throws BackupTooLargeError when the decompressed payload exceeds maxDecompressedBytes (gzip-bomb guard)", () => {
+    const hugePayload = {
+      ...SAMPLE_PAYLOAD,
+      data: { ...SAMPLE_PAYLOAD.data, blob: "a".repeat(1024 * 1024) },
+    };
+    const sealed = sealArchive(hugePayload, PASSPHRASE);
+    expect(() =>
+      openArchive(sealed, PASSPHRASE, { maxDecompressedBytes: 1024 }),
+    ).toThrow(BackupTooLargeError);
+    // Without the option, the same archive opens successfully.
+    expect(openArchive(sealed, PASSPHRASE)).toEqual(hugePayload);
   });
 });
 

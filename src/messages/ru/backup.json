@@ -25,6 +25,7 @@
 
   "passphraseLabel": "Пароль архива",
   "confirmPassphraseLabel": "Повторите пароль",
+  "passphraseHint": "Не менее 10 символов",
   "passphraseTooShortError": "Пароль должен содержать не менее 10 символов",
   "passphraseMismatchError": "Пароли не совпадают",
 

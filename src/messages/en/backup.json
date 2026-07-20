@@ -25,6 +25,7 @@
 
   "passphraseLabel": "Archive passphrase",
   "confirmPassphraseLabel": "Confirm passphrase",
+  "passphraseHint": "At least 10 characters",
   "passphraseTooShortError": "Passphrase must be at least 10 characters",
   "passphraseMismatchError": "Passphrases do not match",
 

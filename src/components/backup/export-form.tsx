@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -48,14 +49,6 @@ export function ExportForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit = useMemo(
-    () =>
-      sections.size > 0 &&
-      passphrase.length >= 10 &&
-      passphrase === confirmPassphrase,
-    [sections, passphrase, confirmPassphrase],
-  );
-
   function toggleSection(key: BackupSection, checked: boolean) {
     setSections((prev) => {
       const next = new Set(prev);
@@ -66,6 +59,9 @@ export function ExportForm() {
       }
       return next;
     });
+    setErrors((prev) =>
+      prev.sections ? { ...prev, sections: undefined } : prev,
+    );
   }
 
   function validate(): boolean {
@@ -145,11 +141,17 @@ export function ExportForm() {
             type="password"
             autoComplete="new-password"
             value={passphrase}
-            onChange={(event) => setPassphrase(event.target.value)}
+            onChange={(event) => {
+              setPassphrase(event.target.value);
+              setErrors((prev) =>
+                prev.passphrase ? { ...prev, passphrase: undefined } : prev,
+              );
+            }}
             aria-required="true"
             aria-invalid={!!errors.passphrase || undefined}
             aria-describedby={errors.passphrase ? passphraseErrorId : undefined}
           />
+          <FieldDescription>{t("passphraseHint")}</FieldDescription>
           <FieldError id={passphraseErrorId}>{errors.passphrase}</FieldError>
         </Field>
         <Field data-invalid={!!errors.confirm || undefined}>
@@ -161,7 +163,12 @@ export function ExportForm() {
             type="password"
             autoComplete="new-password"
             value={confirmPassphrase}
-            onChange={(event) => setConfirmPassphrase(event.target.value)}
+            onChange={(event) => {
+              setConfirmPassphrase(event.target.value);
+              setErrors((prev) =>
+                prev.confirm ? { ...prev, confirm: undefined } : prev,
+              );
+            }}
             aria-required="true"
             aria-invalid={!!errors.confirm || undefined}
             aria-describedby={errors.confirm ? confirmErrorId : undefined}
@@ -171,7 +178,7 @@ export function ExportForm() {
       </FieldGroup>
 
       <div>
-        <Button type="submit" disabled={submitting || !canSubmit}>
+        <Button type="submit" disabled={submitting}>
           {submitting ? (
             <>
               <Spinner data-icon="inline-start" aria-hidden />
