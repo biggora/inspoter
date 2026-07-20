@@ -160,11 +160,7 @@ export function ChannelSidebar({
                       >
                         <Button
                           type="button"
-                          variant={
-                            channel.id === selectedChannelId
-                              ? "secondary"
-                              : "ghost"
-                          }
+                          variant="ghost"
                           size="sm"
                           onClick={() => onSelectChannel(channel.id)}
                           title={channel.name}
@@ -173,7 +169,7 @@ export function ChannelSidebar({
                               ? "page"
                               : undefined
                           }
-                          className="min-w-0 flex-1 justify-start"
+                          className="min-w-0 flex-1 justify-start hover:bg-transparent"
                         >
                           <span
                             data-icon="inline-start"
