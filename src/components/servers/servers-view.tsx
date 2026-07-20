@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { CardGrid } from "@/components/shell/card-grid";
 import { Icon } from "@/components/ui/icon";
 import { NotificationToast } from "@/components/shell/notification-toast";

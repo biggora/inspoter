@@ -1,0 +1,46 @@
+{
+  "pageTitle": "Hosting",
+  "accountsCount": "{count, plural, one {# account} few {# accounts} many {# accounts} other {# accounts}}",
+  "addProviderButton": "Add provider",
+  "refreshButton": "Refresh",
+  "retryButton": "Retry",
+  "loadError": "Failed to load hosting accounts",
+  "actionError": "Failed to perform action",
+  "statusUpdateError": "Failed to update status",
+  "suspendSuccessToast": "{name}: account suspended",
+  "unsuspendSuccessToast": "{name}: account resumed",
+
+  "providerUnavailableTitle": "Provider unavailable",
+  "providerUnavailableDescription": "Failed to fetch hosting account data. Check your connection or try again later.",
+  "emptyTitle": "No hosting accounts",
+  "emptyDescription": "Connect a provider (Hostinger or cPanel) in settings — accounts will appear here automatically.",
+
+  "statusActive": "Active",
+  "statusSuspended": "Suspended",
+  "statusUnknown": "Unknown",
+
+  "accountCardLabel": "Hosting account \"{name}\"",
+  "planLabel": "Plan",
+  "diskLabel": "Disk",
+  "bandwidthLabel": "Bandwidth",
+  "databasesLabel": "Databases",
+  "emailLabel": "Email",
+  "ipLabel": "IP",
+  "expiresLabel": "Expires",
+  "valueNone": "—",
+  "valueUnlimited": "∞",
+  "unitGb": "GB",
+  "unitMb": "MB",
+
+  "suspendAction": "Suspend",
+  "unsuspendAction": "Resume",
+  "suspendingLabel": "Suspending…",
+  "unsuspendingLabel": "Resuming…",
+  "suspendConfirmTitle": "Suspend \"{name}\"?",
+  "unsuspendConfirmTitle": "Resume \"{name}\"?",
+  "suspendConfirmText": "The account will be suspended and the site will become unavailable.",
+  "unsuspendConfirmText": "The account will become active and available again.",
+
+  "cancelButton": "Cancel",
+  "confirmButton": "Confirm"
+}

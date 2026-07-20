@@ -1,9 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { usePathname } from "@/i18n/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { OperatorMenu } from "./operator-menu";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
@@ -29,6 +30,7 @@ export function DashboardTopbar({ username }: { username: string }) {
       <SidebarTrigger aria-label={t("toggleNavigation")} />
       <span className="text-sm font-semibold text-foreground">{title}</span>
       <div className="ml-auto flex items-center gap-1">
+        <LanguageSwitcher />
         <ThemeToggle />
         <OperatorMenu username={username} />
       </div>

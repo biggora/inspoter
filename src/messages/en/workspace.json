@@ -1,0 +1,40 @@
+{
+  "pageTitle": "Workspace",
+
+  "renameCardTitle": "Workspace Name",
+  "renameCardDescription": "Rename the current workspace.",
+  "membersCardTitle": "Members",
+  "membersCardDescription": "Operators with access to this workspace.",
+  "createCardTitle": "Create New Workspace",
+  "createCardDescription": "Start a new empty workspace and switch to it.",
+
+  "nameLabel": "Workspace Name",
+  "nameRequiredError": "Workspace name is required.",
+  "savingButton": "Saving…",
+  "saveChangesButton": "Save Changes",
+  "renamedToast": "Workspace renamed.",
+  "renameError": "Failed to rename workspace.",
+
+  "newWorkspaceNameLabel": "New Workspace Name",
+  "creatingButton": "Creating…",
+  "createWorkspaceButton": "Create Workspace",
+  "createdToast": "Workspace created.",
+  "createError": "Failed to create workspace.",
+
+  "usernameLabel": "Username",
+  "usernameRequiredError": "Username is required.",
+  "passwordLabel": "Password (new user only)",
+  "addingButton": "Adding…",
+  "addMemberButton": "Add Member",
+  "memberAddedToast": "Member added.",
+  "addMemberError": "Failed to add member.",
+
+  "removeMemberLabel": "Remove {name}",
+  "confirmRemoveTitle": "Remove \"{name}\"?",
+  "confirmRemoveDescription": "This member will lose access to the workspace.",
+  "cancelButton": "Cancel",
+  "removeButton": "Remove",
+  "removingButton": "Removing…",
+  "memberRemovedToast": "Member removed.",
+  "removeMemberError": "Failed to remove member. Please try again."
+}

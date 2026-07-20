@@ -28,19 +28,20 @@ import { routing } from "@/i18n/routing";
 // convention is deprecated); proxy runs on the Node.js runtime, which is
 // sufficient for this cookie-only redirect.
 //
-// Reentrancy note: when handleI18nRouting() rewrites an unprefixed
-// default-locale path (e.g. "/login") to its internal locale-prefixed form
-// ("/ru/login"), Next.js's proxy re-runs this whole function again for that
-// rewritten path, because it still matches `config.matcher` below. On that
-// second pass, next-intl's own canonicalization logic sees an
-// explicitly-prefixed default-locale path (localePrefix: "as-needed" means
-// the default locale should NOT be prefixed) and issues a *real*,
-// client-visible 307 redirect back to "/login" — which the browser follows,
-// re-triggering the same rewrite, forever. To break this loop, once a
-// pathname is already locale-prefixed we skip calling handleI18nRouting a
-// second time and just continue: the resolved locale header it set on the
-// first pass is already present on the re-entrant request, so
-// next-intl/server's requestLocale() still resolves correctly downstream.
+// handleI18nRouting always runs for non-API routes (no bypass for
+// already-prefixed paths): with two locales, an explicitly-prefixed
+// default-locale URL like "/en/hosting" (e.g. produced by the language
+// switcher's cross-locale `router.replace`) must still reach next-intl so it
+// can issue its canonicalizing 307 to the unprefixed "/hosting" — skipping
+// it here would leave "/en/*" permanently un-canonicalized. An earlier
+// version of this file skipped handleI18nRouting for any already-prefixed
+// pathname, out of a concern that internal rewrites of unprefixed
+// default-locale paths (e.g. "/login") would re-enter this function and
+// redirect-loop. That re-entrancy was verified empirically not to occur
+// under Next.js 16's proxy invocation model (a middleware rewrite response
+// does not cause proxy() to run again for the rewritten pathname) — repeated
+// and redirect-following requests to "/login" complete cleanly with a single
+// 200 and zero redirects.
 
 const SESSION_COOKIE_NAME = "session";
 const handleI18nRouting = createMiddleware(routing);
@@ -55,19 +56,12 @@ function stripLocalePrefix(pathname: string): string {
   return pathname;
 }
 
-function isLocalePrefixed(pathname: string): boolean {
-  return routing.locales.some(
-    (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
-  );
-}
-
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
-  const response =
-    isApiRoute || isLocalePrefixed(pathname)
-      ? NextResponse.next()
-      : handleI18nRouting(request);
+  const response = isApiRoute
+    ? NextResponse.next()
+    : handleI18nRouting(request);
 
   const localizedPathname = stripLocalePrefix(pathname);
   const isAuthExempt =

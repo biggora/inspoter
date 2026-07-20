@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.9
+**Version:** v2.10
 **Status:** Draft channel-webhook and Messages interaction amendment — source inspected; runtime revalidation pending
 **Owner:** UI/UX Designer
-**Date:** 2026-07-18
+**Date:** 2026-07-20
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.8, docs/architecture.md v1.6, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.9, docs/architecture.md v1.6, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -25,7 +25,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 
 ### 0.1 Binding exceptions to the Q-3 inputs
 
-- Q-1: all operator-visible UI is Russian under the finite allowlist in §3.
+- Q-1 (superseded by v2.10): Russian remains fully supported, but English is now the default UI locale, and both are operator-selectable via a top-bar language switcher (§4.2), next to the theme switcher and operator menu. The finite non-translatable allowlist in §3 still applies to both supported languages. See the Changelog for the activation decision.
 - Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
 - Q-5 (superseded by Q-14, 2026-07-18): Mail is a full multi-account IMAP/SMTP client — three-pane layout, folders, read/unread, delete/archive, attachments, and plain-text compose/reply/forward (§5.4). Rich-text compose, attachment forwarding, and OAuth remain excluded.
@@ -152,7 +152,7 @@ Binding acceptance follows NFR-A11Y-001: Login, Shell, and Bookmarks meet WCAG 2
 
 ## 3. Russian visible-copy contract
 
-The complete allowlist of operator-visible non-Russian terms is exactly: inspoter, Cloudflare, Hetzner Cloud, Hetzner DNS, GoDaddy, DNS, VPS, IP, URL, TTL, HTTP, HTTPS, API, JSON.
+The complete allowlist of operator-visible non-translated terms — unchanged regardless of the active English or Russian locale (§0.1 Q-1) — is exactly: inspoter, Cloudflare, Hetzner Cloud, Hetzner DNS, GoDaddy, DNS, VPS, IP, URL, TTL, HTTP, HTTPS, API, JSON.
 
 Technical identifiers, environment-variable names, and API snippets are exempt only when presented as code or monospace. Every other visible navigation label, heading, button, field label, placeholder, validation message, loading state, empty state, error, toast, tooltip, dialog, status, date label, and pagination label is Russian.
 
@@ -397,7 +397,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Design family                               | Binding source                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------- |
 | Seven-section shell, auth, responsive shell | AC-SHELL-001..004; AC-AUTH-001..005                                   |
-| Russian-only finite allowlist               | Q-1; NFR-I18N-001                                                     |
+| Finite allowlist (English and Russian)      | Q-1; NFR-I18N-001                                                     |
 | Required light theme                        | Q-2; NFR-THEME-001                                                    |
 | Three normative design inputs               | Q-3; NFR-DESIGN-001                                                   |
 | Bookmarks                                   | AC-BM-001..014                                                        |
@@ -417,6 +417,11 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.10 — 2026-07-20 (English default locale and language switcher)
+
+- Activated English as the default UI locale, superseding the Q-1 Russian-only deferral, implemented via `next-intl` locale routing with a full English translation of all message namespaces; Russian remains fully supported at a `/ru` URL prefix.
+- Added a language switcher dropdown (English/Russian, extensible to future locales) to the top bar's right-hand control group, alongside the theme switcher and operator menu (§4.2).
 
 ### v2.9 — 2026-07-18 (Messages channel settings and incoming webhooks)
 

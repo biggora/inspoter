@@ -1,0 +1,45 @@
+{
+  "pageTitle": "Servers",
+  "serversCount": "{count, plural, one {# server} few {# servers} many {# servers} other {# servers}}",
+  "addProviderButton": "Add provider",
+  "refreshButton": "Refresh",
+  "retryButton": "Retry",
+  "loadError": "Failed to load servers",
+  "actionError": "Failed to perform action",
+  "statusUpdateError": "Failed to update status",
+  "actionSuccessToast": "{name}: action completed successfully",
+
+  "providerUnavailableTitle": "Hetzner unavailable",
+  "providerUnavailableDescription": "Failed to fetch server data. Check your connection or try again later.",
+  "emptyTitle": "No servers",
+  "emptyDescription": "Connect a provider in settings — servers will appear here automatically.",
+
+  "statusRunning": "Running",
+  "statusStopped": "Stopped",
+  "statusStarting": "Starting…",
+  "statusStopping": "Stopping…",
+  "statusRestarting": "Restarting…",
+  "statusUnknown": "Unknown",
+
+  "pendingStart": "Starting…",
+  "pendingStop": "Stopping…",
+  "pendingRestart": "Restarting…",
+
+  "startAction": "Start",
+  "stopAction": "Stop",
+  "restartAction": "Restart",
+  "startConfirmTitle": "Start \"{name}\"?",
+  "stopConfirmTitle": "Stop \"{name}\"?",
+  "restartConfirmTitle": "Restart \"{name}\"?",
+  "startConfirmText": "The server will be started. This may take a few seconds.",
+  "stopConfirmText": "The server will be stopped and become unavailable.",
+  "restartConfirmText": "The server will restart and be briefly unavailable.",
+
+  "serverCardLabel": "Server \"{name}\"",
+  "diskLabel": "Disk",
+  "osLabel": "OS",
+  "locationLabel": "Location",
+  "noActionsAvailable": "No actions available",
+  "cancelButton": "Cancel",
+  "confirmButton": "Confirm"
+}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";

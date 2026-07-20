@@ -1,4 +1,5 @@
-import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import type { Operator, Workspace } from "@/generated/prisma/client";
@@ -13,15 +14,24 @@ import { getValidSession, readSessionCookie } from "@/lib/auth/session";
 
 export async function requireOperator(): Promise<Operator> {
   const sessionId = await readSessionCookie();
-  if (!sessionId) redirect("/login");
+  if (!sessionId) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   const session = await getValidSession(sessionId);
-  if (!session) redirect("/login");
+  if (!session) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   const operator = await db.operator.findUnique({
     where: { id: session.operatorId },
   });
-  if (!operator) redirect("/login");
+  if (!operator) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   return operator;
 }
@@ -43,15 +53,24 @@ export interface AuthContext {
 
 export async function requireAuth(): Promise<AuthContext> {
   const sessionId = await readSessionCookie();
-  if (!sessionId) redirect("/login");
+  if (!sessionId) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   const session = await getValidSession(sessionId);
-  if (!session) redirect("/login");
+  if (!session) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   const operator = await db.operator.findUnique({
     where: { id: session.operatorId },
   });
-  if (!operator) redirect("/login");
+  if (!operator) {
+    redirect({ href: "/login", locale: await getLocale() });
+    throw new Error("unreachable");
+  }
 
   // Resolve workspace from session
   let workspace: Workspace | null = null;
@@ -78,7 +97,10 @@ export async function requireAuth(): Promise<AuthContext> {
       include: { workspace: true },
       orderBy: { joinedAt: "asc" },
     });
-    if (!membership) redirect("/login");
+    if (!membership) {
+      redirect({ href: "/login", locale: await getLocale() });
+      throw new Error("unreachable");
+    }
     workspace = membership.workspace;
     // Persist for next request
     await db.session.update({

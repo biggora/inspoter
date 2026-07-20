@@ -5,6 +5,7 @@
   "logout": "Выйти",
   "enableLightTheme": "Включить светлую тему",
   "enableDarkTheme": "Включить тёмную тему",
+  "languageSwitcherLabel": "Переключить язык",
   "workspaceLabel": "Рабочее пространство: {name}",
   "loadWorkspacesError": "Не удалось загрузить рабочие пространства.",
   "switchWorkspaceError": "Не удалось переключить рабочее пространство. Попробуйте снова.",
