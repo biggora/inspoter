@@ -562,6 +562,7 @@ model WebhookDelivery {
 
   @@index([workspaceId, webhookId, createdAt, id]) // history + keyset pagination
   @@index([status, nextAttemptAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
+  @@index([status, createdAt]) // retention prune scan; also cross-tenant, mirrors the sweep above
 }
 
 // --- Provider resource bindings (Q-13) ---

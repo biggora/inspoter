@@ -503,3 +503,39 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
     },
   });
 }
+
+// --- Retention cleanup (called by webhook-retention-scheduler.ts) ---
+
+// Delete up to `batchSize` terminal (DELIVERED/FAILED) deliveries created
+// before `cutoff`. PENDING/DELIVERING rows are never eligible regardless of
+// age — a stuck PENDING row past the window is a scheduler bug, not
+// something retention should silently remove. Batched (not one unbounded
+// deleteMany) so a large backlog drains over multiple ticks instead of
+// holding a long-running delete.
+export async function pruneOldDeliveries(
+  cutoff: Date,
+  batchSize: number,
+): Promise<number> {
+  const candidates = await db.webhookDelivery.findMany({
+    where: {
+      status: { in: ["DELIVERED", "FAILED"] },
+      createdAt: { lt: cutoff },
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+    take: batchSize,
+  });
+  if (candidates.length === 0) return 0;
+
+  // Re-check status in the delete itself (not just the id list): guards
+  // against a concurrent manual retryDelivery() flipping a candidate row
+  // back to PENDING between the select above and this delete, same
+  // defensive re-check pattern claimDueDeliveries uses.
+  const result = await db.webhookDelivery.deleteMany({
+    where: {
+      id: { in: candidates.map((c) => c.id) },
+      status: { in: ["DELIVERED", "FAILED"] },
+    },
+  });
+  return result.count;
+}
