@@ -26,6 +26,28 @@ const envSchema = z
       .int()
       .positive()
       .default(15000),
+    // --- Outgoing webhooks (durable delivery queue + scheduler) ---
+    WEBHOOK_SCHEDULER_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10_000),
+    WEBHOOK_DELIVERY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10_000),
+    WEBHOOK_DELIVERY_MAX_ATTEMPTS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5),
+    WEBHOOK_DELIVERY_LEASE_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30_000),
+    WEBHOOK_DELIVERY_BATCH: z.coerce.number().int().positive().default(50),
     // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
     MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
     MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),

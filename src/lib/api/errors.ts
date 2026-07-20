@@ -5,6 +5,11 @@ import {
   WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
 import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
+import {
+  EncryptionNotConfiguredError,
+  OutgoingWebhookNotFoundError,
+  WebhookDeliveryNotFoundError,
+} from "@/lib/services/outgoingWebhooks";
 import { jsonResponse } from "@/lib/api/response";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
@@ -30,6 +35,15 @@ export function toErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof CategoryHierarchyValidationError) {
     return jsonResponse({ error: error.message }, { status: 400 });
+  }
+  if (
+    error instanceof OutgoingWebhookNotFoundError ||
+    error instanceof WebhookDeliveryNotFoundError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof EncryptionNotConfiguredError) {
+    return jsonResponse({ error: error.code }, { status: 503 });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2003") {

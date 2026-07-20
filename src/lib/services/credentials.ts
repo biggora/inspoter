@@ -80,6 +80,9 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
 function computeMaskedHint(data: CredentialData): string {
   if (data.type === "GODADDY_DNS") return maskSecret(data.apiKey);
   if (data.type === "MAIL_PASSWORD") return maskSecret(data.imapPassword);
+  // WEBHOOK_SECRET is stored on OutgoingWebhook, never as a ProviderCredential,
+  // so this branch is unreachable here — kept only to satisfy the union.
+  if (data.type === "WEBHOOK_SECRET") return maskSecret(data.secret);
   return maskSecret(data.apiToken);
 }
 

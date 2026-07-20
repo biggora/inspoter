@@ -7,6 +7,7 @@ import {
   type Message,
   type MessageOrigin,
 } from "@/generated/prisma/client";
+import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 export type CategoryWithChannels = MessageCategory & { channels: Channel[] };
 
@@ -145,6 +146,13 @@ export async function createMessage(
       author: input.author ?? null,
       origin: input.origin ?? "LEGACY",
     },
+  });
+  await emitWebhookEvent(workspaceId, "MESSAGE_CREATED", {
+    messageId: message.id,
+    channelId: input.channelId,
+    content: input.content,
+    author: input.author ?? null,
+    origin: input.origin ?? "LEGACY",
   });
   return { id: message.id };
 }

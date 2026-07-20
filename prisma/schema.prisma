@@ -95,6 +95,8 @@ model Workspace {
   credentials       ProviderCredential[]
   services          Service[]
   serviceChecks     ServiceCheck[]
+  outgoingWebhooks  OutgoingWebhook[]
+  webhookDeliveries WebhookDelivery[]
 }
 
 model WorkspaceMember {
@@ -492,6 +494,74 @@ model IdempotencyKey {
 
   @@unique([tokenId, key]) // AC-WH-004 per-token scoping; DB uniqueness = race-safe dedup
   @@index([workspaceId, tokenId, key])
+}
+
+// --- Outgoing webhooks (FR-OWH-001..003) ---
+// Mirrors the four inbound webhook types (log|alert|mail|message from
+// src/lib/webhooks/dispatch.ts) plus SERVICE_STATUS for monitor flips.
+enum OutgoingWebhookEvent {
+  ALERT_CREATED
+  SERVICE_STATUS
+  MESSAGE_CREATED
+  LOG_CREATED
+  MAIL_RECEIVED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERING
+  DELIVERED
+  FAILED
+}
+
+// A subscription/endpoint an operator configures. Signing secret is stored
+// encrypted (AES-256-GCM, same scheme as ProviderCredential/MailAccount) and
+// shown once at creation; secretPrefix is display-only.
+model OutgoingWebhook {
+  id            String                 @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name          String
+  url           String
+  events        OutgoingWebhookEvent[]
+  isActive      Boolean                @default(true)
+  encryptedData String // AES-256-GCM ciphertext of the signing secret
+  iv            String
+  authTag       String
+  secretPrefix  String // first chars, for UI identification only
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  deliveries    WebhookDelivery[]
+
+  @@unique([id, workspaceId]) // composite FK target (project convention)
+  @@index([workspaceId, createdAt, id])
+  @@index([workspaceId, isActive]) // fan-out lookup: active subscriptions of a workspace
+}
+
+// Durable delivery queue + history. One row per (event, subscription) fan-out.
+model WebhookDelivery {
+  id                 String                @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  webhookId          String
+  webhookWorkspaceId String
+  webhook            OutgoingWebhook       @relation(fields: [webhookId, webhookWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  event              OutgoingWebhookEvent
+  payload            Json
+  status             WebhookDeliveryStatus @default(PENDING)
+  attempts           Int                   @default(0)
+  maxAttempts        Int                   @default(5)
+  nextAttemptAt      DateTime              @default(now())
+  leaseExpiresAt     DateTime? // guards against double-send across restarts
+  lastError          String?
+  lastStatusCode     Int?
+  lastAttemptAt      DateTime?
+  deliveredAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([workspaceId, webhookId, createdAt, id]) // history + keyset pagination
+  @@index([status, nextAttemptAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
 }
 
 // --- Provider resource bindings (Q-13) ---

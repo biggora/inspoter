@@ -10,6 +10,7 @@ import {
 import { runCheck, type CheckOutcome } from "./monitor-checks";
 import { nextState } from "./service-status";
 import * as alertsService from "./alerts";
+import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 // Sole Prisma caller for Service/ServiceCheck (plan.md "Слой сервиса, API,
 // валидация"), by the same conventions as src/lib/services/bookmarks.ts and
@@ -282,6 +283,13 @@ export async function applyCheckResult(
         (result.status === ServiceStatus.DOWN
           ? "Сервис недоступен"
           : "Сервис снова доступен"),
+    });
+    await emitWebhookEvent(service.workspaceId, "SERVICE_STATUS", {
+      serviceId: service.id,
+      name: service.name,
+      status: result.status,
+      previousStatus: service.currentStatus,
+      message: outcome.message ?? null,
     });
   }
 

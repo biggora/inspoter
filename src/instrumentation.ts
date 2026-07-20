@@ -21,5 +21,9 @@ export async function register() {
     const { startMailScheduler } =
       await import("@/lib/services/mail-scheduler");
     startMailScheduler();
+
+    const { startWebhookScheduler } =
+      await import("@/lib/services/webhook-scheduler");
+    startWebhookScheduler();
   }
 }

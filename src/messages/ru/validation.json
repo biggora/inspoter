@@ -78,5 +78,13 @@
   },
   "webhookToken": {
     "nameRequired": "Название обязательно"
+  },
+  "outgoingWebhook": {
+    "nameRequired": "Название обязательно",
+    "nameTooLong": "Название не должно превышать 80 символов",
+    "urlRequired": "URL обязателен",
+    "urlInvalid": "Укажите корректный HTTPS-адрес",
+    "eventsRequired": "Выберите хотя бы одно событие",
+    "eventInvalid": "Недопустимое событие"
   }
 }

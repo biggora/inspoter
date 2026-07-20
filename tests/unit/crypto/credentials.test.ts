@@ -18,6 +18,7 @@ const SAMPLES: CredentialData[] = [
   { type: "HETZNER_DNS", apiToken: "hetzner-dns-token" },
   { type: "HETZNER_CLOUD", apiToken: "hetzner-cloud-token" },
   { type: "GODADDY_DNS", apiKey: "godaddy-key", apiSecret: "godaddy-secret" },
+  { type: "WEBHOOK_SECRET", secret: "whsec_deadbeef" },
 ];
 
 describe("credential encryption", () => {
