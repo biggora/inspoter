@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { CardGrid } from "@/components/shell/card-grid";
 import { Icon } from "@/components/ui/icon";
 import { NotificationToast } from "@/components/shell/notification-toast";
@@ -305,9 +305,9 @@ export function HostingView() {
   );
 }
 
-function formatSize(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} ГБ`;
-  return `${Math.round(mb)} МБ`;
+function formatSize(mb: number, t: ReturnType<typeof useTranslations>): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} ${t("unitGb")}`;
+  return `${Math.round(mb)} ${t("unitMb")}`;
 }
 
 function formatUsage(
@@ -315,10 +315,11 @@ function formatUsage(
   limit: number | null,
   none: string,
   unlimited: string,
+  t: ReturnType<typeof useTranslations>,
 ): string {
   if (used === null && limit === null) return none;
-  const usedText = used === null ? none : formatSize(used);
-  const limitText = limit === null ? unlimited : formatSize(limit);
+  const usedText = used === null ? none : formatSize(used, t);
+  const limitText = limit === null ? unlimited : formatSize(limit, t);
   return `${usedText} / ${limitText}`;
 }
 
@@ -407,6 +408,7 @@ function HostingCard({
             account.diskLimitMb,
             none,
             unlimited,
+            t,
           )}
         />
         <MetricRow
@@ -416,6 +418,7 @@ function HostingCard({
             account.bandwidthLimitMb,
             none,
             unlimited,
+            t,
           )}
         />
         <MetricRow

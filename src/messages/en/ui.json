@@ -1,0 +1,12 @@
+{
+  "close": "Close",
+  "paginationNavLabel": "Pagination",
+  "paginationPreviousLabel": "Go to previous page",
+  "paginationNextLabel": "Go to next page",
+  "paginationPreviousText": "Previous",
+  "paginationNextText": "Next",
+  "paginationMorePages": "More pages",
+  "sidebarToggle": "Toggle sidebar",
+  "sidebarTitle": "Sidebar",
+  "sidebarDescription": "Displays the mobile sidebar."
+}

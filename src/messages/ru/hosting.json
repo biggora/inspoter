@@ -29,6 +29,8 @@
   "expiresLabel": "Действует до",
   "valueNone": "—",
   "valueUnlimited": "∞",
+  "unitGb": "ГБ",
+  "unitMb": "МБ",
 
   "suspendAction": "Приостановить",
   "unsuspendAction": "Возобновить",

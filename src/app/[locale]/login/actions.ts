@@ -1,6 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { findOperatorByUsername } from "@/lib/auth/dal";
 import { verifyPassword } from "@/lib/auth/password";
 import {
@@ -74,5 +75,5 @@ export async function logout(): Promise<void> {
     await deleteSession(sessionId);
   }
   await clearSessionCookie();
-  redirect("/login");
+  redirect({ href: "/login", locale: await getLocale() });
 }
