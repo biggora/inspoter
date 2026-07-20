@@ -151,7 +151,12 @@ export function ChannelSidebar({
                     category.channels.map((channel) => (
                       <div
                         key={channel.id}
-                        className="group/channel flex items-center gap-1 rounded-[var(--radius-lg)] hover:bg-[var(--surface-hover)] focus-within:bg-[var(--surface-hover)]"
+                        className={cn(
+                          "group/channel flex items-center gap-1 rounded-[var(--radius-lg)] focus-within:bg-[var(--surface-hover)]",
+                          channel.id === selectedChannelId
+                            ? "bg-[oklch(var(--secondary-100))] hover:bg-[oklch(var(--secondary-200))]"
+                            : "hover:bg-[var(--surface-hover)]",
+                        )}
                       >
                         <Button
                           type="button"
