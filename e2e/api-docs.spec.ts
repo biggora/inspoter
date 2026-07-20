@@ -86,6 +86,15 @@ test("authenticated operator opens the two-operation Swagger reference without e
 test("Try It Out sends only synthetic explicit auth and does not persist it", async ({
   page,
 }) => {
+  const pageErrors: string[] = [];
+  const refractConsoleErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && /refract/i.test(message.text())) {
+      refractConsoleErrors.push(message.text());
+    }
+  });
+
   await login(page);
 
   let resolveInterceptedRequest!: (request: Request) => void;
@@ -128,8 +137,8 @@ test("Try It Out sends only synthetic explicit auth and does not persist it", as
   await typedOperation
     .locator("tr")
     .filter({ has: page.locator(".parameter__name", { hasText: "type" }) })
-    .locator("input")
-    .fill("log");
+    .getByRole("combobox")
+    .selectOption("log");
   await typedOperation.locator("textarea.body-param__text").fill(
     JSON.stringify({
       level: "info",
@@ -150,7 +159,9 @@ test("Try It Out sends only synthetic explicit auth and does not persist it", as
     message: "Synthetic request intercepted before the webhook pipeline.",
   });
   await expect(
-    typedOperation.locator(".response-col_status").filter({ hasText: "201" }),
+    typedOperation
+      .locator(".live-responses-table .response-col_status")
+      .filter({ hasText: "201" }),
   ).toBeVisible();
 
   await page.reload();
@@ -159,4 +170,6 @@ test("Try It Out sends only synthetic explicit auth and does not persist it", as
     session: Object.values(sessionStorage),
   }));
   expect(JSON.stringify(browserStorage)).not.toContain(SYNTHETIC_BEARER);
+  expect(pageErrors).toEqual([]);
+  expect(refractConsoleErrors).toEqual([]);
 });
