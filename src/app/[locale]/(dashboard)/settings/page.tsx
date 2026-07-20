@@ -43,6 +43,21 @@ export default async function SettingsPage() {
           </div>
         </Link>
         <Link
+          href="/settings/api-docs"
+          className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+        >
+          <Icon
+            name="ri-code-box-line"
+            className="text-lg text-muted-foreground"
+          />
+          <div>
+            <p className="font-medium">{t("apiDocsTitle")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("apiDocsCardDescription")}
+            </p>
+          </div>
+        </Link>
+        <Link
           href="/settings/providers"
           className="flex items-center gap-3 rounded-lg border border-background-200 bg-background-50 p-4 transition-colors hover:border-background-300 focus-visible:border-[var(--focus-ring)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
         >
