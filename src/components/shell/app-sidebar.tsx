@@ -29,14 +29,23 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 export function AppSidebar({
   workspaceName,
   workspaceId,
+  hiddenSections = [],
 }: {
   workspaceName: string;
   workspaceId: string;
+  hiddenSections?: string[];
 }) {
   const t = useTranslations("shell");
   const pathname = usePathname();
   const isSectionActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`);
+
+  // Per-workspace section visibility (workspace-section-visibility): drop
+  // sections the owner has hidden. Settings stays always-on (rendered
+  // separately below). Direct URL access is intentionally not blocked.
+  const visibleSections = SECTION_NAV_ITEMS.filter(
+    (item) => !item.key || !hiddenSections.includes(item.key),
+  );
 
   // Sync the per-tab active workspace id (read by every api.ts fetch
   // wrapper's X-Inspoter-Workspace header) on every render, including the
@@ -76,7 +85,7 @@ export function AppSidebar({
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {SECTION_NAV_ITEMS.map((item) => {
+                {visibleSections.map((item) => {
                   const active = isSectionActive(item.href);
                   return (
                     <SidebarMenuItem key={item.href}>
