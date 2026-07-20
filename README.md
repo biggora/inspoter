@@ -100,6 +100,25 @@ docker compose exec app pnpm db:seed
 
 Без настроенного провайдера соответствующий раздел показывает пустое состояние.
 
+## Документация публичных webhook
+
+Swagger UI доступен авторизованным пользователям в разделе **Настройки → API документация** (`/settings/api-docs`; для русской локали — `/ru/settings/api-docs`). Приложение передаёт проверенную в репозитории спецификацию странице на сервере и не публикует отдельный `/openapi.json`.
+
+Контракт OpenAPI 3.1.1 описывает только два внешних входящих webhook:
+
+- `POST /api/webhooks/{type}` с Bearer-токеном;
+- `POST /api/webhooks/channels/{webhookId}/{token}` с секретным токеном в URL.
+
+Оба маршрута определяют рабочее пространство по webhook-токену и не используют `X-Inspoter-Workspace`. Описания операций и примеры в Swagger UI написаны на английском. Внутренние dashboard API, OIDC и маршруты управления токенами не входят в публичную спецификацию. Не сохраняйте и не передавайте channel webhook URL через логи: URL содержит секрет.
+
+Проверить спецификацию можно командами:
+
+```bash
+pnpm openapi:lint       # правила OpenAPI через Redocly CLI
+pnpm openapi:contract   # соответствие двум публичным route-контрактам
+pnpm openapi:check      # обе проверки последовательно
+```
+
 ## Демо-данные
 
 После базового seed можно добавить демонстрационные закладки, логи, оповещения, почтовые сообщения, каналы сообщений и токен входящего webhook:
@@ -118,6 +137,7 @@ pnpm lint             # ESLint и проверка нативных контро
 pnpm typecheck        # TypeScript без генерации файлов
 pnpm format           # форматирование Prettier
 pnpm format:check     # проверка форматирования Prettier
+pnpm openapi:check    # lint и проверка публичного OpenAPI-контракта
 
 pnpm test:unit        # unit- и integration-тесты (Vitest)
 pnpm test:e2e         # e2e-тесты (Playwright)

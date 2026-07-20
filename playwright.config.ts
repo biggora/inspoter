@@ -23,7 +23,8 @@ validateTestDatabaseTarget(testEnvironment);
 Object.assign(process.env, testEnvironment);
 
 const appPort = parseTestAppPort(testEnvironment.TEST_APP_PORT);
-const appOrigin = `http://127.0.0.1:${appPort}`;
+const appHostname = "localhost";
+const appOrigin = `http://${appHostname}:${appPort}`;
 
 const serverEnvironment = {
   ...testEnvironment,
@@ -54,7 +55,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm exec next start -p ${appPort} -H 127.0.0.1`,
+    command: `pnpm exec next start -p ${appPort} -H ${appHostname}`,
     url: appOrigin,
     reuseExistingServer: false,
     timeout: 180_000,

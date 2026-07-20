@@ -1,0 +1,644 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Inspoter Public Webhook API",
+    "version": "0.1.0",
+    "license": {
+      "name": "UNLICENSED",
+      "identifier": "LicenseRef-UNLICENSED"
+    },
+    "description": "Public endpoints for ingesting workspace events and channel messages."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/webhooks/{type}": {
+      "post": {
+        "operationId": "ingestWebhook",
+        "summary": "Ingest a typed webhook event",
+        "description": "Creates a log, alert, mail item, or channel message using a workspace webhook token. A previously processed Idempotency-Key may return the original identifier with status 200. Concurrent requests with the same key retain at-least-once behavior.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Webhook payload type.",
+            "schema": {
+              "type": "string",
+              "enum": ["log", "alert", "mail", "message"]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/LegacyIdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/LogWebhookPayload"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AlertWebhookPayload"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MailWebhookPayload"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MessageWebhookPayload"
+                  }
+                ]
+              },
+              "examples": {
+                "log": {
+                  "summary": "Application log",
+                  "value": {
+                    "level": "info",
+                    "source": "billing-worker",
+                    "message": "Invoice batch completed",
+                    "timestamp": "2026-07-20T12:00:00Z"
+                  }
+                },
+                "alert": {
+                  "summary": "Service alert",
+                  "value": {
+                    "category": "availability",
+                    "severity": "warning",
+                    "source": "status-monitor",
+                    "message": "Response time is above the target"
+                  }
+                },
+                "mail": {
+                  "summary": "Inbound mail",
+                  "value": {
+                    "sender": "notifications@example.invalid",
+                    "subject": "Weekly summary",
+                    "body": "The weekly summary is ready."
+                  }
+                },
+                "message": {
+                  "summary": "Channel message",
+                  "value": {
+                    "channelId": "channel-example",
+                    "content": "Deployment completed successfully.",
+                    "author": "Deployment Bot"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An idempotent replay was accepted and the existing resource identifier is returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSuccess"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The webhook event was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The JSON body, webhook type, or payload is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyWebhookError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, invalid, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyWebhookError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the configured size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyWebhookError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The webhook token has exceeded its rate limit.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyWebhookError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/webhooks/channels/{webhookId}/{token}": {
+      "post": {
+        "operationId": "deliverChannelWebhook",
+        "summary": "Deliver a channel webhook message",
+        "description": "Creates a message in the channel associated with the webhook. The secret token is carried in the URL and must not be logged, persisted, or exposed.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "webhookId",
+            "in": "path",
+            "required": true,
+            "description": "Channel webhook identifier.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "description": "Sensitive channel webhook secret. Redact this value from logs and telemetry.",
+            "schema": {
+              "type": "string",
+              "format": "password",
+              "x-sensitive": true
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ChannelIdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelWebhookPayload"
+              },
+              "example": {
+                "content": "Build 842 completed successfully.",
+                "author": "Continuous Integration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An idempotent replay was accepted and the existing message identifier is returned.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSuccess"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The channel message was created.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The JSON body, payload, or Idempotency-Key is invalid.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ChannelSimpleError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChannelValidationError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The channel webhook identifier or secret is invalid or revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelSimpleError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the configured size limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelSimpleError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The channel webhook has exceeded its rate limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelSimpleError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "WebhookBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Workspace webhook token issued by Inspoter."
+      }
+    },
+    "parameters": {
+      "LegacyIdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Optional caller-defined replay key. Legacy ingestion accepts this header without format or length constraints and provides at-least-once behavior under concurrent requests.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ChannelIdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Optional replay key containing 1 to 128 printable ASCII characters.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      }
+    },
+    "headers": {
+      "CacheControl": {
+        "description": "Prevents storage of the response.",
+        "schema": {
+          "type": "string",
+          "const": "no-store"
+        }
+      },
+      "ReferrerPolicy": {
+        "description": "Prevents the sensitive webhook URL from being sent as referrer information.",
+        "schema": {
+          "type": "string",
+          "const": "no-referrer"
+        }
+      },
+      "XContentTypeOptions": {
+        "description": "Disables MIME type sniffing.",
+        "schema": {
+          "type": "string",
+          "const": "nosniff"
+        }
+      },
+      "RetryAfter": {
+        "description": "Seconds to wait before retrying.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    },
+    "schemas": {
+      "WebhookSuccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "delivery-example"
+          }
+        }
+      },
+      "LegacyWebhookError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "UNAUTHORIZED",
+                  "RATE_LIMITED",
+                  "UNSUPPORTED_TYPE",
+                  "VALIDATION_FAILED",
+                  "PAYLOAD_TOO_LARGE",
+                  "UNPARSEABLE"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "issue"],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "issue": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ChannelSimpleError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ChannelValidationError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ZodIssueArray"
+          }
+        }
+      },
+      "ZodIssueArray": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ZodIssue"
+        }
+      },
+      "ZodIssue": {
+        "type": "object",
+        "required": ["code", "message", "path"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "LogWebhookPayload": {
+        "type": "object",
+        "required": ["level", "source", "message"],
+        "properties": {
+          "level": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "AlertWebhookPayload": {
+        "type": "object",
+        "required": ["category", "severity", "source", "message"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "MailWebhookPayload": {
+        "type": "object",
+        "required": ["sender", "subject", "body"],
+        "properties": {
+          "sender": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "MessageWebhookPayload": {
+        "type": "object",
+        "required": ["channelId", "content"],
+        "properties": {
+          "channelId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChannelWebhookPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Message content. Leading and trailing whitespace is removed before validation."
+          },
+          "author": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Optional author name. Leading and trailing whitespace is removed before validation."
+          }
+        }
+      }
+    }
+  }
+}
