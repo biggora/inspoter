@@ -66,12 +66,14 @@ export class CpanelWhmProvider implements HostingProvider {
     hostname: string,
     username: string,
     apiToken: string,
+    allowInsecure: boolean = false,
   ) {
     this.id = id;
     this.label = label;
     this.client = createProviderHttpClient({
       baseUrl: buildCpanelBaseUrl(hostname, WHM_PORT),
       headers: { Authorization: `whm ${username}:${apiToken}` },
+      allowInsecure,
     });
   }
 

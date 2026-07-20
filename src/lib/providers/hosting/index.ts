@@ -37,6 +37,7 @@ export async function getHostingProvidersForWorkspace(
             cred.hostname,
             cred.username,
             cred.apiToken,
+            cred.allowInsecure ?? false,
           ),
         );
       } else if (cred.type === "CPANEL_UAPI") {
@@ -47,6 +48,7 @@ export async function getHostingProvidersForWorkspace(
             cred.hostname,
             cred.username,
             cred.apiToken,
+            cred.allowInsecure ?? false,
           ),
         );
       }

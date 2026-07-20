@@ -42,6 +42,7 @@ export interface CredentialSummary {
   provider: ProviderType;
   label: string;
   maskedHint: string;
+  allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: Date | null;
   createdAt: Date;
@@ -58,6 +59,7 @@ interface CredentialRecord {
   provider: ProviderType;
   label: string;
   maskedHint: string;
+  allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: Date | null;
   createdAt: Date;
@@ -70,6 +72,7 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
     provider: credential.provider,
     label: credential.label,
     maskedHint: credential.maskedHint,
+    allowInsecure: credential.allowInsecure,
     isValid: credential.isValid,
     lastCheckedAt: credential.lastCheckedAt,
     createdAt: credential.createdAt,
@@ -166,6 +169,10 @@ export async function createCredential(
       iv: encrypted.iv,
       authTag: encrypted.authTag,
       maskedHint,
+      allowInsecure:
+        data.type === "CPANEL_WHM" || data.type === "CPANEL_UAPI"
+          ? (data.allowInsecure ?? false)
+          : false,
     },
   });
 
@@ -200,6 +207,10 @@ export async function updateCredential(
       iv: encrypted.iv,
       authTag: encrypted.authTag,
       maskedHint,
+      allowInsecure:
+        data.type === "CPANEL_WHM" || data.type === "CPANEL_UAPI"
+          ? (data.allowInsecure ?? false)
+          : false,
     },
   });
 

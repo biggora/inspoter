@@ -44,6 +44,7 @@ export class CpanelUapiProvider implements HostingProvider {
     hostname: string,
     username: string,
     apiToken: string,
+    allowInsecure: boolean = false,
   ) {
     this.id = id;
     this.label = label;
@@ -51,6 +52,7 @@ export class CpanelUapiProvider implements HostingProvider {
     this.client = createProviderHttpClient({
       baseUrl: buildCpanelBaseUrl(hostname, UAPI_PORT),
       headers: { Authorization: `cpanel ${username}:${apiToken}` },
+      allowInsecure,
     });
   }
 

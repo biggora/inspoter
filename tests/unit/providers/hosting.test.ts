@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Agent } from "undici";
 import {
   buildCpanelBaseUrl,
   parseCpanelCount,
@@ -112,6 +113,51 @@ describe("CpanelWhmProvider.listAccounts mapping", () => {
       diskLimitMb: null,
     });
   });
+
+  it("passes an insecure undici Agent as the fetch dispatcher when allowInsecure is true", async () => {
+    mockFetchOnce({
+      metadata: { result: 1 },
+      data: { acct: [] },
+    });
+
+    const provider = new CpanelWhmProvider(
+      "cred-whm",
+      "WHM",
+      "srv.example.com",
+      "root",
+      "token",
+      true,
+    );
+    await provider.listAccounts();
+
+    const init = vi.mocked(fetch).mock.calls[0][1] as
+      | (RequestInit & { dispatcher?: unknown })
+      | undefined;
+    expect(init?.dispatcher).toBeDefined();
+    expect(init?.dispatcher).toBeInstanceOf(Agent);
+  });
+
+  it("does not pass a dispatcher when allowInsecure is false", async () => {
+    mockFetchOnce({
+      metadata: { result: 1 },
+      data: { acct: [] },
+    });
+
+    const provider = new CpanelWhmProvider(
+      "cred-whm",
+      "WHM",
+      "srv.example.com",
+      "root",
+      "token",
+      false,
+    );
+    await provider.listAccounts();
+
+    const init = vi.mocked(fetch).mock.calls[0][1] as
+      | (RequestInit & { dispatcher?: unknown })
+      | undefined;
+    expect(init?.dispatcher).toBeUndefined();
+  });
 });
 
 describe("HostingerProvider.listAccounts mapping", () => {
@@ -168,5 +214,26 @@ describe("getHostingProvidersForWorkspace()", () => {
       "hostinger",
       "cpanel-whm",
     ]);
+  });
+
+  it("defaults allowInsecure to false for legacy credentials missing the field", async () => {
+    getDecryptedCredentials.mockImplementation(async (_ws, type) => {
+      if (type === "CPANEL_WHM") {
+        return [
+          {
+            id: "c3",
+            label: "WHM-legacy",
+            type: "CPANEL_WHM",
+            hostname: "srv",
+            username: "root",
+            apiToken: "t",
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const providers = await getHostingProvidersForWorkspace("ws");
+    expect(providers.map((p) => p.id)).toEqual(["c3"]);
   });
 });
