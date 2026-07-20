@@ -71,7 +71,7 @@ export function ChannelSidebar({
             const channelListId = `${instanceId}-${category.id}-channels`;
             return (
               <div key={category.id} className="group/category">
-                <div className="flex items-center gap-1 py-1.5">
+                <div className="flex items-center gap-1 rounded-[var(--radius-lg)] py-1.5 hover:bg-[var(--surface-hover)] focus-within:bg-[var(--surface-hover)]">
                   <Button
                     type="button"
                     variant="ghost"
@@ -94,7 +94,7 @@ export function ChannelSidebar({
                       {category.name}
                     </span>
                   </Button>
-                  <div className="flex shrink-0 items-center gap-0.5 rounded-[var(--radius-lg)] bg-background-100 p-0.5 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/category:opacity-100 lg:group-focus-within/category:opacity-100">
+                  <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/category:opacity-100 lg:group-focus-within/category:opacity-100">
                     <Button
                       type="button"
                       variant="ghost"
@@ -151,7 +151,7 @@ export function ChannelSidebar({
                     category.channels.map((channel) => (
                       <div
                         key={channel.id}
-                        className="group/channel flex items-center gap-1 rounded-md focus-within:bg-background-100/60"
+                        className="group/channel flex items-center gap-1 rounded-[var(--radius-lg)] hover:bg-[var(--surface-hover)] focus-within:bg-[var(--surface-hover)]"
                       >
                         <Button
                           type="button"
@@ -186,7 +186,7 @@ export function ChannelSidebar({
                                 type="button"
                                 variant="ghost"
                                 size="icon-xs"
-                                className="mr-1 bg-background-100 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/channel:opacity-100 lg:group-focus-within/channel:opacity-100"
+                                className="mr-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover/channel:opacity-100 lg:group-focus-within/channel:opacity-100"
                                 aria-label={t("channelActionsLabel", {
                                   name: channel.name,
                                 })}
