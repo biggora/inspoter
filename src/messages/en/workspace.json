@@ -3,6 +3,11 @@
 
   "renameCardTitle": "Workspace Name",
   "renameCardDescription": "Rename the current workspace.",
+  "sectionsCardTitle": "Section Visibility",
+  "sectionsCardDescription": "Hide sections you don't use in this workspace. Hidden sections disappear from navigation.",
+  "sectionsSavedToast": "Section visibility updated.",
+  "sectionsSaveError": "Failed to save section visibility.",
+
   "membersCardTitle": "Members",
   "membersCardDescription": "Operators with access to this workspace.",
   "createCardTitle": "Create New Workspace",

@@ -14,7 +14,11 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar workspaceName={workspace.name} workspaceId={workspace.id} />
+      <AppSidebar
+        workspaceName={workspace.name}
+        workspaceId={workspace.id}
+        hiddenSections={workspace.hiddenSections}
+      />
       <SidebarInset>
         <DashboardTopbar username={operator.username} />
         <main className="w-full flex-1 p-6">{children}</main>

@@ -77,6 +77,11 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Per-workspace section visibility (workspace-section-visibility): keys of
+  // sidebar sections hidden from navigation. Empty = all visible. Keys match
+  // SECTION_NAV_ITEMS[].key in src/components/shell/nav-items.ts.
+  hiddenSections String[] @default([])
+
   members           WorkspaceMember[]
   categories        Category[]
   bookmarks         Bookmark[]

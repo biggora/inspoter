@@ -15,6 +15,7 @@ import { AddMemberForm } from "@/components/workspace/add-member-form";
 import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
 import { MembersSection } from "@/components/workspace/members-section";
 import { RenameWorkspaceForm } from "@/components/workspace/rename-workspace-form";
+import { SectionVisibilityForm } from "@/components/workspace/section-visibility-form";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,19 @@ export default async function WorkspaceSettingsPage() {
           <RenameWorkspaceForm
             workspaceId={workspace.id}
             currentName={workspace.name}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("sectionsCardTitle")}</CardTitle>
+          <CardDescription>{t("sectionsCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SectionVisibilityForm
+            workspaceId={workspace.id}
+            hiddenSections={workspace.hiddenSections}
           />
         </CardContent>
       </Card>

@@ -186,6 +186,22 @@ export async function updateWorkspace(
   });
 }
 
+// Section visibility (workspace-section-visibility): owner-only, mirrors
+// updateWorkspace. `hiddenSections` is expected pre-sanitized by
+// updateSectionVisibilitySchema (unknown keys dropped, de-duplicated).
+export async function setHiddenSections(
+  id: string,
+  operatorId: string,
+  hiddenSections: string[],
+): Promise<Workspace> {
+  await findWorkspaceOrThrow(id);
+  await requireOwner(id, operatorId);
+  return db.workspace.update({
+    where: { id },
+    data: { hiddenSections },
+  });
+}
+
 export async function deleteWorkspace(
   id: string,
   operatorId: string,

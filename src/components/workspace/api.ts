@@ -80,6 +80,11 @@ export const workspacesApi = {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
+  setSections: (id: string, hiddenSections: string[]) =>
+    request<Workspace>(`/api/workspaces/${id}/sections`, {
+      method: "PATCH",
+      body: JSON.stringify({ hiddenSections }),
+    }),
   switchTo: (workspaceId: string) =>
     request<{ ok: true }>("/api/workspaces/switch", {
       method: "POST",
