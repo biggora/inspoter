@@ -76,6 +76,7 @@ model Workspace {
   slug      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  hiddenSections String[] @default([])
 
   members           WorkspaceMember[]
   categories        Category[]
