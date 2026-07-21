@@ -84,6 +84,17 @@ const envSchema = z
       .int()
       .positive()
       .default(60_000),
+    // --- Backup import limits ---
+    BACKUP_MAX_IMPORT_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(52_428_800), // 50 MiB
+    BACKUP_IMPORT_TX_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60_000),
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     // Preprocessed so an explicitly blanked "" (scripts/test-env.mjs blanks
     // this in test child environments to stop prisma.config.ts's dotenv
