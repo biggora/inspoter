@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import type { Session } from "@/generated/prisma/client";
 
@@ -36,9 +36,10 @@ export async function createSession(operatorId: string): Promise<Session> {
 
   try {
     const cookieStore = await cookies();
+    const forwardedProto = (await headers()).get("x-forwarded-proto");
     cookieStore.set(SESSION_COOKIE_NAME, session.id, {
       httpOnly: true,
-      secure: true,
+      secure: forwardedProto === "https",
       sameSite: "lax",
       expires: expiresAt,
       path: "/",
