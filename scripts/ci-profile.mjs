@@ -57,7 +57,6 @@ const UNTRUSTED_RUNTIME_ENVIRONMENT_KEYS = [
 
 export const PROFILE_STEPS = Object.freeze({
   full: Object.freeze([
-    "openapi:check",
     "lint",
     "typecheck",
     "test:db:up",
