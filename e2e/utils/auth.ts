@@ -18,9 +18,9 @@ export async function submitLoginForm(
 ) {
   await page.goto("/login");
   const expectedDashboardUrl = new URL("/bookmarks", page.url()).href;
-  await page.getByLabel("Username", { exact: true }).fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("Имя пользователя", { exact: true }).fill(username);
+  await page.getByLabel("Пароль", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   return expectedDashboardUrl;
 }
 

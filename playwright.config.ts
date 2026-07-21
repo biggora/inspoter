@@ -48,6 +48,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: appOrigin,
+    locale: "ru-RU",
     actionTimeout: 5_000,
     navigationTimeout: 15_000,
     trace: "retain-on-failure",
