@@ -17,11 +17,9 @@ export async function submitLoginForm(
   password: string = OPERATOR_PASSWORD,
 ) {
   await page.goto("/login");
-  const expectedDashboardUrl = new URL("/bookmarks", page.url()).href;
   await page.getByLabel("Имя пользователя", { exact: true }).fill(username);
   await page.getByLabel("Пароль", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
-  return expectedDashboardUrl;
 }
 
 export async function login(
@@ -29,6 +27,6 @@ export async function login(
   username: string = OPERATOR_USERNAME,
   password: string = OPERATOR_PASSWORD,
 ) {
-  const expectedDashboardUrl = await submitLoginForm(page, username, password);
-  await page.waitForURL(expectedDashboardUrl);
+  await submitLoginForm(page, username, password);
+  await page.waitForURL(/\/bookmarks/);
 }

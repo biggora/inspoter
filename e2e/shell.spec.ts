@@ -25,7 +25,6 @@ test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
 
 test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)", async ({
   page,
-  testData,
 }) => {
   await login(page);
   await page.evaluate(() => {
@@ -38,7 +37,7 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
     .getByRole("navigation")
     .getByRole("link", { name: "Домены", exact: true })
     .click();
-  await expect(page).toHaveURL(testData.localUrl("/domains"));
+  await expect(page).toHaveURL(/\/domains$/);
 
   const markerSurvived = await page.evaluate(
     () =>
@@ -109,7 +108,6 @@ test.describe("AC-SHELL-003: implemented sections render through the active shel
   for (const { path, label, readiness } of IMPLEMENTED_SECTIONS) {
     test(`${label} renders its implemented route and active navigation`, async ({
       page,
-      testData,
     }) => {
       await login(page);
       const response = await page.goto(path);
@@ -122,7 +120,7 @@ test.describe("AC-SHELL-003: implemented sections render through the active shel
         response!.status(),
         `${path} should resolve without a 4xx/5xx response`,
       ).toBeLessThan(400);
-      await expect(page).toHaveURL(testData.localUrl(path));
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(
         page
           .getByRole("navigation", { name: "Основная навигация" })
@@ -138,14 +136,13 @@ test.describe("AC-SHELL-003: implemented sections render through the active shel
 
 test("Settings route renders through the active shell (smoke check, not AC-SHELL-003)", async ({
   page,
-  testData,
 }) => {
   await login(page);
   const response = await page.goto(SETTINGS_ROUTE.path);
 
   expect(response).not.toBeNull();
   expect(response!.status()).toBeLessThan(400);
-  await expect(page).toHaveURL(testData.localUrl(SETTINGS_ROUTE.path));
+  await expect(page).toHaveURL(new RegExp(`${SETTINGS_ROUTE.path}$`));
   await expect(
     page
       .getByRole("navigation", { name: "Основная навигация" })

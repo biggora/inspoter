@@ -61,7 +61,7 @@ test("authenticated operator opens the two-operation Swagger reference without e
   };
   page.on("request", recordExternalRequest);
 
-  await page.locator('a[href="/settings/api-docs"]').click();
+  await page.locator('a[href$="/settings/api-docs"]').click();
   await expect(page).toHaveURL(new RegExp(`${API_DOCS_PATH}$`));
 
   const operationPaths = page.locator(".swagger-ui .opblock-summary-path");
