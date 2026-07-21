@@ -341,29 +341,44 @@ test("Server power AlertDialog has zero serious or critical accessibility violat
     }
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify([
-        {
-          providerId: "a11y-provider",
-          providerType: "hetzner",
-          label: "A11y Provider",
-          mode: "mock",
-          error: null,
-          servers: [
-            {
-              id: "a11y-server",
-              name: "a11y-server",
-              type: "cx22",
-              status: "running",
-              ip: "192.0.2.10",
-              cpu: "2 vCPU",
-              ram: "4 GB",
-              disk: "40 GB",
-              os: "Linux",
-              location: "Test Region",
+      body: JSON.stringify({
+        servers: [
+          {
+            localServerId: "a11y-server",
+            origin: "provider",
+            providerCredentialId: "a11y-cred",
+            providerId: "a11y-provider",
+            remoteServerId: "a11y-server",
+            providerAvailability: "present",
+            powerActionsAvailable: true,
+            metrics: {
+              state: "not_configured",
+              receivedAt: null,
+              cpuUsagePercent: null,
+              load1: null,
+              load5: null,
+              load15: null,
+              memoryTotalBytes: null,
+              memoryAvailableBytes: null,
+              swapTotalBytes: null,
+              swapFreeBytes: null,
+              filesystemTotalBytes: null,
+              filesystemAvailableBytes: null,
+              uptimeSeconds: null,
             },
-          ],
-        },
-      ]),
+            name: "a11y-server",
+            type: "cx22",
+            status: "running",
+            ip: "192.0.2.10",
+            cpu: "2 vCPU",
+            ram: "4 GB",
+            disk: "40 GB",
+            os: "Linux",
+            location: "Test Region",
+          },
+        ],
+        providerErrors: [],
+      }),
     });
   });
   await page.goto("/servers");
@@ -462,7 +477,7 @@ test.describe("mobile migrated controls", () => {
     await expectNoBlockingAxeViolations(page, '[data-slot="sheet-content"]');
 
     await sheet
-      .getByRole("button", { name: "# a11y-channel", exact: true })
+      .getByRole("button", { name: "a11y-channel", exact: true })
       .click();
     const composer = page.getByPlaceholder("Написать в #a11y-channel...");
     await expect(composer).toBeVisible();

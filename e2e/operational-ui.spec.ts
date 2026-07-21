@@ -65,29 +65,44 @@ test("server power confirmation cancels safely and submits exactly once", async 
   });
 
   await page.route("**/api/servers", (route) =>
-    json(route, [
-      {
-        providerId: "mock-hetzner",
-        providerType: "hetzner",
-        label: "Hetzner Mock",
-        mode: "mock",
-        error: null,
-        servers: [
-          {
-            id: "server-1",
-            name: "edge-01",
-            type: "cx22",
-            status: "running",
-            ip: "192.0.2.10",
-            cpu: "2 vCPU",
-            ram: "4 GB",
-            disk: "40 GB",
-            os: "Ubuntu 24.04",
-            location: "Helsinki",
+    json(route, {
+      servers: [
+        {
+          localServerId: "server-1",
+          origin: "provider",
+          providerCredentialId: "mock-cred-1",
+          providerId: "mock-hetzner",
+          remoteServerId: "server-1",
+          providerAvailability: "present",
+          powerActionsAvailable: true,
+          metrics: {
+            state: "not_configured",
+            receivedAt: null,
+            cpuUsagePercent: null,
+            load1: null,
+            load5: null,
+            load15: null,
+            memoryTotalBytes: null,
+            memoryAvailableBytes: null,
+            swapTotalBytes: null,
+            swapFreeBytes: null,
+            filesystemTotalBytes: null,
+            filesystemAvailableBytes: null,
+            uptimeSeconds: null,
           },
-        ],
-      },
-    ]),
+          name: "edge-01",
+          type: "cx22",
+          status: "running",
+          ip: "192.0.2.10",
+          cpu: "2 vCPU",
+          ram: "4 GB",
+          disk: "40 GB",
+          os: "Ubuntu 24.04",
+          location: "Helsinki",
+        },
+      ],
+      providerErrors: [],
+    }),
   );
   await page.route(
     "**/api/servers/mock-hetzner/server-1/power",
@@ -101,7 +116,28 @@ test("server power confirmation cancels safely and submits exactly once", async 
   );
   await page.route("**/api/servers/mock-hetzner/server-1", (route) =>
     json(route, {
-      id: "server-1",
+      localServerId: "server-1",
+      origin: "provider",
+      providerCredentialId: "mock-cred-1",
+      providerId: "mock-hetzner",
+      remoteServerId: "server-1",
+      providerAvailability: "present",
+      powerActionsAvailable: true,
+      metrics: {
+        state: "not_configured",
+        receivedAt: null,
+        cpuUsagePercent: null,
+        load1: null,
+        load5: null,
+        load15: null,
+        memoryTotalBytes: null,
+        memoryAvailableBytes: null,
+        swapTotalBytes: null,
+        swapFreeBytes: null,
+        filesystemTotalBytes: null,
+        filesystemAvailableBytes: null,
+        uptimeSeconds: null,
+      },
       name: "edge-01",
       type: "cx22",
       status: "running",
@@ -215,7 +251,7 @@ test("mobile messages navigation closes its Sheet and composer uses newline, key
   await category.click();
   await expect(category).toHaveAttribute("aria-expanded", "false");
   await category.click();
-  await sheet.getByRole("button", { name: "# deploys", exact: true }).click();
+  await sheet.getByRole("button", { name: "deploys", exact: true }).click();
 
   await expect(sheet).toBeHidden();
   await expect(
@@ -449,7 +485,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
       domainRscRequests === 0 ? "Authentication failed" : "Timeout after 30s";
     const body = originalBody.replace(
       emptyProvidersFixture,
-      `"providers":[{"providerId":"cloudflare","mode":"real","domains":[],"error":"${providerError}"}]`,
+      `"providers":[{"providerId":"cloudflare","providerType":"cloudflare","mode":"real","domains":[],"error":"${providerError}"}]`,
     );
     expect(
       body,

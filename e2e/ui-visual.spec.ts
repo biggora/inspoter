@@ -40,7 +40,10 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
     ),
   ).toBe(true);
 
-  const name = page.getByLabel("Название рабочего пространства", {
+  const renameForm = page
+    .locator("form")
+    .filter({ has: page.getByLabel("Название рабочего пространства", { exact: true }) });
+  const name = renameForm.getByLabel("Название рабочего пространства", {
     exact: true,
   });
   await name.focus();
@@ -55,7 +58,7 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   expect(focusStyle.outlineStyle).not.toBe("none");
   expect(focusStyle.outlineWidth).toBeGreaterThan(0);
 
-  const save = page.getByRole("button", {
+  const save = renameForm.getByRole("button", {
     name: "Сохранить изменения",
     exact: true,
   });
@@ -107,7 +110,7 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
 
   try {
     await darkName.fill(`Visual pending ${testInfo.project.name}`);
-    await page
+    await renameForm
       .getByRole("button", { name: "Сохранить изменения", exact: true })
       .click();
     await requestObserved;

@@ -147,7 +147,7 @@ async function createMessageFixture(
       .click();
     await page
       .getByRole("dialog", { name: "Категории и каналы", exact: true })
-      .getByRole("button", { name: `# ${channel.name}`, exact: true })
+      .getByRole("button", { name: channel.name, exact: true })
       .click();
   }
   await expect(channelHeading).toBeVisible();
@@ -406,8 +406,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
 
     await page.reload();
     const originalWorkspaceTrigger = page.getByRole("button", {
-      name: fixture.workspaceName,
-      exact: true,
+      name: new RegExp(fixture.workspaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
     });
     await originalWorkspaceTrigger.click();
     await page
@@ -429,8 +428,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       .catch(() => null);
     if (activeId === secondWorkspace.id) {
       const secondTrigger = page.getByRole("button", {
-        name: secondWorkspace.name,
-        exact: true,
+        name: new RegExp(secondWorkspace.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
       });
       await secondTrigger.click();
       await page

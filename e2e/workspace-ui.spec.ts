@@ -23,7 +23,10 @@ test("workspace rename exposes validation, pending, and success states", async (
   testData,
 }) => {
   const workspaceId = await activeWorkspaceId(page);
-  const name = page.getByLabel("Название рабочего пространства", {
+  const renameForm = page
+    .locator("form")
+    .filter({ has: page.getByLabel("Название рабочего пространства", { exact: true }) });
+  const name = renameForm.getByLabel("Название рабочего пространства", {
     exact: true,
   });
   const originalName = await name.inputValue();
@@ -44,7 +47,7 @@ test("workspace rename exposes validation, pending, and success states", async (
 
   try {
     await name.fill("   ");
-    await page
+    await renameForm
       .getByRole("button", { name: "Сохранить изменения", exact: true })
       .click();
     const validation = page.getByText(
@@ -63,7 +66,7 @@ test("workspace rename exposes validation, pending, and success states", async (
         new URL(response.url()).pathname === `/api/workspaces/${workspaceId}` &&
         response.request().method() === "PATCH",
     );
-    await page
+    await renameForm
       .getByRole("button", { name: "Сохранить изменения", exact: true })
       .click();
 
