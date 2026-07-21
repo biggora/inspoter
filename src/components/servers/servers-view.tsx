@@ -625,6 +625,13 @@ function ServerCard({
     metrics.state === "stale" ||
     (metrics.state === "revoked" && metrics.cpuUsagePercent !== null);
 
+  useEffect(() => {
+    if (pendingAction === null && confirmingRef.current) {
+      confirmingRef.current = false;
+      cardRef.current?.focus();
+    }
+  }, [pendingAction]);
+
   const handleConfirm = (action: PowerActionType) => {
     if (confirmingRef.current || !isProvider) return;
     confirmingRef.current = true;
