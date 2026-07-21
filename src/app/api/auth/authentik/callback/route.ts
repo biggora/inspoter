@@ -9,6 +9,7 @@ import {
   decodeAuthentikTxn,
 } from "@/lib/auth/authentik-txn";
 import { findOrCreateOperatorForExternalIdentity } from "@/lib/services/external-identity";
+import { ensureDefaultWorkspace } from "@/lib/services/workspaces";
 import { createSession, establishInitialWorkspace } from "@/lib/auth/session";
 
 // Callback endpoint — validates the authorization response (state/nonce/PKCE/
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       throw new Error("Authentik callback: no `sub` claim in the ID token");
     }
 
-    const operator = await findOrCreateOperatorForExternalIdentity({
+    const { operator } = await findOrCreateOperatorForExternalIdentity({
       subject: claims.sub,
       email: typeof claims.email === "string" ? claims.email : undefined,
       preferredUsername:
@@ -76,10 +77,21 @@ export async function GET(request: NextRequest) {
     });
 
     const session = await createSession(operator.id);
-    const hasWorkspace = await establishInitialWorkspace(
+    let hasWorkspace = await establishInitialWorkspace(
       session.id,
       operator.id,
     );
+
+    if (!hasWorkspace) {
+      await ensureDefaultWorkspace(
+        operator.id,
+        `${operator.username}'s workspace`,
+      );
+      hasWorkspace = await establishInitialWorkspace(
+        session.id,
+        operator.id,
+      );
+    }
 
     const destination = hasWorkspace
       ? sanitizeNextPath(txn.next)

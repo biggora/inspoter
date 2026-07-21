@@ -99,14 +99,14 @@ async function findLinkedOperator(subject: string): Promise<{
 
 export async function findOrCreateOperatorForExternalIdentity(
   claims: ExternalIdentityClaims,
-): Promise<Operator> {
+): Promise<{ operator: Operator; created: boolean }> {
   const existing = await findLinkedOperator(claims.subject);
   if (existing) {
     await db.externalIdentity.update({
       where: { id: existing.identityId },
       data: { email: claims.email ?? null, lastLoginAt: new Date() },
     });
-    return existing.operator;
+    return { operator: existing.operator, created: false };
   }
 
   const baseUsername = baseUsernameCandidate(claims);
@@ -114,7 +114,7 @@ export async function findOrCreateOperatorForExternalIdentity(
   for (let attempt = 0; attempt < MAX_USERNAME_ATTEMPTS; attempt++) {
     const username = await findAvailableUsername(baseUsername);
     try {
-      return await db.$transaction(async (tx) => {
+      const newOperator = await db.$transaction(async (tx) => {
         const operator = await tx.operator.create({
           data: { username, passwordHash: null, email: claims.email ?? null },
         });
@@ -129,6 +129,7 @@ export async function findOrCreateOperatorForExternalIdentity(
         });
         return operator;
       });
+      return { operator: newOperator, created: true };
     } catch (err) {
       if (!isPrismaUniqueConstraintError(err)) throw err;
 
@@ -136,7 +137,7 @@ export async function findOrCreateOperatorForExternalIdentity(
         // Lost a race: a concurrent request just linked this exact
         // (provider, subject) — that row is the authoritative outcome.
         const winner = await findLinkedOperator(claims.subject);
-        if (winner) return winner.operator;
+        if (winner) return { operator: winner.operator, created: false };
         throw err;
       }
 

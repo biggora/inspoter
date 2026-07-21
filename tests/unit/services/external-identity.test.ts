@@ -29,11 +29,14 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
     const subject = uniqueSubject();
     const username = `authentik-user-${randomUUID().slice(0, 8)}`;
 
-    const operator = await findOrCreateOperatorForExternalIdentity({
-      subject,
-      email: "new-user@example.com",
-      preferredUsername: username,
-    });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      {
+        subject,
+        email: "new-user@example.com",
+        preferredUsername: username,
+      },
+    );
+    expect(created).toBe(true);
     createdOperatorIds.push(operator.id);
 
     expect(operator.username).toBe(username);
@@ -54,17 +57,19 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
 
   it("returns the linked Operator on a repeat login and refreshes lastLoginAt/email", async () => {
     const subject = uniqueSubject();
-    const first = await findOrCreateOperatorForExternalIdentity({
+    const { operator: first } = await findOrCreateOperatorForExternalIdentity({
       subject,
       email: "old@example.com",
       preferredUsername: `authentik-user-${randomUUID().slice(0, 8)}`,
     });
     createdOperatorIds.push(first.id);
 
-    const second = await findOrCreateOperatorForExternalIdentity({
-      subject,
-      email: "new@example.com",
-    });
+    const { operator: second, created } =
+      await findOrCreateOperatorForExternalIdentity({
+        subject,
+        email: "new@example.com",
+      });
+    expect(created).toBe(false);
 
     expect(second.id).toBe(first.id);
 
@@ -86,10 +91,13 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
     });
     createdOperatorIds.push(existing.id);
 
-    const operator = await findOrCreateOperatorForExternalIdentity({
-      subject: uniqueSubject(),
-      preferredUsername: takenUsername,
-    });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      {
+        subject: uniqueSubject(),
+        preferredUsername: takenUsername,
+      },
+    );
+    expect(created).toBe(true);
     createdOperatorIds.push(operator.id);
 
     expect(operator.id).not.toBe(existing.id);
@@ -98,10 +106,13 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
 
   it("falls back to the email local-part when preferred_username is absent", async () => {
     const localPart = `local-${randomUUID().slice(0, 8)}`;
-    const operator = await findOrCreateOperatorForExternalIdentity({
-      subject: uniqueSubject(),
-      email: `${localPart}@example.com`,
-    });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      {
+        subject: uniqueSubject(),
+        email: `${localPart}@example.com`,
+      },
+    );
+    expect(created).toBe(true);
     createdOperatorIds.push(operator.id);
 
     expect(operator.username).toBe(localPart);
@@ -109,7 +120,10 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
 
   it("falls back to an authentik-<sub> username when no claims are usable", async () => {
     const subject = uniqueSubject();
-    const operator = await findOrCreateOperatorForExternalIdentity({ subject });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      { subject },
+    );
+    expect(created).toBe(true);
     createdOperatorIds.push(operator.id);
 
     expect(operator.username).toBe(`authentik-${subject.slice(0, 8)}`);
@@ -140,10 +154,13 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
       >,
     );
 
-    const operator = await findOrCreateOperatorForExternalIdentity({
-      subject,
-      preferredUsername: `race-loser-${randomUUID().slice(0, 8)}`,
-    });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      {
+        subject,
+        preferredUsername: `race-loser-${randomUUID().slice(0, 8)}`,
+      },
+    );
+    expect(created).toBe(false);
 
     expect(operator.id).toBe(winner.id);
   });
@@ -164,10 +181,13 @@ describe("findOrCreateOperatorForExternalIdentity", () => {
     });
     createdOperatorIds.push(concurrentWinner.id);
 
-    const operator = await findOrCreateOperatorForExternalIdentity({
-      subject,
-      preferredUsername: username,
-    });
+    const { operator, created } = await findOrCreateOperatorForExternalIdentity(
+      {
+        subject,
+        preferredUsername: username,
+      },
+    );
+    expect(created).toBe(true);
     createdOperatorIds.push(operator.id);
 
     expect(operator.id).not.toBe(concurrentWinner.id);

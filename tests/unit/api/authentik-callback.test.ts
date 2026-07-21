@@ -17,12 +17,14 @@ const {
   findOrCreateOperatorMock,
   createSessionMock,
   establishInitialWorkspaceMock,
+  ensureDefaultWorkspaceMock,
 } = vi.hoisted(() => ({
   authorizationCodeGrantMock: vi.fn(),
   getAuthentikConfigMock: vi.fn(),
   findOrCreateOperatorMock: vi.fn(),
   createSessionMock: vi.fn(),
   establishInitialWorkspaceMock: vi.fn(),
+  ensureDefaultWorkspaceMock: vi.fn(),
 }));
 
 vi.mock("openid-client", async (importOriginal) => {
@@ -41,6 +43,10 @@ vi.mock("@/lib/services/external-identity", () => ({
 vi.mock("@/lib/auth/session", () => ({
   createSession: createSessionMock,
   establishInitialWorkspace: establishInitialWorkspaceMock,
+}));
+
+vi.mock("@/lib/services/workspaces", () => ({
+  ensureDefaultWorkspace: ensureDefaultWorkspaceMock,
 }));
 
 const ORIGINAL_ENV = { ...process.env };
@@ -86,6 +92,7 @@ beforeEach(() => {
   findOrCreateOperatorMock.mockReset();
   createSessionMock.mockReset();
   establishInitialWorkspaceMock.mockReset();
+  ensureDefaultWorkspaceMock.mockReset().mockResolvedValue({ id: "workspace-1" });
 });
 
 afterEach(() => {
@@ -132,7 +139,10 @@ describe("GET /api/auth/authentik/callback", () => {
     authorizationCodeGrantMock.mockResolvedValueOnce({
       claims: () => ({ sub: "sub-1", email: "user@example.com" }),
     });
-    findOrCreateOperatorMock.mockResolvedValueOnce({ id: "operator-1" });
+    findOrCreateOperatorMock.mockResolvedValueOnce({
+      operator: { id: "operator-1", username: "testuser" },
+      created: false,
+    });
     createSessionMock.mockResolvedValueOnce({ id: "session-1" });
     establishInitialWorkspaceMock.mockResolvedValueOnce(true);
 
@@ -149,18 +159,77 @@ describe("GET /api/auth/authentik/callback", () => {
       "session-1",
       "operator-1",
     );
+    expect(ensureDefaultWorkspaceMock).not.toHaveBeenCalled();
 
     const location = new URL(res.headers.get("location")!);
     expect(location.pathname).toBe("/mail");
   });
 
-  it("redirects to /no-workspace when the operator has zero workspace memberships", async () => {
+  it("auto-creates a default workspace when the operator has no memberships", async () => {
+    authorizationCodeGrantMock.mockResolvedValueOnce({
+      claims: () => ({
+        sub: "sub-new",
+        email: "new@example.com",
+        preferred_username: "newuser",
+      }),
+    });
+    findOrCreateOperatorMock.mockResolvedValueOnce({
+      operator: { id: "operator-new", username: "newuser" },
+      created: true,
+    });
+    createSessionMock.mockResolvedValueOnce({ id: "session-new" });
+    establishInitialWorkspaceMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const { GET } = await loadRouteWithAuthentikEnabled();
+    const res = await GET(makeRequest(validTxn()));
+
+    expect(ensureDefaultWorkspaceMock).toHaveBeenCalledWith(
+      "operator-new",
+      "newuser's workspace",
+    );
+    expect(establishInitialWorkspaceMock).toHaveBeenCalledTimes(2);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/bookmarks");
+  });
+
+  it("retries workspace creation on subsequent login if previous provisioning failed", async () => {
+    authorizationCodeGrantMock.mockResolvedValueOnce({
+      claims: () => ({ sub: "sub-retry" }),
+    });
+    findOrCreateOperatorMock.mockResolvedValueOnce({
+      operator: { id: "operator-retry", username: "retryuser" },
+      created: false,
+    });
+    createSessionMock.mockResolvedValueOnce({ id: "session-retry" });
+    establishInitialWorkspaceMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const { GET } = await loadRouteWithAuthentikEnabled();
+    const res = await GET(makeRequest(validTxn()));
+
+    expect(ensureDefaultWorkspaceMock).toHaveBeenCalledWith(
+      "operator-retry",
+      "retryuser's workspace",
+    );
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/bookmarks");
+  });
+
+  it("redirects to /no-workspace as a last resort when workspace attachment fails", async () => {
     authorizationCodeGrantMock.mockResolvedValueOnce({
       claims: () => ({ sub: "sub-2" }),
     });
-    findOrCreateOperatorMock.mockResolvedValueOnce({ id: "operator-2" });
+    findOrCreateOperatorMock.mockResolvedValueOnce({
+      operator: { id: "operator-2", username: "testuser2" },
+      created: false,
+    });
     createSessionMock.mockResolvedValueOnce({ id: "session-2" });
-    establishInitialWorkspaceMock.mockResolvedValueOnce(false);
+    establishInitialWorkspaceMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
 
     const { GET } = await loadRouteWithAuthentikEnabled();
     const res = await GET(makeRequest(validTxn()));

@@ -161,6 +161,51 @@ export async function createWorkspace(
   });
 }
 
+export async function ensureDefaultWorkspace(
+  operatorId: string,
+  defaultName: string,
+): Promise<Workspace> {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${operatorId}))`;
+
+    const membership = await tx.workspaceMember.findFirst({
+      where: { operatorId },
+    });
+    if (membership) {
+      return tx.workspace.findUniqueOrThrow({
+        where: { id: membership.workspaceId },
+      });
+    }
+
+    const name = validateName(defaultName);
+    const baseSlug = slugify(name);
+    let slug: string | undefined;
+    for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+      const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
+      const taken = await tx.workspace.findUnique({
+        where: { slug: candidate },
+      });
+      if (!taken) {
+        slug = candidate;
+        break;
+      }
+    }
+    if (!slug) {
+      throw new WorkspaceValidationError(
+        "Could not generate a unique workspace slug, please try a different name",
+      );
+    }
+
+    return tx.workspace.create({
+      data: {
+        name,
+        slug,
+        members: { create: { operatorId, role: "OWNER" } },
+      },
+    });
+  });
+}
+
 export async function listForOperator(
   operatorId: string,
 ): Promise<Workspace[]> {
