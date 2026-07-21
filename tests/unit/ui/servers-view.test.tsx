@@ -25,8 +25,31 @@ vi.mock("@/components/settings/credentials-api", () => ({
   },
 }));
 
+const defaultMetrics = {
+  state: "not_configured" as const,
+  receivedAt: null,
+  cpuUsagePercent: null,
+  load1: null,
+  load5: null,
+  load15: null,
+  memoryTotalBytes: null,
+  memoryAvailableBytes: null,
+  swapTotalBytes: null,
+  swapFreeBytes: null,
+  filesystemTotalBytes: null,
+  filesystemAvailableBytes: null,
+  uptimeSeconds: null,
+};
+
 const runningServer = {
-  id: "server-1",
+  localServerId: "server-1",
+  origin: "provider" as const,
+  providerCredentialId: "cred-1",
+  providerId: "provider-1",
+  remoteServerId: "remote-1",
+  providerAvailability: "present" as const,
+  powerActionsAvailable: true,
+  metrics: defaultMetrics,
   name: "web-prod-01",
   type: "cx22",
   status: "running",
@@ -38,18 +61,14 @@ const runningServer = {
   location: "Helsinki",
 };
 
-const serverGroup = {
-  providerId: "provider-1",
-  providerType: "hetzner",
-  label: "Hetzner",
-  mode: "live",
+const composedResponse = {
   servers: [runningServer],
-  error: null,
+  providerErrors: [],
 };
 
 describe("ServersView destructive actions", () => {
   beforeEach(() => {
-    apiMocks.fetchServers.mockReset().mockResolvedValue([serverGroup]);
+    apiMocks.fetchServers.mockReset().mockResolvedValue(composedResponse);
     apiMocks.getServer.mockReset().mockResolvedValue(runningServer);
     apiMocks.powerAction.mockReset().mockResolvedValue({});
     credentialsMocks.create.mockReset().mockResolvedValue({});
@@ -145,12 +164,10 @@ describe("ServersView destructive actions", () => {
   ] as const)(
     "confirms $action once and leaves a focused card with a disabled pending action",
     async ({ initialStatus, triggerName, action, pendingName }) => {
-      apiMocks.fetchServers.mockResolvedValueOnce([
-        {
-          ...serverGroup,
-          servers: [{ ...runningServer, status: initialStatus }],
-        },
-      ]);
+      apiMocks.fetchServers.mockResolvedValueOnce({
+        servers: [{ ...runningServer, status: initialStatus }],
+        providerErrors: [],
+      });
 
       const user = userEvent.setup();
       renderWithIntl(<ServersView />);
@@ -167,14 +184,15 @@ describe("ServersView destructive actions", () => {
       expect(pendingButton.querySelector("[data-slot='spinner']")).toBeTruthy();
 
       await waitFor(() => {
-        expect(
-          screen.getByRole("group", { name: "Сервер «web-prod-01»" }),
-        ).toHaveFocus();
+        const card = screen.getByRole("group", {
+          name: "Сервер «web-prod-01»",
+        });
+        expect(card.contains(document.activeElement)).toBe(true);
       });
       expect(apiMocks.powerAction).toHaveBeenCalledTimes(1);
       expect(apiMocks.powerAction).toHaveBeenCalledWith(
         "provider-1",
-        "server-1",
+        "remote-1",
         action,
       );
 
@@ -187,7 +205,7 @@ describe("ServersView destructive actions", () => {
     apiMocks.fetchServers
       .mockReset()
       .mockRejectedValueOnce(new Error("offline"))
-      .mockResolvedValueOnce([serverGroup]);
+      .mockResolvedValueOnce(composedResponse);
 
     const user = userEvent.setup();
     renderWithIntl(<ServersView />);
