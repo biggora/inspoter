@@ -3,6 +3,8 @@ import type { ServerProvider, Server, ServerStatus } from "./types";
 import type { ProviderResult } from "@/lib/providers/result";
 
 const BASE_URL = "https://api.hetzner.cloud/v1";
+const PER_PAGE = 50;
+const MAX_PAGES = 100;
 
 interface HetznerServerType {
   cores: number;
@@ -23,6 +25,7 @@ interface HetznerServer {
 
 interface HetznerServerListResponse {
   servers: HetznerServer[];
+  meta?: { pagination?: { next_page: number | null } };
 }
 
 interface HetznerServerResponse {
@@ -86,12 +89,44 @@ export class HetznerServerProvider implements ServerProvider {
     });
   }
 
+  private async fetchAllServers(
+    signal?: AbortSignal,
+  ): Promise<ProviderResult<Server[]>> {
+    const servers: Server[] = [];
+    let page = 1;
+
+    for (let i = 0; i < MAX_PAGES; i++) {
+      const result = await this.client.request<HetznerServerListResponse>({
+        path: `/servers?per_page=${PER_PAGE}&page=${page}`,
+        signal,
+      });
+      if (!result.ok) return result;
+      servers.push(...result.data.servers.map(toServer));
+
+      const nextPage = result.data.meta?.pagination?.next_page;
+      if (!nextPage) break;
+      page = nextPage;
+    }
+
+    return { ok: true, data: servers };
+  }
+
   async listServers(): Promise<ProviderResult<Server[]>> {
-    const result = await this.client.request<HetznerServerListResponse>({
-      path: "/servers",
-    });
-    if (!result.ok) return result;
-    return { ok: true, data: result.data.servers.map(toServer) };
+    return this.fetchAllServers();
+  }
+
+  async listServersWithDeadline(
+    signal: AbortSignal,
+  ): Promise<ProviderResult<Server[]>> {
+    const result = await this.fetchAllServers(signal);
+    if (!result.ok && signal.aborted) {
+      return {
+        ok: false,
+        kind: "error",
+        message: "Server discovery deadline exceeded",
+      };
+    }
+    return result;
   }
 
   async getServer(id: string): Promise<ProviderResult<Server>> {

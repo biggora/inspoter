@@ -41,5 +41,50 @@
   "locationLabel": "Расположение",
   "noActionsAvailable": "Нет доступных действий",
   "cancelButton": "Отмена",
-  "confirmButton": "Подтвердить"
+  "confirmButton": "Подтвердить",
+
+  "metricsLabel": "Метрики",
+  "cpuUsageLabel": "CPU",
+  "memoryLabel": "Память",
+  "diskUsageLabel": "Диск (использование)",
+  "loadLabel": "Нагрузка",
+  "uptimeLabel": "Время работы",
+  "lastUpdate": "Обновлено {time}",
+
+  "metricsLive": "Активен",
+  "metricsStale": "Устарел",
+  "metricsWaiting": "Ожидание",
+  "metricsRevoked": "Отозван",
+  "metricsNotConfigured": "Не настроен",
+
+  "agentOnlyBadge": "Агент",
+  "providerUnavailableBadge": "Провайдер недоступен",
+  "providerMissingBadge": "Отсутствует у провайдера",
+
+  "monitoringNotConnected": "Мониторинг не подключён",
+  "waitingForAgent": "Ожидание данных от агента",
+  "lastReceivedAt": "Получено: {time}",
+
+  "hostnameLabel": "Имя хоста",
+  "agentOnlyNotice": "Этот сервер контролируется только агентом, без подключения к провайдеру.",
+
+  "setupMonitoring": "Настроить мониторинг",
+  "reconnectAgent": "Переподключить агент",
+  "enrollmentDialogTitle": "Настройка агента мониторинга",
+  "enrollmentDialogDescription": "Создайте токен для подключения агента метрик к этому серверу.",
+  "tokenNameLabel": "Имя токена",
+  "tokenNamePlaceholder": "напр. production-agent",
+  "createTokenButton": "Создать токен",
+  "creatingToken": "Создание…",
+  "tokenCreatedTitle": "Токен создан",
+  "tokenCreatedDescription": "Скопируйте этот токен сейчас — он больше не будет показан.",
+  "tokenSecretLabel": "Токен",
+  "copyToken": "Копировать",
+  "copiedToken": "Скопировано!",
+  "installationTitle": "Установка",
+  "installationStep1": "1. Создайте директорию для проба на сервере:",
+  "installationStep2": "2. Создайте файл .env с настройками:",
+  "installationStep3": "3. Скачайте compose.yml и запустите агент:",
+  "closeButton": "Закрыть",
+  "tokenError": "Не удалось создать токен"
 }

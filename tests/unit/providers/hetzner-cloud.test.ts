@@ -60,7 +60,7 @@ describe("HetznerServerProvider", () => {
     await provider.listServers();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.hetzner.cloud/v1/servers",
+      "https://api.hetzner.cloud/v1/servers?per_page=50&page=1",
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer test-token",
@@ -252,5 +252,157 @@ describe("HetznerServerProvider", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
+  });
+
+  it("follows meta.pagination.next_page across multiple pages", async () => {
+    const secondServer = { ...rawServer, id: 67890, name: "web-prod-02" };
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("page=1")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            servers: [rawServer],
+            meta: { pagination: { next_page: 2 } },
+          }),
+        );
+      }
+      if (url.includes("page=2")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            servers: [secondServer],
+            meta: { pagination: { next_page: null } },
+          }),
+        );
+      }
+      throw new Error(`unexpected url: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const result = await provider.listServers();
+
+    expect(result).toEqual({
+      ok: true,
+      data: [mappedServer, { ...mappedServer, id: "67890", name: "web-prod-02" }],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://api.hetzner.cloud/v1/servers?per_page=50&page=1",
+      expect.anything(),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.hetzner.cloud/v1/servers?per_page=50&page=2",
+      expect.anything(),
+    );
+  });
+
+  it("fails closed and drops partial results when a later page errors", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("page=1")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            servers: [rawServer],
+            meta: { pagination: { next_page: 2 } },
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse(500, {}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const promise = provider.listServers();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(2000);
+    const result = await promise;
+
+    expect(result).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Provider error",
+    });
+    // 1 call for page 1 + 3 retried attempts for the failing page 2.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    vi.useRealTimers();
+  });
+
+  it("caps pagination at 100 pages", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const page = Number(new URL(url).searchParams.get("page"));
+      return Promise.resolve(
+        jsonResponse(200, {
+          servers: [{ ...rawServer, id: page }],
+          meta: { pagination: { next_page: page + 1 } },
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const result = await provider.listServers();
+
+    expect(fetchMock).toHaveBeenCalledTimes(100);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toHaveLength(100);
+  });
+
+  it("listServersWithDeadline forwards the abort signal to requests", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { servers: [rawServer] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const controller = new AbortController();
+    const result = await provider.listServersWithDeadline(controller.signal);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.hetzner.cloud/v1/servers?per_page=50&page=1",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(result).toEqual({ ok: true, data: [mappedServer] });
+  });
+
+  it("listServersWithDeadline returns a deadline error when the signal aborts", async () => {
+    const abortError = new DOMException(
+      "The operation was aborted.",
+      "AbortError",
+    );
+    const fetchMock = vi.fn().mockRejectedValueOnce(abortError);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const controller = new AbortController();
+    controller.abort();
+    const result = await provider.listServersWithDeadline(controller.signal);
+
+    expect(result).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Server discovery deadline exceeded",
+    });
   });
 });

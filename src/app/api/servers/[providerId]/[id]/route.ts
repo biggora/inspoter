@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as serversService from "@/lib/services/servers";
-import { providerResultResponse } from "@/lib/api/provider-result";
 import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
 
 interface RouteContext {
   params: Promise<{ providerId: string; id: string }>;
@@ -16,6 +16,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const { workspace } = authResult;
   const { providerId, id } = await params;
 
-  const result = await serversService.getServer(workspace.id, providerId, id);
-  return providerResultResponse(result);
+  const server = await serversService.getComposedServer(
+    workspace.id,
+    providerId,
+    id,
+  );
+  if (!server) {
+    return jsonResponse({ error: "Server not found" }, { status: 404 });
+  }
+  return jsonResponse(server);
 }

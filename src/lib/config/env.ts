@@ -77,6 +77,13 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000),
+    // --- Server metrics agent (specs/metrics-script.md §6.5) ---
+    SERVER_METRICS_RATE_LIMIT: z.coerce.number().int().positive().default(12),
+    SERVER_METRICS_RATE_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60_000),
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     // Preprocessed so an explicitly blanked "" (scripts/test-env.mjs blanks
     // this in test child environments to stop prisma.config.ts's dotenv
@@ -87,17 +94,6 @@ const envSchema = z
       z.string().min(1).optional(),
     ),
     OPERATOR_PASSWORD: z.string().min(1).optional(),
-    // --- Workspace backup / restore (export + import) ---
-    BACKUP_MAX_IMPORT_BYTES: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(536_870_912),
-    BACKUP_IMPORT_TX_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(300_000),
     // --- Authentik SSO (third-party auth, optional — absent = disabled) ---
     AUTHENTIK_ISSUER: z.string().url().optional(),
     AUTHENTIK_CLIENT_ID: z.string().min(1).optional(),

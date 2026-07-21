@@ -20,6 +20,7 @@ export interface ProviderHttpRequestOptions {
   path: string;
   headers?: Record<string, string>;
   body?: unknown;
+  signal?: AbortSignal;
 }
 
 export interface ProviderHttpClient {
@@ -55,6 +56,7 @@ export function createProviderHttpClient(
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       let response: Response;
+      const timeoutSignal = AbortSignal.timeout(timeout);
       try {
         response = await fetch(url, {
           method: reqOptions.method ?? "GET",
@@ -63,10 +65,19 @@ export function createProviderHttpClient(
             reqOptions.body !== undefined
               ? JSON.stringify(reqOptions.body)
               : undefined,
-          signal: AbortSignal.timeout(timeout),
+          signal: reqOptions.signal
+            ? AbortSignal.any([reqOptions.signal, timeoutSignal])
+            : timeoutSignal,
           ...(insecureDispatcher ? { dispatcher: insecureDispatcher } : {}),
         });
       } catch {
+        if (reqOptions.signal?.aborted) {
+          return {
+            ok: false,
+            kind: "error",
+            message: "Request aborted",
+          };
+        }
         return {
           ok: false,
           kind: "error",

@@ -17,6 +17,8 @@ const TEST_ENV_KEYS = new Set([
   // it so mail-account creation (encrypted app passwords) works in Playwright
   // runs; unit tests stub their own value (see mail-accounts.test.ts).
   "CREDENTIAL_ENCRYPTION_KEY",
+  "SERVER_METRICS_RATE_LIMIT",
+  "SERVER_METRICS_RATE_WINDOW_MS",
 ]);
 
 const PROVIDER_CREDENTIAL_KEYS = [

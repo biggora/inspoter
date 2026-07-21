@@ -77,11 +77,6 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Per-workspace section visibility (workspace-section-visibility): keys of
-  // sidebar sections hidden from navigation. Empty = all visible. Keys match
-  // SECTION_NAV_ITEMS[].key in src/components/shell/nav-items.ts.
-  hiddenSections String[] @default([])
-
   members           WorkspaceMember[]
   categories        Category[]
   bookmarks         Bookmark[]
@@ -102,6 +97,8 @@ model Workspace {
   serviceChecks     ServiceCheck[]
   outgoingWebhooks  OutgoingWebhook[]
   webhookDeliveries WebhookDelivery[]
+  localServers      LocalServer[]
+  serverAgentTokens ServerAgentToken[]
 }
 
 model WorkspaceMember {
@@ -641,6 +638,133 @@ model ProviderCredential {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  localServers LocalServer[]
+
+  @@unique([id, workspaceId])
   @@index([workspaceId, provider])
   @@index([workspaceId])
+}
+
+// --- Server metrics agent (FR-SRV-003, specs/metrics-script.md §8) ---
+enum LocalServerOrigin {
+  PROVIDER
+  AGENT
+}
+
+enum ServerAddressFamily {
+  IPV4
+  IPV6
+}
+
+enum ServerAddressScope {
+  GLOBAL
+  PRIVATE
+  LINK_LOCAL
+  LOOPBACK
+  RESERVED
+  OTHER
+}
+
+enum ServerAddressSource {
+  PROVIDER
+  AGENT
+}
+
+enum ServerAgentTokenState {
+  UNBOUND
+  BOUND
+  REVOKED
+}
+
+model LocalServer {
+  id                            String              @id @default(cuid())
+  workspaceId                   String
+  workspace                     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  origin                        LocalServerOrigin
+  displayName                   String
+  hostname                      String?
+  providerCredentialId          String?
+  providerCredentialWorkspaceId String?
+  providerCredential            ProviderCredential?  @relation(fields: [providerCredentialId, providerCredentialWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
+  providerRemoteId              String?
+  providerLastSeenAt            DateTime?
+  providerMissingAt             DateTime?
+  createdAt                     DateTime             @default(now())
+  updatedAt                     DateTime             @updatedAt
+  addresses                     LocalServerAddress[]
+  agentTokens                   ServerAgentToken[]
+  metricSnapshot                ServerMetricSnapshot?
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, providerCredentialId, providerRemoteId])
+  @@index([workspaceId, origin, createdAt, id])
+  @@index([workspaceId, providerMissingAt])
+}
+
+model LocalServerAddress {
+  id                String              @id @default(cuid())
+  workspaceId       String
+  localServerId     String
+  localServer       LocalServer         @relation(fields: [localServerId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  address           String
+  family            ServerAddressFamily
+  scope             ServerAddressScope
+  source            ServerAddressSource
+  matchKey          String?
+  isCurrent         Boolean             @default(true)
+  isEnrollmentClaim Boolean             @default(false)
+  retiredAt         DateTime?
+  claimConflictAt   DateTime?
+  firstSeenAt       DateTime            @default(now())
+  lastSeenAt        DateTime            @default(now())
+
+  @@unique([workspaceId, localServerId, address, source])
+  @@index([workspaceId, address])
+  @@index([workspaceId, localServerId])
+}
+
+model ServerAgentToken {
+  id            String                @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  localServerId String?
+  localServer   LocalServer?          @relation(fields: [localServerId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  name          String
+  tokenHash     String                @unique
+  tokenPrefix   String
+  state         ServerAgentTokenState @default(UNBOUND)
+  expiresAt     DateTime?
+  createdAt     DateTime              @default(now())
+  boundAt       DateTime?
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, state, createdAt, id])
+  @@index([workspaceId, localServerId])
+}
+
+model ServerMetricSnapshot {
+  localServerId            String      @id
+  workspaceId              String
+  localServer              LocalServer @relation(fields: [localServerId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  schemaVersion            Int
+  agentVersion             String
+  hostname                 String
+  capturedAt               DateTime
+  receivedAt               DateTime    @default(now())
+  cpuUsagePercent          Float
+  load1                    Float
+  load5                    Float
+  load15                   Float
+  memoryTotalBytes         BigInt
+  memoryAvailableBytes     BigInt
+  swapTotalBytes           BigInt
+  swapFreeBytes            BigInt
+  filesystemTotalBytes     BigInt
+  filesystemAvailableBytes BigInt
+  uptimeSeconds            BigInt
+
+  @@unique([localServerId, workspaceId])
+  @@index([workspaceId, receivedAt])
 }

@@ -1,0 +1,23 @@
+services:
+  metrics-agent:
+    image: ghcr.io/biggora/inspoter-metrics-agent:${AGENT_TAG}
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=8m,noexec,nosuid,nodev
+    volumes:
+      - /proc/stat:/host/proc/stat:ro
+      - /proc/meminfo:/host/proc/meminfo:ro
+      - /proc/loadavg:/host/proc/loadavg:ro
+      - /proc/uptime:/host/proc/uptime:ro
+      - /proc/sys/kernel/hostname:/host/proc/sys/kernel/hostname:ro
+      - /var/lib/inspoter-metrics-agent/rootfs-probe:/host/rootfs-probe:ro
+    environment:
+      METRICS_ENDPOINT: ${METRICS_ENDPOINT}
+      METRICS_TOKEN: ${METRICS_TOKEN}
+      SERVER_IPS: ${SERVER_IPS}
+      METRICS_INTERVAL: ${METRICS_INTERVAL:-60}

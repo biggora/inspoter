@@ -56,18 +56,6 @@ function stripLocalePrefix(pathname: string): string {
   return pathname;
 }
 
-function loginPathFor(pathname: string): string {
-  for (const locale of routing.locales) {
-    if (
-      locale !== routing.defaultLocale &&
-      pathname.startsWith(`/${locale}/`)
-    ) {
-      return `/${locale}/login`;
-    }
-  }
-  return "/login";
-}
-
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
@@ -78,13 +66,14 @@ export function proxy(request: NextRequest) {
   const localizedPathname = stripLocalePrefix(pathname);
   const isAuthExempt =
     localizedPathname === "/login" ||
+    pathname === "/api/server-metrics" ||
     pathname.startsWith("/api/auth/authentik") ||
     pathname.startsWith("/api/webhooks");
   if (isAuthExempt) return response;
 
   if (request.cookies.has(SESSION_COOKIE_NAME)) return response;
 
-  const loginUrl = new URL(loginPathFor(pathname), request.url);
+  const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", localizedPathname);
   return NextResponse.redirect(loginUrl);
 }

@@ -217,6 +217,15 @@ export async function updateCredential(
   return toSummary(credential);
 }
 
+export class CredentialDeleteConflictError extends Error {
+  code = "ADDRESS_CONFLICT" as const;
+  constructor() {
+    super(
+      "Cannot delete credential: active agent address claim conflicts with detach",
+    );
+  }
+}
+
 export async function deleteCredential(
   id: string,
   workspaceId: string,
@@ -227,5 +236,79 @@ export async function deleteCredential(
   if (!credential) {
     throw new CredentialNotFoundError(id);
   }
-  await db.providerCredential.delete({ where: { id: credential.id } });
+
+  await db.$transaction(async (tx) => {
+    const localServers = await tx.localServer.findMany({
+      where: { providerCredentialId: id, workspaceId },
+      include: {
+        agentTokens: { where: { state: "BOUND", revokedAt: null } },
+        addresses: { where: { isCurrent: true } },
+      },
+    });
+
+    for (const server of localServers) {
+      const hasActiveAgent = server.agentTokens.length > 0;
+
+      if (hasActiveAgent) {
+        const agentGlobalIpv4s = server.addresses.filter(
+          (a) =>
+            a.source === "AGENT" &&
+            a.family === "IPV4" &&
+            a.scope === "GLOBAL" &&
+            a.isCurrent,
+        );
+
+        for (const addr of agentGlobalIpv4s) {
+          const existingClaim = await tx.localServerAddress.findFirst({
+            where: {
+              workspaceId,
+              matchKey: addr.address,
+              isCurrent: true,
+              isEnrollmentClaim: true,
+              localServerId: { not: server.id },
+            },
+          });
+          if (existingClaim) {
+            throw new CredentialDeleteConflictError();
+          }
+
+          await tx.localServerAddress.updateMany({
+            where: {
+              workspaceId,
+              localServerId: server.id,
+              address: addr.address,
+              source: "AGENT",
+            },
+            data: { isEnrollmentClaim: true, matchKey: addr.address },
+          });
+        }
+
+        await tx.localServerAddress.updateMany({
+          where: {
+            workspaceId,
+            localServerId: server.id,
+            source: "PROVIDER",
+            isCurrent: true,
+          },
+          data: { isCurrent: false, retiredAt: new Date(), isEnrollmentClaim: false, matchKey: null },
+        });
+
+        await tx.localServer.update({
+          where: { id: server.id },
+          data: {
+            origin: "AGENT",
+            providerCredentialId: null,
+            providerCredentialWorkspaceId: null,
+            providerRemoteId: null,
+            providerLastSeenAt: null,
+            providerMissingAt: null,
+          },
+        });
+      } else {
+        await tx.localServer.delete({ where: { id: server.id } });
+      }
+    }
+
+    await tx.providerCredential.delete({ where: { id: credential.id } });
+  });
 }

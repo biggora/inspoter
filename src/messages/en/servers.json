@@ -41,5 +41,50 @@
   "locationLabel": "Location",
   "noActionsAvailable": "No actions available",
   "cancelButton": "Cancel",
-  "confirmButton": "Confirm"
+  "confirmButton": "Confirm",
+
+  "metricsLabel": "Metrics",
+  "cpuUsageLabel": "CPU",
+  "memoryLabel": "Memory",
+  "diskUsageLabel": "Disk usage",
+  "loadLabel": "Load",
+  "uptimeLabel": "Uptime",
+  "lastUpdate": "Updated {time}",
+
+  "metricsLive": "Live",
+  "metricsStale": "Stale",
+  "metricsWaiting": "Waiting",
+  "metricsRevoked": "Revoked",
+  "metricsNotConfigured": "Not configured",
+
+  "agentOnlyBadge": "Agent",
+  "providerUnavailableBadge": "Provider unavailable",
+  "providerMissingBadge": "Missing from provider",
+
+  "monitoringNotConnected": "Monitoring not connected",
+  "waitingForAgent": "Waiting for agent data",
+  "lastReceivedAt": "Last received: {time}",
+
+  "hostnameLabel": "Hostname",
+  "agentOnlyNotice": "This server is monitored only by an agent, without a provider connection.",
+
+  "setupMonitoring": "Setup monitoring",
+  "reconnectAgent": "Reconnect agent",
+  "enrollmentDialogTitle": "Setup Monitoring Agent",
+  "enrollmentDialogDescription": "Create an enrollment token to connect a metrics agent to this server.",
+  "tokenNameLabel": "Token name",
+  "tokenNamePlaceholder": "e.g. production-agent",
+  "createTokenButton": "Create token",
+  "creatingToken": "Creating…",
+  "tokenCreatedTitle": "Token created",
+  "tokenCreatedDescription": "Copy this token now — it will not be shown again.",
+  "tokenSecretLabel": "Token",
+  "copyToken": "Copy",
+  "copiedToken": "Copied!",
+  "installationTitle": "Installation",
+  "installationStep1": "1. Create the probe directory on your server:",
+  "installationStep2": "2. Create a .env file with your settings:",
+  "installationStep3": "3. Download compose.yml and start the agent:",
+  "closeButton": "Close",
+  "tokenError": "Failed to create token"
 }

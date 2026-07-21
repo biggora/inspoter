@@ -171,4 +171,43 @@ describe("createProviderHttpClient().request()", () => {
       message: "Provider unreachable",
     });
   });
+
+  it("forwards an external signal to fetch alongside the timeout signal", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { id: "abc" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createProviderHttpClient();
+    const controller = new AbortController();
+    await client.request({ path: "/things", signal: controller.signal });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/things",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("returns 'Request aborted' when the external signal is already aborted", async () => {
+    const abortError = new DOMException(
+      "The operation was aborted.",
+      "AbortError",
+    );
+    const fetchMock = vi.fn().mockRejectedValueOnce(abortError);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createProviderHttpClient();
+    const controller = new AbortController();
+    controller.abort();
+    const result = await client.request({
+      path: "/things",
+      signal: controller.signal,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Request aborted",
+    });
+  });
 });

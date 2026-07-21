@@ -10,6 +10,6 @@ export async function GET(request: NextRequest) {
   );
   if (authResult instanceof NextResponse) return authResult;
   const { workspace } = authResult;
-  const providers = await serversService.listServers(workspace.id);
-  return jsonResponse(providers);
+  const response = await serversService.listServers(workspace.id);
+  return jsonResponse(response);
 }
