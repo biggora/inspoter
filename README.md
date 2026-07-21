@@ -7,6 +7,7 @@ Inspoter — self-hosted панель для управления доменам
 - домены и DNS-записи из Cloudflare, Hetzner DNS и GoDaddy;
 - серверы Hetzner Cloud и хостинг Hostinger или cPanel;
 - HTTP-, TCP- и PING-мониторинг сервисов;
+- мониторинг метрик VPS: CPU, память, swap, load, диск и uptime через Docker-агент;
 - почтовые аккаунты IMAP/SMTP, сообщения и вложения;
 - каналы сообщений, входящие и исходящие webhook;
 - закладки, логи и оповещения;
@@ -20,6 +21,7 @@ Inspoter — self-hosted панель для управления доменам
 - Tailwind CSS v4 и shadcn/ui;
 - Prisma 7 и PostgreSQL 16;
 - Vitest и Playwright;
+- Python 3.12 (Docker-агент сбора метрик, stdlib only);
 - Node.js 24.x и pnpm 11.12.0;
 - Docker с Docker Compose для приведённых ниже команд запуска PostgreSQL и всего приложения.
 
@@ -88,6 +90,7 @@ docker compose exec app pnpm db:seed
 | `LIST_PAGE_SIZE`                                                                               | необязательна                  | Размер страницы; значение по умолчанию — `50`.                                                                                                                    |
 | `WEBHOOK_RATE_LIMIT`, `WEBHOOK_RATE_WINDOW_MS`, `WEBHOOK_MAX_BODY_BYTES`                       | необязательны                  | Ограничения для входящих webhook.                                                                                                                                 |
 | `BACKUP_MAX_IMPORT_BYTES`, `BACKUP_IMPORT_TX_TIMEOUT_MS`                                       | необязательны                  | Резервное копирование (`/settings/backup`): максимальный размер импортируемого архива (по умолчанию 512 МиБ) и таймаут транзакции импорта (по умолчанию 5 минут). |
+| `SERVER_METRICS_RATE_LIMIT`, `SERVER_METRICS_RATE_WINDOW_MS`                                    | необязательны                  | Rate limiting для публичного метрик-эндпоинта: максимум запросов на токен (по умолчанию 12) и окно в мс (по умолчанию 60 000). |
 
 ## Провайдеры
 
@@ -119,6 +122,49 @@ pnpm openapi:lint       # правила OpenAPI через Redocly CLI
 pnpm openapi:contract   # соответствие двум публичным route-контрактам
 pnpm openapi:check      # обе проверки последовательно
 ```
+
+## Метрики серверов (VPS Metrics Agent)
+
+Dockerized Python-агент собирает OS-метрики (CPU, память, swap, load average, диск, uptime) с хоста и отправляет их в dashboard каждые 60 секунд по HTTPS.
+
+### Быстрый старт
+
+1. В разделе **Серверы** нажмите «Настроить мониторинг» на карточке сервера.
+2. Укажите имя токена и нажмите «Создать токен».
+3. Скопируйте одноразовый секрет и выполните установочный скрипт на целевом сервере.
+
+### Enrollment
+
+Агент автоматически привязывается к серверу при первом запуске: dashboard сопоставляет IP-адреса агента с инвентарём провайдера. После привязки токен фиксируется, и агент начинает отправлять метрики в обычном 60-секундном цикле.
+
+### Состояния метрик
+
+| Состояние        | Значение                                                |
+| ---------------- | ------------------------------------------------------- |
+| `not_configured` | Нет агент-токена для сервера                            |
+| `waiting`        | Токен создан, но данных ещё нет                         |
+| `live`           | Свежий снимок (менее 180 секунд)                        |
+| `stale`          | Последний снимок старше 180 секунд                      |
+| `revoked`        | Все токены отозваны                                     |
+
+### Docker Compose агента
+
+Шаблон `metrics-agent/compose.yml` монтирует `/proc` и probe-директорию хоста:
+
+```bash
+# На целевом сервере:
+install -d -m 0555 /var/lib/inspoter-metrics-agent/rootfs-probe
+# Задайте METRICS_ENDPOINT, METRICS_TOKEN, SERVER_IPS в .env
+docker compose -f metrics-agent/compose.yml up -d
+```
+
+Образ Python 3.12-slim, non-root, read-only filesystem, `cap_drop: ALL`. Зависимости pip не требуются.
+
+### Публичный API
+
+`POST /api/server-metrics` — единственный публичный эндпоинт для приёма метрик. Авторизация через Bearer-токен (SHA-256 hash-only). Сессионная аутентификация не используется. Rate limit: 12 запросов на токен в минуту (настраивается через env).
+
+Управление токенами: `GET/POST /api/server-metrics/tokens`, `DELETE /api/server-metrics/tokens/[id]`, `POST /api/server-metrics/tokens/[id]/rotate` — защищены сессионной аутентификацией.
 
 ## Демо-данные
 

@@ -180,6 +180,26 @@ PRD v3.0 остаётся утверждённой базовой версией
 
 **Deployment control PENDING:** обязательная redaction полного пути `/api/webhooks/channels/*` в reverse-proxy access/error logs не подтверждена, потому что proxy-конфигурация и sanitized log fixture находятся вне этого репозитория. Локальный feature PASS не является заявлением о production readiness.
 
+## Веха VPS Metrics Agent (2026-07-21)
+
+Реализована система мониторинга метрик VPS (Slices 0–2 из `specs/metrics-script.md`): Dockerized Python-агент собирает CPU/memory/swap/load/disk/uptime и отправляет в dashboard каждые 60 секунд по HTTPS.
+
+**Что реализовано:**
+- Prisma-схема: 4 новые модели (`LocalServer`, `LocalServerAddress`, `ServerAgentToken`, `ServerMetricSnapshot`) с CHECK-ограничениями и partial unique indexes; миграция `20260721120000_add_local_servers_and_metrics`.
+- Enrollment-сервис (`src/lib/services/serverMetrics.ts`, 758 строк): SHA-256 token auth, IPv4-based provider matching, atomic finalization.
+- Публичный `POST /api/server-metrics` с Bearer auth, rate limiting (12 req/token/60s), валидацией через Zod + ipaddr.js.
+- Lifecycle API: create/revoke/rotate токены через `/api/server-metrics/tokens/**`.
+- Provider reconciliation: upsert `LocalServer` по `(workspaceId, credentialId, remoteId)`, mark missing servers.
+- Composed DTOs: `ProviderServerDto | AgentOnlyServerDto` с metrics state (not_configured/waiting/live/stale/revoked).
+- Hetzner pagination (per_page=50, follow next_page, 100-page cap).
+- Ordered deletion для credentials и workspaces (FK-safe cascades).
+- Servers UI: метрики, state badges, enrollment dialog (`MetricsAgentDialog`).
+- Python metrics agent: collector.py, Dockerfile, compose.yml, stdlib only.
+- i18n: 25+ новых ключей для EN и RU.
+- Тесты: servers.test.ts (DB-integration, reconciliation, metrics state precedence, power actions), hetzner-cloud.test.ts (pagination), http.test.ts (signal forwarding), Python unit tests (collector, payload).
+
+**Верификация (2026-07-21):** 40 файлов, +4337/-425 строк, commit `021c247`, fast-forward merge в `main`.
+
 ## Decisions log
 
 - 2026-07-12 — Стек: Next.js fullstack (один деплой, self-hosted панель уровня Homarr); БД: PostgreSQL + Prisma; объём запуска: docs + tracer bullet. Решение пользователя.
@@ -204,6 +224,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 - 2026-07-14 — Q-13 (binding): every user-visible/operable content area, including Domains and Servers, is workspace-scoped; provider credentials alone remain deployment-level `.env` secrets. Prior R2.1 exclusion is superseded; architecture/contract revision required before implementation. Решение пользователя.
 - 2026-07-18 — Q-14 (binding): ограничение Q-5 «Mail read-only» снято. `/mail` становится полноценным мульти-аккаунт почтовым клиентом: несколько IMAP/SMTP-ящиков (app-passwords, без OAuth), синхронизация папок и писем, прочитано/непрочитано, удаление/архив/перемещение, вложения, составление/ответ/пересылка (plain-text). Webhook-ингест сохраняется как системный ящик с неизменным контрактом. Rich-text, пересылка вложений и OAuth — вне итерации. Решение пользователя; PRD v3.7 (D-22), architecture v1.5 §7A, design v2.8 §5.4, test-plan v1.1 §8, specs/ui.md (раздел /mail переписан).
 - 2026-07-18 — Channel webhooks (binding): новые webhooks создаются из настроек конкретного канала, токен передаётся в URL, управлять ими может любой участник активного workspace. Legacy null-channel tokens сохраняют прежний workspace-wide контракт. Реакции, вложения, треды, редактирование, presence/calls, realtime и Discord wire compatibility вне v1. Local feature acceptance PASS; deployment-owned reverse-proxy path redaction остаётся PENDING, поэтому production readiness не заявлена (test-plan.md §9).
+- 2026-07-21 — VPS Metrics Agent (Slices 0–2): реализована полная система мониторинга метрик VPS — enrollment с IPv4 provider matching, публичный POST эндпоинт с Bearer auth и rate limiting, provider reconciliation, composed DTOs, Python Docker-агент, ordered deletion. Реализация по `specs/metrics-script.md`. Commit `021c247`, merge в `main`.
 - 2026-07-14 — Документ architecture target version = v1.3: существующая v1.2 сохраняется как workspace-ревизия; scope остаётся remediation task 1.3.
 - 2026-07-14 — P1 P-RULE-3 checkpoint: runtime surfaces operational at http://127.0.0.1:3000; English Bookmarks/Domains inner content carried to R4.1; пользователь поручил продолжать без паузы.
 

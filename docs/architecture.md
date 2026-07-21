@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.8
-**Status:** Workspace backup/restore amendment
+**Version:** 1.9
+**Status:** VPS Metrics Agent amendment
 **Owner:** Architect
-**Date:** 2026-07-20
+**Date:** 2026-07-21
 **Normative inputs:** `docs/prd.md` v3.8, `docs/design.md` v2.9, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state on 2026-07-20
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.9 (2026-07-21):** documents the VPS Metrics Agent system as CURRENT: LocalServer/LocalServerAddress/ServerAgentToken/ServerMetricSnapshot models (4 new, 27 total), SHA-256 token enrollment with IPv4 provider matching, public `POST /api/server-metrics` ingestion endpoint with per-token rate limiting, provider reconciliation with discriminated union DTOs and metrics state composition, ordered credential/workspace deletion, Hetzner pagination, Python 3.12 Docker agent, and `ipaddr.js` IP validation. New section §7C.
 - **v1.8 (2026-07-20):** documents the implemented workspace backup/restore slice as CURRENT: the `.inspot-backup` v1 binary container (AES-256-GCM + scrypt + gzip, `src/lib/backup/format.ts`), the versioned JSON payload and section→model mapping (`src/lib/backup/serialization.ts`), the owner-only `/settings/backup` page and `POST /api/backup/{export,import}` routes, single-transaction import with id regeneration/global collision skips, the `BACKUP_MAX_IMPORT_BYTES` / `BACKUP_IMPORT_TX_TIMEOUT_MS` env variables, and the streaming-NDJSON future-work boundary. New section §7B.
 - **v1.7 (2026-07-20):** adds the checked-in OpenAPI 3.1.1 contract for the two public webhook ingress operations, the authenticated `/settings/api-docs` Swagger UI, and CI contract validation. Internal dashboard APIs, OIDC, and webhook-management routes remain outside the public specification.
 - **v1.6 (2026-07-18):** documents the source-present channel-scoped webhook migration, management/public API contracts, atomic channel-message idempotency, structured message origin, legacy null-channel compatibility, and tokenized-path redaction requirement. Runtime status remains pending.
@@ -180,7 +181,7 @@ flowchart LR
 
 ### 4.1 Exact current Prisma model inventory
 
-**CURRENT (2026-07-18):** `prisma/schema.prisma` defines exactly 23 models:
+**CURRENT (2026-07-21):** `prisma/schema.prisma` defines exactly 27 models:
 
 1. `Operator`
 2. `ExternalIdentity` (Authentik OIDC slice)
@@ -205,6 +206,17 @@ flowchart LR
 21. `IdempotencyKey`
 22. `ProviderResourceBinding` (Q-13 R2.1e)
 23. `ProviderCredential` (provider credentials slice)
+24. `LocalServer` (VPS Metrics Agent — durable workspace-local server identity)
+25. `LocalServerAddress` (VPS Metrics Agent — IPv4/IPv6 address claims)
+26. `ServerAgentToken` (VPS Metrics Agent — SHA-256 hash-only enrollment tokens)
+27. `ServerMetricSnapshot` (VPS Metrics Agent — latest-only metrics upsert per server)
+
+**CURRENT — VPS Metrics Agent cluster (2026-07-21):**
+
+- `LocalServer` — durable workspace-local identity keyed by `(workspaceId, providerCredentialId, providerRemoteId)`. `origin` enum (`PROVIDER`|`AGENT`) controls which fields are required: PROVIDER must have the provider credential FK and remoteId; AGENT must have `agentClaimedIpv4` and null provider fields. CHECK constraint (`LocalServer_origin_provider_tuple_check`) enforces this at the database level. `providerMissingAt` tracks servers no longer reported by the provider.
+- `LocalServerAddress` — per-server IP addresses with `family` (IPV4/IPV6), `scope` (GLOBAL/PRIVATE/LINK_LOCAL/LOOPBACK/RESERVED/OTHER), `source` (AGENT_REPORTED/PROVIDER_INVENTORY), and enrollment claim management (`isCurrent`, `retiredAt`, `matchKey`). Partial unique index `local_server_address_one_current_ipv4_claim` ensures at most one current global IPv4 claim per address string.
+- `ServerAgentToken` — SHA-256 hash-only bearer tokens with states `UNBOUND` → `BOUND` → `REVOKED`. Only one active bound token per server (partial unique index `server_agent_token_one_active_bound_per_server`). CHECK constraint (`ServerAgentToken_state_fields_check`) enforces `boundAt`/`revokedAt` consistency.
+- `ServerMetricSnapshot` — latest-only upsert per `localServerId` (1:1). Stores CPU usage, load averages, memory/swap/filesystem totals and available bytes (BigInt), uptime, hostname, agent version. `receivedAt` drives the 180-second stale threshold.
 
 **CURRENT — P-1 note revision (2026-07-18):** the Slice-0 decision P-1 ("full schema in one initial migration, no per-slice incremental models") applied to the original 13-entity baseline. Later feature slices legitimately extend the schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13 ownership, provider credentials, bookmark color, services, category hierarchy, external identity, and `20260718130000_mail_client_multi_account`). P-1 now means "no _unreviewed ad-hoc_ incremental models", not "the schema never grows"; the same note is updated in the `prisma/schema.prisma` header comment.
 
@@ -230,6 +242,7 @@ flowchart LR
 | CURRENT                          | Logs                | `LogEntry.workspaceId` directly owns rows.                                                                                                                                                                                                                                         |
 | CURRENT                          | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                                                                |
 | CURRENT SOURCE / PENDING RUNTIME | Webhook tokens      | `WebhookToken.workspaceId` owns every token and `IdempotencyKey` is a token child. Null-channel tokens retain Q-9 workspace-wide behavior; non-null `channelId/channelWorkspaceId` creates a message-only capability for one channel.                                              |
+| CURRENT                          | Server Metrics      | `LocalServer.workspaceId` owns server identity; `LocalServerAddress`, `ServerAgentToken`, `ServerMetricSnapshot` are children. Provider reconciliation upserts LocalServer rows per `(workspaceId, providerCredentialId, providerRemoteId)` tuple. Agent-only servers carry `agentClaimedIpv4` without provider binding. |
 | CURRENT / GAP                    | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                                                                     |
 | TARGET (Q-13, R2.1e)             | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access.                                           |
 | TARGET (Q-13)                    | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets.                                                         |
@@ -702,6 +715,58 @@ Error mapping (`src/app/api/backup/errors.ts`): `BACKUP_INVALID_FILE` / `BACKUP_
 **Future work (out of v1):** a streaming NDJSON payload (record-per-line inside the same sealed container) to lift the whole-archive-in-memory bound for very large workspaces; no scheduled/automatic backups — export is a manual owner action.
 
 Tests: `tests/unit/backup/format.test.ts` (10 — container round-trip, tamper/truncation/magic/version rejects, payload schema) and `tests/unit/services/backup.test.ts` (29 on a real test database — AC-BCK-001..008).
+
+## 7C. VPS Metrics Agent architecture — CURRENT (2026-07-21)
+
+The VPS Metrics Agent system adds OS-level metrics collection to servers managed through the dashboard. A Dockerized Python agent runs on each monitored host and pushes metrics to a public dashboard endpoint every 60 seconds.
+
+### 7C.1 Enrollment and token lifecycle (`src/lib/services/serverMetrics.ts`)
+
+| Stage | Behavior |
+| --- | --- |
+| Token creation | `generateEnrollmentToken()` creates a pre-bound token for a specific `LocalServer`. SHA-256 hash stored, one-time raw secret returned. Pattern matches `src/lib/services/webhookTokens.ts`. |
+| Authentication | `authenticateAgentToken()` hashes the bearer secret and looks up the token. Invalid/expired/revoked → null. |
+| Enrollment (UNBOUND token) | `processMetricsIngestion()` discovers provider servers (45s `AbortSignal` deadline), matches reported IPv4 addresses against provider inventory, and atomically finalizes: creates/links `LocalServer`, writes address claims, transitions token to BOUND, upserts first snapshot — all in one Prisma `$transaction`. |
+| Ingestion (BOUND token) | Upserts `ServerMetricSnapshot` by `localServerId` (latest-only, single row). |
+| Revoke / Rotate | State transitions BOUND→REVOKED; rotate creates a new UNBOUND token and revokes the old one. |
+
+Enrollment candidate selection is IPv4-only in v1. Zero matches → `SERVER_NOT_FOUND`. Multiple matches → `SERVER_MATCH_AMBIGUOUS`. Provider outage → `PROVIDER_INVENTORY_UNAVAILABLE` (503). All failures before atomic commit produce zero database writes.
+
+### 7C.2 Public ingestion endpoint (`src/app/api/server-metrics/route.ts`)
+
+`POST /api/server-metrics` — public, no session auth. Pipeline:
+
+1. Body size check (16 KiB) → 413
+2. Bearer token authentication → 401
+3. Per-token rate limit (fixed-window, 12 req/60s, configurable via `SERVER_METRICS_RATE_LIMIT` / `SERVER_METRICS_RATE_WINDOW_MS`) → 429 + `Retry-After`
+4. Payload validation (Zod + ipaddr.js for IP classification) → 400/422
+5. Ingestion processing → 200 (existing) / 201 (first snapshot) / 409 (conflict) / 503 (provider unavailable)
+
+Proxy exemption in `src/proxy.ts`: exact pathname match `"/api/server-metrics"` only — management routes (`/api/server-metrics/tokens/**`) remain session-protected.
+
+### 7C.3 Provider reconciliation (`src/lib/services/servers.ts`)
+
+`listServers()` now reconciles provider inventory with persistent `LocalServer` rows:
+
+1. Query all providers for the workspace (paginated, Hetzner `per_page=50` with `next_page` following).
+2. For each provider server: upsert `LocalServer` by `(workspaceId, providerCredentialId, providerRemoteId)`.
+3. Mark servers absent from a successful complete listing as missing (`providerMissingAt`).
+4. Compose discriminated union DTOs: `ProviderServerDto | AgentOnlyServerDto` with computed `MetricsState` (not_configured → waiting → live → stale → revoked).
+5. Per-provider error isolation: one failing provider does not remove servers from working providers.
+
+BigInt fields (`memoryTotalBytes`, `uptimeSeconds`, etc.) are serialized as decimal strings in JSON responses.
+
+### 7C.4 Metrics agent (`metrics-agent/`)
+
+Python 3.12-slim Docker container, stdlib only (no pip). Collects from `/host/proc/stat` (CPU delta), `/host/proc/meminfo`, `/host/proc/loadavg`, `/host/proc/uptime`, `os.statvfs("/host/rootfs-probe")`, and hostname. Pushes via `urllib.request` with Bearer token every 60 seconds. Non-root, read-only filesystem, `cap_drop: ALL`.
+
+### 7C.5 Ordered deletion (`src/lib/services/credentials.ts`, `src/lib/services/workspaces.ts`)
+
+Credential and workspace deletion now use ordered transactions to respect LocalServer FK constraints. Credential deletion detaches active agent-bound servers (switches origin to AGENT, clears provider tuple) or deletes unbound LocalServer rows. Workspace deletion removes LocalServer rows first, then the workspace.
+
+### 7C.6 IP validation (`src/lib/validation/server-metrics.ts`)
+
+Uses `ipaddr.js` (not regex) for IP parsing and classification. Exported `parseAndClassifyAddress()` returns family, scope, and `matchKey` (non-null only for global IPv4 — enrollment-eligible). Payload validation via Zod enforces strict invariants: `schemaVersion === 1`, max 16 unique IPs, `0 ≤ cpuUsagePercent ≤ 100`, `availableBytes ≤ totalBytes`, non-negative load/uptime, UTC `capturedAt` within 5 minutes of server time.
 
 ## 8. Request sequences
 

@@ -354,3 +354,49 @@ The checked-in contract covers only the two external webhook ingress operations.
 | OAPI-SEC-001      | An intercepted synthetic Try It Out request omits `X-Inspoter-Workspace`; reload leaves synthetic credentials out of local and session storage.                                                                                                                  | PENDING |
 | OAPI-BUNDLE-001   | A production Turbopack build contains no raw OpenAPI specification in public `/_next/static` chunks.                                                                                                                                                             | PENDING |
 | OAPI-CI-001       | `pnpm openapi:check` is the first full CI-profile step; the e2e profile remains unchanged.                                                                                                                                                                       | PENDING |
+
+---
+
+## 11. VPS Metrics Agent (2026-07-21)
+
+### 11.1 Server service — DB integration (`tests/unit/services/servers.test.ts`)
+
+| AC-ID / Area | Test case | Status |
+| --- | --- | --- |
+| AC-SRV-002 | reconciles provider inventory into present provider-origin DTOs | PASS |
+| Idempotency | reuses the same localServerId for a server already reconciled | PASS |
+| Error isolation | isolates a failing provider's error without dropping the working provider | PASS |
+| Missing detection | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS |
+| AC-SRV-001 | getComposedServer returns a composed DTO merged with live provider data | PASS |
+| Not found | getComposedServer returns null when no LocalServer row matches | PASS |
+| Metrics: not_configured | reports not_configured when no agent token exists | PASS |
+| Metrics: waiting | reports waiting for a bound token with no snapshot yet | PASS |
+| Metrics: live | reports live for a fresh snapshot | PASS |
+| Metrics: stale | reports stale past the 180s threshold | PASS |
+| Metrics: revoked | reports revoked once the only bound token is revoked | PASS |
+| AC-SRV-004 | start transitions a stopped server to running within the 30s poll window | PASS |
+| AC-SRV-005 | stop transitions a running server to stopped within the 30s poll window | PASS |
+| AC-SRV-006 | restart transitions a running server back to running within the 60s poll window | PASS |
+| Power: not found | returns 'Server not found' for an unknown id | PASS |
+| Power: unknown provider | returns an error for an unknown providerId | PASS |
+
+### 11.2 Hetzner Cloud pagination (`tests/unit/providers/hetzner-cloud.test.ts`)
+
+| Area | Test case | Status |
+| --- | --- | --- |
+| Pagination | follows next_page through multiple pages | PASS |
+| Error handling | later-page failure returns error | PASS |
+| Guard | 100-page maximum cap | PASS |
+
+### 11.3 HTTP provider (`tests/unit/providers/http.test.ts`)
+
+| Area | Test case | Status |
+| --- | --- | --- |
+| AbortSignal | forwards signal to fetch | PASS |
+
+### 11.4 Python agent (`metrics-agent/tests/`)
+
+| File | Coverage | Status |
+| --- | --- | --- |
+| `test_collector.py` | CPU delta, meminfo, loadavg, uptime, statvfs, hostname, complete payload | PASS |
+| `test_payload.py` | IP validation, invalid SERVER_IPS rejection, payload structure | PASS |
