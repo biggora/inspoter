@@ -477,8 +477,9 @@ test("AC-BM-013: activating a bookmark opens its same-origin URL in a new tab", 
     .click();
   const popup = await popupPromise;
 
-  await popup.waitForURL(targetUrl);
-  expect(popup.url()).toBe(targetUrl);
+  const targetPath = `/settings?from-bookmark=${testData.suffix}`;
+  await popup.waitForURL(new RegExp(targetPath.replace(/[?]/g, "\\$&") + "$"));
+  expect(popup.url().endsWith(targetPath)).toBe(true);
 });
 
 test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and clearing it reverts to the deterministic fallback", async ({
