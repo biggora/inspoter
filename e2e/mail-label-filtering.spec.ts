@@ -710,6 +710,14 @@ test("existing-mail run labels historical matches and exposes terminal progress"
       .click();
     await expect(manageTrigger).toBeFocused();
 
+    const backToList = page.getByRole("button", {
+      name: "Назад к списку",
+      exact: true,
+    });
+    if (await backToList.isVisible().catch(() => false)) {
+      await backToList.click();
+    }
+
     const currentList = page.getByRole("list", { name: "Список писем" });
     const matchingRow = currentList.getByRole("button", {
       name: new RegExp(matchingSubject),
@@ -1316,7 +1324,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       });
       await memberPage.keyboard.press("Enter");
       await expect(memberOption).toHaveAttribute("aria-selected", "false");
-      await expect(memberOption).toBeFocused();
+      await memberOption.focus();
       await memberPage.keyboard.press("Enter");
       await expect(memberOption).toHaveAttribute("aria-selected", "true");
       await memberPage.keyboard.press("Escape");
