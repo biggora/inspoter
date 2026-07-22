@@ -713,7 +713,8 @@ describe("Mail label chips", () => {
     });
     expect(
       sortControl.querySelector(".ri-arrow-down-s-line"),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
+    expect(sortControl).not.toHaveTextContent("▼");
   });
 
   it("filters from the sidebar and resets only through All labels", async () => {

@@ -174,12 +174,7 @@ export function MessageList({
             onValueChange={(value) => onSortChange(value as "asc" | "desc")}
             items={sortItems}
           >
-            <SelectTrigger
-              size="sm"
-              showChevron={false}
-              aria-label={t("sortOrderAriaLabel")}
-              className="pr-2.5"
-            >
+            <SelectTrigger size="sm" aria-label={t("sortOrderAriaLabel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -52,6 +52,12 @@ describe("UI foundation", () => {
       "data-size",
       "sm",
     );
+    expect(screen.getByLabelText("Custom select")).not.toHaveTextContent("▼");
+    expect(
+      screen
+        .getByLabelText("Custom select")
+        .querySelector(".ri-arrow-down-s-line"),
+    ).toBeInTheDocument();
   });
 
   it.each(["info", "success", "warning", "error", "critical"] as const)(

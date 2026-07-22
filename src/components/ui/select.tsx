@@ -50,14 +50,9 @@ function SelectTrigger({
     >
       {children}
       {showChevron && (
-        <SelectPrimitive.Icon
-          render={
-            <Icon
-              name="ri-arrow-down-s-line"
-              className="pointer-events-none text-muted-foreground"
-            />
-          }
-        />
+        <SelectPrimitive.Icon className="pointer-events-none text-muted-foreground">
+          <Icon name="ri-arrow-down-s-line" />
+        </SelectPrimitive.Icon>
       )}
     </SelectPrimitive.Trigger>
   );
