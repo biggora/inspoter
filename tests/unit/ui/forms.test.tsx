@@ -192,7 +192,7 @@ describe("standardized form contracts", () => {
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
     await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith("/ru/bookmarks"),
+      expect(mocks.push).toHaveBeenCalledWith("/bookmarks"),
     );
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
