@@ -17,6 +17,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Icon } from "@/components/ui/icon";
+import { InspoterIcon } from "@/components/ui/inspoter-logo";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -59,20 +60,16 @@ export function AppSidebar({
       <SidebarHeader className="gap-3">
         <div
           role="img"
-          aria-label="Inspot"
-          className="flex h-[var(--icon-tile-md)] items-center px-2"
+          aria-label="InSpoter"
+          className="flex h-[var(--icon-tile-md)] items-center gap-2 px-2"
         >
+          <InspoterIcon aria-hidden className="size-7 shrink-0" />
           <span
             aria-hidden="true"
-            className="font-heading text-lg font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden"
+            className="font-heading text-lg font-bold group-data-[collapsible=icon]:hidden"
           >
-            Inspot
-          </span>
-          <span
-            aria-hidden="true"
-            className="hidden size-8 items-center justify-center rounded-md bg-primary-100 font-heading text-sm font-bold text-primary-700 group-data-[collapsible=icon]:inline-flex"
-          >
-            In
+            <span className="text-sidebar-foreground">In</span>
+            <span className="text-[#e60000]">Spoter</span>
           </span>
         </div>
         <WorkspaceSwitcher
