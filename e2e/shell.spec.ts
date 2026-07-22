@@ -70,11 +70,7 @@ const IMPLEMENTED_SECTIONS: readonly ImplementedSection[] = [
   {
     path: "/servers",
     label: "Серверы",
-    // The empty-state CTA renders as a Base UI Button with nativeButton=false
-    // over a next/link, which surfaces as role="button" (not "link") in the
-    // accessibility tree. Assert by name only so the readiness check survives
-    // that intentional role without coupling the shell contract to it.
-    readiness: { name: "Добавить провайдера" },
+    readiness: { role: "heading", name: "Серверы" },
   },
   {
     path: "/mail",
