@@ -28,6 +28,10 @@
   "navLogs": "Logs",
   "navAlerts": "Alerts",
   "navSettings": "Settings",
+  "setDefaultWorkspace": "Set as default",
+  "removeDefaultWorkspace": "Remove default",
+  "defaultWorkspaceSet": "Default workspace updated.",
+  "defaultWorkspaceError": "Failed to update default workspace.",
   "paginationPrevious": "Previous",
   "paginationPage": "Page {page}",
   "paginationNext": "Next"

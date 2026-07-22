@@ -69,7 +69,10 @@ export interface AddMemberInput {
 }
 
 export const workspacesApi = {
-  list: () => request<Workspace[]>("/api/workspaces"),
+  list: () =>
+    request<{ workspaces: Workspace[]; defaultWorkspaceId: string | null }>(
+      "/api/workspaces",
+    ),
   create: (name: string) =>
     request<Workspace>("/api/workspaces", {
       method: "POST",
@@ -105,4 +108,11 @@ export const workspacesApi = {
     request<void>(`/api/workspaces/${workspaceId}/members/${memberId}`, {
       method: "DELETE",
     }),
+  setDefault: (workspaceId: string) =>
+    request<{ ok: true }>("/api/workspaces/default", {
+      method: "PUT",
+      body: JSON.stringify({ workspaceId }),
+    }),
+  clearDefault: () =>
+    request<void>("/api/workspaces/default", { method: "DELETE" }),
 };

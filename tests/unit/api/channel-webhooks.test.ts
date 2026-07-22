@@ -79,6 +79,7 @@ beforeEach(async () => {
       username: "test-operator",
       email: null,
       passwordHash: null,
+      defaultWorkspaceId: null,
       createdAt: new Date(),
     },
   };
