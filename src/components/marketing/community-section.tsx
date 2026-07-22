@@ -28,7 +28,7 @@ export function CommunitySection() {
 
         <div className="mt-10">
           <Link
-            href="https://github.com/inspoter/inspoter"
+            href="https://github.com/biggora/inspoter"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-12 items-center gap-3 rounded-lg border border-foreground-700/50 bg-background-900/50 px-8 text-base font-medium text-foreground-200 transition-colors hover:border-foreground-600 hover:bg-background-800"

@@ -40,7 +40,7 @@ export function DeploySection() {
               </p>
               <p>
                 <span className="text-accent-400">$</span> git clone
-                https://github.com/inspoter/inspoter.git
+                https://github.com/biggora/inspoter.git
               </p>
               <p className="pt-2">
                 <span className="text-foreground-500">
