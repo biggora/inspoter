@@ -1,0 +1,156 @@
+name: Deploy Inspoter
+
+# Manual deployment of the Inspoter service via Ansible.
+# Runner: ansible (self-hosted, quay.io/ansible/ansible-runner).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. v0.2.3) or 'current' to redeploy existing version"
+        required: true
+        default: current
+
+permissions:
+  contents: read
+
+jobs:
+  validate-input:
+    name: Validate input
+    runs-on: ansible
+    steps:
+      - name: Check image_tag value
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || 'current' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "::error::image_tag is required"
+            exit 1
+          fi
+          echo "Image tag: '$IMAGE_TAG'"
+
+  deploy-inspoter:
+    name: Deploy Inspoter ${{ inputs.image_tag || 'current' }}
+    needs: validate-input
+    runs-on: ansible
+    steps:
+      - name: Checkout repository
+        env:
+          GITEA_SERVER_URL: ${{ gitea.server_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_SHA: ${{ gitea.sha }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE:-$PWD}"
+          mkdir -p "$WORKSPACE"
+          cd "$WORKSPACE"
+
+          REPO_URL="${GITEA_SERVER_URL%/}/${GITEA_REPOSITORY}.git"
+          AUTH_REPO_URL="$REPO_URL"
+          case "$AUTH_REPO_URL" in
+            https://*) AUTH_REPO_URL="https://x-access-token:${GITEA_TOKEN}@${AUTH_REPO_URL#https://}" ;;
+          esac
+
+          git init
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "$AUTH_REPO_URL"
+          git fetch --depth=1 origin "$GITEA_SHA"
+          git checkout --force FETCH_HEAD
+          git remote set-url origin "$REPO_URL"
+
+      - name: Prepare Ansible secrets
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/hetzner_inspot_store
+          printf '%s\n' "$ANSIBLE_VAULT_PASSWORD" > ~/.vault_pass
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/hetzner_inspot_store ~/.vault_pass
+
+      - name: Install Ansible requirements
+        working-directory: infrastructure/ansible
+        run: |
+          set -euo pipefail
+
+          ansible-galaxy role install -r requirements.yml --force || echo "::warning::Galaxy role install failed, using cached roles"
+
+          if ! ansible-galaxy collection install -r requirements.yml --force 2>/dev/null; then
+            echo "::warning::Galaxy collection install failed, checking if collections are already available..."
+            MISSING=0
+            for col in community.docker community.general ansible.posix; do
+              if ! ansible-galaxy collection list "$col" > /dev/null 2>&1; then
+                echo "::error::Collection $col is not installed and Galaxy is unavailable"
+                MISSING=1
+              else
+                echo "Collection $col is already installed: $(ansible-galaxy collection list "$col" 2>/dev/null | grep "$col")"
+              fi
+            done
+            if [ "$MISSING" -eq 1 ]; then
+              exit 1
+            fi
+            echo "All required collections are available from cache."
+          else
+            echo "Galaxy requirements installed successfully."
+          fi
+
+      - name: Deploy Inspoter
+        working-directory: infrastructure/ansible
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || 'current' }}
+        run: |
+          set -euo pipefail
+
+          EXTRA_VARS='{"stacks_order": ["inspoter"]}'
+
+          if [ "$IMAGE_TAG" != "current" ]; then
+            ansible-playbook playbooks/deploy.yml \
+              --tags stacks \
+              --vault-password-file ~/.vault_pass \
+              -e "$EXTRA_VARS" \
+              -e "inspoter_image_tag=$IMAGE_TAG"
+          else
+            ansible-playbook playbooks/deploy.yml \
+              --tags stacks \
+              --vault-password-file ~/.vault_pass \
+              -e "$EXTRA_VARS"
+          fi
+
+      - name: Health check
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for Inspoter to become available..."
+          for i in 1 2 3 4 5; do
+            if curl -sf -o /dev/null -w "%{http_code}" https://home.inspotstore.com; then
+              echo ""
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "::warning::Health check failed after 5 attempts"
+          exit 1
+
+      - name: Write job summary
+        if: always()
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || 'current' }}
+        run: |
+          set -euo pipefail
+
+          OUTPUT=$(printf '### Deploy Inspoter\n\n- Image tag: `%s`\n- Status: %s\n' "$IMAGE_TAG" "${{ job.status }}")
+
+          echo "$OUTPUT"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -w "$(dirname "$GITHUB_STEP_SUMMARY")" 2>/dev/null ]; then
+            echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" || true
+          fi
+          exit 0
