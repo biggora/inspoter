@@ -34,6 +34,13 @@
   "memberAddedToast": "Member added.",
   "addMemberError": "Failed to add member.",
 
+  "searchOperatorLabel": "Search existing operators",
+  "searchOperatorPlaceholder": "Type to search…",
+  "noOperatorsFound": "No operators found",
+  "allOperatorsAdded": "All operators are already members",
+  "orCreateNew": "or create new",
+  "createNewOperatorTitle": "Create New Operator",
+
   "removeMemberLabel": "Remove {name}",
   "confirmRemoveTitle": "Remove \"{name}\"?",
   "confirmRemoveDescription": "This member will lose access to the workspace.",
