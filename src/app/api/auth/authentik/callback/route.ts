@@ -77,20 +77,14 @@ export async function GET(request: NextRequest) {
     });
 
     const session = await createSession(operator.id);
-    let hasWorkspace = await establishInitialWorkspace(
-      session.id,
-      operator.id,
-    );
+    let hasWorkspace = await establishInitialWorkspace(session.id, operator.id);
 
     if (!hasWorkspace) {
       await ensureDefaultWorkspace(
         operator.id,
         `${operator.username}'s workspace`,
       );
-      hasWorkspace = await establishInitialWorkspace(
-        session.id,
-        operator.id,
-      );
+      hasWorkspace = await establishInitialWorkspace(session.id, operator.id);
     }
 
     const destination = hasWorkspace

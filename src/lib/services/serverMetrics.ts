@@ -2,7 +2,10 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { getServerProvidersForWorkspace } from "@/lib/providers/servers";
-import type { ParsedMetricsPayload, ClassifiedAddress } from "@/lib/validation/server-metrics";
+import type {
+  ParsedMetricsPayload,
+  ClassifiedAddress,
+} from "@/lib/validation/server-metrics";
 
 // Bug-fix notes (code review, server-metrics slice):
 // - updateAddressObservations only ever established a claim on brand-new
@@ -147,7 +150,11 @@ export async function authenticateAgentToken(
   });
   if (!token) return null;
   if (token.revokedAt) return null;
-  if (token.state === "UNBOUND" && token.expiresAt && token.expiresAt < new Date()) {
+  if (
+    token.state === "UNBOUND" &&
+    token.expiresAt &&
+    token.expiresAt < new Date()
+  ) {
     return null;
   }
 
@@ -346,7 +353,10 @@ async function discoverProviderServers(
 function selectCandidate(
   reportedGlobalIpv4s: string[],
   providerCandidates: ProviderCandidate[],
-): { kind: "provider"; candidate: ProviderCandidate } | { kind: "agent_only" } | { kind: "ambiguous" } {
+):
+  | { kind: "provider"; candidate: ProviderCandidate }
+  | { kind: "agent_only" }
+  | { kind: "ambiguous" } {
   if (reportedGlobalIpv4s.length === 0) {
     return { kind: "agent_only" };
   }
@@ -396,7 +406,13 @@ async function boundIngestion(
     });
     const isAgentOnly = server?.origin === "AGENT";
 
-    await updateAddressObservations(tx, serverId, ctx.workspaceId, payload.addresses, isAgentOnly);
+    await updateAddressObservations(
+      tx,
+      serverId,
+      ctx.workspaceId,
+      payload.addresses,
+      isAgentOnly,
+    );
 
     await tx.serverMetricSnapshot.upsert({
       where: { localServerId: serverId },
@@ -459,10 +475,7 @@ async function unboundEnrollment(
         );
       }
       if (token.expiresAt && token.expiresAt < new Date()) {
-        throw new ServerMetricsError(
-          "UNAUTHORIZED",
-          "Token has expired",
-        );
+        throw new ServerMetricsError("UNAUTHORIZED", "Token has expired");
       }
 
       let serverId: string;
@@ -684,9 +697,10 @@ async function updateAddressObservations(
           lastSeenAt: new Date(),
           isEnrollmentClaim: isClaimEligible && !hasConflict,
           matchKey: isClaimEligible && !hasConflict ? addr.matchKey : null,
-          claimConflictAt: isClaimEligible && hasConflict
-            ? (existing.claimConflictAt ?? new Date())
-            : null,
+          claimConflictAt:
+            isClaimEligible && hasConflict
+              ? (existing.claimConflictAt ?? new Date())
+              : null,
         },
       });
       continue;

@@ -83,8 +83,7 @@ interface FormErrors {
 }
 
 type FormMode =
-  | { mode: "create" }
-  | { mode: "edit"; webhook: OutgoingWebhookDto };
+  { mode: "create" } | { mode: "edit"; webhook: OutgoingWebhookDto };
 
 // Settings > Outgoing webhooks — subscription list + create/edit/delete and
 // delivery history. Client-fetched (mirrors webhook-tokens-view): the raw
@@ -179,7 +178,8 @@ export function OutgoingWebhooksView() {
     const nextErrors: FormErrors = {};
     if (!trimmedName) nextErrors.name = t("nameRequiredError");
     if (!trimmedUrl) nextErrors.url = t("urlRequiredError");
-    else if (!isValidHttpsUrl(trimmedUrl)) nextErrors.url = t("urlInvalidError");
+    else if (!isValidHttpsUrl(trimmedUrl))
+      nextErrors.url = t("urlInvalidError");
     if (events.length === 0) nextErrors.events = t("eventsRequiredError");
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -315,7 +315,10 @@ export function OutgoingWebhooksView() {
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {webhook.events.map((event) => (
-                      <Badge key={event} className="bg-muted text-muted-foreground">
+                      <Badge
+                        key={event}
+                        className="bg-muted text-muted-foreground"
+                      >
                         {t(EVENT_LABEL_KEY[event])}
                       </Badge>
                     ))}
@@ -404,7 +407,9 @@ export function OutgoingWebhooksView() {
                       }
                       autoFocus
                     />
-                    <FieldError id={`${nameId}-error`}>{errors.name}</FieldError>
+                    <FieldError id={`${nameId}-error`}>
+                      {errors.name}
+                    </FieldError>
                   </Field>
 
                   <Field data-invalid={!!errors.url || undefined}>
@@ -429,10 +434,7 @@ export function OutgoingWebhooksView() {
                       {ALL_EVENTS.map((event) => {
                         const checkboxId = `${urlId}-event-${event}`;
                         return (
-                          <div
-                            key={event}
-                            className="flex items-center gap-2"
-                          >
+                          <div key={event} className="flex items-center gap-2">
                             <Checkbox
                               id={checkboxId}
                               checked={events.includes(event)}
@@ -535,7 +537,9 @@ export function OutgoingWebhooksView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("deleteWebhookConfirmTitle", { name: deleteTarget?.name ?? "" })}
+              {t("deleteWebhookConfirmTitle", {
+                name: deleteTarget?.name ?? "",
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("deleteWebhookConfirmDescription")}

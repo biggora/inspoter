@@ -406,7 +406,9 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
 
     await page.reload();
     const originalWorkspaceTrigger = page.getByRole("button", {
-      name: new RegExp(fixture.workspaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      name: new RegExp(
+        fixture.workspaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      ),
     });
     await originalWorkspaceTrigger.click();
     await page
@@ -428,7 +430,9 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       .catch(() => null);
     if (activeId === secondWorkspace.id) {
       const secondTrigger = page.getByRole("button", {
-        name: new RegExp(secondWorkspace.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+        name: new RegExp(
+          secondWorkspace.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        ),
       });
       await secondTrigger.click();
       await page

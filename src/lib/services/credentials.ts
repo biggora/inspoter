@@ -290,7 +290,12 @@ export async function deleteCredential(
             source: "PROVIDER",
             isCurrent: true,
           },
-          data: { isCurrent: false, retiredAt: new Date(), isEnrollmentClaim: false, matchKey: null },
+          data: {
+            isCurrent: false,
+            retiredAt: new Date(),
+            isEnrollmentClaim: false,
+            matchKey: null,
+          },
         });
 
         await tx.localServer.update({

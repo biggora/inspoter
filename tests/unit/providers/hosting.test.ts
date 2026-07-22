@@ -131,8 +131,7 @@ describe("CpanelWhmProvider.listAccounts mapping", () => {
     await provider.listAccounts();
 
     const init = vi.mocked(fetch).mock.calls[0][1] as
-      | (RequestInit & { dispatcher?: unknown })
-      | undefined;
+      (RequestInit & { dispatcher?: unknown }) | undefined;
     expect(init?.dispatcher).toBeDefined();
     expect(init?.dispatcher).toBeInstanceOf(Agent);
   });
@@ -154,8 +153,7 @@ describe("CpanelWhmProvider.listAccounts mapping", () => {
     await provider.listAccounts();
 
     const init = vi.mocked(fetch).mock.calls[0][1] as
-      | (RequestInit & { dispatcher?: unknown })
-      | undefined;
+      (RequestInit & { dispatcher?: unknown }) | undefined;
     expect(init?.dispatcher).toBeUndefined();
   });
 });

@@ -11,7 +11,9 @@ import type { ProviderResult } from "@/lib/providers/result";
 // VPS Metrics Agent state (ADR: provider + agent-only servers share one
 // listing surface).
 
-type PrismaTransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+type PrismaTransactionClient = Parameters<
+  Parameters<typeof db.$transaction>[0]
+>[0];
 
 const STALE_THRESHOLD_MS = 180_000;
 
@@ -196,7 +198,11 @@ export async function listServers(
   );
 
   const successfulProviders = new Map<string, Server[]>();
-  const failedProviders: { providerId: string; label: string; error: string }[] = [];
+  const failedProviders: {
+    providerId: string;
+    label: string;
+    error: string;
+  }[] = [];
   const providerServerMap = new Map<string, Server>();
 
   settled.forEach((result, index) => {
@@ -248,7 +254,10 @@ export async function listServers(
   });
 
   const servers: ComposedServerDto[] = localServers.map((local) => {
-    const metricsState = computeMetricsState(local.agentTokens, local.metricSnapshot);
+    const metricsState = computeMetricsState(
+      local.agentTokens,
+      local.metricSnapshot,
+    );
     const metrics = serializeSnapshot(local.metricSnapshot, metricsState);
 
     if (local.origin === "AGENT") {
@@ -344,7 +353,10 @@ export async function getComposedServer(
     }
   }
 
-  const metricsState = computeMetricsState(local.agentTokens, local.metricSnapshot);
+  const metricsState = computeMetricsState(
+    local.agentTokens,
+    local.metricSnapshot,
+  );
   const metrics = serializeSnapshot(local.metricSnapshot, metricsState);
 
   const dto: ProviderServerDto = {

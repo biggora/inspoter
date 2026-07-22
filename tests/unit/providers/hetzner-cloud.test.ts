@@ -286,7 +286,10 @@ describe("HetznerServerProvider", () => {
 
     expect(result).toEqual({
       ok: true,
-      data: [mappedServer, { ...mappedServer, id: "67890", name: "web-prod-02" }],
+      data: [
+        mappedServer,
+        { ...mappedServer, id: "67890", name: "web-prod-02" },
+      ],
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(

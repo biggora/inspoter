@@ -10,12 +10,7 @@ import * as ipaddr from "ipaddr.js";
 // library's RFC-backed range tables exactly.
 
 export type ServerAddressScope =
-  | "GLOBAL"
-  | "PRIVATE"
-  | "LINK_LOCAL"
-  | "LOOPBACK"
-  | "RESERVED"
-  | "OTHER";
+  "GLOBAL" | "PRIVATE" | "LINK_LOCAL" | "LOOPBACK" | "RESERVED" | "OTHER";
 
 export interface ClassifiedAddress {
   address: string;

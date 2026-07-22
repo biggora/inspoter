@@ -7,11 +7,7 @@ import {
 
 // Metrics state for a server
 export type MetricsState =
-  | "not_configured"
-  | "waiting"
-  | "live"
-  | "stale"
-  | "revoked";
+  "not_configured" | "waiting" | "live" | "stale" | "revoked";
 
 export interface ServerMetricsDto {
   state: MetricsState;

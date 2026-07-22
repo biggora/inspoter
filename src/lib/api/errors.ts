@@ -11,9 +11,7 @@ import {
   WebhookDeliveryNotFoundError,
 } from "@/lib/services/outgoingWebhooks";
 import { ServerMetricsError } from "@/lib/services/serverMetrics";
-import {
-  CredentialDeleteConflictError,
-} from "@/lib/services/credentials";
+import { CredentialDeleteConflictError } from "@/lib/services/credentials";
 import { jsonResponse } from "@/lib/api/response";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,

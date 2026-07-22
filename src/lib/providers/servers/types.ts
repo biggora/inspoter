@@ -22,7 +22,9 @@ export interface ServerProvider {
   readonly label: string;
   readonly mode: "real" | "mock";
   listServers(): Promise<ProviderResult<Server[]>>;
-  listServersWithDeadline?(signal: AbortSignal): Promise<ProviderResult<Server[]>>;
+  listServersWithDeadline?(
+    signal: AbortSignal,
+  ): Promise<ProviderResult<Server[]>>;
   getServer(id: string): Promise<ProviderResult<Server>>;
   power(
     id: string,

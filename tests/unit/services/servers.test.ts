@@ -140,7 +140,8 @@ describe("listServers()", () => {
       ]);
       expect(
         result.servers.some(
-          (s) => s.origin === "provider" && s.providerAvailability === "present",
+          (s) =>
+            s.origin === "provider" && s.providerAvailability === "present",
         ),
       ).toBe(true);
     } finally {

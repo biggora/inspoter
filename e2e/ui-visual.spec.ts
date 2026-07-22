@@ -42,7 +42,9 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
 
   const renameForm = page
     .locator("form")
-    .filter({ has: page.getByLabel("Название рабочего пространства", { exact: true }) });
+    .filter({
+      has: page.getByLabel("Название рабочего пространства", { exact: true }),
+    });
   const name = renameForm.getByLabel("Название рабочего пространства", {
     exact: true,
   });

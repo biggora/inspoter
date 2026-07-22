@@ -25,7 +25,9 @@ test("workspace rename exposes validation, pending, and success states", async (
   const workspaceId = await activeWorkspaceId(page);
   const renameForm = page
     .locator("form")
-    .filter({ has: page.getByLabel("Название рабочего пространства", { exact: true }) });
+    .filter({
+      has: page.getByLabel("Название рабочего пространства", { exact: true }),
+    });
   const name = renameForm.getByLabel("Название рабочего пространства", {
     exact: true,
   });

@@ -24,7 +24,8 @@ export interface CredentialDto {
 
 export type UpsertCredentialInput =
   | {
-      provider: "CLOUDFLARE_DNS" | "HETZNER_DNS" | "HETZNER_CLOUD" | "HOSTINGER";
+      provider:
+        "CLOUDFLARE_DNS" | "HETZNER_DNS" | "HETZNER_CLOUD" | "HOSTINGER";
       label: string;
       apiToken: string;
     }

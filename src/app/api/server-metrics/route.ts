@@ -76,11 +76,12 @@ export async function POST(request: NextRequest) {
 
   const validation = validateMetricsPayload(rawBody);
   if (!validation.success) {
-    const status = validation.error.code === "UNSUPPORTED_SCHEMA_VERSION"
-      ? 422
-      : validation.error.code === "CLOCK_SKEW_FUTURE"
+    const status =
+      validation.error.code === "UNSUPPORTED_SCHEMA_VERSION"
         ? 422
-        : 400;
+        : validation.error.code === "CLOCK_SKEW_FUTURE"
+          ? 422
+          : 400;
     return metricsResponse(
       { error: validation.error.code, message: validation.error.message },
       status,

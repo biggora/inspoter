@@ -92,7 +92,9 @@ beforeEach(() => {
   findOrCreateOperatorMock.mockReset();
   createSessionMock.mockReset();
   establishInitialWorkspaceMock.mockReset();
-  ensureDefaultWorkspaceMock.mockReset().mockResolvedValue({ id: "workspace-1" });
+  ensureDefaultWorkspaceMock
+    .mockReset()
+    .mockResolvedValue({ id: "workspace-1" });
 });
 
 afterEach(() => {

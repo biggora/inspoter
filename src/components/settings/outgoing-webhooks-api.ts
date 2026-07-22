@@ -15,10 +15,7 @@ export type OutgoingWebhookEventValue =
   | "MAIL_RECEIVED";
 
 export type WebhookDeliveryStatusValue =
-  | "PENDING"
-  | "DELIVERING"
-  | "DELIVERED"
-  | "FAILED";
+  "PENDING" | "DELIVERING" | "DELIVERED" | "FAILED";
 
 export interface OutgoingWebhookDto {
   id: string;

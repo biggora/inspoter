@@ -188,8 +188,7 @@ export function ServersView() {
       } catch (err) {
         setServers((prev) =>
           prev.map((s) =>
-            s.localServerId === server.localServerId &&
-            s.origin === "provider"
+            s.localServerId === server.localServerId && s.origin === "provider"
               ? { ...s, status: previousStatus }
               : s,
           ),
@@ -216,9 +215,7 @@ export function ServersView() {
               s.localServerId === server.localServerId ? updated : s,
             ),
           );
-          if (
-            !TRANSITIONAL_STATUSES.includes(updated.status as ServerStatus)
-          ) {
+          if (!TRANSITIONAL_STATUSES.includes(updated.status as ServerStatus)) {
             clearInterval(interval);
             pollingRef.current.delete(server.localServerId);
             showNotification(
@@ -615,7 +612,7 @@ function ServerCard({
     metricsStateConfig[metrics.state] ?? metricsStateConfig.not_configured;
 
   const status = isProvider ? (server.status as ServerStatus) : null;
-  const config = status ? statusConfig[status] ?? statusConfig.unknown : null;
+  const config = status ? (statusConfig[status] ?? statusConfig.unknown) : null;
   const busy = status ? TRANSITIONAL_STATUSES.includes(status) : false;
   const busyAction = status ? PENDING_ACTION_BY_STATUS[status] : undefined;
   const availableActions = isProvider ? getAvailableActions(server) : [];
@@ -686,9 +683,7 @@ function ServerCard({
               <Badge variant="secondary">{t("agentOnlyBadge")}</Badge>
             )}
             {isProvider && server.providerAvailability === "unavailable" && (
-              <Badge variant="secondary">
-                {t("providerUnavailableBadge")}
-              </Badge>
+              <Badge variant="secondary">{t("providerUnavailableBadge")}</Badge>
             )}
             {isProvider && server.providerAvailability === "missing" && (
               <Badge variant="secondary">{t("providerMissingBadge")}</Badge>
@@ -725,9 +720,7 @@ function ServerCard({
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">
-                {t("locationLabel")}
-              </span>
+              <span className="text-foreground-500">{t("locationLabel")}</span>
               <span className="text-foreground-800 font-medium">
                 {server.location}
               </span>
@@ -757,9 +750,7 @@ function ServerCard({
           </p>
         )}
         {metrics.state === "waiting" && (
-          <p className="text-xs text-foreground-400">
-            {t("waitingForAgent")}
-          </p>
+          <p className="text-xs text-foreground-400">{t("waitingForAgent")}</p>
         )}
         {showMetricsSection && <MetricsSection metrics={metrics} />}
 
@@ -859,7 +850,11 @@ function ServerCard({
             size="sm"
             onClick={() => onSetupMonitoring(server)}
           >
-            <Icon name="ri-shield-check-line" aria-hidden data-icon="inline-start" />
+            <Icon
+              name="ri-shield-check-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
             {metrics.state === "not_configured"
               ? t("setupMonitoring")
               : t("reconnectAgent")}

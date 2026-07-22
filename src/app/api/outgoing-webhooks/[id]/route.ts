@@ -19,7 +19,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
   const webhook = await outgoingWebhooksService.get(id, workspace.id);
   if (!webhook) {
-    return jsonResponse({ error: "OUTGOING_WEBHOOK_NOT_FOUND" }, { status: 404 });
+    return jsonResponse(
+      { error: "OUTGOING_WEBHOOK_NOT_FOUND" },
+      { status: 404 },
+    );
   }
   return jsonResponse(webhook);
 }

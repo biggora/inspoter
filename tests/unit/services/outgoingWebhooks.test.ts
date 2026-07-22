@@ -90,9 +90,9 @@ describe("create()", () => {
 
   it("throws EncryptionNotConfiguredError when the key is missing", async () => {
     vi.stubEnv("CREDENTIAL_ENCRYPTION_KEY", "");
-    await expect(service.create(workspaceId, baseInput())).rejects.toBeInstanceOf(
-      service.EncryptionNotConfiguredError,
-    );
+    await expect(
+      service.create(workspaceId, baseInput()),
+    ).rejects.toBeInstanceOf(service.EncryptionNotConfiguredError);
   });
 });
 
@@ -215,17 +215,15 @@ describe("signPayload()", () => {
 });
 
 describe("delivery drain", () => {
-  async function makeClaimable(events: service.OutgoingWebhookSummary["events"]) {
+  async function makeClaimable(
+    events: service.OutgoingWebhookSummary["events"],
+  ) {
     const created = await service.create(workspaceId, {
       ...baseInput(),
       events,
     });
     await service.enqueue(workspaceId, events[0], { alertId: "x" });
-    const claimed = await service.claimDueDeliveries(
-      new Date(),
-      50,
-      30_000,
-    );
+    const claimed = await service.claimDueDeliveries(new Date(), 50, 30_000);
     const mine = claimed.filter((c) => c.webhook.id === created.id);
     return { created, claimed: mine };
   }

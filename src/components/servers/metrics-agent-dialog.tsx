@@ -15,7 +15,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -158,7 +163,9 @@ export function MetricsAgentDialog({
               )}
 
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" type="button" />}>
+                <DialogClose
+                  render={<Button variant="outline" type="button" />}
+                >
                   {t("cancelButton")}
                 </DialogClose>
                 <Button type="submit" disabled={submitting}>
