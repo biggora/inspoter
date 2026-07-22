@@ -187,15 +187,16 @@ export function WorkspaceSwitcher({
                   <span className="min-w-0 flex-1 truncate">
                     {workspace.name}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={(e) => handleToggleDefault(e, workspace.id)}
                     aria-label={
                       defaultId === workspace.id
                         ? t("removeDefaultWorkspace")
                         : t("setDefaultWorkspace")
                     }
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    className="h-auto w-auto shrink-0 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
                   >
                     <Icon
                       name={
@@ -208,7 +209,7 @@ export function WorkspaceSwitcher({
                         defaultId === workspace.id && "text-amber-500",
                       )}
                     />
-                  </button>
+                  </Button>
                   {workspace.id === currentId && (
                     <Icon name="ri-check-line" aria-hidden />
                   )}
