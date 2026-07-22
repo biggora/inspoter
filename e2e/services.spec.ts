@@ -156,6 +156,9 @@ test("service cards preserve actions and heading hierarchy across tablet and des
       await expect(
         card.getByRole("heading", { name, exact: true, level: 2 }),
       ).toBeVisible();
+      await expect(
+        card.getByText("История проверок", { exact: true }),
+      ).toBeVisible();
       await expectInsideHorizontally(
         card,
         card.getByRole("button", { name: "Проверить сейчас", exact: true }),
