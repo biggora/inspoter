@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.10
-**Status:** Draft channel-webhook and Messages interaction amendment — source inspected; runtime revalidation pending
+**Version:** v2.12
+**Status:** Q-15 Phase 5 responsive/accessibility gate passed; awaiting user verification
 **Owner:** UI/UX Designer
 **Date:** 2026-07-20
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.9, docs/architecture.md v1.6, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.11, docs/architecture.md v1.8, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -29,6 +29,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 - Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
 - Q-5 (superseded by Q-14, 2026-07-18): Mail is a full multi-account IMAP/SMTP client — three-pane layout, folders, read/unread, delete/archive, attachments, and plain-text compose/reply/forward (§5.4). Rich-text compose, attachment forwarding, and OAuth remain excluded.
+- Q-15 (2026-07-20): Mail adds workspace-local labels and account-scoped incoming-message filter rules (§5.4). Labels use existing dense, border-defined badge/control language; color supplements visible text and never implies provider synchronization. Owners manage definitions/rules; members may manually assign existing labels and filter the list.
 - Q-6: Servers permits inventory/status plus start, stop, and restart only.
 - Q-7 and AC-ALR-008: Alerts permits confirmed deletion; acknowledge and resolve controls do not exist.
 - D-21/Q-13: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts, Settings, webhook tokens, selected detail, exclusive local provider-resource bindings, mock state, caches, and cursors follow the active workspace. Provider credentials alone remain deployment-global `.env` secrets. Removing a local binding or workspace never deletes an upstream provider resource. D-20 is superseded and non-normative.
@@ -300,9 +301,82 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Accessibility:** each list row is one named activation target; unread state is conveyed by text («Непрочитанное»), not color alone; the list region is labeled «Список писем»; folder badges expose «Непрочитанных: N»; dialogs (compose, delete-confirm, account form) trap and restore focus; attachment downloads expose «Скачивание вложения»; dates use ru-RU 24-hour text; axe reports no serious/critical violations on /mail (e2e/mail-client.spec.ts).
 
-**Acceptance:** list/detail/filter/sort/pagination satisfy AC-MAIL-001..005; webhook ingest visibility satisfies AC-MAIL-006 (system mailbox); account management satisfies AC-MAIL-007..011; sync behavior satisfies AC-MAIL-012..017; actions satisfy AC-MAIL-018..021; compose/reply/forward satisfy AC-MAIL-022..025; attachments satisfy AC-MAIL-026..028; folders/account switching satisfy AC-MAIL-029..030.
+### 5.4.1 Inspoter labels in the list and sidebar (Q-15 current)
 
-**Exclusions:** rich-text (HTML) composition, forwarding attachments, OAuth account linking, POP3, and any mail administration surface beyond /settings/mail (PRD §3.4 Known Limitations).
+- Subject remains first in each existing message-row activation button. Applied
+  label chips follow it in the same truncating line and are noninteractive, so
+  they never create nested controls or intercept row activation.
+- Desktop list shows at most two chips; narrow/mobile list shows one. Remaining
+  labels collapse to a compact `+N` text indicator. Chip names truncate inside
+  their own bounded width, while complete names are exposed to assistive
+  technology and included in the row's accessible name. Subject keeps its own
+  truncation priority. The 375px list must not create page-body overflow.
+- Chips use flat, border-defined small-label styling from the Inspot design
+  system. `SLATE`, `RED`, `AMBER`, `GREEN`, `BLUE`, and `VIOLET` map to restrained
+  tint/border variants; visible label text is always present, so color never
+  carries identity alone.
+- A **Labels** section appears below folders in both desktop sidebar and existing
+  mobile Mail sheet. Selecting one label preserves current account, folder,
+  unread, query, and sort facets. **All labels** clears only `labelId`. Any label
+  change resets pagination and selected detail; account/workspace changes reset
+  the label facet when its id is invalid for the new scope.
+- Workspace owners see **Manage labels** in the Mail header beside filter
+  management. Its responsive dialog provides standalone create, rename,
+  recolor, keyboard move-up/down, and confirmed safe-delete controls. Every
+  color choice shows a visible localized name and swatch; a live chip preview
+  reinforces the result without making color the label's only identity.
+  Successful mutations refresh the sidebar, message list, and open detail. If
+  the active label is deleted, the label facet clears before the list reloads.
+  Members keep label filtering and manual assignment but never receive this
+  definition-management control.
+
+### 5.4.2 Reading-pane controls and label picker (Q-15 current)
+
+- Reading pane shows complete applied-label set without list overflow limits.
+  A keyboard-accessible label picker lets owners and members add or remove
+  existing labels. Trigger exposes expanded state; focus enters the search/list;
+  Arrow keys move options, Enter/Space toggles, Escape closes, and focus returns
+  to trigger. Pending mutations disable only the affected option, preserve last
+  confirmed state on failure, and expose localized loading/error feedback.
+- Owners see **Filter messages like this**. Members do not receive a rule mutation
+  control. Invoking the action opens a dialog prefilled with current account and
+  sender; sender remains editable. The dialog permits selecting a target label or
+  creating one inline, entering a rule name, editing subject substring, and
+  selecting the initially unchecked **Apply to existing mail** option.
+- Dialog uses existing modal surface/elevation, traps focus, stays within mobile
+  viewport with an internally scrolling body, keeps actions visible, and restores
+  focus to opener on cancel, success, or error-close. Validation stays beside
+  fields; submit exposes pending state; a recoverable API error leaves input
+  intact. Successful save closes dialog, announces localized feedback, refreshes
+  labels/rules, and allows the next matching message row to show its chip.
+- Inline label creation obeys the same 40-character validation, normalized-name
+  conflict feedback, color choices, and owner authorization as label management.
+  It does not imply Gmail/IMAP label creation.
+- When historical application is selected, rule management exposes the latest
+  run with localized `PENDING`, `RUNNING`, `COMPLETED`, or `FAILED` text,
+  processed/matched counts, and an `aria-live` status region. Active runs poll
+  serially every two seconds for at most 60 requests, then pause with an explicit
+  refresh action. Polling stops immediately on a terminal state or failed
+  request. Only `FAILED` runs expose retry; retry restarts a fresh bounded
+  polling window and preserves committed progress.
+
+### 5.4.3 Localization and responsive/keyboard acceptance
+
+All label/rule names supplied by operators remain verbatim content. Every UI
+label, description, validation message, empty/loading state, conflict/error code
+message, success announcement, `+N` accessible expansion, and picker/dialog
+instruction is localized in both `src/messages/en/mail.json` and
+`src/messages/ru/mail.json`. English remains default; changing locale does not
+change matching semantics or stored operator content.
+
+At 375px, 420px, and 1440px, sidebar/sheet, list, reading pane, picker, and rule
+dialog remain reachable without horizontal body scrolling. Tab order follows
+visual order; row activation, label picker, and dialogs work without pointer
+input. Closing a sheet, picker, or dialog restores focus to its exact opener.
+
+**Acceptance:** list/detail/filter/sort/pagination satisfy AC-MAIL-001..005; webhook ingest visibility satisfies AC-MAIL-006 (system mailbox); account management satisfies AC-MAIL-007..011; sync behavior satisfies AC-MAIL-012..017; actions satisfy AC-MAIL-018..021; compose/reply/forward satisfy AC-MAIL-022..025; attachments satisfy AC-MAIL-026..028; folders/account switching satisfies AC-MAIL-029..030; label/rule interactions above satisfy AC-MAIL-031..045 as their planned phases ship.
+
+**Exclusions:** rich-text (HTML) composition, forwarding attachments, OAuth account linking, POP3, provider-side Gmail/IMAP labels, nested/private labels, regex/OR/body matching, and filter actions other than applying one local label (PRD §3.4 Known Limitations).
 
 ## 5.5 Messages
 
@@ -374,15 +448,15 @@ For Mail, Messages, Logs, and Alerts, end-to-end ingest tests create a backend r
 
 Snapshot basis: repository state reviewed 2026-07-14. Status is conformance against this v2.1 target, not release completion.
 
-| Section   | Current status | Already aligned                                                                                     | Required Phase 4 delta                                                                                                                                                                                  | Verification evidence                                                                                                                                                            |
-| --------- | -------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bookmarks | PARTIAL        | Category/bookmark CRUD, grouping, skeleton, and empty state exist.                                  | Translate all visible copy; replace mixed icons; remove emoji rendering; add explicit initial-load error/retry; verify 375px.                                                                           | src/components/bookmarks/bookmarks-board.tsx; src/components/bookmarks/bookmark-dialog.tsx; src/components/bookmarks/bookmark-icon.tsx; src/components/bookmarks/empty-state.tsx |
-| Domains   | PARTIAL        | Provider inventory, DNS CRUD, validation, and core states exist.                                    | Translate copy; use Remix; make refresh/error retry provider-local; retain healthy providers; remove narrow-screen overflow.                                                                            | src/components/domains/domains-view.tsx; src/components/domains/dns-records-view.tsx; src/components/domains/dns-record-dialog.tsx                                               |
-| Servers   | PARTIAL        | Inventory, status, permitted actions, polling, states, grid, and Remix usage are closest to target. | Translate remaining statuses/details; replace positioned confirmation with semantic dialog/sheet and focus/Escape behavior; remove duplicate padding.                                                   | src/components/servers/servers-view.tsx                                                                                                                                          |
-| Mail      | DONE (Q-14)    | Full three-pane multi-account client per §5.4 (2026-07-18): sidebar/list/pane, folders, actions, compose, attachments, mobile in-place panels, Russian copy, ru-RU dates. | —                                                                                                                                                                                                       | src/components/mail/mail-client-view.tsx; mail-sidebar.tsx; message-list.tsx; message-pane.tsx; mail-body.tsx; compose-dialog.tsx; src/components/settings/mail-accounts-view.tsx |
-| Messages  | CONTRADICTS    | Category/channel management, feed, pagination, and responsive structure exist.                      | Replace demo-only compose with persisted AC-MSG-009..014 flow; remove attachment/decorative emoji UI; add visible origin labels, disclosures, aria-current, validation, and confirmed failure behavior. | src/components/messages/messages-view.tsx; src/components/messages/channel-dialog.tsx; src/app/api/channels/[id]/messages/route.ts                                               |
-| Logs      | PARTIAL        | Filters, sorting, pagination, and row expansion exist.                                              | Translate copy; replace Lucide; replace hardcoded critical color with semantic token; add visible focus and disclosure semantics; stack mobile records.                                                 | src/components/logs/logs-view.tsx                                                                                                                                                |
-| Alerts    | CONTRADICTS    | Category CRUD, list, filters, sorting, and pagination exist.                                        | Add confirmed alert deletion for AC-ALR-008; translate copy; replace Lucide; enforce ru-RU dates; fix narrow header; keep acknowledge/resolve absent.                                                   | src/components/alerts/alerts-view.tsx; src/components/alerts/manage-categories-dialog.tsx; src/components/alerts/delete-category-dialog.tsx                                      |
+| Section   | Current status                                       | Already aligned                                                                                                                                                         | Required Phase 4 delta                                                                                                                                                                                  | Verification evidence                                                                                                                                                                     |
+| --------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bookmarks | PARTIAL                                              | Category/bookmark CRUD, grouping, skeleton, and empty state exist.                                                                                                      | Translate all visible copy; replace mixed icons; remove emoji rendering; add explicit initial-load error/retry; verify 375px.                                                                           | src/components/bookmarks/bookmarks-board.tsx; src/components/bookmarks/bookmark-dialog.tsx; src/components/bookmarks/bookmark-icon.tsx; src/components/bookmarks/empty-state.tsx          |
+| Domains   | PARTIAL                                              | Provider inventory, DNS CRUD, validation, and core states exist.                                                                                                        | Translate copy; use Remix; make refresh/error retry provider-local; retain healthy providers; remove narrow-screen overflow.                                                                            | src/components/domains/domains-view.tsx; src/components/domains/dns-records-view.tsx; src/components/domains/dns-record-dialog.tsx                                                        |
+| Servers   | PARTIAL                                              | Inventory, status, permitted actions, polling, states, grid, and Remix usage are closest to target.                                                                     | Translate remaining statuses/details; replace positioned confirmation with semantic dialog/sheet and focus/Escape behavior; remove duplicate padding.                                                   | src/components/servers/servers-view.tsx                                                                                                                                                   |
+| Mail      | DONE (Q-14) / DONE_AWAITING_USER_VERIFICATION (Q-15) | Full three-pane client plus labels, label filtering/picker, owner rule/run dialog, EN/RU copy, keyboard/focus behavior, bounded run polling, and retry are implemented. | Phase 5 375/420/1440px, keyboard, focus-restoration, Axe, unit, and independent UI-review evidence passes; only user verification remains.                                                              | src/components/mail/mail-client-view.tsx; mail-sidebar.tsx; message-list.tsx; message-pane.tsx; filter-rule-dialog.tsx; filter-rules-dialog.tsx; label-chip.tsx; message-label-picker.tsx |
+| Messages  | CONTRADICTS                                          | Category/channel management, feed, pagination, and responsive structure exist.                                                                                          | Replace demo-only compose with persisted AC-MSG-009..014 flow; remove attachment/decorative emoji UI; add visible origin labels, disclosures, aria-current, validation, and confirmed failure behavior. | src/components/messages/messages-view.tsx; src/components/messages/channel-dialog.tsx; src/app/api/channels/[id]/messages/route.ts                                                        |
+| Logs      | PARTIAL                                              | Filters, sorting, pagination, and row expansion exist.                                                                                                                  | Translate copy; replace Lucide; replace hardcoded critical color with semantic token; add visible focus and disclosure semantics; stack mobile records.                                                 | src/components/logs/logs-view.tsx                                                                                                                                                         |
+| Alerts    | CONTRADICTS                                          | Category CRUD, list, filters, sorting, and pagination exist.                                                                                                            | Add confirmed alert deletion for AC-ALR-008; translate copy; replace Lucide; enforce ru-RU dates; fix narrow header; keep acknowledge/resolve absent.                                                   | src/components/alerts/alerts-view.tsx; src/components/alerts/manage-categories-dialog.tsx; src/components/alerts/delete-category-dialog.tsx                                               |
 
 ### 7.1 Shared delta
 
@@ -394,29 +468,43 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 
 ## 8. PRD and decision traceability
 
-| Design family                               | Binding source                                                        |
-| ------------------------------------------- | --------------------------------------------------------------------- |
-| Seven-section shell, auth, responsive shell | AC-SHELL-001..004; AC-AUTH-001..005                                   |
-| Finite allowlist (English and Russian)      | Q-1; NFR-I18N-001                                                     |
-| Required light theme                        | Q-2; NFR-THEME-001                                                    |
-| Three normative design inputs               | Q-3; NFR-DESIGN-001                                                   |
-| Bookmarks                                   | AC-BM-001..014                                                        |
-| Domains and provider-local resilience       | AC-DOM-001..009; AC-PROV-001..003                                     |
-| Servers and only three power actions        | Q-6; AC-SRV-001..008                                                  |
-| Mail multi-account client and observable ingest | Q-14 (supersedes Q-5); AC-MAIL-001..030                           |
-| Messages real compose and origin            | Q-4; AC-MSG-009..014                                                  |
-| Messages no auto-create                     | Q-8; AC-MSG-006, AC-MSG-008 inactive, AC-MSG-013                      |
-| Logs read/filter/sort and observable ingest | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
-| Alerts delete, no acknowledge/resolve       | Q-7; AC-ALR-001..008                                                  |
-| All-content workspace switch and isolation  | AC-WS-001..011; D-21/Q-13                                             |
-| Legacy and channel-scoped webhook utilities | AC-WH-008..009; channel-webhook amendment (2026-07-18)                |
-| Observable ingest without added surface     | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
+| Design family                                   | Binding source                                                        |
+| ----------------------------------------------- | --------------------------------------------------------------------- |
+| Seven-section shell, auth, responsive shell     | AC-SHELL-001..004; AC-AUTH-001..005                                   |
+| Finite allowlist (English and Russian)          | Q-1; NFR-I18N-001                                                     |
+| Required light theme                            | Q-2; NFR-THEME-001                                                    |
+| Three normative design inputs                   | Q-3; NFR-DESIGN-001                                                   |
+| Bookmarks                                       | AC-BM-001..014                                                        |
+| Domains and provider-local resilience           | AC-DOM-001..009; AC-PROV-001..003                                     |
+| Servers and only three power actions            | Q-6; AC-SRV-001..008                                                  |
+| Mail multi-account client and observable ingest | Q-14 (supersedes Q-5); AC-MAIL-001..030                               |
+| Mail labels and automatic label rules           | Q-15; AC-MAIL-031..045; specs/mail-label-filtering-plan.md v0.3       |
+| Messages real compose and origin                | Q-4; AC-MSG-009..014                                                  |
+| Messages no auto-create                         | Q-8; AC-MSG-006, AC-MSG-008 inactive, AC-MSG-013                      |
+| Logs read/filter/sort and observable ingest     | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
+| Alerts delete, no acknowledge/resolve           | Q-7; AC-ALR-001..008                                                  |
+| All-content workspace switch and isolation      | AC-WS-001..011; D-21/Q-13                                             |
+| Legacy and channel-scoped webhook utilities     | AC-WH-008..009; channel-webhook amendment (2026-07-18)                |
+| Observable ingest without added surface         | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
 
 ## Appendix A — dark theme tokens, activated v2.2
 
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.12 — 2026-07-21 (Mail labels final UI verification)
+
+Records the implemented historical-application option, run status/retry flow,
+serial 2-second polling capped at 60 requests, explicit focus relocation, and
+desktop/375px/420px Axe and containment evidence. User verification remains.
+
+### v2.11 — 2026-07-20 (Mail labels and filter rules, Q-15)
+
+Adds executable list-chip, sidebar-filter, reading-pane picker, rule-dialog,
+responsive, focus, accessible-name, color/text, and EN/RU localization contracts
+for AC-MAIL-031..045. At this revision, runtime implementation remained pending;
+v2.12 records its completed verification.
 
 ### v2.10 — 2026-07-20 (English default locale and language switcher)
 

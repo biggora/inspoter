@@ -3,6 +3,7 @@ import { env } from "@/lib/config/env";
 import {
   Prisma,
   type MailAccount,
+  type MailFolder,
   type MailSpecialUse,
 } from "@/generated/prisma/client";
 import {
@@ -13,6 +14,7 @@ import {
   type RemoteMessage,
 } from "@/lib/mail";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
 
 // IMAP sync engine (plan §3 «Движок синхронизации»): lease-locked per-account
 // sync — folder list reconciliation, initial/incremental message fetch,
@@ -67,7 +69,7 @@ function toJsonAddresses(
 
 async function insertNewMessages(
   account: MailAccount,
-  folderId: string,
+  folder: MailFolder,
   messages: RemoteMessage[],
 ): Promise<number> {
   if (messages.length === 0) return 0;
@@ -76,7 +78,7 @@ async function insertNewMessages(
   const existing = await db.mailItem.findMany({
     where: {
       workspaceId: account.workspaceId,
-      folderId,
+      folderId: folder.id,
       uid: { in: messages.map((m) => m.uid) },
     },
     select: { uid: true },
@@ -86,44 +88,37 @@ async function insertNewMessages(
   let created = 0;
   for (const message of messages) {
     if (existingUids.has(message.uid)) continue;
-    await db.mailItem.create({
-      data: {
-        workspaceId: account.workspaceId,
-        accountId: account.id,
-        accountWorkspaceId: account.workspaceId,
-        folderId,
-        folderWorkspaceId: account.workspaceId,
-        uid: message.uid,
-        messageId: message.messageId,
-        fromAddress: message.from?.address ?? "",
-        fromName: message.from?.name ?? null,
-        toRecipients: toJsonAddresses(message.to),
-        ccRecipients: toJsonAddresses(message.cc),
-        subject: message.subject,
-        bodyText: message.bodyText,
-        bodyHtml: message.bodyHtml,
-        snippet: message.snippet,
-        isRead: message.isRead,
-        isAnswered: message.isAnswered,
-        isFlagged: message.isFlagged,
-        hasAttachments: message.attachments.length > 0,
-        receivedAt: message.date ?? new Date(),
-        // Metadata-only attachment rows — content is fetched lazily from
-        // IMAP on first download (plan §1).
-        attachments: {
-          createMany: {
-            data: message.attachments.map((a) => ({
-              partId: a.partId,
-              filename: a.filename,
-              contentType: a.contentType,
-              sizeBytes: a.sizeBytes,
-              contentId: a.contentId,
-              isInline: a.isInline,
-            })),
-          },
-        },
-      },
+    await persistIncomingMail({
+      workspaceId: account.workspaceId,
+      accountId: account.id,
+      folderId: folder.id,
+      folderSpecialUse: folder.specialUse,
+      uid: message.uid,
+      messageId: message.messageId,
+      fromAddress: message.from?.address ?? "",
+      fromName: message.from?.name ?? null,
+      toRecipients: toJsonAddresses(message.to),
+      ccRecipients: toJsonAddresses(message.cc),
+      subject: message.subject,
+      bodyText: message.bodyText,
+      bodyHtml: message.bodyHtml,
+      snippet: message.snippet,
+      isRead: message.isRead,
+      isAnswered: message.isAnswered,
+      isFlagged: message.isFlagged,
+      receivedAt: message.date ?? new Date(),
+      // Remote parsing is complete before this DB transaction. Only metadata
+      // enters persistence; attachment bytes remain lazy-fetched.
+      attachments: message.attachments.map((attachment) => ({
+        partId: attachment.partId,
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        sizeBytes: attachment.sizeBytes,
+        contentId: attachment.contentId,
+        isInline: attachment.isInline,
+      })),
     });
+    existingUids.add(message.uid);
     created += 1;
   }
   return created;
@@ -222,7 +217,7 @@ async function syncFolder(
         })
       : await driver.fetchMessages(remote.path, { afterUid: lastSeenUid });
 
-  const created = await insertNewMessages(account, folder.id, messages);
+  const created = await insertNewMessages(account, folder, messages);
 
   const maxUid = messages.reduce(
     (max, m) => (m.uid > max ? m.uid : max),

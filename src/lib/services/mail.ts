@@ -1,8 +1,14 @@
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { Prisma, type MailAccountKind } from "@/generated/prisma/client";
+import {
+  parseMailLabelColor,
+  type MailLabelColor,
+} from "@/lib/mail-label-color";
 import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
+import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
 
 // External webhook contract shape (src/lib/validation/webhooks.ts mailSchema):
 // `sender`/`body` are mapped to the renamed `fromAddress`/`bodyText` columns
@@ -22,7 +28,17 @@ export interface ListMailParams {
   sort?: "asc" | "desc";
   accountId?: string;
   folderId?: string;
+  labelId?: string;
   unreadOnly?: boolean;
+}
+
+export class MailListResourceNotFoundError extends Error {
+  readonly code = "RESOURCE_NOT_FOUND";
+
+  constructor() {
+    super("Resource not found.");
+    this.name = "MailListResourceNotFoundError";
+  }
 }
 
 // List projection: metadata only — bodies (`bodyText`/`bodyHtml`) never travel
@@ -40,6 +56,12 @@ const LIST_SELECT = {
   receivedAt: true,
   accountId: true,
   folderId: true,
+  labels: {
+    select: {
+      label: { select: { id: true, name: true, color: true } },
+    },
+    orderBy: [{ label: { position: "asc" } }, { labelId: "asc" }],
+  },
 } satisfies Prisma.MailItemSelect;
 
 export type MailListItem = Prisma.MailItemGetPayload<{
@@ -52,18 +74,43 @@ export interface ListMailResult {
 }
 
 interface Cursor {
+  v: 1;
   w: string;
+  f: string;
   t: string;
   id: string;
 }
 
+function filterFingerprint(
+  workspaceId: string,
+  params: ListMailParams,
+  sort: "asc" | "desc",
+): string {
+  const canonicalFilters = {
+    workspaceId,
+    accountId: params.accountId ?? null,
+    folderId: params.folderId ?? null,
+    labelId: params.labelId ?? null,
+    from: params.from ?? null,
+    query: params.query ?? null,
+    unreadOnly: params.unreadOnly === true,
+    sort,
+  };
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalFilters))
+    .digest("base64url");
+}
+
 function encodeCursor(
   workspaceId: string,
+  fingerprint: string,
   entry: Pick<MailListItem, "receivedAt" | "id">,
 ): string {
   return Buffer.from(
     JSON.stringify({
+      v: 1,
       w: workspaceId,
+      f: fingerprint,
       t: entry.receivedAt.toISOString(),
       id: entry.id,
     }),
@@ -75,10 +122,16 @@ function decodeCursor(cursor: string): Cursor | null {
     const p = JSON.parse(
       Buffer.from(cursor, "base64url").toString("utf-8"),
     ) as Partial<Cursor>;
-    return typeof p.w === "string" &&
+    const timestamp = typeof p.t === "string" ? new Date(p.t) : null;
+    return p.v === 1 &&
+      typeof p.w === "string" &&
+      typeof p.f === "string" &&
       typeof p.t === "string" &&
-      typeof p.id === "string"
-      ? { w: p.w, t: p.t, id: p.id }
+      typeof p.id === "string" &&
+      p.id.length > 0 &&
+      timestamp !== null &&
+      !Number.isNaN(timestamp.getTime())
+      ? { v: 1, w: p.w, f: p.f, t: p.t, id: p.id }
       : null;
   } catch {
     return null;
@@ -95,20 +148,17 @@ export async function create(
   input: CreateMailInput,
 ): Promise<{ id: string }> {
   const { account, inboxFolder } = await getOrCreateWebhookAccount(workspaceId);
-  const entry = await db.mailItem.create({
-    data: {
-      workspaceId,
-      accountId: account.id,
-      accountWorkspaceId: workspaceId,
-      folderId: inboxFolder.id,
-      folderWorkspaceId: workspaceId,
-      fromAddress: input.sender,
-      subject: input.subject,
-      bodyText: input.body,
-      snippet: makeSnippet(input.body),
-      isRead: false,
-      ...(input.receivedAt ? { receivedAt: new Date(input.receivedAt) } : {}),
-    },
+  const entry = await persistIncomingMail({
+    workspaceId,
+    accountId: account.id,
+    folderId: inboxFolder.id,
+    folderSpecialUse: "INBOX",
+    fromAddress: input.sender,
+    subject: input.subject,
+    bodyText: input.body,
+    snippet: makeSnippet(input.body),
+    isRead: false,
+    ...(input.receivedAt ? { receivedAt: new Date(input.receivedAt) } : {}),
   });
   await emitWebhookEvent(workspaceId, "MAIL_RECEIVED", {
     mailItemId: entry.id,
@@ -125,22 +175,62 @@ export async function list(
 ): Promise<ListMailResult> {
   const pageSize = params.pageSize ?? env.LIST_PAGE_SIZE;
   const sort = params.sort ?? "desc";
+  const fingerprint = filterFingerprint(workspaceId, params, sort);
 
-  const where: Prisma.MailItemWhereInput = { workspaceId };
-  if (params.from) where.fromAddress = params.from;
-  if (params.accountId) where.accountId = params.accountId;
-  if (params.folderId) where.folderId = params.folderId;
-  if (params.unreadOnly) where.isRead = false;
+  const [account, folder, label] = await Promise.all([
+    params.accountId
+      ? db.mailAccount.findFirst({
+          where: { id: params.accountId, workspaceId },
+          select: { id: true },
+        })
+      : null,
+    params.folderId
+      ? db.mailFolder.findFirst({
+          where: { id: params.folderId, workspaceId },
+          select: { id: true, accountId: true },
+        })
+      : null,
+    params.labelId
+      ? db.mailLabel.findFirst({
+          where: { id: params.labelId, workspaceId },
+          select: { id: true },
+        })
+      : null,
+  ]);
+  if (
+    (params.accountId && !account) ||
+    (params.folderId && !folder) ||
+    (params.labelId && !label) ||
+    (params.accountId && folder && folder.accountId !== params.accountId)
+  ) {
+    throw new MailListResourceNotFoundError();
+  }
+
+  const filters: Prisma.MailItemWhereInput[] = [{ workspaceId }];
+  if (params.from) filters.push({ fromAddress: params.from });
+  if (params.accountId) filters.push({ accountId: params.accountId });
+  if (params.folderId) filters.push({ folderId: params.folderId });
+  if (params.labelId) {
+    filters.push({
+      labels: { some: { workspaceId, labelId: params.labelId } },
+    });
+  }
+  if (params.unreadOnly) filters.push({ isRead: false });
   if (params.query) {
-    where.OR = [
-      { subject: { contains: params.query, mode: "insensitive" } },
-      { fromAddress: { contains: params.query, mode: "insensitive" } },
-      { fromName: { contains: params.query, mode: "insensitive" } },
-    ];
+    filters.push({
+      OR: [
+        { subject: { contains: params.query, mode: "insensitive" } },
+        { fromAddress: { contains: params.query, mode: "insensitive" } },
+        { fromName: { contains: params.query, mode: "insensitive" } },
+      ],
+    });
   }
 
   const decoded = params.cursor ? decodeCursor(params.cursor) : null;
-  const cursor = decoded && decoded.w === workspaceId ? decoded : null;
+  const cursor =
+    decoded && decoded.w === workspaceId && decoded.f === fingerprint
+      ? decoded
+      : null;
   if (cursor) {
     const cursorDate = new Date(cursor.t);
     const cursorWhere =
@@ -153,13 +243,10 @@ export async function list(
             { receivedAt: { gt: cursorDate } },
             { receivedAt: cursorDate, id: { gt: cursor.id } },
           ];
-    if (where.OR) {
-      where.AND = [{ OR: where.OR }, { OR: cursorWhere }];
-      delete where.OR;
-    } else {
-      where.OR = cursorWhere;
-    }
+    filters.push({ OR: cursorWhere });
   }
+
+  const where: Prisma.MailItemWhereInput = { AND: filters };
 
   const rows = await db.mailItem.findMany({
     where,
@@ -171,7 +258,7 @@ export async function list(
   const hasMore = rows.length > pageSize;
   const items = hasMore ? rows.slice(0, pageSize) : rows;
   const nextCursor = hasMore
-    ? encodeCursor(workspaceId, items[items.length - 1])
+    ? encodeCursor(workspaceId, fingerprint, items[items.length - 1])
     : null;
 
   return { items, nextCursor };
@@ -191,6 +278,12 @@ const DETAIL_INCLUDE = {
     orderBy: { createdAt: "asc" },
   },
   account: { select: { kind: true } },
+  labels: {
+    select: {
+      label: { select: { id: true, name: true, color: true } },
+    },
+    orderBy: [{ label: { position: "asc" } }, { labelId: "asc" }],
+  },
 } satisfies Prisma.MailItemInclude;
 
 export type MailDetailItem = Prisma.MailItemGetPayload<{
@@ -227,6 +320,13 @@ export interface MailListItemDto {
   receivedAt: Date;
   accountId: string;
   folderId: string;
+  labels: MailLabelDto[];
+}
+
+export interface MailLabelDto {
+  id: string;
+  name: string;
+  color: MailLabelColor;
 }
 
 export function toMailListItemDto(item: MailListItem): MailListItemDto {
@@ -243,6 +343,10 @@ export function toMailListItemDto(item: MailListItem): MailListItemDto {
     receivedAt: item.receivedAt,
     accountId: item.accountId,
     folderId: item.folderId,
+    labels: item.labels.map(({ label }) => ({
+      ...label,
+      color: parseMailLabelColor(label.color),
+    })),
   };
 }
 
@@ -273,6 +377,7 @@ export interface MailDetailDto {
   hasAttachments: boolean;
   receivedAt: Date;
   attachments: MailAttachmentDto[];
+  labels: MailLabelDto[];
 }
 
 // Recipients are stored as Json `{ name: string | null, address: string }[]`
@@ -320,6 +425,10 @@ export function toMailDetailDto(item: MailDetailItem): MailDetailDto {
       contentType: attachment.contentType,
       sizeBytes: attachment.sizeBytes,
       isInline: attachment.isInline,
+    })),
+    labels: item.labels.map(({ label }) => ({
+      ...label,
+      color: parseMailLabelColor(label.color),
     })),
   };
 }

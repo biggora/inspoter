@@ -127,6 +127,7 @@ export function WorkspaceSwitcher({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
+          data-workspace-id={currentId}
           aria-label={t("workspaceLabel", { name: currentName })}
           className={cn(
             buttonVariants({ variant: "ghost" }),

@@ -521,4 +521,358 @@ describe("Phase 5: getById detail + DTO mappers", () => {
     expect(dto).not.toHaveProperty("body");
     expect(() => JSON.stringify(dto)).not.toThrow();
   });
+
+  it("keeps a bounded 50-row DTO page free of bodies and attachment bytes", async () => {
+    const account = await db.mailAccount.findFirstOrThrow({
+      where: { workspaceId, kind: "WEBHOOK" },
+      select: { id: true },
+    });
+    const folder = await db.mailFolder.findFirstOrThrow({
+      where: { workspaceId, accountId: account.id, specialUse: "INBOX" },
+      select: { id: true },
+    });
+    const sender = `${NAME_PREFIX}-bounded-dto@example.com`;
+    const ids = Array.from({ length: 51 }, () => randomUUID());
+    await db.mailItem.createMany({
+      data: ids.map((id, index) => ({
+        id,
+        workspaceId,
+        accountId: account.id,
+        accountWorkspaceId: workspaceId,
+        folderId: folder.id,
+        folderWorkspaceId: workspaceId,
+        fromAddress: sender,
+        subject: `${NAME_PREFIX}-bounded-dto-${index}`,
+        bodyText: `BODY_SENTINEL_${index}`,
+        bodyHtml: `<p>HTML_BODY_SENTINEL_${index}</p>`,
+        snippet: `safe metadata ${index}`,
+        receivedAt: new Date(
+          index === 0 ? "2030-01-01T00:00:00.000Z" : "2029-01-01T00:00:00.000Z",
+        ),
+      })),
+    });
+    await db.mailAttachment.create({
+      data: {
+        mailItemId: ids[0],
+        filename: "bounded.txt",
+        contentType: "text/plain",
+        sizeBytes: 24,
+        content: Buffer.from("ATTACHMENT_BYTE_SENTINEL"),
+      },
+    });
+
+    const page = await mailService.list(workspaceId, {
+      from: sender,
+      pageSize: 50,
+    });
+    const dtos = page.items.map(mailService.toMailListItemDto);
+    const serialized = JSON.stringify(dtos);
+
+    expect(dtos).toHaveLength(50);
+    expect(page.nextCursor).not.toBeNull();
+    expect(dtos.some((dto) => dto.id === ids[0])).toBe(true);
+    expect(serialized).not.toContain("BODY_SENTINEL");
+    expect(serialized).not.toContain("HTML_BODY_SENTINEL");
+    expect(serialized).not.toContain("ATTACHMENT_BYTE_SENTINEL");
+    for (const dto of dtos) {
+      expect(dto).not.toHaveProperty("bodyText");
+      expect(dto).not.toHaveProperty("bodyHtml");
+      expect(dto).not.toHaveProperty("attachments");
+    }
+  });
+});
+
+describe("Phase 3 label filtering and cursor binding", () => {
+  it("intersects label with account, folder, unread, query, and sort", async () => {
+    const account = await db.mailAccount.findFirstOrThrow({
+      where: { workspaceId, kind: "WEBHOOK" },
+    });
+    const folder = await db.mailFolder.findFirstOrThrow({
+      where: { workspaceId, accountId: account.id, specialUse: "INBOX" },
+    });
+    const label = await db.mailLabel.create({
+      data: {
+        workspaceId,
+        name: `Combined ${randomUUID()}`,
+        normalizedName: `combined-${randomUUID()}`,
+        color: "BLUE",
+      },
+    });
+    const sender = `${NAME_PREFIX}-combined@example.com`;
+    const matchingEarly = await mailService.create(workspaceId, {
+      sender,
+      subject: `${NAME_PREFIX}-combined-needle-early`,
+      body: "matching early",
+      receivedAt: "2025-02-01T00:00:00.000Z",
+    });
+    const matchingLate = await mailService.create(workspaceId, {
+      sender,
+      subject: `${NAME_PREFIX}-combined-needle-late`,
+      body: "matching late",
+      receivedAt: "2025-02-02T00:00:00.000Z",
+    });
+    const read = await mailService.create(workspaceId, {
+      sender,
+      subject: `${NAME_PREFIX}-combined-needle-read`,
+      body: "read",
+      receivedAt: "2025-02-03T00:00:00.000Z",
+    });
+    const unlabeled = await mailService.create(workspaceId, {
+      sender,
+      subject: `${NAME_PREFIX}-combined-needle-unlabeled`,
+      body: "unlabeled",
+      receivedAt: "2025-02-04T00:00:00.000Z",
+    });
+    const wrongQuery = await mailService.create(workspaceId, {
+      sender,
+      subject: `${NAME_PREFIX}-different-subject`,
+      body: "wrong query",
+      receivedAt: "2025-02-05T00:00:00.000Z",
+    });
+    const otherFolder = await db.mailFolder.create({
+      data: {
+        workspaceId,
+        accountId: account.id,
+        accountWorkspaceId: workspaceId,
+        path: `Combined-${randomUUID()}`,
+        name: "Combined other folder",
+      },
+    });
+    const otherAccount = await db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "MOCK",
+        name: `Combined ${randomUUID()}`,
+        email: `combined-${randomUUID()}@example.com`,
+      },
+    });
+    const otherAccountFolder = await db.mailFolder.create({
+      data: {
+        workspaceId,
+        accountId: otherAccount.id,
+        accountWorkspaceId: workspaceId,
+        path: "INBOX",
+        name: "Combined other account inbox",
+        specialUse: "INBOX",
+      },
+    });
+    const wrongFolder = await db.mailItem.create({
+      data: {
+        workspaceId,
+        accountId: account.id,
+        accountWorkspaceId: workspaceId,
+        folderId: otherFolder.id,
+        folderWorkspaceId: workspaceId,
+        fromAddress: sender,
+        subject: `${NAME_PREFIX}-combined-needle-wrong-folder`,
+        bodyText: "wrong folder",
+        receivedAt: new Date("2025-02-06T00:00:00.000Z"),
+      },
+    });
+    const wrongAccount = await db.mailItem.create({
+      data: {
+        workspaceId,
+        accountId: otherAccount.id,
+        accountWorkspaceId: workspaceId,
+        folderId: otherAccountFolder.id,
+        folderWorkspaceId: workspaceId,
+        fromAddress: sender,
+        subject: `${NAME_PREFIX}-combined-needle-wrong-account`,
+        bodyText: "wrong account",
+        receivedAt: new Date("2025-02-07T00:00:00.000Z"),
+      },
+    });
+    await db.mailItemLabel.createMany({
+      data: [
+        matchingEarly.id,
+        matchingLate.id,
+        read.id,
+        wrongQuery.id,
+        wrongFolder.id,
+        wrongAccount.id,
+      ].map((mailItemId) => ({
+        workspaceId,
+        mailItemId,
+        mailItemWorkspaceId: workspaceId,
+        labelId: label.id,
+        labelWorkspaceId: workspaceId,
+      })),
+    });
+    await db.mailItem.update({
+      where: { id: read.id },
+      data: { isRead: true },
+    });
+
+    const result = await mailService.list(workspaceId, {
+      accountId: account.id,
+      folderId: folder.id,
+      labelId: label.id,
+      unreadOnly: true,
+      query: `${NAME_PREFIX}-combined-needle`,
+      sort: "asc",
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([
+      matchingEarly.id,
+      matchingLate.id,
+    ]);
+    expect(result.items.map((item) => item.id)).not.toEqual(
+      expect.arrayContaining([
+        read.id,
+        unlabeled.id,
+        wrongQuery.id,
+        wrongFolder.id,
+        wrongAccount.id,
+      ]),
+    );
+  });
+
+  it("binds cursors to filters and resets malformed or changed fingerprints", async () => {
+    const label = await db.mailLabel.create({
+      data: {
+        workspaceId,
+        name: `Cursor label ${randomUUID()}`,
+        normalizedName: `cursor-label-${randomUUID()}`,
+        color: "VIOLET",
+      },
+    });
+    const alternateLabel = await db.mailLabel.create({
+      data: {
+        workspaceId,
+        name: `Alternate cursor label ${randomUUID()}`,
+        normalizedName: `alternate-cursor-label-${randomUUID()}`,
+        color: "GREEN",
+      },
+    });
+    const account = await db.mailAccount.findFirstOrThrow({
+      where: { workspaceId, kind: "WEBHOOK" },
+      select: { id: true },
+    });
+    const folder = await db.mailFolder.findFirstOrThrow({
+      where: { workspaceId, accountId: account.id, specialUse: "INBOX" },
+      select: { id: true },
+    });
+    const sender = `${NAME_PREFIX}-label-cursor@example.com`;
+    const receivedAt = "2025-01-01T00:00:00.000Z";
+    const ids: string[] = [];
+    for (let index = 0; index < 3; index++) {
+      const mail = await mailService.create(workspaceId, {
+        sender,
+        subject: `${NAME_PREFIX}-label-cursor-${index}`,
+        body: "cursor",
+        receivedAt,
+      });
+      ids.push(mail.id);
+      await db.mailItemLabel.createMany({
+        data: [label.id, alternateLabel.id].map((labelId) => ({
+          workspaceId,
+          mailItemId: mail.id,
+          mailItemWorkspaceId: workspaceId,
+          labelId,
+          labelWorkspaceId: workspaceId,
+        })),
+      });
+    }
+
+    const base = {
+      from: sender,
+      labelId: label.id,
+      pageSize: 1,
+      sort: "asc" as const,
+    };
+    const first = await mailService.list(workspaceId, base);
+    const second = await mailService.list(workspaceId, {
+      ...base,
+      cursor: first.nextCursor!,
+    });
+    const third = await mailService.list(workspaceId, {
+      ...base,
+      cursor: second.nextCursor!,
+    });
+    expect(
+      [...first.items, ...second.items, ...third.items].map((item) => item.id),
+    ).toEqual([...ids].sort());
+
+    const changedFilters: Array<{
+      facet: string;
+      params: mailService.ListMailParams;
+    }> = [
+      { facet: "account", params: { ...base, accountId: account.id } },
+      { facet: "folder", params: { ...base, folderId: folder.id } },
+      {
+        facet: "label",
+        params: { ...base, labelId: alternateLabel.id },
+      },
+      { facet: "unread", params: { ...base, unreadOnly: true } },
+      {
+        facet: "query",
+        params: { ...base, query: `${NAME_PREFIX}-label-cursor` },
+      },
+      { facet: "sort", params: { ...base, sort: "desc" } },
+    ];
+    for (const { facet, params } of changedFilters) {
+      const reset = await mailService.list(workspaceId, {
+        ...params,
+        cursor: first.nextCursor!,
+      });
+      const fresh = await mailService.list(workspaceId, params);
+      expect(
+        reset.items.map((item) => item.id),
+        `${facet} mismatch must reset the cursor`,
+      ).toEqual(fresh.items.map((item) => item.id));
+    }
+
+    const malformed = await mailService.list(workspaceId, {
+      ...base,
+      cursor: Buffer.from(
+        JSON.stringify({ w: workspaceId, t: "not-a-date", id: "legacy" }),
+      ).toString("base64url"),
+    });
+    expect(malformed.items.map((item) => item.id)).toEqual(
+      first.items.map((item) => item.id),
+    );
+  });
+
+  it("rejects foreign resources and account-folder mismatches", async () => {
+    const foreignLabel = await db.mailLabel.create({
+      data: {
+        workspaceId: workspaceBId,
+        name: `Foreign filter ${randomUUID()}`,
+        normalizedName: `foreign-filter-${randomUUID()}`,
+        color: "RED",
+      },
+    });
+    await expect(
+      mailService.list(workspaceId, { labelId: foreignLabel.id }),
+    ).rejects.toBeInstanceOf(mailService.MailListResourceNotFoundError);
+
+    const firstAccount = await db.mailAccount.findFirstOrThrow({
+      where: { workspaceId },
+    });
+    const secondAccount = await db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "MOCK",
+        name: `Mismatch ${randomUUID()}`,
+        email: `mismatch-${randomUUID()}@example.com`,
+      },
+    });
+    const secondFolder = await db.mailFolder.create({
+      data: {
+        workspaceId,
+        accountId: secondAccount.id,
+        accountWorkspaceId: workspaceId,
+        path: `Mismatch-${randomUUID()}`,
+        name: "Mismatch",
+      },
+    });
+    await expect(
+      mailService.list(workspaceId, {
+        accountId: firstAccount.id,
+        folderId: secondFolder.id,
+      }),
+    ).rejects.toBeInstanceOf(mailService.MailListResourceNotFoundError);
+  });
 });

@@ -29,7 +29,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: mocks.refresh }),
+  redirect: vi.fn(),
+  permanentRedirect: vi.fn(),
+  usePathname: () => "/",
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: mocks.refresh,
+  }),
 }));
 
 vi.mock("@/hooks/use-mobile", () => ({

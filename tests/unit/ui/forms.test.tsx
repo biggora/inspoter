@@ -28,7 +28,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
+  redirect: vi.fn(),
+  permanentRedirect: vi.fn(),
+  usePathname: () => "/",
+  useRouter: () => ({
+    push: mocks.push,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: mocks.refresh,
+  }),
 }));
 
 vi.mock("@/app/[locale]/login/actions", () => ({ login: mocks.login }));
@@ -183,7 +191,9 @@ describe("standardized form contracts", () => {
     await user.type(screen.getByLabelText("Пароль"), "secret");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/bookmarks"));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith("/ru/bookmarks"),
+    );
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 

@@ -1,0 +1,78 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
+import { env } from "@/lib/config/env";
+import { toErrorResponse } from "@/lib/api/errors";
+import { jsonResponse } from "@/lib/api/response";
+import * as mailLabelsService from "@/lib/services/mail-labels";
+import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import {
+  createMailLabelSchema,
+  listMailLabelsQuerySchema,
+} from "@/lib/validation/mail";
+
+function disabledResponse() {
+  return jsonResponse({ error: "Resource not found." }, { status: 404 });
+}
+
+export async function GET(request: NextRequest) {
+  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+
+  const parsed = listMailLabelsQuerySchema.safeParse(
+    Object.fromEntries(request.nextUrl.searchParams),
+  );
+  if (!parsed.success) {
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
+  }
+
+  const labels = await mailLabelsService.listLabels(
+    authResult.workspace.id,
+    parsed.data.accountId && parsed.data.folderId
+      ? {
+          accountId: parsed.data.accountId,
+          folderId: parsed.data.folderId,
+        }
+      : undefined,
+  );
+  return jsonResponse(labels);
+}
+
+export async function POST(request: NextRequest) {
+  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
+  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+    (error) => toErrorResponse(error),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+
+  const body = await request.json().catch(() => null);
+  const parsed = createMailLabelSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonResponse({ error: parsed.error.issues }, { status: 400 });
+  }
+
+  try {
+    const label = await mailLabelsService.createLabel(
+      authResult.workspace.id,
+      authResult.operator.id,
+      parsed.data,
+    );
+    return jsonResponse(label, { status: 201 });
+  } catch (error) {
+    if (error instanceof WorkspaceOwnerRequiredError) {
+      return jsonResponse(
+        { error: "WORKSPACE_OWNER_REQUIRED" },
+        { status: 403 },
+      );
+    }
+    if (error instanceof mailLabelsService.MailLabelNameConflictError) {
+      return jsonResponse({ error: error.code }, { status: 409 });
+    }
+    if (error instanceof mailLabelsService.MailLabelLimitReachedError) {
+      return jsonResponse({ error: error.code }, { status: 409 });
+    }
+    return toErrorResponse(error);
+  }
+}

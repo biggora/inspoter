@@ -23,8 +23,11 @@ validateTestDatabaseTarget(testEnvironment);
 Object.assign(process.env, testEnvironment);
 
 const appPort = parseTestAppPort(testEnvironment.TEST_APP_PORT);
-const appHostname = "localhost";
-const appOrigin = `http://${appHostname}:${appPort}`;
+// Next.js 16 internally targets `localhost` for proxy rewrites. On Windows,
+// binding only to 127.0.0.1 can make Node's dual-stack localhost connection
+// race fail before Playwright's readiness probe reaches the localized page.
+const appHost = process.platform === "win32" ? "localhost" : "127.0.0.1";
+const appOrigin = `http://${appHost}:${appPort}`;
 
 const serverEnvironment = {
   ...testEnvironment,
@@ -56,7 +59,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm exec next start -p ${appPort} -H ${appHostname}`,
+    command: `pnpm exec next start -p ${appPort} -H ${appHost}`,
     url: appOrigin,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -79,7 +82,15 @@ export default defineConfig({
         viewport: { width: 375, height: 800 },
       },
       testMatch:
-        /(?:shell-responsive|ui-visual|messages-channel-webhooks)\.spec\.ts/,
+        /(?:shell-responsive|ui-visual|messages-channel-webhooks|mail-label-filtering)\.spec\.ts/,
+    },
+    {
+      name: "mobile-420",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 420, height: 800 },
+      },
+      testMatch: /mail-label-filtering\.spec\.ts/,
     },
   ],
 });

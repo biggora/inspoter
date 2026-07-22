@@ -25,3 +25,14 @@ export async function requireWorkspaceOwner(
     throw new WorkspaceOwnerRequiredError();
   }
 }
+
+export async function canManageWorkspace(
+  workspaceId: string,
+  operatorId: string,
+): Promise<boolean> {
+  const membership = await db.workspaceMember.findUnique({
+    where: { workspaceId_operatorId: { workspaceId, operatorId } },
+    select: { role: true },
+  });
+  return membership?.role === "OWNER";
+}

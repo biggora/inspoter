@@ -1,14 +1,16 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.3
-**Status:** v1.3 adds public OpenAPI and protected Swagger UI acceptance coverage (§10). No new runtime PASS is claimed without recorded command evidence.
+**Version:** 1.5
+**Status:** Q-15 Phase 5, public OpenAPI, and VPS Metrics Agent coverage reconciled; awaiting user verification.
 **Owner:** tester
 **Date:** 2026-07-20
-**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.8, `docs/architecture.md` v1.7, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.9, `docs/plan.md` v1.5, `docs/progress.md`
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.12, `docs/architecture.md` v1.10, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.12, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.5 — 2026-07-21:** reconciled public OpenAPI, VPS Metrics Agent, and implemented Q-15 behavior; retained the guarded Phase 5 migration/performance/backup/rollback/restart evidence and final regression/review gate. User verification remains required.
+- **v1.4 — 2026-07-20:** added Q-15 Phase 2–5 service/API/component/Playwright, concurrency, isolation, accessibility, responsive, migration, rollback, recovery, and performance cases for AC-MAIL-031..045.
 - **v1.3 — 2026-07-20:** added §10 for the checked-in two-operation OpenAPI contract, authenticated Swagger UI, secret controls, CI gates, and static-bundle verification.
 - **v1.2 — 2026-07-18:** added §9 with source-grounded migration/service/API/pipeline/UI/E2E/deployment cases. All new statuses are PENDING/GAP until commands and retained evidence exist.
 - **v1.1 — 2026-07-18:** added §8 (Q-14 mail client): AC-MAIL-007..030 traceability to unit suites (`mail-accounts`, `mail-sync`, `mail-actions`, `mail-attachments`, `mock-driver`, extended `mail`) and `e2e/mail-client.spec.ts`, plus the mock-driver test strategy. Added the versioned header block.
@@ -361,42 +363,239 @@ The checked-in contract covers only the two external webhook ingress operations.
 
 ### 11.1 Server service — DB integration (`tests/unit/services/servers.test.ts`)
 
-| AC-ID / Area | Test case | Status |
-| --- | --- | --- |
-| AC-SRV-002 | reconciles provider inventory into present provider-origin DTOs | PASS |
-| Idempotency | reuses the same localServerId for a server already reconciled | PASS |
-| Error isolation | isolates a failing provider's error without dropping the working provider | PASS |
-| Missing detection | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS |
-| AC-SRV-001 | getComposedServer returns a composed DTO merged with live provider data | PASS |
-| Not found | getComposedServer returns null when no LocalServer row matches | PASS |
-| Metrics: not_configured | reports not_configured when no agent token exists | PASS |
-| Metrics: waiting | reports waiting for a bound token with no snapshot yet | PASS |
-| Metrics: live | reports live for a fresh snapshot | PASS |
-| Metrics: stale | reports stale past the 180s threshold | PASS |
-| Metrics: revoked | reports revoked once the only bound token is revoked | PASS |
-| AC-SRV-004 | start transitions a stopped server to running within the 30s poll window | PASS |
-| AC-SRV-005 | stop transitions a running server to stopped within the 30s poll window | PASS |
-| AC-SRV-006 | restart transitions a running server back to running within the 60s poll window | PASS |
-| Power: not found | returns 'Server not found' for an unknown id | PASS |
-| Power: unknown provider | returns an error for an unknown providerId | PASS |
+| AC-ID / Area            | Test case                                                                          | Status |
+| ----------------------- | ---------------------------------------------------------------------------------- | ------ |
+| AC-SRV-002              | reconciles provider inventory into present provider-origin DTOs                    | PASS   |
+| Idempotency             | reuses the same localServerId for a server already reconciled                      | PASS   |
+| Error isolation         | isolates a failing provider's error without dropping the working provider          | PASS   |
+| Missing detection       | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS   |
+| AC-SRV-001              | getComposedServer returns a composed DTO merged with live provider data            | PASS   |
+| Not found               | getComposedServer returns null when no LocalServer row matches                     | PASS   |
+| Metrics: not_configured | reports not_configured when no agent token exists                                  | PASS   |
+| Metrics: waiting        | reports waiting for a bound token with no snapshot yet                             | PASS   |
+| Metrics: live           | reports live for a fresh snapshot                                                  | PASS   |
+| Metrics: stale          | reports stale past the 180s threshold                                              | PASS   |
+| Metrics: revoked        | reports revoked once the only bound token is revoked                               | PASS   |
+| AC-SRV-004              | start transitions a stopped server to running within the 30s poll window           | PASS   |
+| AC-SRV-005              | stop transitions a running server to stopped within the 30s poll window            | PASS   |
+| AC-SRV-006              | restart transitions a running server back to running within the 60s poll window    | PASS   |
+| Power: not found        | returns 'Server not found' for an unknown id                                       | PASS   |
+| Power: unknown provider | returns an error for an unknown providerId                                         | PASS   |
 
 ### 11.2 Hetzner Cloud pagination (`tests/unit/providers/hetzner-cloud.test.ts`)
 
-| Area | Test case | Status |
-| --- | --- | --- |
-| Pagination | follows next_page through multiple pages | PASS |
-| Error handling | later-page failure returns error | PASS |
-| Guard | 100-page maximum cap | PASS |
+| Area           | Test case                                | Status |
+| -------------- | ---------------------------------------- | ------ |
+| Pagination     | follows next_page through multiple pages | PASS   |
+| Error handling | later-page failure returns error         | PASS   |
+| Guard          | 100-page maximum cap                     | PASS   |
 
 ### 11.3 HTTP provider (`tests/unit/providers/http.test.ts`)
 
-| Area | Test case | Status |
-| --- | --- | --- |
-| AbortSignal | forwards signal to fetch | PASS |
+| Area        | Test case                | Status |
+| ----------- | ------------------------ | ------ |
+| AbortSignal | forwards signal to fetch | PASS   |
 
 ### 11.4 Python agent (`metrics-agent/tests/`)
 
-| File | Coverage | Status |
-| --- | --- | --- |
-| `test_collector.py` | CPU delta, meminfo, loadavg, uptime, statvfs, hostname, complete payload | PASS |
-| `test_payload.py` | IP validation, invalid SERVER_IPS rejection, payload structure | PASS |
+| File                | Coverage                                                                 | Status |
+| ------------------- | ------------------------------------------------------------------------ | ------ |
+| `test_collector.py` | CPU delta, meminfo, loadavg, uptime, statvfs, hostname, complete payload | PASS   |
+| `test_payload.py`   | IP validation, invalid SERVER_IPS rejection, payload structure           | PASS   |
+
+## 12. Q-15 Mail labels/filter rules
+
+Phase 2–4 execution summaries are retained in `docs/progress.md`. Phase 5 was
+executed against guarded disposable PostgreSQL and passed the retained runtime,
+browser, regression, and independent-review evidence below. Existing
+AC-MAIL-001..030 remained green at the final gate.
+
+### 12.1 Service, matcher, and API contract
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                     | Phase | Status |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: | ------ |
+| ML-SVC-001  | Label normalization runs NFKC → trim → collapse internal whitespace to one ASCII space → locale-stable lowercase; display casing remains; 0/1/40/41-character boundaries and Unicode equivalents are covered.                  |     2 | PASS   |
+| ML-SVC-002  | Create/list is active-workspace scoped, owner-only for definitions, stable by `(position, id)`, rejects normalized duplicate with 409 `LABEL_NAME_CONFLICT`, and transactionally enforces 100 labels under concurrent creates. |   2–3 | PASS   |
+| ML-SVC-003  | Rename/recolor/reorder/delete covers all colors, stable order, cascade of assignments, and 409 `LABEL_IN_USE` for active or inactive rule references.                                                                          |     3 | PASS   |
+| ML-RULE-001 | Exact-sender create/list requires one owned account/label, owner role, 1/80 rule-name and 0/320/321 sender boundaries, stable `(position, id)` order, and 100-active-rule transactional limit.                                 |     2 | PASS   |
+| ML-RULE-002 | Subject predicate covers 0/1/200/201 boundaries; sender+subject use canonical case-insensitive AND; empty predicate sets reject; rule rename/edit/enable/disable/reorder/delete preserve assignments.                          |     4 | PASS   |
+| ML-ASGN-001 | Add/remove assignment is owner/member accessible and idempotent; retries and multiple rules targeting one label leave one `(mailItemId, labelId)` row.                                                                         |   2–3 | PASS   |
+| ML-API-001  | Label, assignment, rule, and run routes require authenticated active workspace header, strict Zod bodies/queries, existing response envelopes, documented status/error codes, and non-disclosing 404 for missing/foreign ids.  |   2–5 | PASS   |
+| ML-DTO-001  | List/detail return bounded `{id,name,color}` label metadata; 50-row list contains no `bodyText`, `bodyHtml`, attachment `content`, or attachment bytes.                                                                        |     2 | PASS   |
+
+### 12.2 Matching, persistence, and controlled concurrency
+
+| ID            | Acceptance/evidence target                                                                                                                                                                                                         | Phase | Status |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
+| ML-MATCH-001  | Shared matcher contract covers NFKC, Unicode case, surrounding whitespace, exact sender, subject substring, AND, and empty-field boundaries identically in unit, webhook, IMAP, and batch-style paths.                             |   2–4 | PASS   |
+| ML-INGEST-001 | Webhook INBOX persistence commits message, attachment metadata, and assignments atomically; event emits after commit; matching/nonmatching tracer proves only match receives chip.                                                 |     2 | PASS   |
+| ML-INGEST-002 | IMAP performs remote I/O before database lock, then applies same matcher only to imported/re-imported `specialUse=INBOX`; Archive/Junk/Trash/Drafts/Sent and move-into-INBOX negatives receive no evaluation.                      |     4 | PASS   |
+| ML-RACE-001   | Deterministic barriers race rule create, edit, disable, and delete against message persistence. Commit-before-post-lock-snapshot affects message; commit-after does not. Lock acquisition and active-rule load order are asserted. |     4 | PASS   |
+| ML-RACE-002   | Concurrent label/rule limits, duplicate ingestion, retries, overlapping rules, and multiple rules targeting one label produce bounded counts and no duplicate assignment or partial message state.                                 |   2–4 | PASS   |
+| ML-UID-001    | UIDVALIDITY INBOX wipe/re-import reapplies automatic labels; a focused limitation test/document check proves manual labels may be lost and no nullable/non-unique `Message-ID` reconciliation is attempted.                        |     4 | PASS   |
+
+### 12.3 Workspace isolation, filtering, and pagination
+
+| ID            | Acceptance/evidence target                                                                                                                                                                                                              | Phase | Status |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
+| ML-ISO-001    | Two workspaces with owner/member fixtures exercise every label/rule/account/message foreign-id combination: 404, zero cross-workspace writes, no existence leak. Members may assign/filter; label-definition/rule mutations return 403. |   2–5 | PASS   |
+| ML-FILTER-001 | `labelId` intersects account, folder, unread, query, sort, and workspace predicates; **All labels** clears only label facet.                                                                                                            |     3 | PASS   |
+| ML-CURSOR-001 | Cursor includes workspace and normalized full-filter fingerprint; changed workspace/account/folder/label/query/unread/sort resets safely, while an unchanged filter returns stable, nonduplicated pages across equal timestamps.        |     3 | PASS   |
+| ML-SWITCH-001 | Workspace/account/folder/label changes reset pagination and selected detail; stale responses cannot repaint destination scope.                                                                                                          |     3 | PASS   |
+
+### 12.4 Component, accessibility, responsive, and operator journeys
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                    | Phase | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
+| ML-UI-001   | `LabelChip` follows subject inside one row button, is noninteractive, truncates with full accessible name, shows two desktop/one narrow plus exact `+N`, and row accessible name includes complete label names.               |   2–3 | PASS   |
+| ML-UI-002   | Desktop sidebar and mobile Sheet show Labels below folders with selected state and **All labels** behavior; full picker supports add/remove, loading/failure recovery, Arrow/Enter/Space/Escape, and exact focus restoration. |     3 | PASS   |
+| ML-UI-003   | Owner rule dialog prefills account/sender, permits edits plus select/create label, validates inline, preserves input on failure, announces success, and restores opener focus; member does not receive owner mutation action. |   2–4 | PASS   |
+| ML-I18N-001 | English and Russian cover every Slice 1–4 label/rule string, validation, conflict, empty/loading/error state, success announcement, and accessible-only expansion; locale change leaves stored content/matching unchanged.    |   2–4 | PASS   |
+| ML-A11Y-001 | Keyboard-only desktop/mobile journeys and Axe serious/critical=0 cover row, sidebar/sheet, picker, reading pane, and rule/run dialogs; identity never depends on color.                                                       |   2–5 | PASS   |
+| ML-RESP-001 | Playwright at 375px, 420px, and 1440px proves chip limits, contained popover/dialog/sheet, visible actions, working row activation, and no body horizontal overflow.                                                          |   2–5 | PASS   |
+| ML-E2E-001  | Tracer: owner opens message → Filter messages like this → creates/selects label → saves exact-sender rule → ingests matching and nonmatching webhook mail → only matching row shows label.                                    |     2 | PASS   |
+| ML-E2E-002  | Owner/member manual-label and combined-filter journey, including mobile keyboard flow and account/workspace switching.                                                                                                        |     3 | PASS   |
+| ML-E2E-003  | Rule create/edit/disable/delete journey proves future behavior changes while previous assignments remain.                                                                                                                     |     4 | PASS   |
+
+### 12.5 Migration, backfill, performance, deployment, and rollback
+
+| ID              | Acceptance/evidence target                                                                                                                                                                                                     | Phase | Status                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: | -------------------------------------------- |
+| ML-MIG-001      | Phase-2 additive migration passes Prisma validation, fresh historical replay, populated-current upgrade, raw workspace-check rejection, expected indexes/FKs, and unchanged counts/hashes for existing Mail data.              |     2 | PASS — Phase 2 replay evidence               |
+| ML-MIG-002      | Phase-5 additive run migration replays fresh and populated states; partial unique index permits only one pending/running run per rule.                                                                                         |     5 | PASS — fresh + populated 18-migration replay |
+| ML-RUN-001      | Same-timestamp cutoff uses inclusive cutoff/exclusive cursor; 200-row batches atomically commit assignments/counts/cursor; processed/matched meanings include pre-labeled matches exactly as specified.                        |     5 | PASS — service and scheduler regressions     |
+| ML-RUN-002      | Crash before commit advances nothing; crash after commit resumes after cursor; two workers, lease renewal/expiry takeover, three-failure ceiling, and manual retry preserve snapshot and committed progress.                   |     5 | PASS — recovery/concurrency regressions      |
+| ML-RUN-003      | Live/backfill overlap creates one assignment; post-cutoff mail uses live path only; rule edits during active run cannot change immutable snapshot. Polling stops on completed/failed and retry is bounded.                     |     5 | PASS — overlap/snapshot/UI regressions       |
+| ML-SCHED-001    | Instrumentation starts no new timer/scheduler; existing Mail scheduler claims bounded run work and restart recovery resumes durable state.                                                                                     |     5 | PASS — exact 200/201 restart recovery        |
+| ML-PERF-001     | Large seeded dataset records query plan, p50/p95 elapsed time, rows scanned, and DB/fixture details for a labeled 50-row combined-filter page and 200-row backfill batch; index changes require before/after evidence.         |     5 | PASS — 20,000-row service-path measurement   |
+| ML-DEPLOY-001   | With `MAIL_LABELS_ENABLED=false`, new UI/routes/evaluation/claims stay dark and existing Mail smoke passes; controlled enable exposes only completed phase behavior.                                                           |   2–5 | PASS — flag-off/on runtime rehearsal         |
+| ML-BACKUP-001   | Dated encrypted pre-migration backup has owner/retention, row counts/checksums, and successful disposable restore evidence for documented Mail/label tables.                                                                   |  2, 5 | PASS — encrypted restore and hash comparison |
+| ML-ROLLBACK-001 | Rehearsal disables exposure, runs prior compatible binary against additive schema, and proves accounts/folders/messages/attachments/flags/bodies/actions unchanged; preserved label data reappears after compatible re-enable. |     5 | PASS — prior runtime + zero integrity diffs  |
+
+### 12.6 Per-phase gates
+
+- **Phase 2:** `ML-MIG-001`, exact-sender service/API/UI/tracer rows, Prisma
+  validation, targeted tests, full unit suite, blocking-finding-free code review,
+  and 1440px/375px demo are green.
+- **Phase 3:** CRUD/assignment/filter/cursor/isolation/keyboard/Axe/responsive rows
+  and combined-filter desktop/mobile demo are green.
+- **Phase 4:** webhook/IMAP matcher parity, excluded-folder negatives, controlled
+  races, lifecycle preservation, review, and UI demo are green.
+- **Phase 5:** run/migration/performance/backup/rollback/restart rows plus lint,
+  typecheck, full unit/integration/Playwright, production build, accessibility,
+  responsive, and code-review gates are green.
+
+No phase gate advances on documentation or collection evidence alone. User
+verification is required before the next phase starts.
+
+### 12.7 Phase 5 reproducible evidence procedure
+
+All commands target only `127.0.0.1:3833/inspoter_e2e_test`. The guard requires
+both explicit markers. Generated JSON and the encrypted rehearsal dump live in
+ignored `test-results/mail-label-phase5/`; concise verified results are copied
+to this section and `docs/progress.md` only after execution.
+
+```powershell
+$env:ALLOW_TEST_DB_RESET="1"
+$env:TEST_DATABASE_MARKER="inspoter-e2e"
+pnpm test:db:up
+pnpm exec prisma validate
+pnpm test:db:prepare
+node scripts/mail-label-populated-migration-replay.mjs
+pnpm test:db:prepare
+pnpm exec vitest run --config scripts/vitest.mail-label-phase5-performance.config.mjs
+
+$env:MAIL_LABEL_BACKUP_KEY = (node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")
+$env:MAIL_LABEL_BACKUP_OWNER="Phase 5 local verifier"
+$env:MAIL_LABEL_BACKUP_RETENTION="Until user verification plus seven days"
+node scripts/mail-label-backup-restore-rehearsal.mjs
+```
+
+Performance fixture contract: exactly 20,000 deterministic messages—12,000 in
+the target INBOX, 4,000 target-account Archive decoys, and 4,000 other-account
+INBOX decoys—with groups of five equal timestamps. The harness calls the real
+50-row `mailService.list` path and real filter-run claim/batch service. Each path
+gets five warmups and 30 measured samples. Evidence records p50/p95, PostgreSQL
+version, fixture counts, `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, summarized
+rows/buffers/sort nodes, and index adjustments. No undocumented performance
+threshold is invented.
+
+The runtime harness performs deployment-darkness, rollback integrity, preserved
+label visibility, and exact 200/201 restart recovery in one guarded run:
+
+```powershell
+node scripts/mail-label-phase5-runtime-hardening.mjs
+```
+
+It launches only hidden exact-PID servers on ports 3920/3921 and stops them in
+`finally`. The archived Phase 4 build is copied to a disposable derived runtime;
+because the archive omits `@prisma/client-runtime-utils`, that copy alone gets a
+temporary junction to the repository dependencies. Both preserved `.next`
+trees remain unchanged and the derived runtime is removed after verification.
+
+The backup script streams `pg_dump --format=custom` from the explicitly named
+`inspoter-test` container, encrypts it in memory with AES-256-GCM, restores into
+only `inspoter_e2e_restore_test`, compares Mail/label/run row counts and SHA-256
+hashes (including flags, bodies, and attachment bytes), then removes the restore
+database. The key is never written to evidence. A backup file without successful
+restore/hash comparison does not pass `ML-BACKUP-001`.
+
+### 12.8 Phase 5 measured evidence (2026-07-21)
+
+- `ML-MIG-002` PASS: fresh replay applied all 18 migrations. Populated replay
+  applied the 17-migration Phase 4 baseline, seeded protected Mail data, applied
+  only `20260721160000_mail_filter_runs`, and found zero row-count or SHA-256
+  differences across account, folder, message, attachment, label, assignment,
+  and rule tables. Expected traversal/partial-unique indexes and all run-state
+  constraints were present; rolled-back functional probes proved that only one
+  pending/running run may exist per source rule and that a half-null rule
+  relation tuple is rejected.
+- `ML-PERF-001` PASS on PostgreSQL 16.14 with the documented 20,000-message
+  fixture. The real 50-row combined-filter list path measured p50 11.885 ms and
+  p95 13.184 ms across 30 samples; its database plan executed in 1.759 ms using
+  `MailItem_workspaceId_accountId_folderId_receivedAt_id_idx` and
+  `MailItemLabel_workspaceId_labelId_mailItemId_idx`. The real 200-row run batch
+  measured p50 31.702 ms and p95 40.193 ms; its selector plan executed in
+  1.041 ms using `MailItem_workspaceId_accountId_createdAt_id_idx`. No index
+  adjustment was warranted by this evidence.
+- `ML-BACKUP-001` PASS: the owner/retention-labelled AES-256-GCM backup was
+  114,144 encrypted bytes. Restore into `inspoter_e2e_restore_test` produced
+  identical counts and SHA-256 hashes for all eight protected Mail tables and
+  identical history for all 18 migrations; the restore database was removed.
+  The encryption key was not persisted.
+- `ML-DEPLOY-001` PASS: the current production build ran with
+  `MAIL_LABELS_ENABLED=false`; all three label/rule/run route families returned
+  404, label/filter UI counts were zero, and a pending run remained unclaimed
+  at zero processed rows across multiple 500 ms Mail ticks. Existing account,
+  folder, message list/detail, attachment-byte, and reversible unread/read
+  smoke passed. The live persistence path's direct flag guard was source-reviewed;
+  no separate flag-off ingestion runtime assertion was retained. Re-enabling
+  exposed the preserved `Migration label` through both API and UI.
+- `ML-ROLLBACK-001` PASS: a derived temporary copy of the preserved Phase 4
+  runtime ran against the additive Phase 5 schema on port 3921 and passed the
+  same existing Mail smoke. Its incomplete archived package required a
+  temporary junction to the repository `node_modules` for
+  `@prisma/client-runtime-utils`; neither preserved Phase 4 nor current `.next`
+  was modified. Before/after counts and SHA-256 hashes were identical for all
+  protected Mail, label, rule, assignment, and run tables and all 18 migration
+  records. The derived runtime was removed after verification.
+- `ML-SCHED-001` PASS: source inspection found one `setInterval` in the
+  existing Mail scheduler and one instrumentation start call. A first hidden
+  server process committed exactly 200 of 201 matching rows and stopped at
+  cursor `phase5-runtime-restart-mail-200`; after expiring only that run lease,
+  a fresh PID resumed strictly at row 201 and completed with 201 processed,
+  201 matched, and 201 unique assignments. Only the expected run and assignment
+  tables changed; all other protected table hashes stayed identical.
+- `ML-RUN-001..003` PASS: six real-PostgreSQL service tests cover exact
+  cutoff/cursor/count/atomicity, crashes, fencing/takeover/retry, immutable
+  snapshots, and live overlap. Two scheduler regressions prove a retained
+  nonterminal claim advances on the next tick with lease renewal. Eighteen UI
+  tests prove serial polling, the exact 60-request cap across PENDING→RUNNING,
+  terminal/error/unmount stop behavior, retry/refresh, and focus relocation.
+- **Final Phase 5 regression:** Prisma validation and guarded 18-migration
+  preparation PASS; Vitest **771/771** in 62 files; lint 0 errors with one
+  pre-existing `no-page-custom-font` warning; native-control guard, typecheck,
+  and production build PASS. Mail-label Playwright **12/12** at 1440px, 375px,
+  and 420px, including Axe serious/critical=0, containment, keyboard/focus, and
+  historical-run progress. Independent backend, UI, and docs/evidence audits
+  were rerun after their findings were fixed.

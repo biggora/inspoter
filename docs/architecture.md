@@ -1,11 +1,11 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.9
-**Status:** VPS Metrics Agent amendment
+**Version:** 1.10
+**Status:** Q-15 mail labels/filtering and VPS Metrics Agent verified; awaiting user verification
 **Owner:** Architect
 **Date:** 2026-07-21
-**Normative inputs:** `docs/prd.md` v3.8, `docs/design.md` v2.9, Q-13, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
-**Implementation evidence:** repository state on 2026-07-20
+**Normative inputs:** `docs/prd.md` v3.11, `docs/design.md` v2.12, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
+**Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
 ## 0. Reading contract
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.10 (2026-07-21):** reconciles Q-15 with the implemented schema, services, routes, UI, shared live/backfill matcher, one existing Mail scheduler, bounded historical batches, durable leases, retry API, and bounded status polling. Records verified migration, performance, encrypted restore, prior-runtime rollback, restart recovery, regression, and independent-review evidence.
 - **v1.9 (2026-07-21):** documents the VPS Metrics Agent system as CURRENT: LocalServer/LocalServerAddress/ServerAgentToken/ServerMetricSnapshot models (4 new, 27 total), SHA-256 token enrollment with IPv4 provider matching, public `POST /api/server-metrics` ingestion endpoint with per-token rate limiting, provider reconciliation with discriminated union DTOs and metrics state composition, ordered credential/workspace deletion, Hetzner pagination, Python 3.12 Docker agent, and `ipaddr.js` IP validation. New section §7C.
 - **v1.8 (2026-07-20):** documents the implemented workspace backup/restore slice as CURRENT: the `.inspot-backup` v1 binary container (AES-256-GCM + scrypt + gzip, `src/lib/backup/format.ts`), the versioned JSON payload and section→model mapping (`src/lib/backup/serialization.ts`), the owner-only `/settings/backup` page and `POST /api/backup/{export,import}` routes, single-transaction import with id regeneration/global collision skips, the `BACKUP_MAX_IMPORT_BYTES` / `BACKUP_IMPORT_TX_TIMEOUT_MS` env variables, and the streaming-NDJSON future-work boundary. New section §7B.
 - **v1.7 (2026-07-20):** adds the checked-in OpenAPI 3.1.1 contract for the two public webhook ingress operations, the authenticated `/settings/api-docs` Swagger UI, and CI contract validation. Internal dashboard APIs, OIDC, and webhook-management routes remain outside the public specification.
@@ -217,8 +218,7 @@ flowchart LR
 - `LocalServerAddress` — per-server IP addresses with `family` (IPV4/IPV6), `scope` (GLOBAL/PRIVATE/LINK_LOCAL/LOOPBACK/RESERVED/OTHER), `source` (AGENT_REPORTED/PROVIDER_INVENTORY), and enrollment claim management (`isCurrent`, `retiredAt`, `matchKey`). Partial unique index `local_server_address_one_current_ipv4_claim` ensures at most one current global IPv4 claim per address string.
 - `ServerAgentToken` — SHA-256 hash-only bearer tokens with states `UNBOUND` → `BOUND` → `REVOKED`. Only one active bound token per server (partial unique index `server_agent_token_one_active_bound_per_server`). CHECK constraint (`ServerAgentToken_state_fields_check`) enforces `boundAt`/`revokedAt` consistency.
 - `ServerMetricSnapshot` — latest-only upsert per `localServerId` (1:1). Stores CPU usage, load averages, memory/swap/filesystem totals and available bytes (BigInt), uptime, hostname, agent version. `receivedAt` drives the 180-second stale threshold.
-
-**CURRENT — P-1 note revision (2026-07-18):** the Slice-0 decision P-1 ("full schema in one initial migration, no per-slice incremental models") applied to the original 13-entity baseline. Later feature slices legitimately extend the schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13 ownership, provider credentials, bookmark color, services, category hierarchy, external identity, and `20260718130000_mail_client_multi_account`). P-1 now means "no _unreviewed ad-hoc_ incremental models", not "the schema never grows"; the same note is updated in the `prisma/schema.prisma` header comment.
+  **CURRENT — P-1 note revision (2026-07-18):** the Slice-0 decision P-1 ("full schema in one initial migration, no per-slice incremental models") applied to the original 13-entity baseline. Later feature slices legitimately extend the schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13 ownership, provider credentials, bookmark color, services, category hierarchy, external identity, and `20260718130000_mail_client_multi_account`). P-1 now means "no _unreviewed ad-hoc_ incremental models", not "the schema never grows"; the same note is updated in the `prisma/schema.prisma` header comment.
 
 **CURRENT — Q-14 mail cluster:**
 
@@ -233,19 +233,19 @@ flowchart LR
 
 ### 4.2 Current ownership boundary and Q-13 replacement
 
-| Label                            | Data family         | Ownership and persistence                                                                                                                                                                                                                                                          |
-| -------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT                          | Auth and workspace  | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace.                                                                                                                                             |
-| CURRENT                          | Bookmarks           | `Category.workspaceId` owns categories; `Bookmark` is a category child.                                                                                                                                                                                                            |
-| CURRENT                          | Messages            | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children.                                                                                                                                                                                               |
-| CURRENT                          | Mail (Q-14)         | `MailAccount.workspaceId` owns accounts; `MailFolder` and `MailItem` are composite-FK children carrying both direct `workspaceId` and parent-workspace shadows; `MailAttachment` is a `MailItem` child. The system WEBHOOK account is workspace-unique via a partial unique index. |
-| CURRENT                          | Logs                | `LogEntry.workspaceId` directly owns rows.                                                                                                                                                                                                                                         |
-| CURRENT                          | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                                                                |
-| CURRENT SOURCE / PENDING RUNTIME | Webhook tokens      | `WebhookToken.workspaceId` owns every token and `IdempotencyKey` is a token child. Null-channel tokens retain Q-9 workspace-wide behavior; non-null `channelId/channelWorkspaceId` creates a message-only capability for one channel.                                              |
+| Label                            | Data family         | Ownership and persistence                                                                                                                                                                                                                                                                                                |
+| -------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CURRENT                          | Auth and workspace  | `Operator`, `Session`, `Workspace`, `WorkspaceMember` persist in PostgreSQL. `Session.activeWorkspaceId` selects the active workspace.                                                                                                                                                                                   |
+| CURRENT                          | Bookmarks           | `Category.workspaceId` owns categories; `Bookmark` is a category child.                                                                                                                                                                                                                                                  |
+| CURRENT                          | Messages            | `MessageCategory.workspaceId` owns categories; `Channel` and `Message` are children.                                                                                                                                                                                                                                     |
+| CURRENT                          | Mail (Q-14)         | `MailAccount.workspaceId` owns accounts; `MailFolder` and `MailItem` are composite-FK children carrying both direct `workspaceId` and parent-workspace shadows; `MailAttachment` is a `MailItem` child. The system WEBHOOK account is workspace-unique via a partial unique index.                                       |
+| CURRENT                          | Logs                | `LogEntry.workspaceId` directly owns rows.                                                                                                                                                                                                                                                                               |
+| CURRENT                          | Alerts              | `AlertCategory.workspaceId` currently provides the only workspace path for `Alert`.                                                                                                                                                                                                                                      |
+| CURRENT SOURCE / PENDING RUNTIME | Webhook tokens      | `WebhookToken.workspaceId` owns every token and `IdempotencyKey` is a token child. Null-channel tokens retain Q-9 workspace-wide behavior; non-null `channelId/channelWorkspaceId` creates a message-only capability for one channel.                                                                                    |
 | CURRENT                          | Server Metrics      | `LocalServer.workspaceId` owns server identity; `LocalServerAddress`, `ServerAgentToken`, `ServerMetricSnapshot` are children. Provider reconciliation upserts LocalServer rows per `(workspaceId, providerCredentialId, providerRemoteId)` tuple. Agent-only servers carry `agentClaimedIpv4` without provider binding. |
-| CURRENT / GAP                    | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                                                                     |
-| TARGET (Q-13, R2.1e)             | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access.                                           |
-| TARGET (Q-13)                    | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets.                                                         |
+| CURRENT / GAP                    | Domains and Servers | Provider DTOs only. There are no local bindings, so every workspace sees the same provider-account and mutable mock inventory.                                                                                                                                                                                           |
+| TARGET (Q-13, R2.1e)             | Domains and Servers | `ProviderResourceBinding` exclusively assigns each real or mock resource to one workspace. Reads and operations start from `(workspaceId, localBindingId)`; a foreign/missing binding returns non-disclosing 404 before provider access.                                                                                 |
+| TARGET (Q-13)                    | Workspace lifecycle | Switching changes all content and operations. Workspace deletion removes idle local bindings and local content but never deletes upstream provider resources. Provider credentials remain deployment-level `.env` secrets.                                                                                               |
 
 ### 4.3 Verified ownership gaps
 
@@ -722,13 +722,13 @@ The VPS Metrics Agent system adds OS-level metrics collection to servers managed
 
 ### 7C.1 Enrollment and token lifecycle (`src/lib/services/serverMetrics.ts`)
 
-| Stage | Behavior |
-| --- | --- |
-| Token creation | `generateEnrollmentToken()` creates a pre-bound token for a specific `LocalServer`. SHA-256 hash stored, one-time raw secret returned. Pattern matches `src/lib/services/webhookTokens.ts`. |
-| Authentication | `authenticateAgentToken()` hashes the bearer secret and looks up the token. Invalid/expired/revoked → null. |
+| Stage                      | Behavior                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token creation             | `generateEnrollmentToken()` creates a pre-bound token for a specific `LocalServer`. SHA-256 hash stored, one-time raw secret returned. Pattern matches `src/lib/services/webhookTokens.ts`.                                                                                                                           |
+| Authentication             | `authenticateAgentToken()` hashes the bearer secret and looks up the token. Invalid/expired/revoked → null.                                                                                                                                                                                                           |
 | Enrollment (UNBOUND token) | `processMetricsIngestion()` discovers provider servers (45s `AbortSignal` deadline), matches reported IPv4 addresses against provider inventory, and atomically finalizes: creates/links `LocalServer`, writes address claims, transitions token to BOUND, upserts first snapshot — all in one Prisma `$transaction`. |
-| Ingestion (BOUND token) | Upserts `ServerMetricSnapshot` by `localServerId` (latest-only, single row). |
-| Revoke / Rotate | State transitions BOUND→REVOKED; rotate creates a new UNBOUND token and revokes the old one. |
+| Ingestion (BOUND token)    | Upserts `ServerMetricSnapshot` by `localServerId` (latest-only, single row).                                                                                                                                                                                                                                          |
+| Revoke / Rotate            | State transitions BOUND→REVOKED; rotate creates a new UNBOUND token and revokes the old one.                                                                                                                                                                                                                          |
 
 Enrollment candidate selection is IPv4-only in v1. Zero matches → `SERVER_NOT_FOUND`. Multiple matches → `SERVER_MATCH_AMBIGUOUS`. Provider outage → `PROVIDER_INVENTORY_UNAVAILABLE` (503). All failures before atomic commit produce zero database writes.
 
@@ -767,6 +767,92 @@ Credential and workspace deletion now use ordered transactions to respect LocalS
 ### 7C.6 IP validation (`src/lib/validation/server-metrics.ts`)
 
 Uses `ipaddr.js` (not regex) for IP parsing and classification. Exported `parseAndClassifyAddress()` returns family, scope, and `matchKey` (non-null only for global IPv4 — enrollment-eligible). Payload validation via Zod enforces strict invariants: `schemaVersion === 1`, max 16 unique IPs, `0 ≤ cpuUsagePercent ≤ 100`, `availableBytes ≤ totalBytes`, non-negative load/uptime, UTC `capturedAt` within 5 minutes of server time.
+
+## 7D. Mail labels and filtering — CURRENT (Q-15, Phases 2–5)
+
+### 7D.1 Persistence and workspace trust boundary
+
+Labels are local Inspoter data. They never mutate Gmail labels, IMAP keywords,
+or any remote mailbox state. `MailLabel` belongs directly to one workspace;
+`MailFilterRule` belongs to one workspace and references exactly one account and
+one target label in that workspace. `MailItemLabel` persists the many-to-many
+message assignment instead of deriving it at list time or storing label ids in
+JSON. This preserves manual assignments and historical rule results, supports
+indexed label filtering, and keeps pagination deterministic after a rule is
+edited, disabled, or deleted.
+
+Every relation that crosses these models uses compound workspace-safe foreign
+keys. `MailItemLabel` carries direct `workspaceId` plus message/label workspace
+shadows; database checks require all three workspace values to agree. Foreign
+label, rule, account, and message ids resolve through active-workspace queries
+and return the existing non-disclosing 404 response without writes. List DTOs
+contain bounded `{ id, name, color }` label metadata only; message bodies and
+attachment bytes remain excluded.
+
+Owners may create, rename, recolor, reorder, and delete label definitions and
+may create or mutate filter rules. Owners and members may assign/remove existing
+labels on messages and filter Mail by label. Limits are 100 labels per workspace
+and 100 active rules per account; count-and-write operations execute under the
+scoped transactional lock so concurrent requests cannot exceed either limit.
+
+### 7D.2 Canonical matching and eligible messages
+
+One pure TypeScript matcher serves webhook ingestion, IMAP import, and historical
+application. Matching applies Unicode NFKC, surrounding-whitespace trim, and
+locale-stable lowercase conversion. Sender uses exact comparison; subject uses
+substring comparison; populated predicates combine with AND; at least one
+predicate is required. PostgreSQL `ILIKE` is not a matcher substitute because
+database and JavaScript collation behavior can diverge.
+
+Rules target one account, one label, and incoming/imported messages whose folder
+has `specialUse = INBOX`. Archive, Junk/Spam, Trash, Drafts, and Sent are
+ineligible. Moving an existing message into INBOX does not trigger evaluation.
+SMTP Sent-copy persistence stays outside this boundary.
+
+### 7D.3 Shared persistence seam and advisory-lock protocol
+
+Webhook creation and IMAP import call one shared message-persistence seam. Each
+eligible persistence transaction and every mutation of a rule for the account
+acquires the same PostgreSQL transaction-scoped advisory lock derived from the
+account id. No remote IMAP I/O occurs while this lock is held.
+
+After acquiring the lock, the transaction loads active rules in `(position, id)`
+order, persists the message and attachment metadata, evaluates the snapshot, and
+inserts assignments with conflict-safe writes against unique
+`(mailItemId, labelId)`. Message state and all assignments commit atomically.
+Webhook events emit only after commit. A mutation committed before the post-lock
+snapshot affects the message; one committed after it does not.
+
+### 7D.4 Historical-run and scheduler ownership
+
+Phase 5 uses durable `MailFilterRun` rows with immutable rule/account/label and
+criteria snapshots, inclusive cutoff and exclusive cursor tuples, processed and
+matched counts, lease/attempt state, and one pending/running run per rule. Work
+uses ascending `(createdAt, id)` keyset batches of at most 200 rows and commits
+assignments, counts, and cursor atomically. `processed` counts eligible rows
+inspected; `matched` counts predicate matches even when assignment already
+exists. Five-minute leases may be renewed or taken over after expiry; three
+consecutive worker failures produce `FAILED`; manual retry preserves committed
+snapshot/progress and resets consecutive attempts.
+
+`src/lib/services/mail-scheduler.ts` owns this bounded work alongside account
+sync. One tick owns at most three runs, renews retained claim leases, and
+processes one 200-row batch per run. Nonterminal claims remain in process for
+the next tick; completed, failed, or lease-lost claims are removed. IMAP work
+and run work share the existing reentrancy guard.
+`src/instrumentation.ts` keeps its existing Mail scheduler registration; the
+feature adds neither a third scheduler nor another interval. With
+`MAIL_LABELS_ENABLED=false`, claims stay dark. Expired durable leases recover on
+a later tick after restart. Live-message evaluation remains the only path for
+messages created after the captured cutoff.
+
+### 7D.5 UIDVALIDITY limitation
+
+A UIDVALIDITY change currently deletes and recreates folder messages. Automatic
+labels reapply when eligible INBOX messages are re-imported. Manual assignments
+may be lost because the recreated row has a new local identity. Nullable or
+non-unique `Message-ID` values must not be used to guess correspondence; this
+remains an explicit limitation until a reliable reconciliation identity exists.
 
 ## 8. Request sequences
 
@@ -860,6 +946,8 @@ src/
     ├── services/...                                     [CURRENT]
     ├── services/{mail-accounts,mail-sync,mail-scheduler,
     │   mail-actions,mail-attachments}.ts                [CURRENT Q-14 mail client]
+    ├── services/{mail-labels,mail-filter-rules,
+    │   mail-filter-runs}.ts                             [CURRENT Q-15 Phases 2–5]
     ├── validation/mail.ts                               [CURRENT Q-14 mail client]
     ├── mail/{types,imap-smtp,mock,index}.ts             [CURRENT Q-14 mail driver boundary]
     ├── webhooks/{pipeline,dispatch,idempotency,
@@ -902,42 +990,45 @@ src/
 | ADR-024 | CURRENT (Q-14)                   | Mail uses a driver boundary (`src/lib/mail/`, MOCK/REAL like providers) with locally persisted mail state and a lease-locked pull-sync engine on a second in-process scheduler. Actions are server-first (driver, then database; 502 on driver failure). Attachments store lazily-fetched bytea in PostgreSQL. Accepted trade-offs are recorded in §7A.7. |
 | ADR-025 | CURRENT SOURCE / PENDING RUNTIME | Preserve legacy null-channel webhook tokens and their `/api/webhooks/[type]` contract; create all channel webhooks as one-channel message capabilities using token-in-URL delivery. All workspace members may manage them. The channel pipeline uses transactional idempotency; reverse-proxy full-path redaction is mandatory.                           |
 | ADR-026 | CURRENT                          | Workspace backup is an owner-only, passphrase-sealed single-file export/import (§7B): AES-256-GCM + scrypt + gzip container, decrypted secrets inside the sealed archive re-encrypted with the local key at import, full id regeneration in one interactive transaction, global collision skips, memory-bound v1 with streaming NDJSON as future work.    |
+| ADR-027 | CURRENT (Q-15 Phases 2–5)        | Persist workspace-local Mail label assignments; evaluate webhook, IMAP, and historical candidates through one TypeScript matcher; serialize account rule mutations and eligible persistence with one transaction advisory lock; reuse the existing Mail scheduler for durable backfill. Provider label synchronization is excluded (§7D).                 |
 
 ## 11. Decision and requirement traceability
 
 ### 11.1 Accepted Q decisions
 
-| Decision | Label                          | Architectural consequence                                                                                                                                                |
-| -------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Q-1      | TARGET (Phase 4)               | Visible UI is Russian-only under the PRD allowlist; current mixed copy remains a UI gap.                                                                                 |
-| Q-2      | CURRENT                        | Light theme is primary; dark theme and a switcher are deferred.                                                                                                          |
-| Q-3      | TARGET (Phase 4)               | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions.                                                          |
-| Q-4      | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only.                                                        |
-| Q-5      | SUPERSEDED by Q-14             | Historical read-only constraint. Q-14 (2026-07-18) delivered the full multi-account mail client (§7A) as CURRENT.                                                        |
-| Q-14     | CURRENT                        | Multi-account IMAP/SMTP mail client: mail model cluster (§4.1), driver boundary, sync engine, second scheduler, `/api/mail/**` surface, and mail security posture (§7A). |
-| Q-6      | CURRENT                        | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned.                                                                       |
-| Q-7      | GAP / TARGET (Phase 2.5)       | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded.                                                       |
-| Q-8      | CURRENT                        | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive.                                                                            |
-| Q-9      | PARTIALLY SUPERSEDED           | Legacy null-channel tokens remain workspace-wide; every new channel webhook is a workspace-owned, message-only capability bound to one channel.                          |
-| Q-10     | CURRENT                        | No automatic retention. Growth risk R-5 remains accepted.                                                                                                                |
-| Q-11     | TARGET (Phase 3)               | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials.                                                                     |
-| Q-12     | TARGET (Phase 4.4)             | Add an optional idempotent `db:seed:demo`, separate from production bootstrap.                                                                                           |
+| Decision | Label                          | Architectural consequence                                                                                                                                                   |
+| -------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q-1      | TARGET (Phase 4)               | Visible UI is Russian-only under the PRD allowlist; current mixed copy remains a UI gap.                                                                                    |
+| Q-2      | CURRENT                        | Light theme is primary; dark theme and a switcher are deferred.                                                                                                             |
+| Q-3      | TARGET (Phase 4)               | `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` govern design subject to explicit PRD exceptions.                                                             |
+| Q-4      | GAP / TARGET (Phases 2.7, 4.3) | FR-MSG-003 requires persisted operator posting and visible operator/webhook origin; current compose is demo-only.                                                           |
+| Q-5      | SUPERSEDED by Q-14             | Historical read-only constraint. Q-14 (2026-07-18) delivered the full multi-account mail client (§7A) as CURRENT.                                                           |
+| Q-14     | CURRENT                        | Multi-account IMAP/SMTP mail client: mail model cluster (§4.1), driver boundary, sync engine, second scheduler, `/api/mail/**` surface, and mail security posture (§7A).    |
+| Q-15     | CURRENT (Phases 2–5)           | Workspace-local labels, member assignments/filtering, owner-managed account rules, canonical incoming matching, persisted assignments, and optional durable backfill (§7D). |
+| Q-6      | CURRENT                        | Servers exposes inventory/status and start, stop, restart only. No lifecycle expansion is planned.                                                                          |
+| Q-7      | GAP / TARGET (Phase 2.5)       | Alerts keeps view, organization, and confirmed deletion; deletion is missing, acknowledge/resolve remain excluded.                                                          |
+| Q-8      | CURRENT                        | Webhook to a missing channel returns 4xx; auto-create stays disabled and AC-MSG-008 inactive.                                                                               |
+| Q-9      | PARTIALLY SUPERSEDED           | Legacy null-channel tokens remain workspace-wide; every new channel webhook is a workspace-owned, message-only capability bound to one channel.                             |
+| Q-10     | CURRENT                        | No automatic retention. Growth risk R-5 remains accepted.                                                                                                                   |
+| Q-11     | TARGET (Phase 3)               | Roll out Cloudflare DNS → Hetzner Cloud → Hetzner DNS → GoDaddy through incremental env credentials.                                                                        |
+| Q-12     | TARGET (Phase 4.4)             | Add an optional idempotent `db:seed:demo`, separate from production bootstrap.                                                                                              |
 
 ### 11.2 Key normative traces
 
-| Requirement                              | CURRENT / GAP                                                                                                                                                                                           | TARGET and verification owner                                                                                                                        |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D-20                                     | **SUPERSEDED by Q-13/D-21.** The former Domains/Servers exception is historical and non-normative.                                                                                                      | Preserve as history only.                                                                                                                            |
-| Q-13 / D-21                              | Every section, provider binding, mock, cache, cursor, read, and mutation follows the active workspace.                                                                                                  | R2.1a–e establishes the foundation; R2.2–R2.7 close facets; R2.8 proves the two-workspace/two-member all-section contract.                           |
-| FR-WS-001..003; AC-WS-003..007           | Workspace administration authenticates the caller but does not authorize the target workspace or owner role.                                                                                            | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests.                           |
-| AC-AUTH-001..003                         | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values.                                                                                       | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths.                                          |
-| Q-13                                     | TARGET (R2.1a–e, R2.2–R2.8)                                                                                                                                                                             | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11. |
-| FR-MSG-003; AC-MSG-009…014               | Operator POST, `MessageOrigin`, origin labels, refetch-after-send, draft retention, and paginated scroll-back are present in source; runtime revalidation is pending.                                   | Run targeted unit + real-DB desktop/mobile/Axe journeys before recording PASS.                                                                       |
-| FR-WH-001..002; AC-WH-001..011           | Legacy tokens remain null-channel; channel management and tokenized public delivery are present in source. Private/no-store management headers are source-present; proxy redaction is deployment-owned. | Run migration/service/route/concurrency/E2E tests and retain redacted proxy-log evidence.                                                            |
-| AC-ALR-008                               | No alert delete route or UI action.                                                                                                                                                                     | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent.                                                                            |
-| FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported.                                                                                                                                        | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection.                                             |
-| NFR-SEC-002                              | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete.                                             | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures.                                                    |
-| PRD v3 / Design v2                       | Approved normative inputs; implementation still has known UI and behavior deltas.                                                                                                                       | Phases 2–4; do not mark product complete before Phase 5 acceptance.                                                                                  |
+| Requirement                              | CURRENT / GAP                                                                                                                                                                                           | TARGET and verification owner                                                                                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-20                                     | **SUPERSEDED by Q-13/D-21.** The former Domains/Servers exception is historical and non-normative.                                                                                                      | Preserve as history only.                                                                                                                                             |
+| Q-13 / D-21                              | Every section, provider binding, mock, cache, cursor, read, and mutation follows the active workspace.                                                                                                  | R2.1a–e establishes the foundation; R2.2–R2.7 close facets; R2.8 proves the two-workspace/two-member all-section contract.                                            |
+| FR-WS-001..003; AC-WS-003..007           | Workspace administration authenticates the caller but does not authorize the target workspace or owner role.                                                                                            | Phase 2.1: membership-gated reads, owner-only mutations, non-disclosing foreign-id responses, and API/e2e isolation tests.                                            |
+| AC-AUTH-001..003                         | Proxy and DAL responsibilities are separated, but the login `next` prefix check accepts protocol-relative values.                                                                                       | Phase 2.1: malicious-target rejection and valid deep-link tests against normalized same-origin local paths.                                                           |
+| Q-13                                     | TARGET (R2.1a–e, R2.2–R2.8)                                                                                                                                                                             | Every visible/operable area follows the active workspace; credentials alone remain deployment-scoped. R2.8 alone closes AC-WS-008/010/011 and 11/11.                  |
+| FR-MSG-003; AC-MSG-009…014               | Operator POST, `MessageOrigin`, origin labels, refetch-after-send, draft retention, and paginated scroll-back are present in source; runtime revalidation is pending.                                   | Run targeted unit + real-DB desktop/mobile/Axe journeys before recording PASS.                                                                                        |
+| FR-WH-001..002; AC-WH-001..011           | Legacy tokens remain null-channel; channel management and tokenized public delivery are present in source. Private/no-store management headers are source-present; proxy redaction is deployment-owned. | Run migration/service/route/concurrency/E2E tests and retain redacted proxy-log evidence.                                                                             |
+| FR-MAIL-008..009; AC-MAIL-031..045       | Schema, label/rule/run services and routes, shared webhook/IMAP/backfill matcher, UI, bounded polling, and scheduler integration are implemented and verified.                                          | Guarded fresh/populated replay, performance, encrypted restore, prior-binary rollback, restart recovery, full regression, and review pass; user verification remains. |
+| AC-ALR-008                               | No alert delete route or UI action.                                                                                                                                                                     | Phase 2.5: confirmed workspace-scoped delete; acknowledge/resolve absent.                                                                                             |
+| FR-REAL-001; AC-REAL-CF/HC/HD/GD-001…004 | Real-mode classes exist but every operation returns unsupported.                                                                                                                                        | Phase 3 in Q-11 order: fixture contracts, optional real smoke, reread/reconciliation, secret inspection.                                                              |
+| NFR-SEC-002                              | Webhook tokens are hashed and raw token is revealed only at creation; provider secrets are read from env names but provider config/redaction is incomplete.                                             | Phases 2.2 and 3: response/log inspection, server-only guards, typed sanitized provider failures.                                                                     |
+| PRD v3 / Design v2                       | Approved normative inputs; implementation still has known UI and behavior deltas.                                                                                                                       | Phases 2–4; do not mark product complete before Phase 5 acceptance.                                                                                                   |
 
 ## 12. Residual risks and dependencies
 
@@ -973,7 +1064,7 @@ src/
 | GAP     | Webhook atomicity, Bookmark ownership, workspace-administration authorization, login target validation, Alert ownership, human message POST, alert deletion, provider stubs, and deployment mismatch must remain visible until code and tests close them. |
 | TARGET  | Phase 2.1 must prove membership-gated workspace reads, owner-only workspace mutations, non-disclosing foreign-id responses, and malicious/valid login-target handling.                                                                                    |
 | TARGET  | Phase 3 retry, redaction, error mapping, readback/reconciliation, and Q-11 order must trace to FR-REAL/AC-REAL and NFR-SEC-002.                                                                                                                           |
-| CURRENT | Phase 1 remains in progress until ordinary doc review passes; Phases 2–5 remain pending.                                                                                                                                                                  |
+| CURRENT | Q-15 Phases 1–5 and their implementation/evidence gates pass; user verification remains before the initiative is declared complete.                                                                                                                       |
 | TARGET  | Q-13 implementation must remove every superseded single-column child FK and prove the compound FK/CHECK/cascade/`SET NULL`/`RESTRICT` contract on PostgreSQL 16.                                                                                          |
 | TARGET  | Existing-database repair must prove complete manifest coverage and reserved sentinel id plus `(workspaceId, reservedName)` collision checks; fresh and repaired histories must replay without editing old migrations.                                     |
 | TARGET  | `prisma validate`, migration checksums, and canonical JSON→SQL version/SHA/byte parity must pass; repair/migration must make zero provider/network calls.                                                                                                 |

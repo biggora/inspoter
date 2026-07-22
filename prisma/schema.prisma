@@ -87,6 +87,10 @@ model Workspace {
   mailAccounts      MailAccount[]
   mailFolders       MailFolder[]
   mailItems         MailItem[]
+  mailLabels        MailLabel[]
+  mailItemLabels    MailItemLabel[]
+  mailFilterRules   MailFilterRule[]
+  mailFilterRuns    MailFilterRun[]
   logEntries        LogEntry[]
   alertCategories   AlertCategory[]
   alerts            Alert[]
@@ -234,10 +238,17 @@ enum MailSpecialUse {
   OTHER
 }
 
+enum MailFilterRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 model MailAccount {
-  id                  String          @id @default(cuid())
+  id                  String           @id @default(cuid())
   workspaceId         String
-  workspace           Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace           Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   kind                MailAccountKind
   mode                ProviderMode
   name                String
@@ -255,17 +266,18 @@ model MailAccount {
   maskedHint          String?
   isValid             Boolean?
   lastCheckedAt       DateTime?
-  isActive            Boolean         @default(true)
-  syncStatus          MailSyncStatus  @default(IDLE)
+  isActive            Boolean          @default(true)
+  syncStatus          MailSyncStatus   @default(IDLE)
   syncError           String?
   lastSyncAt          DateTime?
   nextSyncAt          DateTime?
   syncLeaseExpiresAt  DateTime?
-  syncIntervalSeconds Int             @default(300)
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  syncIntervalSeconds Int              @default(300)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   folders             MailFolder[]
   mailItems           MailItem[]
+  filterRules         MailFilterRule[]
 
   // At most one WEBHOOK account per workspace: raw partial unique index in the
   // migration SQL (WHERE "kind" = 'WEBHOOK') — not expressible in Prisma DSL.
@@ -327,13 +339,16 @@ model MailItem {
   receivedAt         DateTime         @default(now())
   createdAt          DateTime         @default(now())
   attachments        MailAttachment[]
+  labels             MailItemLabel[]
 
+  @@unique([id, workspaceId])
   @@unique([folderId, uid]) // idempotent sync upsert; NULL uid (webhook items) never conflicts
   @@index([workspaceId])
   @@index([workspaceId, receivedAt, id]) // sort + keyset pagination (AC-MAIL-004/005)
   @@index([workspaceId, fromAddress]) // equality filter (AC-MAIL-003, NFR-PERF-002)
   @@index([workspaceId, accountId, folderId, receivedAt, id]) // per-folder list + keyset pagination
   @@index([workspaceId, accountId, folderId, isRead]) // unread filter + folder badge counts
+  @@index([workspaceId, accountId, createdAt, id]) // historical filter-run keyset traversal
 }
 
 model MailAttachment {
@@ -351,6 +366,95 @@ model MailAttachment {
   createdAt   DateTime  @default(now())
 
   @@index([mailItemId])
+}
+
+model MailLabel {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String
+  position       Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  mailItems      MailItemLabel[]
+  filterRules    MailFilterRule[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, position, id])
+}
+
+model MailItemLabel {
+  workspaceId         String
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mailItemId          String
+  mailItemWorkspaceId String
+  mailItem            MailItem  @relation(fields: [mailItemId, mailItemWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId             String
+  labelWorkspaceId    String
+  label               MailLabel @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt           DateTime  @default(now())
+
+  @@unique([mailItemId, labelId])
+  @@index([workspaceId, labelId, mailItemId])
+}
+
+model MailFilterRule {
+  id                 String          @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId          String
+  accountWorkspaceId String
+  account            MailAccount     @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId            String
+  labelWorkspaceId   String
+  label              MailLabel       @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
+  name               String
+  fromAddress        String?
+  subjectContains    String?
+  isActive           Boolean         @default(true)
+  position           Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  filterRuns         MailFilterRun[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, accountId, isActive, position, id])
+}
+
+model MailFilterRun {
+  id                      String              @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ruleId                  String?
+  ruleWorkspaceId         String?
+  rule                    MailFilterRule?     @relation(fields: [ruleId, ruleWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceRuleId            String
+  snapshotAccountId       String
+  snapshotLabelId         String
+  snapshotFromAddress     String?
+  snapshotSubjectContains String?
+  status                  MailFilterRunStatus @default(PENDING)
+  cutoffCreatedAt         DateTime?
+  cutoffId                String?
+  cursorCreatedAt         DateTime?
+  cursorId                String?
+  processedCount          Int                 @default(0)
+  matchedCount            Int                 @default(0)
+  attempts                Int                 @default(0)
+  lastError               String?
+  leaseToken              String?
+  leaseExpiresAt          DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, sourceRuleId, createdAt, id])
+  @@index([status, leaseExpiresAt, id])
 }
 
 // --- Logs (FR-LOG-001..002) ---

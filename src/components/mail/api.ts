@@ -13,9 +13,10 @@ import {
   type MailAccountDto,
 } from "@/components/settings/mail-accounts-api";
 import type { MailSpecialUse } from "@/generated/prisma/client";
+import type { MailLabelColor } from "@/lib/mail-label-color";
 
 export { ApiError };
-export type { MailAccountDto, MailSpecialUse };
+export type { MailAccountDto, MailLabelColor, MailSpecialUse };
 
 export interface MailFolderDto {
   id: string;
@@ -39,6 +40,15 @@ export interface MailListItemDto {
   receivedAt: string;
   accountId: string;
   folderId: string;
+  labels: MailLabelDto[];
+}
+
+export interface MailLabelDto {
+  id: string;
+  name: string;
+  color: MailLabelColor;
+  position?: number;
+  messageCount?: number;
 }
 
 export interface MailAddressDto {
@@ -73,11 +83,44 @@ export interface MailDetailDto {
   hasAttachments: boolean;
   receivedAt: string;
   attachments: MailAttachmentDto[];
+  labels: MailLabelDto[];
+}
+
+export interface MailFilterRuleDto {
+  id: string;
+  accountId: string;
+  labelId: string;
+  name: string;
+  fromAddress: string | null;
+  subjectContains: string | null;
+  isActive: boolean;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+  label: Pick<MailLabelDto, "name" | "color">;
+  latestRun: MailFilterRunDto | null;
+}
+
+export type MailFilterRunStatus =
+  "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+
+export interface MailFilterRunDto {
+  id: string;
+  ruleId: string | null;
+  status: MailFilterRunStatus;
+  processedCount: number;
+  matchedCount: number;
+  attempts: number;
+  errorCode: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
 }
 
 export interface FetchMailParams {
   accountId: string;
   folderId: string;
+  labelId?: string;
   unread?: boolean;
   query?: string;
   sort?: "asc" | "desc";
@@ -138,6 +181,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(message, fieldErrors);
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -162,6 +206,7 @@ export function fetchMail(params: FetchMailParams): Promise<FetchMailResult> {
   const searchParams = new URLSearchParams();
   searchParams.set("accountId", params.accountId);
   searchParams.set("folderId", params.folderId);
+  if (params.labelId) searchParams.set("labelId", params.labelId);
   if (params.unread) searchParams.set("unread", "1");
   if (params.query) searchParams.set("query", params.query);
   if (params.sort) searchParams.set("sort", params.sort);
@@ -172,6 +217,141 @@ export function fetchMail(params: FetchMailParams): Promise<FetchMailResult> {
 
 export function fetchMailById(id: string): Promise<MailDetailDto> {
   return request<MailDetailDto>(`/api/mail/${encodeURIComponent(id)}`);
+}
+
+export function fetchMailLabels(scope?: {
+  accountId: string;
+  folderId: string;
+}): Promise<MailLabelDto[]> {
+  const params = new URLSearchParams();
+  if (scope) {
+    params.set("accountId", scope.accountId);
+    params.set("folderId", scope.folderId);
+  }
+  const query = params.size > 0 ? `?${params}` : "";
+  return request<MailLabelDto[]>(`/api/mail/labels${query}`);
+}
+
+export function createMailLabel(input: {
+  name: string;
+  color: MailLabelColor;
+}): Promise<MailLabelDto> {
+  return request<MailLabelDto>("/api/mail/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function patchMailLabel(
+  id: string,
+  input: {
+    name?: string;
+    color?: MailLabelColor;
+    position?: number;
+  },
+): Promise<MailLabelDto> {
+  return request<MailLabelDto>(`/api/mail/labels/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteMailLabel(id: string): Promise<void> {
+  return request<void>(`/api/mail/labels/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function assignMailLabel(
+  mailId: string,
+  labelId: string,
+): Promise<MailLabelDto> {
+  return request<MailLabelDto>(
+    `/api/mail/${encodeURIComponent(mailId)}/labels/${encodeURIComponent(labelId)}`,
+    { method: "PUT" },
+  );
+}
+
+export function removeMailLabel(
+  mailId: string,
+  labelId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/mail/${encodeURIComponent(mailId)}/labels/${encodeURIComponent(labelId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function fetchMailFilterRules(
+  accountId: string,
+): Promise<MailFilterRuleDto[]> {
+  const params = new URLSearchParams({ accountId });
+  return request<MailFilterRuleDto[]>(`/api/mail/filter-rules?${params}`);
+}
+
+export interface CreateMailFilterRuleInput {
+  accountId: string;
+  labelId: string;
+  name: string;
+  fromAddress: string | null;
+  subjectContains: string | null;
+  applyToExistingMail?: boolean;
+}
+
+export interface UpdateMailFilterRuleInput {
+  labelId?: string;
+  name?: string;
+  fromAddress?: string | null;
+  subjectContains?: string | null;
+  isActive?: boolean;
+  position?: number;
+}
+
+export function createMailFilterRule(
+  input: CreateMailFilterRuleInput,
+): Promise<MailFilterRuleDto> {
+  return request<MailFilterRuleDto>("/api/mail/filter-rules", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export const createExactSenderRule = createMailFilterRule;
+
+export function patchMailFilterRule(
+  id: string,
+  input: UpdateMailFilterRuleInput,
+): Promise<MailFilterRuleDto> {
+  return request<MailFilterRuleDto>(
+    `/api/mail/filter-rules/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function deleteMailFilterRule(id: string): Promise<void> {
+  return request<void>(`/api/mail/filter-rules/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchMailFilterRun(id: string): Promise<MailFilterRunDto> {
+  return request<MailFilterRunDto>(
+    `/api/mail/filter-runs/${encodeURIComponent(id)}`,
+  );
+}
+
+export function retryMailFilterRun(id: string): Promise<MailFilterRunDto> {
+  return request<MailFilterRunDto>(
+    `/api/mail/filter-runs/${encodeURIComponent(id)}/retry`,
+    { method: "POST" },
+  );
 }
 
 export function patchMailItem(

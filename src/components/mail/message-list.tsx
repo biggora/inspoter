@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import type { Ref } from "react";
 
 import { Pagination } from "@/components/shell/pagination";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { MailListItemDto } from "./api";
+import { LabelChip } from "./label-chip";
 
 const SORT_LABEL_KEYS: Record<"desc" | "asc", string> = {
   desc: "sortDesc",
@@ -94,6 +96,7 @@ export interface MessageListProps {
   hasActiveFilters: boolean;
   isWebhookAccount: boolean;
   onOpenSidebar: () => void;
+  sidebarTriggerRef?: Ref<HTMLButtonElement>;
 }
 
 // Middle column of the mail client: search/filter header, message rows in the
@@ -120,6 +123,7 @@ export function MessageList({
   hasActiveFilters,
   isWebhookAccount,
   onOpenSidebar,
+  sidebarTriggerRef,
 }: MessageListProps) {
   const t = useTranslations("mail");
   const format = useFormatter();
@@ -131,6 +135,7 @@ export function MessageList({
       <div className="shrink-0 space-y-2 border-b border-background-100 p-3">
         <div className="flex items-center gap-2">
           <Button
+            ref={sidebarTriggerRef}
             type="button"
             variant="outline"
             size="icon"
@@ -169,7 +174,12 @@ export function MessageList({
             onValueChange={(value) => onSortChange(value as "asc" | "desc")}
             items={sortItems}
           >
-            <SelectTrigger size="sm" aria-label={t("sortOrderAriaLabel")}>
+            <SelectTrigger
+              size="sm"
+              showChevron={false}
+              aria-label={t("sortOrderAriaLabel")}
+              className="pr-2.5"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -306,15 +316,53 @@ export function MessageList({
                           </span>
                         </span>
                       </span>
-                      <span
-                        className={cn(
-                          "truncate text-sm",
-                          item.isRead
-                            ? "text-foreground-500"
-                            : "font-medium text-foreground-800",
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span
+                          className={cn(
+                            "min-w-0 truncate text-sm",
+                            item.isRead
+                              ? "text-foreground-500"
+                              : "font-medium text-foreground-800",
+                          )}
+                        >
+                          {item.subject}
+                        </span>
+                        {item.labels.length > 0 && (
+                          <span className="sr-only">
+                            {t("messageLabelsAriaLabel", {
+                              labels: item.labels
+                                .map((label) => label.name)
+                                .join(", "),
+                            })}
+                          </span>
                         )}
-                      >
-                        {item.subject}
+                        {item.labels[0] && <LabelChip label={item.labels[0]} />}
+                        {item.labels[1] && (
+                          <LabelChip
+                            label={item.labels[1]}
+                            className="hidden lg:inline-flex"
+                          />
+                        )}
+                        {item.labels.length > 1 && (
+                          <span
+                            className="shrink-0 text-xs text-muted-foreground lg:hidden"
+                            aria-label={t("moreLabelsAriaLabel", {
+                              count: item.labels.length - 1,
+                            })}
+                          >
+                            +{item.labels.length - 1}
+                          </span>
+                        )}
+                        {item.labels.length > 2 && (
+                          <span
+                            className="hidden shrink-0 text-xs text-muted-foreground lg:inline"
+                            aria-label={t("moreLabelsAriaLabel", {
+                              count: item.labels.length - 2,
+                            })}
+                          >
+                            +{item.labels.length - 2}
+                          </span>
+                        )}
                       </span>
                       {item.snippet && (
                         <span className="truncate text-xs text-foreground-400">

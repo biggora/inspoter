@@ -1,15 +1,30 @@
 # Execution Plan — inspoter (vertical slices)
 
-**Version:** 1.5
-**Status:** Revised to record the Q-14 Mail multi-account client slice (§5b, phases M1–M8, all done) on top of v1.4's Workspaces record
+**Version:** 1.7
+**Status:** Q-15 Phase 5 final verification passed; awaiting user verification
 **Owner:** Planner
-**Date:** 2026-07-18
-**Normative inputs:** `docs/prd.md` v2.1+ (requirements + AC-IDs, incl. §3.10 Workspaces / AC-WS-001..011), `docs/architecture.md` v1.1 (layers, schema §2.3, build order §7, ADRs §8), `docs/design.md` v1.1 (UI spec, Slice 1 dark-only), `docs/progress.md` (coordinator Decisions log)
+**Date:** 2026-07-21
+**Normative inputs:** `docs/prd.md` v3.11, `docs/architecture.md` v1.8, `docs/design.md` v2.12, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md` (coordinator Decisions log)
 **Consumed by:** coordinator (dispatch), tester (test-plan matrix), backend-dev, frontend-dev, implementor, code-reviewer
 
 **Scope of this document:** Slice 0 (scaffolding) and Slice 1 (tracer bullet) are specified at **executable, per-file** detail — work starts on them immediately. Slices 2–7 are specified at **structural** detail (goal, AC coverage, ordering, coarse subtasks, disjoint scope zones) per the current-launch boundary in `progress.md` line 3. No requirement is invented beyond PRD v2.1; no architecture decision is altered. Any document conflict is recorded in §9 Conflicts, not silently "fixed". **§5a (added v1.4) documents the Workspaces slice, which was implemented between Slice 1 and Slice 2 and was not part of the original v1.0–v1.3 slice sequence.**
 
 ## Changelog
+
+**v1.7 — 2026-07-21 (Q-15 implementation reconciliation).**
+
+- Records Phases 2–5 as implemented and the Phase 5 migration replay,
+  performance, backup/restore, prior-binary rollback, restart recovery,
+  regression, and review gates as passed. User verification remains.
+- Reuses the existing Mail scheduler: at most three claimed runs per tick and
+  one 200-row batch per run; no new interval exists.
+
+**v1.6 — 2026-07-20 (Q-15 Mail labels/filter-rules preparation).**
+
+- **Added §5c.** Freezes additive migration, deployment, feature-exposure,
+  backup, recovery, and rollback strategy before any label schema change.
+- Runtime implementation remains split into the five user-verified phases in
+  `specs/mail-label-filtering-plan.md`; this revision completes Phase 1 only.
 
 **v1.5 — 2026-07-18 (Q-14 Mail multi-account client slice).**
 
@@ -233,18 +248,113 @@ All Slice-1 acceptance tests green end-to-end in a real browser against a real P
 
 **Phases (linear 1→8; each phase verified before the next; per approved plan `mail-sorted-avalanche`):**
 
-| #  | Phase                                                                 | Key files                                                                                                                                        | Status / verification                                                                                              |
-| -- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| M1 | Schema + migration + webhook mailbox backfill                         | `prisma/schema.prisma` (MailAccount/MailFolder/MailAttachment, extended MailItem), `prisma/migrations/20260718130000_mail_client_multi_account/`, `src/lib/services/mail.ts`, `mail-accounts.ts` get-or-create | done — `pnpm test` green, legacy UI kept working on renamed columns                                                |
-| M2 | Transport layer (`src/lib/mail/`)                                     | `types.ts`, `imap-smtp.ts`, `mock.ts`, `index.ts`; crypto union `MAIL_PASSWORD`; `next.config.ts` `serverExternalPackages`; tsconfig ES2020        | done — `pnpm typecheck && pnpm build`, `mock-driver.test.ts`                                                       |
-| M3 | Accounts: service + API + settings UI                                 | `src/lib/services/mail-accounts.ts`, `src/lib/validation/mail.ts`, `src/app/api/mail/accounts/**`, `src/app/(dashboard)/settings/mail/`, `src/components/settings/mail-account*`                                 | done — `mail-accounts.test.ts`; MOCK account creates, «Проверить подключение» green                                |
-| M4 | Sync engine + scheduler #2                                            | `src/lib/services/mail-sync.ts`, `mail-scheduler.ts`, `src/instrumentation.ts`, sync/folders routes                                              | done — `mail-sync.test.ts` (lease, initial limit, incremental, UIDVALIDITY reset, flags, deletions, error path)    |
-| M5 | Mail API + three-pane reading UI                                      | `src/lib/services/mail.ts` (filters/snippet), `/api/mail*`, `src/components/mail/mail-client-view|mail-sidebar|message-list|message-pane|mail-body` | done — e2e list/detail/folders/badges + axe (`e2e/mail-client.spec.ts`)                                            |
-| M6 | Actions + send                                                        | PATCH/DELETE/move/send routes, send rate limiter, `compose-dialog.tsx`, action bar                                                               | done — `mail-actions.test.ts` + e2e read-toggle/archive/trash/compose/reply                                        |
-| M7 | Attachments                                                           | attachment route, `attachments in message-pane`, lazy bytea cache                                                                                | done — `mail-attachments.test.ts` (cache), e2e download                                                            |
-| M8 | Documentation + final polish                                          | prd/architecture/design/plan/test-plan/progress, `specs/ui.md`, schema header                                                                    | done — full `pnpm lint`/`typecheck`/`test`/e2e regression (results in `docs/progress.md`)                          |
+| #   | Phase                                         | Key files                                                                                                                                                                                                      | Status / verification                                                                                           |
+| --- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| M1  | Schema + migration + webhook mailbox backfill | `prisma/schema.prisma` (MailAccount/MailFolder/MailAttachment, extended MailItem), `prisma/migrations/20260718130000_mail_client_multi_account/`, `src/lib/services/mail.ts`, `mail-accounts.ts` get-or-create | done — `pnpm test` green, legacy UI kept working on renamed columns                                             |
+| M2  | Transport layer (`src/lib/mail/`)             | `types.ts`, `imap-smtp.ts`, `mock.ts`, `index.ts`; crypto union `MAIL_PASSWORD`; `next.config.ts` `serverExternalPackages`; tsconfig ES2020                                                                    | done — `pnpm typecheck && pnpm build`, `mock-driver.test.ts`                                                    |
+| M3  | Accounts: service + API + settings UI         | `src/lib/services/mail-accounts.ts`, `src/lib/validation/mail.ts`, `src/app/api/mail/accounts/**`, `src/app/(dashboard)/settings/mail/`, `src/components/settings/mail-account*`                               | done — `mail-accounts.test.ts`; MOCK account creates, «Проверить подключение» green                             |
+| M4  | Sync engine + scheduler #2                    | `src/lib/services/mail-sync.ts`, `mail-scheduler.ts`, `src/instrumentation.ts`, sync/folders routes                                                                                                            | done — `mail-sync.test.ts` (lease, initial limit, incremental, UIDVALIDITY reset, flags, deletions, error path) |
+| M5  | Mail API + three-pane reading UI              | `src/lib/services/mail.ts` (filters/snippet), `/api/mail*`, `src/components/mail/mail-client-view                                                                                                              | mail-sidebar                                                                                                    | message-list | message-pane | mail-body` | done — e2e list/detail/folders/badges + axe (`e2e/mail-client.spec.ts`) |
+| M6  | Actions + send                                | PATCH/DELETE/move/send routes, send rate limiter, `compose-dialog.tsx`, action bar                                                                                                                             | done — `mail-actions.test.ts` + e2e read-toggle/archive/trash/compose/reply                                     |
+| M7  | Attachments                                   | attachment route, `attachments in message-pane`, lazy bytea cache                                                                                                                                              | done — `mail-attachments.test.ts` (cache), e2e download                                                         |
+| M8  | Documentation + final polish                  | prd/architecture/design/plan/test-plan/progress, `specs/ui.md`, schema header                                                                                                                                  | done — full `pnpm lint`/`typecheck`/`test`/e2e regression (results in `docs/progress.md`)                       |
 
 **Deviation note:** like Slice WS, this slice was executed by feature subagents with tests written alongside implementation (not the §2 tester-Mode-A-first protocol); coverage is recorded in `docs/test-plan.md` §8.
+
+## 5c. Slice MAIL-LABELS — pre-schema release and rollback contract (Q-15)
+
+This contract is frozen before Phase 2 changes Prisma. Phase boundaries, task
+order, and user-verification gates remain authoritative in
+`specs/mail-label-filtering-plan.md` v0.3.
+
+### 5c.1 Additive migration strategy
+
+1. Phase 2 adds enums/tables, compound workspace-safe keys, checks, and indexes;
+   it does not rename/drop existing Mail columns or rewrite message data.
+   `MailItem` receives only additive compound uniqueness/index support.
+2. Migration SQL is checked in once and never edited after application. Raw
+   checks enforce workspace equality. Prisma validation, empty historical replay,
+   and upgrade from a populated current schema must all pass before exposure.
+3. Phase 5 adds `MailFilterRun` and its partial unique index in a second additive
+   migration. It does not alter or reinterpret committed assignments.
+4. Schema changes deploy before binaries that use them. Old binaries remain able
+   to run against the additive schema; no destructive down migration is part of
+   normal rollback.
+
+### 5c.2 Backup and recovery
+
+Before each production migration, enter maintenance mode and take a dated,
+encrypted PostgreSQL backup with restore instructions and retention/access owner
+recorded in the deployment evidence. Before Phase 2, backup schema plus
+`MailAccount`, `MailFolder`, `MailItem`, and `MailAttachment`. Before Phase 5,
+also backup `MailLabel`, `MailItemLabel`, `MailFilterRule`, and existing migration
+history. Capture row counts and migration checksums before/after. Validate restore
+into a disposable database; a backup file alone is not evidence.
+
+Recovery restores the whole consistent database snapshot by default. Table-level
+label recovery is permitted only into the same matching Mail/workspace snapshot
+and must restore parents before assignments/runs, then recheck all compound keys,
+workspace checks, unique pairs, and row counts. Never guess missing message ids.
+
+### 5c.3 Deployment and feature exposure
+
+`MAIL_LABELS_ENABLED` is a server-side deployment flag, default `false`. With the
+flag off, label/rule/run UI is absent, new feature routes return the existing
+non-disclosing 404 contract, incoming evaluation and backfill work are skipped,
+and Mail otherwise behaves as before. Persisted feature data is retained.
+
+Deployment order is fixed:
+
+1. maintenance on; backup and tested-restore evidence present;
+2. apply additive migration and inspect checks/indexes/checksums;
+3. deploy compatible binary with `MAIL_LABELS_ENABLED=false`;
+4. run existing Mail smoke plus health, list, detail, sync, and webhook checks;
+5. enable only in a controlled environment, run current phase gate, then expose
+   production after user verification;
+6. maintenance off and monitor error rate, lock wait, Mail ingest/sync latency,
+   assignment conflicts, and—when Phase 5 exists—run lease/failure counts.
+
+Each later phase remains dark until its own gate is green. **Apply to existing
+mail** stays absent until Phase 5 and unchecked by default thereafter. No second
+background scheduler or new timer is introduced.
+
+### 5c.4 Rollback and rehearsal
+
+First response is exposure rollback: set `MAIL_LABELS_ENABLED=false`, which stops
+new evaluation/backfill claims and removes new UI/API exposure without deleting
+assignments. Let in-flight transactions finish or roll back; do not terminate
+them between message and assignment commits.
+
+If application rollback is needed, deploy the last compatible binary against the
+unchanged additive schema. Do not drop label tables, constraints, or columns in
+an incident. If data corruption is proven, keep maintenance enabled and restore
+the verified database snapshot; preserve the failed database for diagnosis.
+
+Rollback rehearsal must prove accounts, folders, messages, attachments, flags,
+bodies, and existing Mail actions remain intact with the flag off and the prior
+binary. It records pre/post counts and sampled hashes, confirms no remote mailbox
+mutation, and confirms re-enabling the compatible build makes preserved label
+data visible again.
+
+### 5c.5 Phase 5 evidence harness
+
+Guarded local evidence uses only the dedicated PostgreSQL 16 test database on
+port 3833. `scripts/mail-label-populated-migration-replay.mjs` replays through
+Phase 4 from a disposable migration copy, seeds protected Mail/label data,
+applies the checked-in Phase 5 migration, compares counts/SHA-256 hashes, and
+functionally verifies the partial active-run index plus rejection of a half-null
+rule relation tuple. It never moves or edits a repository migration.
+
+`scripts/mail-label-phase5-performance.test.mjs`, through its isolated Vitest
+config, seeds 20,000 deterministic messages and measures the real 50-row list
+and 200-row run-service paths after five warmups over 30 samples. It records
+p50/p95 and `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`; no new latency threshold
+is introduced. `scripts/mail-label-backup-restore-rehearsal.mjs` encrypts a
+custom-format dump with AES-256-GCM, restores only to the explicitly named
+disposable restore database, verifies counts/hashes, and removes that database.
+The archived compatible Phase 4 runtime is
+`C:\tmp\inspoter-phase4-runtime-20260721`; it is rehearsal input, not committed
+source or release evidence by itself.
 
 ## 6. Slices 2–7 (structural — goal, AC coverage, ordering, coarse subtasks)
 
@@ -449,18 +559,18 @@ The MVP is DONE when Slices 0–7 are each DONE and:
 
 ## Appendix A — AC-ID → Slice coverage (all 91 IDs)
 
-| Slice | AC-IDs                                                 | Count        |
-| ----- | ------------------------------------------------------ | ------------ |
-| 1     | AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014    | 23           |
-| WS    | AC-WS-001..011                                         | 11           |
-| 2     | AC-PROV-001..003, AC-DOM-001..009                      | 12           |
-| 3     | AC-SRV-001..008                                        | 8            |
-| 4     | AC-WH-001..011, AC-LOG-001..005                        | 16           |
-| 5     | AC-ALR-001..007                                        | 7            |
-| 6     | AC-MAIL-001..006                                       | 6            |
-| 7     | AC-MSG-001..007                                        | 7            |
-| MAIL  | AC-MAIL-007..030 (Q-14 client, §5b)                    | 24           |
-| —     | **AC-MSG-008 — INACTIVE (gated on OQ-6), not planned** | 1 (inactive) |
+| Slice | AC-IDs                                                 | Count                                               |
+| ----- | ------------------------------------------------------ | --------------------------------------------------- |
+| 1     | AC-SHELL-001..004, AC-AUTH-001..005, AC-BM-001..014    | 23                                                  |
+| WS    | AC-WS-001..011                                         | 11                                                  |
+| 2     | AC-PROV-001..003, AC-DOM-001..009                      | 12                                                  |
+| 3     | AC-SRV-001..008                                        | 8                                                   |
+| 4     | AC-WH-001..011, AC-LOG-001..005                        | 16                                                  |
+| 5     | AC-ALR-001..007                                        | 7                                                   |
+| 6     | AC-MAIL-001..006                                       | 6                                                   |
+| 7     | AC-MSG-001..007                                        | 7                                                   |
+| MAIL  | AC-MAIL-007..030 (Q-14 client, §5b)                    | 24                                                  |
+| —     | **AC-MSG-008 — INACTIVE (gated on OQ-6), not planned** | 1 (inactive)                                        |
 |       | **Total active**                                       | **90 (+24 Q-14 = 114 of this appendix's baseline)** |
 
 **Baseline note (v1.5):** this appendix's 90-ID total is the historical PRD v2.x baseline; PRD v3.x amendments (Bookmarks AC-BM-015..034, Messages AC-MSG-009..014, Alerts AC-ALR-008, AC-REAL/AC-DEMO families, and the Q-14 Mail row above) are accounted authoritatively in PRD v3.7 Appendix B (144 unconditional active + 16 conditional + 1 inactive). Every one of the 90 active AC-IDs (PRD Appendix B, progress.md:11–13; §3.10 for AC-WS-001..011) maps to exactly one **primary** slice. **Distributed-verification footnote (CH-PLAN-003):** AC-PROV-001 and AC-PROV-003 are exercised across Slices 2 (Domains) and 3 (Servers); AC-WH-003 and AC-WH-007 are exercised across Slices 4/5/6/7 (one webhook `type` per slice). Their primary-slice assignment above is where the mechanism is first built; full `PASS` timing is in the §10.1 distributed-AC list. AC-MSG-008 is the sole inactive ID and is intentionally UNVERIFIED per D-10/OQ-6. **Slice WS's 11 AC-IDs are implemented but not yet tester-verified** (§5a) — `docs/test-plan.md` §3.2 tracks this as a residual gap, distinct from AC-MSG-008's intentional inactivity.

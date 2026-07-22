@@ -1,10 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { db } from "@/lib/db";
 import { MockMailDriver, resetMockMailStore } from "@/lib/mail/mock";
 import { WebhookAccountHasNoTransportError } from "@/lib/mail";
 import { syncAccount } from "@/lib/services/mail-sync";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import { moveItem } from "@/lib/services/mail-actions";
+import { runMailAccountTransaction } from "@/lib/services/mail-locks";
 
 // Sync engine tests (plan §3) against the deterministic MOCK driver: the
 // in-memory store is keyed by account id, so a second MockMailDriver
@@ -156,6 +166,193 @@ describe("syncAccount — incremental sync", () => {
     expect(await db.mailItem.count({ where: { folderId: inbox!.id } })).toBe(
       31,
     );
+  });
+});
+
+describe("syncAccount — shared Mail filter evaluator", () => {
+  async function createSubjectRule(accountId: string, subjectContains: string) {
+    const label = await db.mailLabel.create({
+      data: {
+        workspaceId,
+        name: `${NAME_PREFIX}-${randomUUID()}`,
+        normalizedName: `${NAME_PREFIX}-${randomUUID()}`,
+        color: "AMBER",
+      },
+    });
+    await db.mailFilterRule.create({
+      data: {
+        workspaceId,
+        accountId,
+        accountWorkspaceId: workspaceId,
+        labelId: label.id,
+        labelWorkspaceId: workspaceId,
+        name: "IMAP subject rule",
+        fromAddress: null,
+        subjectContains,
+      },
+    });
+    return label;
+  }
+
+  it("applies canonical subject matches on initial and UIDVALIDITY re-import", async () => {
+    const account = await createMockAccount("filter-inbox");
+    const label = await createSubjectRule(account.id, " ОТЧЁТ ");
+
+    await syncAccount(account.id, workspaceId);
+    const firstAssignments = await db.mailItemLabel.findMany({
+      where: { labelId: label.id },
+      include: { mailItem: { include: { attachments: true } } },
+    });
+    expect(firstAssignments).toHaveLength(3);
+    expect(
+      firstAssignments.every(
+        ({ mailItem }) =>
+          mailItem.subject === "Отчёт за неделю" &&
+          mailItem.attachments.length === 1,
+      ),
+    ).toBe(true);
+    const firstIds = firstAssignments.map(({ mailItemId }) => mailItemId);
+    const manuallyLabeled = firstAssignments[0].mailItem;
+    const manualLabel = await db.mailLabel.create({
+      data: {
+        workspaceId,
+        name: `${NAME_PREFIX}-manual-uidvalidity-${randomUUID()}`,
+        normalizedName: `${NAME_PREFIX}-manual-uidvalidity-${randomUUID()}`,
+        color: "BLUE",
+      },
+    });
+    await db.mailItemLabel.create({
+      data: {
+        workspaceId,
+        mailItemId: manuallyLabeled.id,
+        mailItemWorkspaceId: workspaceId,
+        labelId: manualLabel.id,
+        labelWorkspaceId: workspaceId,
+      },
+    });
+
+    const inbox = await db.mailFolder.findFirstOrThrow({
+      where: { accountId: account.id, specialUse: "INBOX" },
+    });
+    await db.mailFolder.update({
+      where: { id: inbox.id },
+      data: { uidValidity: 999n },
+    });
+    await syncAccount(account.id, workspaceId);
+
+    const reapplied = await db.mailItemLabel.findMany({
+      where: { labelId: label.id },
+      select: { mailItemId: true },
+    });
+    expect(reapplied).toHaveLength(3);
+    expect(
+      reapplied.some(({ mailItemId }) => firstIds.includes(mailItemId)),
+    ).toBe(false);
+    const recreatedSameMessageId = await db.mailItem.findFirstOrThrow({
+      where: {
+        accountId: account.id,
+        messageId: manuallyLabeled.messageId,
+      },
+      select: { id: true, messageId: true },
+    });
+    expect(recreatedSameMessageId.messageId).toBe(manuallyLabeled.messageId);
+    expect(recreatedSameMessageId.id).not.toBe(manuallyLabeled.id);
+    expect(
+      await db.mailItemLabel.count({
+        where: { mailItemId: recreatedSameMessageId.id, labelId: label.id },
+      }),
+    ).toBe(1);
+    expect(
+      await db.mailItemLabel.count({ where: { labelId: manualLabel.id } }),
+    ).toBe(0);
+  });
+
+  it("does not evaluate Archive, Sent, or Trash imports", async () => {
+    const account = await createMockAccount("filter-excluded");
+    const label = await createSubjectRule(account.id, "excluded match");
+    const driver = new MockMailDriver(account.id);
+    const raw = Buffer.from(
+      ["From: source@example.com", "Subject: Excluded MATCH", "", "body"].join(
+        "\r\n",
+      ),
+      "utf8",
+    );
+    for (const folder of ["Archive", "Sent", "Trash"]) {
+      await driver.append(folder, raw, []);
+    }
+
+    await syncAccount(account.id, workspaceId);
+    const excludedItems = await db.mailItem.findMany({
+      where: {
+        accountId: account.id,
+        folder: { specialUse: { in: ["ARCHIVE", "SENT", "TRASH"] } },
+      },
+      select: { id: true },
+    });
+    expect(excludedItems).toHaveLength(3);
+    expect(
+      await db.mailItemLabel.count({
+        where: {
+          labelId: label.id,
+          mailItemId: { in: excludedItems.map(({ id }) => id) },
+        },
+      }),
+    ).toBe(0);
+
+    const inbox = await db.mailFolder.findFirstOrThrow({
+      where: { accountId: account.id, specialUse: "INBOX" },
+    });
+    const archive = await db.mailFolder.findFirstOrThrow({
+      where: { accountId: account.id, specialUse: "ARCHIVE" },
+    });
+    const moved = await db.mailItem.findFirstOrThrow({
+      where: { folderId: archive.id },
+    });
+    await moveItem(moved.id, workspaceId, inbox.id);
+    expect(
+      await db.mailItemLabel.count({
+        where: { mailItemId: moved.id, labelId: label.id },
+      }),
+    ).toBe(0);
+  });
+
+  it("performs remote fetch before acquiring the account transaction lock", async () => {
+    const account = await createMockAccount("filter-remote-before-lock");
+    let releaseFetch!: () => void;
+    let reportFetchStarted!: () => void;
+    const fetchStarted = new Promise<void>((resolve) => {
+      reportFetchStarted = resolve;
+    });
+    const fetchRelease = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const original = MockMailDriver.prototype.fetchMessages;
+    let blocked = false;
+    const fetchSpy = vi
+      .spyOn(MockMailDriver.prototype, "fetchMessages")
+      .mockImplementation(async function (
+        this: MockMailDriver,
+        folderPath,
+        options,
+      ) {
+        if (!blocked) {
+          blocked = true;
+          reportFetchStarted();
+          await fetchRelease;
+        }
+        return original.call(this, folderPath, options);
+      });
+
+    try {
+      const sync = syncAccount(account.id, workspaceId);
+      await fetchStarted;
+      await runMailAccountTransaction(account.id, async () => undefined);
+      releaseFetch();
+      await expect(sync).resolves.toMatchObject({ status: "synced" });
+    } finally {
+      releaseFetch();
+      fetchSpy.mockRestore();
+    }
   });
 });
 

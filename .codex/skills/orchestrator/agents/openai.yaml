@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrator"
+  short_description: "Tiered supervisor, worker, and auditor execution"
+  default_prompt: "Use $orchestrator to plan, delegate, audit, and gate this multi-step task."

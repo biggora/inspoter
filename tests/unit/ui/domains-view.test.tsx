@@ -9,7 +9,15 @@ import { DomainsView } from "@/components/domains/domains-view";
 import type { DomainsByProvider } from "@/lib/services/domains";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  redirect: vi.fn(),
+  permanentRedirect: vi.fn(),
+  usePathname: () => "/",
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+  }),
 }));
 
 vi.mock("@/components/settings/provider-credential-dialog", () => ({

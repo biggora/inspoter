@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -22,12 +22,15 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { MailBody } from "./mail-body";
+import { LabelChip } from "./label-chip";
+import { MessageLabelPicker } from "./message-label-picker";
 import { getInitials, stringToColor } from "./message-list";
 import {
   ApiError,
   downloadAttachment,
   type MailAddressDto,
   type MailDetailDto,
+  type MailLabelDto,
 } from "./api";
 
 type Format = ReturnType<typeof useFormatter>;
@@ -82,6 +85,17 @@ export interface MessagePaneProps {
   canArchive: boolean;
   /** Message sits in the TRASH folder — deleting is permanent (confirm). */
   isInTrash: boolean;
+  mailLabelsEnabled: boolean;
+  labels: MailLabelDto[];
+  labelsLoading: boolean;
+  labelsError: string | null;
+  pendingLabelIds: ReadonlySet<string>;
+  labelMutationError: string | null;
+  onRetryLabels: () => void;
+  onToggleLabel: (label: MailLabelDto) => void;
+  canCreateFilter: boolean;
+  onCreateFilter: () => void;
+  filterTriggerRef: RefObject<HTMLButtonElement | null>;
 }
 
 // Reading pane (plan §5) + Phase 6 action bar under the subject header:
@@ -102,6 +116,17 @@ export function MessagePane({
   onToggleRead,
   canArchive,
   isInTrash,
+  mailLabelsEnabled,
+  labels,
+  labelsLoading,
+  labelsError,
+  pendingLabelIds,
+  labelMutationError,
+  onRetryLabels,
+  onToggleLabel,
+  canCreateFilter,
+  onCreateFilter,
+  filterTriggerRef,
 }: MessagePaneProps) {
   const t = useTranslations("mail");
   const format = useFormatter();
@@ -197,6 +222,34 @@ export function MessagePane({
         <h2 className="mb-3 font-heading text-lg font-semibold text-foreground-900">
           {detail.subject}
         </h2>
+        {(mailLabelsEnabled || detail.labels.length > 0) && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {detail.labels.length > 0 && (
+              <div
+                className="flex flex-wrap gap-1.5"
+                aria-label={t("appliedLabelsAriaLabel")}
+              >
+                {detail.labels.map((label) => (
+                  <LabelChip key={label.id} label={label} />
+                ))}
+              </div>
+            )}
+            {mailLabelsEnabled && (
+              <MessageLabelPicker
+                labels={labels}
+                appliedLabelIds={
+                  new Set(detail.labels.map((label) => label.id))
+                }
+                loading={labelsLoading}
+                error={labelsError}
+                mutationError={labelMutationError}
+                pendingLabelIds={pendingLabelIds}
+                onRetry={onRetryLabels}
+                onToggle={onToggleLabel}
+              />
+            )}
+          </div>
+        )}
         <div className="flex items-start gap-3">
           <span
             aria-hidden
@@ -331,6 +384,18 @@ export function MessagePane({
             </>
           )}
         </Button>
+        {canCreateFilter && (
+          <Button
+            ref={filterTriggerRef}
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCreateFilter}
+          >
+            <Icon name="ri-filter-line" aria-hidden data-icon="inline-start" />
+            {t("filterMessagesLikeThisButton")}
+          </Button>
+        )}
       </div>
 
       {detail.attachments.length > 0 && (

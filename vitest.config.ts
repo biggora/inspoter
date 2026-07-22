@@ -19,6 +19,11 @@ export default defineConfig({
     },
   },
   test: {
+    // next-intl's ESM build imports Next's extensionless public entrypoints
+    // (for example `next/navigation`). Node's native Windows ESM resolver
+    // cannot load those entrypoints directly, so let Vite transform the
+    // package instead of externalizing it during unit tests.
+    server: { deps: { inline: ["next-intl"] } },
     globals: true,
     environment: "node",
     setupFiles: ["./tests/setup.ts"],

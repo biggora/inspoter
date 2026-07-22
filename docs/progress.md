@@ -185,6 +185,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 Реализована система мониторинга метрик VPS (Slices 0–2 из `specs/metrics-script.md`): Dockerized Python-агент собирает CPU/memory/swap/load/disk/uptime и отправляет в dashboard каждые 60 секунд по HTTPS.
 
 **Что реализовано:**
+
 - Prisma-схема: 4 новые модели (`LocalServer`, `LocalServerAddress`, `ServerAgentToken`, `ServerMetricSnapshot`) с CHECK-ограничениями и partial unique indexes; миграция `20260721120000_add_local_servers_and_metrics`.
 - Enrollment-сервис (`src/lib/services/serverMetrics.ts`, 758 строк): SHA-256 token auth, IPv4-based provider matching, atomic finalization.
 - Публичный `POST /api/server-metrics` с Bearer auth, rate limiting (12 req/token/60s), валидацией через Zod + ipaddr.js.
@@ -255,3 +256,53 @@ PRD v3.0 остаётся утверждённой базовой версией
 - ~~AQ-2 (число webhook-токенов в UI, связано с OQ-7)~~ — реализовано для legacy null-channel tokens: Settings → Webhooks, N workspace-wide токенов без скоупинга по типу. Новые channel webhooks управляются в настройках канала и не входят в этот исторический AQ-2.
 - ~~AQ-3 (upsert-by-name категории алерта при ingest)~~ — реализовано: alerts.create() ищет категорию по имени, создаёт если не найдена.
 - ~~jsdom отсутствует в devDeps~~ — закрыто: jsdom ^29.1.1 добавлен implementor'ом после fan-out.
+
+## Mail labels and filtering initiative (2026-07-20)
+
+**Goal:** Implement `specs/mail-label-filtering-plan.md` phase by phase, stopping
+after every phase for user verification.
+
+**Normative inputs:** `specs/mail-label-filtering-plan.md`, `docs/prd.md`,
+`docs/architecture.md`, `docs/design.md`, `docs/test-plan.md`, `specs/ui.md`,
+`specs/prototype/`, and `specs/inspot-design/`.
+
+**Stack:** Next.js 16.2.10, React 19.1.0, TypeScript 5, Tailwind CSS 4,
+Prisma 7.8.0/PostgreSQL, Zod 4.4.3, Vitest 4.1.10, Playwright 1.61.1,
+pnpm 11.12.0.
+
+### Feature acceptance criteria
+
+- Implemented and final-gate verified: `FR-MAIL-008`, `FR-MAIL-009`,
+  `AC-MAIL-031..045`.
+- Phases 1–5 pass their documentation, implementation, migration, regression,
+  browser, performance, recovery, rollback, accessibility, responsive, and
+  independent-review gates. User verification remains before the initiative is
+  declared complete.
+
+### Feature task table
+
+| Phase                                           | Checklist tasks                | Agent                                                                                               | Status                         | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan gate                                       | plan recheck + ordinary review | adversarial-reviewer → doc-reviewer                                                                 | DONE                           | v0.3 cycle 1: `CONSENSUS`; `CH-PLAN-001..008` closed; ordinary review rework 2/2 `DONE`, 54 sequential tasks and five explicit phase stops verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Phase 1 — architecture and contract preparation | 1–7                            | product-analyst → adversarial-reviewer/doc-reviewer → architect/designer/test-writer → doc-reviewer | DONE                           | PRD v3.10 preserves all 161 baseline IDs and adds only AC-MAIL-031..045; architecture v1.7, design v2.11, plan v1.6, and test-plan v1.3 are mutually consistent. Final document review found no blocking issue; `git diff --check` passes.                                                                                                                                                                                                                                                                                                                                                                |
+| Phase 2 — exact-sender tracer                   | 8–26                           | tester/backend/frontend/reviewer                                                                    | DONE                           | User continued to Phase 3 after the Phase 2 verification stop. Additive schema and migration, canonical matcher, workspace-scoped label/rule services and APIs, transactional incoming evaluation, feature-gated bilingual UI, and tracer coverage complete. Prisma fresh/populated migration checks, typecheck, lint, build, 693 unit tests, and 2 viewport Playwright tracer tests pass; final code review has no blocking finding.                                                                                                                                                                     |
+| Phase 3 — manual labels and browsing            | 27–35                          | tester/backend/frontend/reviewer                                                                    | DONE                           | User continued to Phase 4 after the Phase 3 verification stop. Label CRUD and safe deletion, idempotent assignments, combined label filtering, full-filter cursor fingerprints, shared desktop/mobile browsing, keyboard picker, accessible responsive chips, stale-scope resets, and owner/member journeys complete. Focused regressions 67/67, full Vitest 722/722 (58 files), lint 0 errors, typecheck, production build, and Playwright 6/6 at 1440/375/420 pass; independent backend/UI re-audits found no blocking issue.                                                                           |
+| Phase 4 — complete future rules                 | 36–42                          | tester/backend/frontend/reviewer                                                                    | DONE                           | User continued to Phase 5 after the Phase 4 verification stop. Subject and AND criteria, full rule lifecycle, shared webhook/IMAP/batch matcher, transaction-scoped account locking, deterministic mutation/persistence races, IMAP UIDVALIDITY semantics, and owner-only responsive management UI complete. All 17 migrations replay, Prisma validation, 757/757 unit tests (60 files), lint 0 errors, typecheck, production build, and Playwright 9/9 at 1440/375/420 pass; independent backend/UI re-audits found no blocking issue.                                                                   |
+| Phase 5 — backfill and hardening                | 43–54                          | tester/backend/frontend/reviewer                                                                    | DONE_PENDING_USER_VERIFICATION | Durable immutable snapshot runs, five-minute fenced leases, retained multi-batch scheduler claims, 200-row atomic keyset batches, status/retry APIs, create-only opt-in UI, exact-60 serial polling, and focus-safe responsive progress UI complete. All 18 migrations and populated 17→18 replay pass with the half-null relation probe; 20,000-row performance, encrypted restore, flag-off/old-runtime rollback, exact 200→201 restart recovery, 771/771 Vitest (62 files), lint 0 errors, typecheck/build, 12/12 Playwright at 1440/375/420, and independent backend/UI/docs audits pass after fixes. |
+
+### Feature decisions
+
+- Labels are workspace-scoped and local to Inspoter; remote Gmail/IMAP label
+  synchronization is excluded.
+- Workspace owners manage label definitions and automatic rules; members may
+  manually assign labels and filter Mail.
+- MVP rules are account-scoped and incoming-only, with exact-sender and subject
+  substring predicates using AND semantics.
+- Rule changes affect future evaluation only; persisted assignments remain.
+- Historical application is implemented as a create-only, unchecked-by-default
+  opt-in backed by durable Phase 5 runs.
+
+### Feature open questions
+
+None currently gate Phase 1. User approved the MVP interpretations by directing
+implementation from `specs/mail-label-filtering-plan.md`.

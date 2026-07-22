@@ -5,7 +5,7 @@ import { ruMessages } from "@/i18n/messages";
 
 export function renderWithIntl(ui: ReactElement, options?: RenderOptions) {
   return render(
-    <NextIntlClientProvider locale="ru" messages={ruMessages}>
+    <NextIntlClientProvider locale="ru" messages={ruMessages} timeZone="UTC">
       {ui}
     </NextIntlClientProvider>,
     options,

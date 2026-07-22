@@ -17,9 +17,11 @@ export async function submitLoginForm(
   password: string = OPERATOR_PASSWORD,
 ) {
   await page.goto("/login");
-  await page.getByLabel("Имя пользователя", { exact: true }).fill(username);
-  await page.getByLabel("Пароль", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  const expectedDashboardUrl = new URL("/bookmarks", page.url()).href;
+  await page.getByLabel(/^(?:Username|Имя пользователя)$/).fill(username);
+  await page.getByLabel(/^(?:Password|Пароль)$/).fill(password);
+  await page.getByRole("button", { name: /^(?:Sign in|Войти)$/ }).click();
+  return expectedDashboardUrl;
 }
 
 export async function login(
