@@ -250,11 +250,11 @@
    ========================================================================== */
 
 :root {
-  /* Families */
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif; /* @kind font */
-  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif; /* @kind font */
-  --font-label: 'Inter', system-ui, sans-serif; /* @kind font */
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace; /* @kind font */
+  /* Families — backed by next/font self-hosted variables with fallbacks */
+  --font-body: var(--font-sans-loaded, 'Inter'), system-ui, -apple-system, sans-serif; /* @kind font */
+  --font-heading: var(--font-heading-loaded, 'Plus Jakarta Sans'), system-ui, sans-serif; /* @kind font */
+  --font-label: var(--font-sans-loaded, 'Inter'), system-ui, sans-serif; /* @kind font */
+  --font-mono: var(--font-mono-loaded, 'JetBrains Mono'), ui-monospace, 'SF Mono', Menlo, monospace; /* @kind font */
 
   /* Type scale (px). Dashboard-dense: rarely above 24px. */
   --text-2xs: 10px;   /* micro meta, dot labels */
