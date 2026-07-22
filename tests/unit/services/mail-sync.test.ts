@@ -14,13 +14,14 @@ import { WebhookAccountHasNoTransportError } from "@/lib/mail";
 import { syncAccount } from "@/lib/services/mail-sync";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { moveItem } from "@/lib/services/mail-actions";
+import { saveMailDraft } from "@/lib/services/mail-drafts";
 import { runMailAccountTransaction } from "@/lib/services/mail-locks";
 
 // Sync engine tests (plan §3) against the deterministic MOCK driver: the
 // in-memory store is keyed by account id, so a second MockMailDriver
 // instance sees (and can mutate) the same mailbox the sync engine reads.
 // Mock INBOX: 30 messages, uids 1–30, unread at uids 1,4,…,28 (10 total),
-// attachments on uids 1/11/21; Sent/Trash/Archive start empty.
+// attachments on uids 1/11/21; Sent/Drafts/Trash/Archive start empty.
 
 const NAME_PREFIX = `mail-sync-${randomUUID()}`;
 let workspaceId: string;
@@ -72,11 +73,11 @@ beforeEach(() => {
 });
 
 describe("syncAccount — initial sync", () => {
-  it("creates 4 folders and 30 INBOX messages with flags, attachments and lastSeenUid", async () => {
+  it("creates 5 folders and 30 INBOX messages with flags, attachments and lastSeenUid", async () => {
     const account = await createMockAccount("initial");
 
     const outcome = await syncAccount(account.id, workspaceId);
-    expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 30 });
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 30 });
 
     const folders = await db.mailFolder.findMany({
       where: { accountId: account.id },
@@ -85,6 +86,7 @@ describe("syncAccount — initial sync", () => {
     expect(folders.map((f) => [f.path, f.position])).toEqual([
       ["INBOX", 0],
       ["Sent", 1],
+      ["Drafts", 2],
       ["Trash", 3],
       ["Archive", 5],
     ]);
@@ -136,7 +138,7 @@ describe("syncAccount — initial sync", () => {
     await syncAccount(account.id, workspaceId);
 
     const outcome = await syncAccount(account.id, workspaceId);
-    expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 0 });
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 0 });
     expect(await db.mailItem.count({ where: { accountId: account.id } })).toBe(
       30,
     );
@@ -157,7 +159,7 @@ describe("syncAccount — incremental sync", () => {
     );
 
     const outcome = await syncAccount(account.id, workspaceId);
-    expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 1 });
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 1 });
 
     const inbox = await db.mailFolder.findFirst({
       where: { accountId: account.id, path: "INBOX" },
@@ -379,7 +381,7 @@ describe("syncAccount — UIDVALIDITY change", () => {
     ).map((i) => i.id);
 
     const outcome = await syncAccount(account.id, workspaceId);
-    expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 30 });
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 30 });
 
     const after = await db.mailFolder.findFirst({ where: { id: inbox!.id } });
     expect(after?.uidValidity).toBe(1n);
@@ -391,6 +393,34 @@ describe("syncAccount — UIDVALIDITY change", () => {
     expect(afterItems).toHaveLength(30);
     // All rows were re-created, none of the old ids survived the wipe.
     expect(afterItems.some((i) => beforeIds.includes(i.id))).toBe(false);
+  });
+
+  it("preserves UID-less local drafts when Drafts UIDVALIDITY changes", async () => {
+    const account = await createMockAccount("draft-validity");
+    await syncAccount(account.id, workspaceId);
+    const draft = await saveMailDraft(workspaceId, {
+      accountId: account.id,
+      to: ["dest@example.com"],
+      cc: [],
+      bcc: [],
+      subject: "Local draft",
+      bodyText: "Keep me",
+      bodyHtml: "<p>Keep me</p>",
+    });
+    const draftsFolder = await db.mailFolder.findFirst({
+      where: { accountId: account.id, specialUse: "DRAFTS" },
+    });
+    await db.mailFolder.update({
+      where: { id: draftsFolder!.id },
+      data: { uidValidity: 999n },
+    });
+
+    const outcome = await syncAccount(account.id, workspaceId);
+
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 0 });
+    expect(
+      await db.mailItem.findUnique({ where: { id: draft.id } }),
+    ).toMatchObject({ uid: null, subject: "Local draft" });
   });
 });
 
@@ -470,7 +500,7 @@ describe("syncAccount — lease", () => {
     });
 
     const outcome = await syncAccount(account.id, workspaceId);
-    expect(outcome).toEqual({ status: "synced", folders: 4, newMessages: 30 });
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 30 });
   });
 });
 

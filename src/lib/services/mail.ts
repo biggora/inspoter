@@ -367,10 +367,13 @@ export interface MailDetailDto {
   fromName: string | null;
   to: MailAddressDto[];
   cc: MailAddressDto[];
+  bcc: MailAddressDto[];
   subject: string;
   snippet: string | null;
   bodyText: string;
   bodyHtml: string | null;
+  draftReplyToId: string | null;
+  draftForwardOfId: string | null;
   isRead: boolean;
   isAnswered: boolean;
   isFlagged: boolean;
@@ -410,10 +413,13 @@ export function toMailDetailDto(item: MailDetailItem): MailDetailDto {
     fromName: item.fromName,
     to: parseAddresses(item.toRecipients),
     cc: parseAddresses(item.ccRecipients),
+    bcc: parseAddresses(item.bccRecipients),
     subject: item.subject,
     snippet: item.snippet,
     bodyText: item.bodyText,
     bodyHtml: item.bodyHtml,
+    draftReplyToId: item.draftReplyToId,
+    draftForwardOfId: item.draftForwardOfId,
     isRead: item.isRead,
     isAnswered: item.isAnswered,
     isFlagged: item.isFlagged,

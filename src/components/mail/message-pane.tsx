@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -78,6 +78,7 @@ export interface MessagePaneProps {
   onBack: () => void;
   onReply: () => void;
   onForward: () => void;
+  onEditDraft: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onToggleRead: () => void;
@@ -85,6 +86,7 @@ export interface MessagePaneProps {
   canArchive: boolean;
   /** Message sits in the TRASH folder — deleting is permanent (confirm). */
   isInTrash: boolean;
+  isDraft: boolean;
   mailLabelsEnabled: boolean;
   labels: MailLabelDto[];
   labelsLoading: boolean;
@@ -96,6 +98,7 @@ export interface MessagePaneProps {
   canCreateFilter: boolean;
   onCreateFilter: () => void;
   filterTriggerRef: RefObject<HTMLButtonElement | null>;
+  replyComposer?: ReactNode;
 }
 
 // Reading pane (plan §5) + Phase 6 action bar under the subject header:
@@ -111,11 +114,13 @@ export function MessagePane({
   onBack,
   onReply,
   onForward,
+  onEditDraft,
   onArchive,
   onDelete,
   onToggleRead,
   canArchive,
   isInTrash,
+  isDraft,
   mailLabelsEnabled,
   labels,
   labelsLoading,
@@ -127,6 +132,7 @@ export function MessagePane({
   canCreateFilter,
   onCreateFilter,
   filterTriggerRef,
+  replyComposer,
 }: MessagePaneProps) {
   const t = useTranslations("mail");
   const format = useFormatter();
@@ -295,32 +301,64 @@ export function MessagePane({
       <div className="flex flex-wrap items-center gap-1 border-b border-background-100 px-4 py-1.5">
         {detail.accountKind !== "WEBHOOK" && (
           <>
-            <Button type="button" variant="ghost" size="sm" onClick={onReply}>
-              <Icon name="ri-reply-line" aria-hidden data-icon="inline-start" />
-              {t("replyButton")}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onForward}>
-              <Icon
-                name="ri-share-forward-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("forwardButton")}
-            </Button>
-            {canArchive && (
+            {isDraft ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onArchive}
+                onClick={onEditDraft}
               >
                 <Icon
-                  name="ri-archive-line"
+                  name="ri-edit-line"
                   aria-hidden
                   data-icon="inline-start"
                 />
-                {t("archiveButton")}
+                {t("editDraftButton")}
               </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onReply}
+                >
+                  <Icon
+                    name="ri-reply-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  {t("replyButton")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onForward}
+                >
+                  <Icon
+                    name="ri-share-forward-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  {t("forwardButton")}
+                </Button>
+                {canArchive && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onArchive}
+                  >
+                    <Icon
+                      name="ri-archive-line"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                    {t("archiveButton")}
+                  </Button>
+                )}
+              </>
             )}
           </>
         )}
@@ -441,6 +479,11 @@ export function MessagePane({
       <div className="px-6 py-5">
         <MailBody bodyText={detail.bodyText} bodyHtml={detail.bodyHtml} />
       </div>
+      {replyComposer && (
+        <div className="border-t border-background-100 px-4 py-4 sm:px-6">
+          {replyComposer}
+        </div>
+      )}
     </div>
   );
 }

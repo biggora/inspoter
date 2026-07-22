@@ -112,27 +112,71 @@ const recipientListSchema = z
   .array(z.email({ error: () => VALIDATION_RU.mailSend.recipientEmailInvalid }))
   .max(50, { error: () => VALIDATION_RU.mailSend.tooManyRecipients });
 
-export const sendMailSchema = z.object({
-  accountId: z
-    .string()
-    .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
-  to: recipientListSchema.min(1, {
-    error: () => VALIDATION_RU.mailSend.atLeastOneRecipientRequired,
-  }),
-  cc: recipientListSchema.default([]),
-  bcc: recipientListSchema.default([]),
-  subject: z
-    .string()
-    .min(1, { error: () => VALIDATION_RU.mailSend.subjectRequired })
-    .max(500, { error: () => VALIDATION_RU.mailSend.subjectTooLong }),
-  body: z
-    .string()
-    .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
-    .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
-  inReplyToId: z.string().optional(),
-});
+export const sendMailSchema = z
+  .object({
+    accountId: z
+      .string()
+      .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
+    to: recipientListSchema.min(1, {
+      error: () => VALIDATION_RU.mailSend.atLeastOneRecipientRequired,
+    }),
+    cc: recipientListSchema.default([]),
+    bcc: recipientListSchema.default([]),
+    subject: z
+      .string()
+      .min(1, { error: () => VALIDATION_RU.mailSend.subjectRequired })
+      .max(500, { error: () => VALIDATION_RU.mailSend.subjectTooLong }),
+    bodyText: z
+      .string()
+      .trim()
+      .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
+      .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
+    bodyHtml: z
+      .string()
+      .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
+      .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
+    inReplyToId: z.string().optional(),
+    forwardOfId: z.string().optional(),
+    draftId: z.string().optional(),
+  })
+  .refine((input) => !(input.inReplyToId && input.forwardOfId), {
+    error: () => VALIDATION_RU.mailSend.originalModeInvalid,
+    path: ["forwardOfId"],
+  });
 
 export type SendMailInput = z.infer<typeof sendMailSchema>;
+
+const draftRecipientListSchema = z
+  .array(z.string().trim().max(320))
+  .max(50, { error: () => VALIDATION_RU.mailSend.tooManyRecipients });
+
+export const saveMailDraftSchema = z
+  .object({
+    draftId: z.string().optional(),
+    accountId: z
+      .string()
+      .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
+    to: draftRecipientListSchema.default([]),
+    cc: draftRecipientListSchema.default([]),
+    bcc: draftRecipientListSchema.default([]),
+    subject: z.string().max(500, {
+      error: () => VALIDATION_RU.mailSend.subjectTooLong,
+    }),
+    bodyText: z.string().max(500_000, {
+      error: () => VALIDATION_RU.mailSend.bodyTooLong,
+    }),
+    bodyHtml: z.string().max(500_000, {
+      error: () => VALIDATION_RU.mailSend.bodyTooLong,
+    }),
+    inReplyToId: z.string().optional(),
+    forwardOfId: z.string().optional(),
+  })
+  .refine((input) => !(input.inReplyToId && input.forwardOfId), {
+    error: () => VALIDATION_RU.mailSend.originalModeInvalid,
+    path: ["forwardOfId"],
+  });
+
+export type SaveMailDraftInput = z.infer<typeof saveMailDraftSchema>;
 
 // --- Inspoter labels and future-message rules (Q-15) ---
 

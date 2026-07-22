@@ -129,6 +129,7 @@ function seedStore(): MockStore {
   };
   const extra: Array<[string, string, MockFolder["specialUse"]]> = [
     ["Sent", "Отправленные", "SENT"],
+    ["Drafts", "Черновики", "DRAFTS"],
     ["Trash", "Корзина", "TRASH"],
     ["Archive", "Архив", "ARCHIVE"],
   ];

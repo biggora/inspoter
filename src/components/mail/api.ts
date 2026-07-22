@@ -73,10 +73,13 @@ export interface MailDetailDto {
   fromName: string | null;
   to: MailAddressDto[];
   cc: MailAddressDto[];
+  bcc: MailAddressDto[];
   subject: string;
   snippet: string | null;
   bodyText: string;
   bodyHtml: string | null;
+  draftReplyToId: string | null;
+  draftForwardOfId: string | null;
   isRead: boolean;
   isAnswered: boolean;
   isFlagged: boolean;
@@ -440,8 +443,11 @@ export interface SendMailInput {
   cc: string[];
   bcc: string[];
   subject: string;
-  body: string;
+  bodyText: string;
+  bodyHtml: string;
   inReplyToId?: string;
+  forwardOfId?: string;
+  draftId?: string;
 }
 
 export function sendMail(input: SendMailInput): Promise<{ id: string | null }> {
@@ -450,4 +456,71 @@ export function sendMail(input: SendMailInput): Promise<{ id: string | null }> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+}
+
+export interface MailDraftAttachmentDto {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface MailDraftDto {
+  id: string;
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  inReplyToId: string | null;
+  forwardOfId: string | null;
+  updatedAt: string;
+  attachments: MailDraftAttachmentDto[];
+}
+
+export interface SaveMailDraftInput {
+  draftId?: string;
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  inReplyToId?: string;
+  forwardOfId?: string;
+}
+
+export function saveMailDraft(
+  input: SaveMailDraftInput,
+): Promise<MailDraftDto> {
+  return request<MailDraftDto>("/api/mail/drafts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function uploadMailDraftAttachment(
+  draftId: string,
+  file: File,
+): Promise<MailDraftAttachmentDto> {
+  const body = new FormData();
+  body.set("file", file);
+  return request<MailDraftAttachmentDto>(
+    `/api/mail/drafts/${encodeURIComponent(draftId)}/attachments`,
+    { method: "POST", body },
+  );
+}
+
+export function deleteMailDraftAttachment(
+  draftId: string,
+  attachmentId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/mail/drafts/${encodeURIComponent(draftId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    { method: "DELETE" },
+  );
 }

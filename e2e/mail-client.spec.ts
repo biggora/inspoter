@@ -256,6 +256,7 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
   page,
   testData,
 }) => {
+  test.setTimeout(30_000);
   let accountId: string | undefined;
   try {
     accountId = await createMockMailAccount(
@@ -350,6 +351,60 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
       list.getByRole("listitem").filter({ hasText: "E2E тестовое письмо" }),
     ).toBeVisible();
 
+    // Draft lifecycle: attaching creates the draft, closing persists it,
+    // reopening restores content + attachment, and sending removes it.
+    await page.getByRole("button", { name: "Написать", exact: true }).click();
+    const draftDialog = page.getByRole("dialog");
+    await draftDialog
+      .getByLabel("Кому", { exact: true })
+      .fill("draft-recipient@example.ru");
+    await draftDialog
+      .getByLabel("Тема", { exact: true })
+      .fill("E2E черновик с файлом");
+    await draftDialog
+      .getByLabel("Текст письма", { exact: true })
+      .fill("Текст сохранённого черновика.");
+    await draftDialog.locator('input[type="file"]').setInputFiles({
+      name: "report.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("draft attachment"),
+    });
+    await expect(page.getByText("Добавлено вложений: 1").first()).toBeVisible();
+    await draftDialog
+      .getByRole("button", { name: "Закрыть редактор", exact: true })
+      .click();
+    await expect(draftDialog).toBeHidden();
+
+    await sidebar
+      .getByRole("button", { name: "Черновики", exact: true })
+      .click();
+    await expect(list.getByRole("listitem")).toHaveCount(1);
+    await list.getByRole("button", { name: /E2E черновик с файлом/ }).click();
+    await page
+      .getByRole("button", { name: "Редактировать черновик", exact: true })
+      .click();
+    const editDraftDialog = page.getByRole("dialog");
+    await expect(
+      editDraftDialog.getByRole("heading", { name: "Редактировать черновик" }),
+    ).toBeVisible();
+    await expect(editDraftDialog.getByText("report.txt")).toBeVisible();
+    await expect(
+      editDraftDialog.getByLabel("Текст письма", { exact: true }),
+    ).toHaveText("Текст сохранённого черновика.");
+    await editDraftDialog
+      .getByRole("button", { name: "Отправить", exact: true })
+      .click();
+    await expect(page.getByText("Письмо отправлено").first()).toBeVisible();
+    await expect(list.getByRole("listitem")).toHaveCount(0);
+
+    await sidebar
+      .getByRole("button", { name: "Отправленные", exact: true })
+      .click();
+    await expect(list.getByRole("listitem")).toHaveCount(2);
+    await expect(
+      list.getByRole("listitem").filter({ hasText: "E2E черновик с файлом" }),
+    ).toBeVisible();
+
     // Reply from the reading pane: prefilled recipient and Re: subject.
     await inboxButton.click();
     await list
@@ -363,20 +418,23 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
       }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Ответить", exact: true }).click();
-    const replyDialog = page.getByRole("dialog");
+    const replyComposer = page.getByRole("region", { name: "Ответить" });
     await expect(
-      replyDialog.getByRole("heading", { name: "Ответить" }),
+      replyComposer.getByRole("heading", { name: "Ответить" }),
     ).toBeVisible();
-    await expect(replyDialog.getByLabel("Кому", { exact: true })).toHaveValue(
+    await expect(replyComposer.getByLabel("Кому", { exact: true })).toHaveValue(
       "e.sokolova@example.ru",
     );
-    await expect(replyDialog.getByLabel("Тема", { exact: true })).toHaveValue(
+    await expect(replyComposer.getByLabel("Тема", { exact: true })).toHaveValue(
       "Re: Резервное копирование",
     );
-    await replyDialog
-      .getByRole("button", { name: "Отправить", exact: true })
+    await replyComposer
+      .getByLabel("Текст письма", { exact: true })
+      .fill("Спасибо, резервная копия проверена.");
+    await replyComposer
+      .getByRole("button", { name: "Отправить ответ", exact: true })
       .click();
-    await expect(replyDialog).toBeHidden();
+    await expect(replyComposer).toBeHidden();
   } finally {
     if (accountId) await deleteMailAccount(page, accountId);
   }

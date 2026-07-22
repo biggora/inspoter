@@ -382,6 +382,12 @@ export class ImapSmtpMailDriver implements MailDriver {
       bcc: message.bcc.map(toComposer),
       subject: message.subject,
       text: message.text,
+      html: message.html,
+      attachments: message.attachments.map((attachment) => ({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        content: Buffer.from(attachment.content),
+      })),
       inReplyTo: message.inReplyTo,
       references: message.references,
     }).compile();

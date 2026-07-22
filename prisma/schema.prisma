@@ -331,6 +331,8 @@ model MailItem {
   subject            String
   bodyText           String
   bodyHtml           String?
+  draftReplyToId     String?
+  draftForwardOfId   String?
   snippet            String?
   isRead             Boolean          @default(false)
   isAnswered         Boolean          @default(false)
@@ -349,6 +351,8 @@ model MailItem {
   @@index([workspaceId, accountId, folderId, receivedAt, id]) // per-folder list + keyset pagination
   @@index([workspaceId, accountId, folderId, isRead]) // unread filter + folder badge counts
   @@index([workspaceId, accountId, createdAt, id]) // historical filter-run keyset traversal
+  @@index([workspaceId, accountId, draftReplyToId])
+  @@index([workspaceId, accountId, draftForwardOfId])
 }
 
 model MailAttachment {

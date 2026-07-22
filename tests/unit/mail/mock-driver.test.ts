@@ -20,6 +20,8 @@ function outgoing(overrides?: Partial<OutgoingMessage>): OutgoingMessage {
     bcc: [],
     subject: "Ответ на отчёт",
     text: "Спасибо, отчёт получил.",
+    html: "<p>Спасибо, отчёт получил.</p>",
+    attachments: [],
     ...overrides,
   };
 }
@@ -60,6 +62,7 @@ describe("MockMailDriver", () => {
     expect(folders.map((f) => f.path)).toEqual([
       "INBOX",
       "Sent",
+      "Drafts",
       "Trash",
       "Archive",
     ]);
@@ -70,6 +73,7 @@ describe("MockMailDriver", () => {
     expect(folders.map((f) => f.specialUse)).toEqual([
       "INBOX",
       "SENT",
+      "DRAFTS",
       "TRASH",
       "ARCHIVE",
     ]);

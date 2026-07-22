@@ -325,7 +325,7 @@ export function MessageList({
                               : "font-medium text-foreground-800",
                           )}
                         >
-                          {item.subject}
+                          {item.subject || t("noSubjectLabel")}
                         </span>
                         {item.labels.length > 0 && (
                           <span className="sr-only">

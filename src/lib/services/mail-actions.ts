@@ -2,7 +2,10 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import type { Prisma } from "@/generated/prisma/client";
 import { getMailDriver, type MailAddress, type MailDriver } from "@/lib/mail";
+import { buildOutgoingMailContent } from "@/lib/mail-message-content";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import { AttachmentUnavailableError } from "@/lib/services/mail-attachments";
+import { MailDraftNotFoundError } from "@/lib/services/mail-drafts";
 import mailMessages from "@/messages/ru/mail.json";
 
 // Mail item actions + send (plan §4/§5, Phase 6). Server-first ordering: the
@@ -174,8 +177,11 @@ export interface SendMailData {
   cc: string[];
   bcc: string[];
   subject: string;
-  body: string;
+  bodyText: string;
+  bodyHtml: string;
   inReplyToId?: string;
+  forwardOfId?: string;
+  draftId?: string;
 }
 
 function toAddresses(addresses: string[]): MailAddress[] {
@@ -202,14 +208,43 @@ export async function sendMail(
 
   checkSendRateLimit(workspaceId);
 
-  const original = input.inReplyToId
+  const originalId = input.inReplyToId ?? input.forwardOfId;
+  const original = originalId
     ? await db.mailItem.findFirst({
-        where: { id: input.inReplyToId, workspaceId },
+        where: { id: originalId, workspaceId },
       })
     : null;
-  if (input.inReplyToId && !original) {
-    throw new MailItemNotFoundError(input.inReplyToId);
+  if (originalId && !original) {
+    throw new MailItemNotFoundError(originalId);
   }
+
+  const draft = input.draftId
+    ? await db.mailItem.findFirst({
+        where: {
+          id: input.draftId,
+          workspaceId,
+          accountId: account.id,
+          folder: { specialUse: "DRAFTS" },
+        },
+        include: { attachments: true, folder: true },
+      })
+    : null;
+  if (input.draftId && !draft) {
+    throw new MailDraftNotFoundError(input.draftId);
+  }
+
+  const content = buildOutgoingMailContent({
+    bodyText: input.bodyText,
+    bodyHtml: input.bodyHtml,
+    ...(original
+      ? {
+          original,
+          originalMode: input.inReplyToId
+            ? ("reply" as const)
+            : ("forward" as const),
+        }
+      : {}),
+  });
 
   const sentFolder = await db.mailFolder.findFirst({
     where: { workspaceId, accountId: account.id, specialUse: "SENT" },
@@ -217,15 +252,47 @@ export async function sendMail(
 
   const driver = await getMailDriver(account);
   let messageId: string;
+  const outgoingAttachments: Array<{
+    filename: string;
+    contentType: string;
+    content: Uint8Array<ArrayBuffer>;
+  }> = [];
   try {
+    for (const attachment of draft?.attachments ?? []) {
+      let attachmentContent: Uint8Array<ArrayBuffer> | null = attachment.content
+        ? new Uint8Array(attachment.content)
+        : null;
+      if (
+        !attachmentContent &&
+        draft &&
+        draft.uid !== null &&
+        attachment.partId !== null
+      ) {
+        const downloaded = await driver.downloadAttachment(
+          draft.folder.path,
+          draft.uid,
+          attachment.partId,
+        );
+        attachmentContent = new Uint8Array(downloaded.content);
+      }
+      if (!attachmentContent) throw new AttachmentUnavailableError();
+      outgoingAttachments.push({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        content: new Uint8Array(attachmentContent),
+      });
+    }
+
     const sent = await driver.send({
       from: { name: account.name, address: account.email },
       to: toAddresses(input.to),
       cc: toAddresses(input.cc),
       bcc: toAddresses(input.bcc),
       subject: input.subject,
-      text: input.body,
-      ...(original?.messageId
+      text: content.text,
+      html: content.html,
+      attachments: outgoingAttachments,
+      ...(input.inReplyToId && original?.messageId
         ? { inReplyTo: original.messageId, references: [original.messageId] }
         : {}),
     });
@@ -233,11 +300,14 @@ export async function sendMail(
     if (sentFolder) {
       await driver.append(sentFolder.path, sent.raw, ["\\Seen"]);
     }
+    if (draft && draft.uid !== null) {
+      await driver.deleteMessage(draft.folder.path, draft.uid);
+    }
   } finally {
     await driver.close().catch(() => {});
   }
 
-  if (original) {
+  if (input.inReplyToId && original) {
     // Local-only \Answered: the driver has no flag method beyond \Seen, so
     // the server copy is not flagged — the DB flag is enough for the UI.
     await db.mailItem.updateMany({
@@ -246,28 +316,56 @@ export async function sendMail(
     });
   }
 
-  if (!sentFolder) return { id: null };
+  if (!sentFolder) {
+    if (draft) {
+      await db.mailItem.deleteMany({ where: { id: draft.id, workspaceId } });
+    }
+    return { id: null };
+  }
 
   const jsonAddresses = (addresses: string[]): Prisma.InputJsonValue =>
     addresses.map((address) => ({ name: null, address }));
-  const entry = await db.mailItem.create({
-    data: {
-      workspaceId,
-      accountId: account.id,
-      accountWorkspaceId: workspaceId,
-      folderId: sentFolder.id,
-      folderWorkspaceId: workspaceId,
-      messageId,
-      fromAddress: account.email,
-      fromName: account.name,
-      toRecipients: jsonAddresses(input.to),
-      ccRecipients: jsonAddresses(input.cc),
-      bccRecipients: jsonAddresses(input.bcc),
-      subject: input.subject,
-      bodyText: input.body,
-      snippet: makeSnippet(input.body),
-      isRead: true,
-    },
+  const entry = await db.$transaction(async (tx) => {
+    const created = await tx.mailItem.create({
+      data: {
+        workspaceId,
+        accountId: account.id,
+        accountWorkspaceId: workspaceId,
+        folderId: sentFolder.id,
+        folderWorkspaceId: workspaceId,
+        messageId,
+        fromAddress: account.email,
+        fromName: account.name,
+        toRecipients: jsonAddresses(input.to),
+        ccRecipients: jsonAddresses(input.cc),
+        bccRecipients: jsonAddresses(input.bcc),
+        subject: input.subject,
+        bodyText: content.text,
+        bodyHtml: content.html,
+        snippet: makeSnippet(content.text),
+        isRead: true,
+        hasAttachments: outgoingAttachments.length > 0,
+        ...(outgoingAttachments.length > 0
+          ? {
+              attachments: {
+                createMany: {
+                  data: outgoingAttachments.map((attachment) => ({
+                    filename: attachment.filename,
+                    contentType: attachment.contentType,
+                    sizeBytes: attachment.content.byteLength,
+                    content: attachment.content,
+                    fetchedAt: new Date(),
+                  })),
+                },
+              },
+            }
+          : {}),
+      },
+    });
+    if (draft) {
+      await tx.mailItem.deleteMany({ where: { id: draft.id, workspaceId } });
+    }
+    return created;
   });
   return { id: entry.id };
 }

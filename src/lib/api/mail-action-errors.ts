@@ -15,6 +15,13 @@ import {
   AttachmentUnavailableError,
   MailAttachmentNotFoundError,
 } from "@/lib/services/mail-attachments";
+import {
+  MailDraftAttachmentLimitError,
+  MailDraftAttachmentTooLargeError,
+  MailDraftContextNotFoundError,
+  MailDraftFolderUnavailableError,
+  MailDraftNotFoundError,
+} from "@/lib/services/mail-drafts";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 
@@ -25,20 +32,29 @@ export function mailActionErrorResponse(error: unknown): NextResponse {
   if (
     error instanceof MailItemNotFoundError ||
     error instanceof MailAccountNotFoundError ||
-    error instanceof MailAttachmentNotFoundError
+    error instanceof MailAttachmentNotFoundError ||
+    error instanceof MailDraftNotFoundError ||
+    error instanceof MailDraftContextNotFoundError
   ) {
     return jsonResponse({ error: error.message }, { status: 404 });
   }
   if (error instanceof AttachmentUnavailableError) {
     return jsonResponse({ error: error.message }, { status: 409 });
   }
-  if (error instanceof AttachmentTooLargeError) {
+  if (
+    error instanceof AttachmentTooLargeError ||
+    error instanceof MailDraftAttachmentTooLargeError
+  ) {
     return jsonResponse({ error: error.message }, { status: 413 });
+  }
+  if (error instanceof MailDraftAttachmentLimitError) {
+    return jsonResponse({ error: error.message }, { status: 400 });
   }
   if (
     error instanceof MailFolderMismatchError ||
     error instanceof MailSendNotAllowedError ||
-    error instanceof WebhookAccountHasNoTransportError
+    error instanceof WebhookAccountHasNoTransportError ||
+    error instanceof MailDraftFolderUnavailableError
   ) {
     return jsonResponse({ error: error.message }, { status: 400 });
   }

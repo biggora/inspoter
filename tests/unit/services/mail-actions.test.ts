@@ -27,6 +27,11 @@ import {
   sendMail,
   setRead,
 } from "@/lib/services/mail-actions";
+import {
+  MailDraftNotFoundError,
+  saveMailDraft,
+  uploadMailDraftAttachment,
+} from "@/lib/services/mail-drafts";
 
 // Phase 6 action/send service tests against the deterministic MOCK driver
 // (pattern: tests/unit/services/mail-sync.test.ts). The mock store is keyed
@@ -232,6 +237,138 @@ describe("moveItem", () => {
 });
 
 describe("sendMail", () => {
+  it("autosaves, updates, and scopes a sanitized local draft", async () => {
+    const account = await createSyncedAccount("draft-lifecycle");
+    const created = await saveMailDraft(workspaceId, {
+      accountId: account.id,
+      to: ["unfinished-address"],
+      cc: [],
+      bcc: [],
+      subject: "First subject",
+      bodyText: "First body",
+      bodyHtml: '<p>First body</p><script>alert("x")</script>',
+    });
+
+    expect(created.to).toEqual(["unfinished-address"]);
+    expect(created.bodyHtml).toBe("<p>First body</p>");
+
+    const updated = await saveMailDraft(workspaceId, {
+      draftId: created.id,
+      accountId: account.id,
+      to: ["dest@example.ru"],
+      cc: [],
+      bcc: [],
+      subject: "Updated subject",
+      bodyText: "Updated body",
+      bodyHtml: "<p><strong>Updated body</strong></p>",
+    });
+    expect(updated.id).toBe(created.id);
+    expect(updated.subject).toBe("Updated subject");
+    expect(
+      await db.mailItem.count({
+        where: { accountId: account.id, folder: { specialUse: "DRAFTS" } },
+      }),
+    ).toBe(1);
+
+    await expect(
+      saveMailDraft(otherWorkspaceId, {
+        draftId: created.id,
+        accountId: account.id,
+        to: [],
+        cc: [],
+        bcc: [],
+        subject: "foreign",
+        bodyText: "foreign",
+        bodyHtml: "<p>foreign</p>",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("sends draft attachments, stores the Sent copy, and removes the draft", async () => {
+    const account = await createSyncedAccount("send-draft-attachment");
+    const draft = await saveMailDraft(workspaceId, {
+      accountId: account.id,
+      to: ["dest@example.ru"],
+      cc: [],
+      bcc: [],
+      subject: "Attached report",
+      bodyText: "See attached.",
+      bodyHtml: "<p>See attached.</p>",
+    });
+    const bytes = Buffer.from("attachment body", "utf8");
+    const attachment = await uploadMailDraftAttachment(draft.id, workspaceId, {
+      filename: "report.txt",
+      contentType: "text/plain",
+      content: bytes,
+    });
+
+    const result = await sendMail(workspaceId, {
+      draftId: draft.id,
+      accountId: account.id,
+      to: draft.to,
+      cc: draft.cc,
+      bcc: draft.bcc,
+      subject: draft.subject,
+      bodyText: draft.bodyText,
+      bodyHtml: draft.bodyHtml,
+    });
+
+    expect(mockOutbox).toHaveLength(1);
+    expect(mockOutbox[0].attachments).toHaveLength(1);
+    expect(mockOutbox[0].attachments[0]).toMatchObject({
+      filename: "report.txt",
+      contentType: "text/plain",
+    });
+    expect(Buffer.from(mockOutbox[0].attachments[0].content)).toEqual(bytes);
+    expect(
+      await db.mailItem.findUnique({ where: { id: draft.id } }),
+    ).toBeNull();
+
+    const sent = await db.mailItem.findUnique({
+      where: { id: result.id! },
+      include: { attachments: true },
+    });
+    expect(sent?.hasAttachments).toBe(true);
+    expect(sent?.attachments).toHaveLength(1);
+    expect(sent?.attachments[0]).toMatchObject({
+      id: expect.any(String),
+      filename: attachment.filename,
+      contentType: attachment.contentType,
+      sizeBytes: bytes.byteLength,
+    });
+    expect(Buffer.from(sent!.attachments[0].content!)).toEqual(bytes);
+  });
+
+  it("rejects a draft that belongs to another workspace", async () => {
+    const account = await createSyncedAccount("own-draft-account");
+    const foreignAccount = await createSyncedAccount(
+      "foreign-draft-account",
+      otherWorkspaceId,
+    );
+    const draft = await saveMailDraft(otherWorkspaceId, {
+      accountId: foreignAccount.id,
+      to: [],
+      cc: [],
+      bcc: [],
+      subject: "Scoped",
+      bodyText: "Scoped",
+      bodyHtml: "<p>Scoped</p>",
+    });
+
+    await expect(
+      sendMail(workspaceId, {
+        draftId: draft.id,
+        accountId: account.id,
+        to: ["dest@example.ru"],
+        cc: [],
+        bcc: [],
+        subject: "Scoped",
+        bodyText: "Scoped",
+        bodyHtml: "<p>Scoped</p>",
+      }),
+    ).rejects.toThrow(MailDraftNotFoundError);
+  });
+
   it("sends via SMTP, appends the Sent copy, and creates a read local Sent row", async () => {
     const account = await createSyncedAccount("send");
     const sent = await folderByPath(account.id, "Sent");
@@ -242,7 +379,8 @@ describe("sendMail", () => {
       cc: ["copy@example.ru"],
       bcc: [],
       subject: `${NAME_PREFIX}-send-subject`,
-      body: "Текст исходящего письма.",
+      bodyText: "Текст исходящего письма.",
+      bodyHtml: "<p><strong>Текст</strong> исходящего письма.</p>",
     });
     expect(result.id).not.toBeNull();
 
@@ -251,6 +389,9 @@ describe("sendMail", () => {
     expect(mockOutbox[0].cc.map((a) => a.address)).toEqual(["copy@example.ru"]);
     expect(mockOutbox[0].from.address).toBe(account.email);
     expect(mockOutbox[0].subject).toBe(`${NAME_PREFIX}-send-subject`);
+    expect(mockOutbox[0].html).toBe(
+      "<p><strong>Текст</strong> исходящего письма.</p>",
+    );
 
     // Sent copy appended \Seen on the mock server.
     const driver = new MockMailDriver(account.id);
@@ -265,6 +406,9 @@ describe("sendMail", () => {
     expect(stored?.fromAddress).toBe(account.email);
     expect(stored?.messageId).toMatch(/^<mock-sent-/);
     expect(stored?.bodyText).toBe("Текст исходящего письма.");
+    expect(stored?.bodyHtml).toBe(
+      "<p><strong>Текст</strong> исходящего письма.</p>",
+    );
     expect(stored?.toRecipients).toEqual([
       { name: null, address: "dest@example.ru" },
     ]);
@@ -283,13 +427,17 @@ describe("sendMail", () => {
       cc: [],
       bcc: [],
       subject: `Re: ${original.subject}`,
-      body: "Ответ.",
+      bodyText: "Ответ.",
+      bodyHtml: '<p><em>Ответ.</em><script>alert("x")</script></p>',
       inReplyToId: original.id,
     });
 
     expect(mockOutbox).toHaveLength(1);
     expect(mockOutbox[0].inReplyTo).toBe(original.messageId);
     expect(mockOutbox[0].references).toEqual([original.messageId]);
+    expect(mockOutbox[0].text).toContain("wrote:\n>");
+    expect(mockOutbox[0].html).toContain("<blockquote>");
+    expect(mockOutbox[0].html).not.toContain("<script");
 
     const stored = await db.mailItem.findUnique({
       where: { id: original.id },
@@ -316,7 +464,8 @@ describe("sendMail", () => {
         cc: [],
         bcc: [],
         subject: "n/a",
-        body: "n/a",
+        bodyText: "n/a",
+        bodyHtml: "<p>n/a</p>",
       }),
     ).rejects.toThrow(MailSendNotAllowedError);
   });
@@ -340,7 +489,8 @@ describe("sendMail", () => {
       cc: [],
       bcc: [],
       subject: "limit",
-      body: "limit",
+      bodyText: "limit",
+      bodyHtml: "<p>limit</p>",
     };
 
     // env is parsed once at import; the limiter reads it at call time, so a

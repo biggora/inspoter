@@ -97,8 +97,11 @@ const DETAIL: MailDetailDto = {
   accountKind: "WEBHOOK",
   to: [],
   cc: [],
+  bcc: [],
   bodyText: "Body",
   bodyHtml: null,
+  draftReplyToId: null,
+  draftForwardOfId: null,
   attachments: [],
   labels: [],
 };

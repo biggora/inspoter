@@ -50,8 +50,16 @@ export interface OutgoingMessage {
   bcc: MailAddress[];
   subject: string;
   text: string;
+  html: string;
+  attachments: OutgoingAttachment[];
   inReplyTo?: string;
   references?: string[];
+}
+
+export interface OutgoingAttachment {
+  filename: string;
+  contentType: string;
+  content: Uint8Array;
 }
 
 export interface RemoteMessageFlags {

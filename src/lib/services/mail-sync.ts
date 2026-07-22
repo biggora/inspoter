@@ -200,12 +200,20 @@ async function syncFolder(
   const validityChanged =
     folder.uidValidity === null
       ? (await db.mailItem.count({
-          where: { workspaceId: account.workspaceId, folderId: folder.id },
+          where: {
+            workspaceId: account.workspaceId,
+            folderId: folder.id,
+            uid: { not: null },
+          },
         })) > 0
       : folder.uidValidity !== remote.uidValidity;
   if (validityChanged) {
     await db.mailItem.deleteMany({
-      where: { workspaceId: account.workspaceId, folderId: folder.id },
+      where: {
+        workspaceId: account.workspaceId,
+        folderId: folder.id,
+        uid: { not: null },
+      },
     });
     lastSeenUid = null;
   }

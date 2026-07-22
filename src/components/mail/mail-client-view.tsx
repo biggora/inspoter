@@ -36,12 +36,17 @@ import {
   SYNC_IN_PROGRESS,
   type MailAccountDto,
   type MailDetailDto,
+  type MailDraftDto,
   type MailFolderDto,
   type MailFilterRuleDto,
   type MailLabelDto,
   type MailListItemDto,
 } from "./api";
-import { ComposeDialog, type ComposeMode } from "./compose-dialog";
+import {
+  ComposeDialog,
+  InlineReplyComposer,
+  type ComposeMode,
+} from "./compose-dialog";
 import {
   FilterRuleDialog,
   type FilterRuleSaveResult,
@@ -54,6 +59,28 @@ import {
 import { MailSidebar, type MailSidebarProps } from "./mail-sidebar";
 import { MessageList } from "./message-list";
 import { MessagePane } from "./message-pane";
+
+function mailDetailToDraft(detail: MailDetailDto): MailDraftDto {
+  return {
+    id: detail.id,
+    accountId: detail.accountId,
+    to: detail.to.map((recipient) => recipient.address),
+    cc: detail.cc.map((recipient) => recipient.address),
+    bcc: detail.bcc.map((recipient) => recipient.address),
+    subject: detail.subject,
+    bodyText: detail.bodyText,
+    bodyHtml: detail.bodyHtml ?? "<p></p>",
+    inReplyToId: detail.draftReplyToId,
+    forwardOfId: detail.draftForwardOfId,
+    updatedAt: detail.receivedAt,
+    attachments: detail.attachments.map((attachment) => ({
+      id: attachment.id,
+      filename: attachment.filename,
+      contentType: attachment.contentType,
+      sizeBytes: attachment.sizeBytes,
+    })),
+  };
+}
 
 function sortAppliedLabels(
   applied: MailLabelDto[],
@@ -186,6 +213,7 @@ function MailClientCoordinator({
     mode: ComposeMode;
     original: MailDetailDto | null;
     accountId: string;
+    draft: MailDraftDto | null;
   } | null>(null);
 
   useEffect(() => {
@@ -709,6 +737,22 @@ function MailClientCoordinator({
       mode,
       original,
       accountId: original?.accountId ?? composeAccountId,
+      draft: null,
+    });
+  }
+
+  function openDraft(draft: MailDetailDto | null) {
+    if (!draft) return;
+    const mode: ComposeMode = draft.draftReplyToId
+      ? "reply"
+      : draft.draftForwardOfId
+        ? "forward"
+        : "new";
+    setCompose({
+      mode,
+      original: null,
+      accountId: draft.accountId,
+      draft: mailDetailToDraft(draft),
     });
   }
 
@@ -718,8 +762,17 @@ function MailClientCoordinator({
   function handleSent() {
     // A local Sent row appears right after send — refresh the list when the
     // user is looking at the Sent folder.
-    if (selectedFolder?.specialUse === "SENT") {
+    if (
+      selectedFolder?.specialUse === "SENT" ||
+      selectedFolder?.specialUse === "DRAFTS"
+    ) {
       setListReload((n) => n + 1);
+    }
+  }
+
+  function handleDraftSaved() {
+    if (selectedFolder?.specialUse === "DRAFTS") {
+      setListReload((value) => value + 1);
     }
   }
 
@@ -873,6 +926,7 @@ function MailClientCoordinator({
     detail && archiveFolder && detail.folderId !== archiveFolder.id,
   );
   const isInTrash = detailFolder?.specialUse === "TRASH";
+  const isDraft = detailFolder?.specialUse === "DRAFTS";
 
   // Initial accounts load — full-layout skeleton.
   if (accounts === null && !accountsError) {
@@ -1012,11 +1066,13 @@ function MailClientCoordinator({
             onBack={clearSelection}
             onReply={() => openCompose("reply", detail)}
             onForward={() => openCompose("forward", detail)}
+            onEditDraft={() => openDraft(detail)}
             onArchive={handleArchive}
             onDelete={handleDelete}
             onToggleRead={handleToggleRead}
             canArchive={canArchive}
             isInTrash={isInTrash}
+            isDraft={isDraft}
             mailLabelsEnabled={mailLabelsEnabled}
             labels={labels}
             labelsLoading={labelsLoading}
@@ -1028,11 +1084,30 @@ function MailClientCoordinator({
             canCreateFilter={mailLabelsEnabled && canManageRules}
             onCreateFilter={() => setFilterRuleOpen(true)}
             filterTriggerRef={filterRuleTriggerRef}
+            replyComposer={
+              compose?.mode === "reply" &&
+              detail &&
+              compose.original?.id === detail.id ? (
+                <InlineReplyComposer
+                  key={detail.id}
+                  original={detail}
+                  accountId={compose.accountId}
+                  onDraftSaved={handleDraftSaved}
+                  onCancel={() => setCompose(null)}
+                  onSent={() => {
+                    setCompose(null);
+                    setListReload((value) => value + 1);
+                    setDetailReload((value) => value + 1);
+                    handleSent();
+                  }}
+                />
+              ) : null
+            }
           />
         </div>
       </div>
 
-      {compose && (
+      {compose && (compose.mode !== "reply" || compose.draft) && (
         <ComposeDialog
           open
           onOpenChange={(open) => {
@@ -1041,6 +1116,8 @@ function MailClientCoordinator({
           mode={compose.mode}
           original={compose.original}
           accountId={compose.accountId}
+          initialDraft={compose.draft}
+          onDraftSaved={handleDraftSaved}
           onSent={handleSent}
         />
       )}
