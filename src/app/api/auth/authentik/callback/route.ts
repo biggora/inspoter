@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import * as client from "openid-client";
-import { authentikEnabled } from "@/lib/config/env";
+import { authentikEnabled, env } from "@/lib/config/env";
 import { getAuthentikConfig } from "@/lib/auth/authentik-client";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
 import {
@@ -51,9 +51,15 @@ export async function GET(request: NextRequest) {
   // 500.
   try {
     const config = await getAuthentikConfig();
+    // Behind a reverse proxy request.url reflects the internal container
+    // address (e.g. http://localhost:3000/…). openid-client derives
+    // redirect_uri from the URL passed here, so use the configured
+    // external URI to match what was sent in the authorization request.
+    const callbackUrl = new URL(env.AUTHENTIK_REDIRECT_URI!);
+    callbackUrl.search = new URL(request.url).search;
     const tokens = await client.authorizationCodeGrant(
       config,
-      new URL(request.url),
+      callbackUrl,
       {
         pkceCodeVerifier: txn.codeVerifier,
         expectedState: txn.state,
