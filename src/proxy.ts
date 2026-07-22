@@ -65,6 +65,7 @@ export function proxy(request: NextRequest) {
 
   const localizedPathname = stripLocalePrefix(pathname);
   const isAuthExempt =
+    localizedPathname === "/" ||
     localizedPathname === "/login" ||
     pathname === "/api/server-metrics" ||
     pathname.startsWith("/api/auth/authentik") ||
