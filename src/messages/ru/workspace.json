@@ -34,6 +34,13 @@
   "memberAddedToast": "Участник добавлен.",
   "addMemberError": "Не удалось добавить участника.",
 
+  "searchOperatorLabel": "Поиск существующих операторов",
+  "searchOperatorPlaceholder": "Введите для поиска…",
+  "noOperatorsFound": "Операторы не найдены",
+  "allOperatorsAdded": "Все операторы уже добавлены",
+  "orCreateNew": "или создать нового",
+  "createNewOperatorTitle": "Создать нового оператора",
+
   "removeMemberLabel": "Удалить {name}",
   "confirmRemoveTitle": "Удалить «{name}»?",
   "confirmRemoveDescription": "Этот участник потеряет доступ к рабочему пространству.",

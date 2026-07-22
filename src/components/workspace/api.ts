@@ -95,6 +95,12 @@ export const workspacesApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  searchOperators: (workspaceId: string, query?: string) => {
+    const params = query ? `?q=${encodeURIComponent(query)}` : "";
+    return request<Array<{ id: string; username: string; email: string | null }>>(
+      `/api/workspaces/${workspaceId}/members/search${params}`,
+    );
+  },
   removeMember: (workspaceId: string, memberId: string) =>
     request<void>(`/api/workspaces/${workspaceId}/members/${memberId}`, {
       method: "DELETE",

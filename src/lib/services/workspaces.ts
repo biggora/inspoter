@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import type {
-  Operator,
-  Workspace,
-  WorkspaceMember,
+import {
+  Prisma,
+  type Operator,
+  type Workspace,
+  type WorkspaceMember,
 } from "@/generated/prisma/client";
 
 export interface CreateWorkspaceInput {
@@ -271,6 +272,42 @@ export async function listMembers(
     where: { workspaceId },
     include: { operator: { select: { id: true, username: true } } },
     orderBy: { joinedAt: "asc" },
+  });
+}
+
+export type AvailableOperator = Pick<Operator, "id" | "username" | "email">;
+
+export async function searchAvailableOperators(
+  workspaceId: string,
+  requestingOperatorId: string,
+  query?: string,
+): Promise<AvailableOperator[]> {
+  await findWorkspaceOrThrow(workspaceId);
+  await requireOwner(workspaceId, requestingOperatorId);
+
+  const existingMembers = await db.workspaceMember.findMany({
+    where: { workspaceId },
+    select: { operatorId: true },
+  });
+  const excludeIds = existingMembers.map((m) => m.operatorId);
+
+  const where: Prisma.OperatorWhereInput = {
+    id: { notIn: excludeIds },
+  };
+
+  if (query && query.trim().length > 0) {
+    const q = query.trim();
+    where.OR = [
+      { username: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  return db.operator.findMany({
+    where,
+    select: { id: true, username: true, email: true },
+    orderBy: { username: "asc" },
+    take: 50,
   });
 }
 
