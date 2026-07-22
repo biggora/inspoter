@@ -60,7 +60,7 @@ describe("SwaggerDocumentation", () => {
 
     await waitFor(() => expect(swaggerMock.props).toBeDefined());
     expect(swaggerMock.scriptSrc).toBe(
-      "/vendor/swagger-ui/5.32.9/swagger-ui-bundle.js",
+      "/vendor/swagger-ui/5.32.10/swagger-ui-bundle.js",
     );
     expect(swaggerMock.props).toEqual({
       spec,

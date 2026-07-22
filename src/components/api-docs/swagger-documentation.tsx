@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const SWAGGER_UI_SCRIPT = "/vendor/swagger-ui/5.32.9/swagger-ui-bundle.js";
+const SWAGGER_UI_SCRIPT = "/vendor/swagger-ui/5.32.10/swagger-ui-bundle.js";
 
 interface SwaggerUIBundleConfig {
   spec: Record<string, unknown>;
