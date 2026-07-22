@@ -139,7 +139,10 @@ export function MarketingHomePage() {
                   className="rounded-xl border border-foreground-800/20 bg-background-900/60 p-4"
                 >
                   <div className="flex items-center gap-2">
-                    <Icon name={m.icon} className="text-sm text-foreground-500" />
+                    <Icon
+                      name={m.icon}
+                      className="text-sm text-foreground-500"
+                    />
                     <span className="text-xs text-foreground-500">
                       {m.label}
                     </span>

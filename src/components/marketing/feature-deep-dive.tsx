@@ -38,7 +38,10 @@ export function FeatureDeepDive({
                 key={bullet}
                 className="flex items-start gap-3 text-foreground-300"
               >
-                <Icon name="ri-check-line" className="mt-0.5 shrink-0 text-accent-400" />
+                <Icon
+                  name="ri-check-line"
+                  className="mt-0.5 shrink-0 text-accent-400"
+                />
                 <span>{bullet}</span>
               </li>
             ))}

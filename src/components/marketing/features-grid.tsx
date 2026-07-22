@@ -91,7 +91,10 @@ export function FeaturesGrid() {
               )}
             >
               <div className="mb-4 inline-flex items-center justify-center rounded-lg bg-primary-500/10 p-2.5">
-                <Icon name={feature.icon} className="text-xl text-primary-400" />
+                <Icon
+                  name={feature.icon}
+                  className="text-xl text-primary-400"
+                />
               </div>
               <h3 className="font-heading text-lg font-semibold text-foreground-100">
                 {feature.title}
