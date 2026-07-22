@@ -13,9 +13,13 @@ import {
 // redirects to Authentik. Excluded from src/proxy.ts's matcher: it must be
 // reachable with no session cookie present.
 
+function externalOrigin(): string {
+  return new URL(env.AUTHENTIK_REDIRECT_URI!).origin;
+}
+
 export async function GET(request: NextRequest) {
   if (!authentikEnabled) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", externalOrigin()));
   }
 
   const next = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest) {
     // E.g. Authentik is unreachable or misconfigured (discovery failure) —
     // fail into the normal login-error UI instead of an unhandled 500.
     console.error("Authentik login-initiation failed:", error);
-    const url = new URL("/login", request.url);
+    const url = new URL("/login", externalOrigin());
     url.searchParams.set("error", "authentik_failed");
     return NextResponse.redirect(url);
   }

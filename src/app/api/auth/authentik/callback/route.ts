@@ -17,8 +17,12 @@ import { createSession, establishInitialWorkspace } from "@/lib/auth/session";
 // linked Operator, and establishes a session. Excluded from src/proxy.ts's
 // matcher: it must be reachable with no session cookie present.
 
-function loginErrorRedirect(request: NextRequest, code: string) {
-  const url = new URL("/login", request.url);
+function externalOrigin(): string {
+  return new URL(env.AUTHENTIK_REDIRECT_URI!).origin;
+}
+
+function loginErrorRedirect(code: string) {
+  const url = new URL("/login", externalOrigin());
   url.searchParams.set("error", code);
   return NextResponse.redirect(url);
 }
@@ -33,7 +37,7 @@ function clearTxnCookie(response: NextResponse) {
 
 export async function GET(request: NextRequest) {
   if (!authentikEnabled) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", externalOrigin()));
   }
 
   // Single-use: read and clear the transaction cookie regardless of outcome.
@@ -41,7 +45,7 @@ export async function GET(request: NextRequest) {
     request.cookies.get(AUTHENTIK_TXN_COOKIE_NAME)?.value,
   );
   if (!txn) {
-    return clearTxnCookie(loginErrorRedirect(request, "authentik_state"));
+    return clearTxnCookie(loginErrorRedirect("authentik_state"));
   }
 
   // Everything below (token exchange through session creation) is one
@@ -97,10 +101,10 @@ export async function GET(request: NextRequest) {
       ? sanitizeNextPath(txn.next)
       : "/no-workspace";
     return clearTxnCookie(
-      NextResponse.redirect(new URL(destination, request.url)),
+      NextResponse.redirect(new URL(destination, externalOrigin())),
     );
   } catch (error) {
     console.error("Authentik login failed:", error);
-    return clearTxnCookie(loginErrorRedirect(request, "authentik_failed"));
+    return clearTxnCookie(loginErrorRedirect("authentik_failed"));
   }
 }
