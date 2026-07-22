@@ -415,7 +415,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       .getByRole("menuitem", { name: secondWorkspace.name, exact: true })
       .click();
     await expect(
-      page.locator(`[data-workspace-id="${secondWorkspace.id}"]`),
+      page.locator(`button[data-workspace-id="${secondWorkspace.id}"]`),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: fixture.channel.name, exact: true }),
@@ -424,7 +424,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
     secretUrl = "";
     await memberContext?.close();
     const activeId = await page
-      .locator("[data-workspace-id]")
+      .locator("button[data-workspace-id]")
       .first()
       .getAttribute("data-workspace-id")
       .catch(() => null);
@@ -439,7 +439,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
         .getByRole("menuitem", { name: fixture.workspaceName, exact: true })
         .click();
       await expect(
-        page.locator(`[data-workspace-id="${fixture.workspaceId}"]`),
+        page.locator(`button[data-workspace-id="${fixture.workspaceId}"]`),
       ).toBeVisible();
     }
     const removeStatus = await deleteResource(

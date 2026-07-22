@@ -8,7 +8,7 @@ async function getWorkspaceId(page: Page): Promise<string> {
   const workspace = page.locator("button[data-workspace-id]").first();
   if ((await workspace.count()) === 0) {
     await page
-      .getByRole("button", { name: "Toggle navigation", exact: true })
+      .getByRole("button", { name: "Переключить навигацию", exact: true })
       .click();
     await expect(workspace).toBeVisible();
   }
@@ -1316,6 +1316,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       });
       await memberPage.keyboard.press("Enter");
       await expect(memberOption).toHaveAttribute("aria-selected", "false");
+      await expect(memberOption).toBeFocused();
       await memberPage.keyboard.press("Enter");
       await expect(memberOption).toHaveAttribute("aria-selected", "true");
       await memberPage.keyboard.press("Escape");

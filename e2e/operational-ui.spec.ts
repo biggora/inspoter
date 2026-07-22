@@ -352,6 +352,7 @@ test("mail row selection renders the corresponding message detail", async ({
           receivedAt: "2026-07-17T09:15:00.000Z",
           accountId: "acc-1",
           folderId: "folder-inbox",
+          labels: [],
         },
       ],
       nextCursor: null,
@@ -377,6 +378,7 @@ test("mail row selection renders the corresponding message detail", async ({
       hasAttachments: false,
       receivedAt: "2026-07-17T09:15:00.000Z",
       attachments: [],
+      labels: [],
     }),
   );
 
