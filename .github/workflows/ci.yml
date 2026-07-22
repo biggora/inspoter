@@ -1,4 +1,4 @@
-name: CI
+name: Inspoter CI
 
 on:
   pull_request:

@@ -1,4 +1,4 @@
-name: Release image
+name: Release Inspoter image
 
 on:
   release:

@@ -1,4 +1,4 @@
-name: Release metrics agent
+name: Release Inspoter metrics agent
 
 on:
   release:
