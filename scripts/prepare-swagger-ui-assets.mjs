@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const EXPECTED_VERSION = "5.32.9";
+export const EXPECTED_VERSION = "5.32.10";
 const BUNDLE_NAME = "swagger-ui-bundle.js";
 const LICENSE_SOURCE_NAME = "LICENSE";
 const LICENSE_DESTINATION_NAME = "swagger-ui-bundle.js.LICENSE.txt";
