@@ -100,6 +100,37 @@ describe("CRUD", () => {
       .filter((n) => n.startsWith(`${NAME_PREFIX}-crud-list-`));
     expect(names).toEqual([...names].sort());
   });
+
+  it("listOverview() includes the latest 24 checks in descending order", async () => {
+    const created = await servicesService.create(
+      workspaceId,
+      httpInput(`${NAME_PREFIX}-overview`),
+    );
+    const createdIds: string[] = [];
+    const base = Date.now();
+
+    for (let index = 0; index < 26; index++) {
+      const check = await db.serviceCheck.create({
+        data: {
+          workspaceId,
+          serviceId: created.id,
+          serviceWorkspaceId: workspaceId,
+          status: index % 2 === 0 ? ServiceStatus.UP : ServiceStatus.DOWN,
+          responseTimeMs: index,
+          checkedAt: new Date(base + index * 1000),
+        },
+      });
+      createdIds.push(check.id);
+    }
+
+    const overview = await servicesService.listOverview(workspaceId);
+    const item = overview.find((service) => service.id === created.id);
+
+    expect(item?.checks).toHaveLength(24);
+    expect(item?.checks.map((check) => check.id)).toEqual(
+      createdIds.slice(2).reverse(),
+    );
+  });
 });
 
 describe("Workspace isolation", () => {

@@ -22,9 +22,11 @@ import { CardGrid } from "@/components/shell/card-grid";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import type { Service } from "@/generated/prisma/client";
+import type { ServiceOverviewItem } from "@/lib/services/services";
 import { servicesApi } from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
 import {
+  formatDateTime,
   formatRelativeTime,
   formatResponseTime,
   formatTarget,
@@ -52,7 +54,7 @@ const MONITOR_TYPE_ICONS = {
 export function ServicesView({
   initialServices,
 }: {
-  initialServices: Service[];
+  initialServices: ServiceOverviewItem[];
 }) {
   const t = useTranslations("services");
   const router = useRouter();
@@ -169,7 +171,7 @@ function ServiceCard({
   onEdit,
   onDelete,
 }: {
-  service: Service;
+  service: ServiceOverviewItem;
   checking: boolean;
   error?: string;
   onCheckNow: () => void;
@@ -180,6 +182,7 @@ function ServiceCard({
   const format = useFormatter();
   const monitorIconClass =
     MONITOR_TYPE_ICONS[service.monitorType] ?? "ri-global-line";
+  const historyChecks = [...service.checks].reverse();
 
   return (
     <Card size="sm">
@@ -225,6 +228,38 @@ function ServiceCard({
           <span className="text-foreground-800 font-medium">
             {formatResponseTime(service.lastResponseTimeMs, t)}
           </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="shrink-0 text-foreground-500">
+            {t("checkHistoryTitle")}
+          </span>
+          {historyChecks.length > 0 ? (
+            <div
+              className="flex min-w-0 flex-1 items-center justify-end gap-0.5"
+              role="img"
+              aria-label={`${service.name}: ${t("heartbeatAriaLabel")}`}
+            >
+              {historyChecks.map((check) => (
+                <span
+                  key={check.id}
+                  title={`${formatDateTime(check.checkedAt, format)} — ${
+                    check.status === "UP" ? t("statusUp") : t("statusDown")
+                  }${
+                    check.responseTimeMs !== null
+                      ? `, ${t("msValue", { value: check.responseTimeMs })}`
+                      : ""
+                  }`}
+                  className={`h-3 min-w-0 max-w-2 flex-1 rounded-[2px] ${
+                    check.status === "UP" ? "bg-accent-500" : "bg-primary-500"
+                  }`}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="text-foreground-800 font-medium">
+              {t("emptyChecksTitle")}
+            </span>
+          )}
         </div>
         {!service.isActive && (
           <div className="flex items-center justify-between text-xs">

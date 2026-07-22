@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
   const { workspace } = await requireAuth();
-  const services = await servicesService.list(workspace.id);
+  const services = await servicesService.listOverview(workspace.id);
   return <ServicesView initialServices={services} />;
 }

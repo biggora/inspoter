@@ -49,6 +49,14 @@ export interface ListServiceChecksResult {
   nextCursor: string | null;
 }
 
+export type ServiceOverviewItem = Service & {
+  checks: Array<
+    Pick<ServiceCheck, "id" | "status" | "responseTimeMs" | "checkedAt">
+  >;
+};
+
+const OVERVIEW_CHECK_COUNT = 24;
+
 interface Cursor {
   w: string;
   t: string;
@@ -87,6 +95,27 @@ export async function list(workspaceId: string): Promise<Service[]> {
   return db.service.findMany({
     where: { workspaceId },
     orderBy: { name: "asc" },
+  });
+}
+
+export async function listOverview(
+  workspaceId: string,
+): Promise<ServiceOverviewItem[]> {
+  return db.service.findMany({
+    where: { workspaceId },
+    orderBy: { name: "asc" },
+    include: {
+      checks: {
+        orderBy: [{ checkedAt: "desc" }, { id: "desc" }],
+        take: OVERVIEW_CHECK_COUNT,
+        select: {
+          id: true,
+          status: true,
+          responseTimeMs: true,
+          checkedAt: true,
+        },
+      },
+    },
   });
 }
 
