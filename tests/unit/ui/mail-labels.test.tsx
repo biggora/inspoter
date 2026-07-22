@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FilterRuleDialog } from "@/components/mail/filter-rule-dialog";
 import { FilterRulesDialog } from "@/components/mail/filter-rules-dialog";
 import { LabelChip } from "@/components/mail/label-chip";
+import { LabelColorField } from "@/components/mail/label-color-field";
 import { ManageLabelsDialog } from "@/components/mail/manage-labels-dialog";
 import { MailClientView } from "@/components/mail/mail-client-view";
 import { MailSidebar } from "@/components/mail/mail-sidebar";
@@ -391,6 +392,26 @@ describe("Mail label chips", () => {
     expect(chip).toHaveAttribute("title", "A very long production-alert label");
     expect(chip).toHaveClass("max-w-28");
     expect(chip.querySelector("span")).toHaveClass("truncate");
+  });
+
+  it("uses the selected preset swatch color exactly on the rendered label", () => {
+    renderWithIntl(
+      <>
+        <LabelColorField value="RED" onChange={vi.fn()} />
+        <LabelChip label={{ name: "Urgent", color: "RED" }} />
+      </>,
+    );
+
+    const redOption = screen.getByRole("button", { name: "Красный" });
+    const redSwatch = redOption.querySelector('[aria-hidden="true"]');
+    const chip = screen.getByLabelText("Urgent");
+
+    expect(redSwatch).toHaveStyle({ backgroundColor: "#EF4444" });
+    expect(chip).toHaveStyle({
+      backgroundColor: "#EF4444",
+      borderColor: "#EF4444",
+      color: "#000000",
+    });
   });
 
   it("renders custom hex colors with readable chip contrast", () => {

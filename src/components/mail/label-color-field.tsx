@@ -10,6 +10,7 @@ import {
   DEFAULT_MAIL_LABEL_CUSTOM_COLOR,
   isMailLabelHexColor,
   isMailLabelPresetColor,
+  MAIL_LABEL_PRESET_HEX,
   MAIL_LABEL_PRESET_COLORS,
   normalizeMailLabelHexColor,
   type MailLabelColor,
@@ -17,15 +18,6 @@ import {
   type MailLabelPresetColor,
 } from "@/lib/mail-label-color";
 import { cn } from "@/lib/utils";
-
-const PRESET_DOT_CLASSES: Record<MailLabelPresetColor, string> = {
-  SLATE: "bg-slate-500",
-  RED: "bg-red-500",
-  AMBER: "bg-amber-500",
-  GREEN: "bg-green-500",
-  BLUE: "bg-blue-500",
-  VIOLET: "bg-violet-500",
-};
 
 export interface LabelColorFieldProps {
   value: MailLabelColor;
@@ -96,10 +88,8 @@ export function LabelColorField({
           >
             <span
               aria-hidden
-              className={cn(
-                "size-3 rounded-full ring-1 ring-foreground/15",
-                PRESET_DOT_CLASSES[color],
-              )}
+              className="size-3 rounded-full ring-1 ring-foreground/15"
+              style={{ backgroundColor: MAIL_LABEL_PRESET_HEX[color] }}
             />
             <span>{t(`labelColor${color}`)}</span>
           </ToggleGroupItem>
