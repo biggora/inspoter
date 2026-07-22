@@ -373,4 +373,36 @@ export async function removeMember(
   }
 
   await db.workspaceMember.delete({ where: { id: memberId } });
+
+  const removedOperator = await db.operator.findUnique({
+    where: { id: target.operatorId },
+    select: { defaultWorkspaceId: true },
+  });
+  if (removedOperator?.defaultWorkspaceId === workspaceId) {
+    await db.operator.update({
+      where: { id: target.operatorId },
+      data: { defaultWorkspaceId: null },
+    });
+  }
+}
+
+export async function setDefaultWorkspace(
+  operatorId: string,
+  workspaceId: string,
+): Promise<void> {
+  await findWorkspaceOrThrow(workspaceId);
+  await findMembershipOrThrow(workspaceId, operatorId);
+  await db.operator.update({
+    where: { id: operatorId },
+    data: { defaultWorkspaceId: workspaceId },
+  });
+}
+
+export async function clearDefaultWorkspace(
+  operatorId: string,
+): Promise<void> {
+  await db.operator.update({
+    where: { id: operatorId },
+    data: { defaultWorkspaceId: null },
+  });
 }

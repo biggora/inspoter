@@ -30,6 +30,8 @@ model Operator {
   username           String             @unique
   passwordHash       String? // scrypt hash; never returned (NFR-SEC-002). Null for Authentik-only accounts (no password set).
   email              String? // last-seen email claim from an external identity provider; display-only, never unique (an IdP email can change/be reused)
+  defaultWorkspaceId String?
+  defaultWorkspace   Workspace?         @relation("DefaultWorkspace", fields: [defaultWorkspaceId], references: [id], onDelete: SetNull)
   createdAt          DateTime           @default(now())
   sessions           Session[]
   memberships        WorkspaceMember[]
@@ -78,8 +80,9 @@ model Workspace {
   updatedAt DateTime @updatedAt
   hiddenSections String[] @default([])
 
-  members           WorkspaceMember[]
-  categories        Category[]
+  members             WorkspaceMember[]
+  defaultForOperators Operator[]         @relation("DefaultWorkspace")
+  categories          Category[]
   bookmarks         Bookmark[]
   messageCategories MessageCategory[]
   channels          Channel[]

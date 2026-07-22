@@ -106,6 +106,26 @@ export async function establishInitialWorkspace(
   sessionId: string,
   operatorId: string,
 ): Promise<boolean> {
+  const operator = await db.operator.findUnique({
+    where: { id: operatorId },
+    select: { defaultWorkspaceId: true },
+  });
+
+  if (operator?.defaultWorkspaceId) {
+    const defaultMembership = await db.workspaceMember.findUnique({
+      where: {
+        workspaceId_operatorId: {
+          workspaceId: operator.defaultWorkspaceId,
+          operatorId,
+        },
+      },
+    });
+    if (defaultMembership) {
+      await switchWorkspace(sessionId, operatorId, operator.defaultWorkspaceId);
+      return true;
+    }
+  }
+
   const membership = await db.workspaceMember.findFirst({
     where: { operatorId },
     orderBy: { joinedAt: "asc" },

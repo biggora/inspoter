@@ -58,6 +58,7 @@ function context(operatorId: string, username: string): AuthContext {
       username,
       email: null,
       passwordHash: null,
+      defaultWorkspaceId: null,
       createdAt: new Date(),
     },
   };

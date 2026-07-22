@@ -12,7 +12,10 @@ export async function GET(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const { operator } = authResult;
   const workspaces = await workspacesService.listForOperator(operator.id);
-  return jsonResponse(workspaces);
+  return jsonResponse({
+    workspaces,
+    defaultWorkspaceId: operator.defaultWorkspaceId ?? null,
+  });
 }
 
 export async function POST(request: NextRequest) {

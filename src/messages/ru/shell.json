@@ -28,6 +28,10 @@
   "navLogs": "Логи",
   "navAlerts": "Оповещения",
   "navSettings": "Настройки",
+  "setDefaultWorkspace": "Назначить по умолчанию",
+  "removeDefaultWorkspace": "Убрать по умолчанию",
+  "defaultWorkspaceSet": "Рабочее пространство по умолчанию обновлено.",
+  "defaultWorkspaceError": "Не удалось обновить рабочее пространство по умолчанию.",
   "paginationPrevious": "Назад",
   "paginationPage": "Страница {page}",
   "paginationNext": "Далее"

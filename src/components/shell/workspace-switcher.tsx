@@ -55,6 +55,7 @@ export function WorkspaceSwitcher({
   const errorId = useId();
 
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
+  const [defaultId, setDefaultId] = useState<string | null>(null);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
@@ -66,7 +67,10 @@ export function WorkspaceSwitcher({
     workspacesApi
       .list()
       .then((data) => {
-        if (!cancelled) setWorkspaces(data);
+        if (!cancelled) {
+          setWorkspaces(data.workspaces);
+          setDefaultId(data.defaultWorkspaceId);
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error(t("loadWorkspacesError"));
@@ -75,6 +79,27 @@ export function WorkspaceSwitcher({
       cancelled = true;
     };
   }, [t]);
+
+  async function handleToggleDefault(
+    event: React.MouseEvent,
+    workspaceId: string,
+  ) {
+    event.stopPropagation();
+    event.preventDefault();
+    const isDefault = defaultId === workspaceId;
+    try {
+      if (isDefault) {
+        await workspacesApi.clearDefault();
+        setDefaultId(null);
+      } else {
+        await workspacesApi.setDefault(workspaceId);
+        setDefaultId(workspaceId);
+      }
+      toast.success(t("defaultWorkspaceSet"));
+    } catch {
+      toast.error(t("defaultWorkspaceError"));
+    }
+  }
 
   async function handleSwitch(workspaceId: string) {
     if (workspaceId === currentId || switchingId) return;
@@ -162,6 +187,28 @@ export function WorkspaceSwitcher({
                   <span className="min-w-0 flex-1 truncate">
                     {workspace.name}
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleToggleDefault(e, workspace.id)}
+                    aria-label={
+                      defaultId === workspace.id
+                        ? t("removeDefaultWorkspace")
+                        : t("setDefaultWorkspace")
+                    }
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Icon
+                      name={
+                        defaultId === workspace.id
+                          ? "ri-star-fill"
+                          : "ri-star-line"
+                      }
+                      aria-hidden
+                      className={cn(
+                        defaultId === workspace.id && "text-amber-500",
+                      )}
+                    />
+                  </button>
                   {workspace.id === currentId && (
                     <Icon name="ri-check-line" aria-hidden />
                   )}

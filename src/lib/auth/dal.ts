@@ -90,6 +90,24 @@ export async function requireAuth(): Promise<AuthContext> {
     }
   }
 
+  // Fallback: default workspace, if set and membership is valid
+  if (!workspace) {
+    if (operator.defaultWorkspaceId) {
+      const defaultMembership = await db.workspaceMember.findUnique({
+        where: {
+          workspaceId_operatorId: {
+            workspaceId: operator.defaultWorkspaceId,
+            operatorId: operator.id,
+          },
+        },
+        include: { workspace: true },
+      });
+      if (defaultMembership) {
+        workspace = defaultMembership.workspace;
+      }
+    }
+  }
+
   // Fallback: first workspace the user belongs to
   if (!workspace) {
     const membership = await db.workspaceMember.findFirst({
@@ -102,7 +120,10 @@ export async function requireAuth(): Promise<AuthContext> {
       throw new Error("unreachable");
     }
     workspace = membership.workspace;
-    // Persist for next request
+  }
+
+  // Persist for next request (covers both default and joinedAt fallback)
+  if (workspace.id !== session.activeWorkspaceId) {
     await db.session.update({
       where: { id: session.id },
       data: {
