@@ -40,7 +40,7 @@ export function HeroSection() {
             Get Started
           </Link>
           <Link
-            href="https://github.com/inspoter/inspoter"
+            href="https://github.com/biggora/inspoter"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-12 items-center gap-2 rounded-lg border border-foreground-700/50 bg-background-900/50 px-6 font-medium text-foreground-200 transition-colors hover:border-foreground-600 hover:bg-background-800"
@@ -55,7 +55,7 @@ export function HeroSection() {
             <div className="space-y-2">
               <p>
                 <span className="text-accent-400">$</span> git clone
-                https://github.com/inspoter/inspoter.git
+                https://github.com/biggora/inspoter.git
               </p>
               <p>
                 <span className="text-accent-400">$</span> cd inspoter
