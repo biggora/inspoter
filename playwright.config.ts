@@ -23,10 +23,11 @@ validateTestDatabaseTarget(testEnvironment);
 Object.assign(process.env, testEnvironment);
 
 const appPort = parseTestAppPort(testEnvironment.TEST_APP_PORT);
-// Next.js 16 internally targets `localhost` for proxy rewrites. On Windows,
-// binding only to 127.0.0.1 can make Node's dual-stack localhost connection
-// race fail before Playwright's readiness probe reaches the localized page.
-const appHost = process.platform === "win32" ? "localhost" : "127.0.0.1";
+// Next.js 16 internally targets `localhost` for proxy rewrites — binding to
+// 127.0.0.1 causes middleware rewrite/redirect mismatches (infinite 307 loop
+// for default-locale routes). Always bind to `localhost` so the rewrite URL
+// matches the server's bound address.
+const appHost = "localhost";
 const appOrigin = `http://${appHost}:${appPort}`;
 
 const serverEnvironment = {
