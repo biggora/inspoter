@@ -30,3 +30,10 @@ https://documentation.cpanel.net/display/DD/Guide+to+cPanel+API+2
 
 Backup/Restore
 Известные ограничения (задокументированы в architecture.md): архив собирается в памяти целиком (лимит импорта 512 МиБ через BACKUP_MAX_IMPORT_BYTES, streaming — future work); неверный пароль и повреждённый файл неразличимы (свойство GCM); e2e-тест в браузере не гонялся — ручная проверка по чек-листу из плана рекомендуется перед мержем. 18 падающих unit-тестов и ~113 файлов в format:check — pre-existing проблемы репозитория, подтверждены на чистом дереве до наших изменений.
+
+
+
+curl -X POST http://your-host/api/webhooks/mail \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-H "Content-Type: application/json" \
+-d '{"sender":"noreply@example.com","subject":"Test","body":"Hello"}'
