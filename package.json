@@ -1,6 +1,6 @@
 {
   "name": "inspoter",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "private": true,
   "description": "Inspoter is a self-hosted dashboard for domains, DNS, servers, hosting, uptime monitoring, mail, webhooks, logs, alerts, and team workspaces.",
   "keywords": [
