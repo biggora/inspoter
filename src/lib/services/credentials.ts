@@ -30,13 +30,8 @@ export class EncryptionNotConfiguredError extends Error {
 
 // Authorization is intentionally kept out of the CRUD functions below (they
 // take only workspaceId, matching the API route's already-verified
-// workspace context). Mutating routes call requireWorkspaceOwner() first —
-// re-exported from the shared module so existing route imports keep working.
-export {
-  requireWorkspaceOwner,
-  WorkspaceOwnerRequiredError,
-} from "@/lib/services/workspace-auth";
-
+// workspace context). Any workspace member may manage provider credentials —
+// membership is enforced upstream by requireAuthWithWorkspaceHeader().
 export interface CredentialSummary {
   id: string;
   provider: ProviderType;

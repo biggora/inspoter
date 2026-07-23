@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await credentialsService.requireWorkspaceOwner(workspace.id, operator.id);
     const credential = await credentialsService.createCredential(
       workspace.id,
       parsed.data.provider,
@@ -51,9 +50,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(credential, { status: 201 });
   } catch (error) {
-    if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof credentialsService.EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }

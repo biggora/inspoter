@@ -28,7 +28,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    await credentialsService.requireWorkspaceOwner(workspace.id, operator.id);
     const credential = await credentialsService.updateCredential(
       id,
       workspace.id,
@@ -45,9 +44,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(credential);
   } catch (error) {
-    if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof credentialsService.EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }
@@ -67,7 +63,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    await credentialsService.requireWorkspaceOwner(workspace.id, operator.id);
     await credentialsService.deleteCredential(id, workspace.id);
     recordActivity(workspace.id, {
       operatorId: operator.id,
@@ -78,9 +73,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof credentialsService.CredentialNotFoundError) {
       return jsonResponse({ error: error.message }, { status: 404 });
     }
