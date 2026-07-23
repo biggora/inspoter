@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       entityType: "message_category",
       entityId: category.id,
+      entityLabel: category.name,
     });
     return jsonResponse(category, { status: 201 });
   } catch (error) {

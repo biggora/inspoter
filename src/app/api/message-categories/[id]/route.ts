@@ -54,6 +54,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       action: "update",
       entityType: "message_category",
       entityId: id,
+      entityLabel: parsed.data.name,
     });
     return jsonResponse(category);
   } catch (error) {
