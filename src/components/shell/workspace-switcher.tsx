@@ -181,6 +181,7 @@ export function WorkspaceSwitcher({
               {workspaces.map((workspace) => (
                 <DropdownMenuItem
                   key={workspace.id}
+                  aria-label={workspace.name}
                   disabled={switchingId !== null}
                   onClick={() => handleSwitch(workspace.id)}
                 >
