@@ -39,6 +39,14 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Bookmark, Category } from "@/generated/prisma/client";
 import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
 import { bookmarksApi, categoriesApi } from "./api";
@@ -175,6 +183,7 @@ export function BookmarksBoard({
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const searchId = useId();
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const [optimisticCategories, applyOptimisticReorder] = useOptimistic(
     categories,
@@ -209,6 +218,31 @@ export function BookmarksBoard({
     })),
   ]);
 
+  // Total bookmark count shown next to the page title — always the full
+  // library size across every category and subcategory, independent of the
+  // active search query or category filter below.
+  const totalBookmarkCount = categories.reduce(
+    (sum, category) =>
+      sum +
+      category.bookmarks.length +
+      category.childCategories.reduce(
+        (subSum, sub) => subSum + sub.bookmarks.length,
+        0,
+      ),
+    0,
+  );
+
+  // Category filter only offers top-level groups (design decision: matches
+  // what's visible on the page — subcategories stay nested under whichever
+  // top-level group is selected rather than becoming their own filter
+  // entries).
+  const categoryFilterItems: Record<string, string> = {
+    all: t("allCategoriesOption"),
+    ...Object.fromEntries(
+      optimisticCategories.map((category) => [category.id, category.name]),
+    ),
+  };
+
   function handleRename(category: Category) {
     setCategoryDialog({ mode: "edit", category });
   }
@@ -235,8 +269,14 @@ export function BookmarksBoard({
   // ones, and a subcategory with zero matches is dropped entirely — mirrors
   // the existing top-level "no match -> not rendered" behavior exactly.
   const filteredCategories = useMemo(() => {
-    if (!isSearching) return optimisticCategories;
-    return optimisticCategories
+    const categoryFiltered =
+      categoryFilter === "all"
+        ? optimisticCategories
+        : optimisticCategories.filter(
+            (category) => category.id === categoryFilter,
+          );
+    if (!isSearching) return categoryFiltered;
+    return categoryFiltered
       .map((category) => ({
         ...category,
         bookmarks: category.bookmarks.filter((bookmark) =>
@@ -255,7 +295,7 @@ export function BookmarksBoard({
         (category) =>
           category.bookmarks.length > 0 || category.childCategories.length > 0,
       );
-  }, [optimisticCategories, isSearching, normalizedQuery]);
+  }, [optimisticCategories, categoryFilter, isSearching, normalizedQuery]);
 
   // Delete/rename must always act on the full, unfiltered category — using
   // the search-filtered copy here would understate DeleteCategoryDialog's
@@ -409,6 +449,7 @@ export function BookmarksBoard({
     <PageBody>
       <PageHeader
         title={t("pageTitle")}
+        description={t("count", { count: totalBookmarkCount })}
         actions={
           <Button onClick={() => setCategoryDialog({ mode: "create" })}>
             <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
@@ -446,6 +487,24 @@ export function BookmarksBoard({
                 </InputGroupAddon>
               )}
             </InputGroup>
+            <Select
+              value={categoryFilter}
+              onValueChange={(value) => setCategoryFilter(value as string)}
+              items={categoryFilterItems}
+            >
+              <SelectTrigger size="sm" aria-label={t("categoryFilterAriaLabel")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(categoryFilterItems).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </FilterBar>
         )}
       </PageHeader>
