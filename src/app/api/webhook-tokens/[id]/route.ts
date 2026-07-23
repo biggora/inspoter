@@ -3,6 +3,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as webhookTokensService from "@/lib/services/webhookTokens";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -13,11 +14,18 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   try {
     await webhookTokensService.revoke(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "revoke",
+      entityType: "webhook_token",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

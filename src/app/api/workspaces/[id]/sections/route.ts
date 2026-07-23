@@ -4,6 +4,7 @@ import { updateSectionVisibilitySchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,6 +33,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       operator.id,
       parsed.data.hiddenSections,
     );
+    recordActivity(id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "workspace",
+      entityId: id,
+      details: "section visibility",
+    });
     return jsonResponse(workspace);
   } catch (error) {
     return mapWorkspaceServiceError(error);

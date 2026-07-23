@@ -7,6 +7,7 @@ import {
   listAgentTokens,
   generateEnrollmentToken,
 } from "@/lib/services/serverMetrics";
+import { recordActivity } from "@/lib/services/activity";
 import { z } from "zod";
 
 const createTokenSchema = z.strictObject({
@@ -54,6 +55,14 @@ export async function POST(request: NextRequest) {
       parsed.data.name,
       parsed.data.localServerId,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "server_agent_token",
+      entityId: token.id,
+      entityLabel: parsed.data.name,
+    });
     return jsonResponse(token, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

@@ -51,6 +51,12 @@ export const SECTION_NAV_ITEMS: NavItem[] = [
     icon: "ri-message-2-line",
   },
   {
+    key: "activity",
+    href: "/activity",
+    labelKey: "navActivity",
+    icon: "ri-history-line",
+  },
+  {
     key: "logs",
     href: "/logs",
     labelKey: "navLogs",

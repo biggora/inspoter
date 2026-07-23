@@ -4,13 +4,14 @@ import { bookmarkReorderSchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function PATCH(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = bookmarkReorderSchema.safeParse(body);
@@ -23,6 +24,14 @@ export async function PATCH(request: NextRequest) {
       workspace.id,
       parsed.data.categories,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "reorder",
+      entityType: "bookmark",
+      entityId: null,
+      entityLabel: null,
+    });
     return emptyResponse();
   } catch (error) {
     if (error instanceof bookmarksService.BookmarkReorderValidationError) {

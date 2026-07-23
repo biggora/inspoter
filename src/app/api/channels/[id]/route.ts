@@ -4,6 +4,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 const nameSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -30,7 +31,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   if (!(await channelBelongsToWorkspace(workspace.id, id))) {
@@ -49,6 +50,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       workspace.id,
       parsed.data.name,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "channel",
+      entityId: id,
+    });
     return jsonResponse(channel);
   } catch (error) {
     return toErrorResponse(error);
@@ -60,7 +68,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   if (!(await channelBelongsToWorkspace(workspace.id, id))) {
@@ -69,6 +77,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   try {
     await messagesService.deleteChannel(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "delete",
+      entityType: "channel",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

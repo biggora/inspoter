@@ -6,6 +6,7 @@ import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
 import { env } from "@/lib/config/env";
 import { mapBackupError } from "@/app/api/backup/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -53,6 +54,13 @@ export async function POST(request: NextRequest) {
       mode: parsed.data.mode,
       passphrase: parsed.data.passphrase,
       file: buffer,
+    });
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "import",
+      entityType: "backup",
+      details: parsed.data.mode,
     });
     return jsonResponse(summary);
   } catch (error) {

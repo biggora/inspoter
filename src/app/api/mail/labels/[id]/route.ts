@@ -4,6 +4,7 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
 import { env } from "@/lib/config/env";
 import * as mailLabelsService from "@/lib/services/mail-labels";
+import { recordActivity } from "@/lib/services/activity";
 import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { updateMailLabelSchema } from "@/lib/validation/mail";
 
@@ -52,6 +53,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       id,
       parsed.data,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "update",
+      entityType: "mail_label",
+      entityId: id,
+    });
     return jsonResponse(label);
   } catch (error) {
     return serviceErrorResponse(error);
@@ -72,6 +80,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
       authResult.operator.id,
       id,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "delete",
+      entityType: "mail_label",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return serviceErrorResponse(error);

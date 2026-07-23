@@ -4,6 +4,7 @@ import { env } from "@/lib/config/env";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailLabelsService from "@/lib/services/mail-labels";
+import { recordActivity } from "@/lib/services/activity";
 import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import {
   createMailLabelSchema,
@@ -59,6 +60,13 @@ export async function POST(request: NextRequest) {
       authResult.operator.id,
       parsed.data,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "create",
+      entityType: "mail_label",
+      entityId: label.id,
+    });
     return jsonResponse(label, { status: 201 });
   } catch (error) {
     if (error instanceof WorkspaceOwnerRequiredError) {

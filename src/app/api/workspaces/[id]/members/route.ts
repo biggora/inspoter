@@ -4,6 +4,7 @@ import { addMemberSchema } from "@/lib/validation/workspaces";
 import * as workspacesService from "@/lib/services/workspaces";
 import { mapWorkspaceServiceError } from "@/app/api/workspaces/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       parsed.data,
       operator.id,
     );
+    recordActivity(id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "workspace_member",
+      entityId: member.id,
+      entityLabel: parsed.data.username,
+    });
     return jsonResponse(member, { status: 201 });
   } catch (error) {
     return mapWorkspaceServiceError(error);

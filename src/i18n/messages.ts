@@ -1,4 +1,5 @@
 import shell from "@/messages/ru/shell.json";
+import activity from "@/messages/ru/activity.json";
 import auth from "@/messages/ru/auth.json";
 import backup from "@/messages/ru/backup.json";
 import bookmarks from "@/messages/ru/bookmarks.json";
@@ -17,6 +18,7 @@ import metadata from "@/messages/ru/metadata.json";
 import validation from "@/messages/ru/validation.json";
 
 import enShell from "@/messages/en/shell.json";
+import enActivity from "@/messages/en/activity.json";
 import enAuth from "@/messages/en/auth.json";
 import enBackup from "@/messages/en/backup.json";
 import enBookmarks from "@/messages/en/bookmarks.json";
@@ -36,6 +38,7 @@ import enValidation from "@/messages/en/validation.json";
 
 export const ruMessages = {
   shell,
+  activity,
   auth,
   backup,
   bookmarks,
@@ -56,6 +59,7 @@ export const ruMessages = {
 
 export const enMessages = {
   shell: enShell,
+  activity: enActivity,
   auth: enAuth,
   backup: enBackup,
   bookmarks: enBookmarks,

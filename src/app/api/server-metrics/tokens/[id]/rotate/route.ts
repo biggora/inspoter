@@ -4,6 +4,7 @@ import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { rotateAgentToken } from "@/lib/services/serverMetrics";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function POST(
   request: NextRequest,
@@ -25,6 +26,13 @@ export async function POST(
 
   try {
     const result = await rotateAgentToken(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "rotate",
+      entityType: "server_agent_token",
+      entityId: id,
+    });
     return jsonResponse(result);
   } catch (error) {
     return toErrorResponse(error);
