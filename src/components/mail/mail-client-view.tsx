@@ -878,7 +878,7 @@ function MailClientCoordinator({
           </Button>
         </>
       )}
-      <Button size="sm" onClick={() => setAddAccountOpen(true)}>
+      <Button onClick={() => setAddAccountOpen(true)}>
         <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
         {t("addAccountButton")}
       </Button>
