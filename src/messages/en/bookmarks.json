@@ -13,6 +13,9 @@
   "reorderCategoriesError": "Failed to reorder categories. Please try again.",
   "reorderBookmarksError": "Failed to reorder bookmarks. Please try again.",
   "foundCount": "Found {count, plural, one {# bookmark} few {# bookmarks} many {# bookmarks} other {# bookmarks}}",
+  "count": "{count, plural, one {# bookmark} few {# bookmarks} many {# bookmarks} other {# bookmarks}}",
+  "categoryFilterAriaLabel": "Filter by category",
+  "allCategoriesOption": "All categories",
 
   "categoryDragHandleLabel": "Reorder category \"{name}\"",
   "addBookmarkButton": "Add",

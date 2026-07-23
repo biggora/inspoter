@@ -13,6 +13,9 @@
   "reorderCategoriesError": "Не удалось изменить порядок категорий. Попробуйте снова.",
   "reorderBookmarksError": "Не удалось изменить порядок закладок. Попробуйте снова.",
   "foundCount": "Найдено {count, plural, one {# закладка} few {# закладки} many {# закладок} other {# закладок}}",
+  "count": "{count, plural, one {# закладка} few {# закладки} many {# закладок} other {# закладок}}",
+  "categoryFilterAriaLabel": "Фильтр по категории",
+  "allCategoriesOption": "Все категории",
 
   "categoryDragHandleLabel": "Изменить порядок категории «{name}»",
   "addBookmarkButton": "Добавить",

@@ -20,6 +20,13 @@ function bookmarkArticle(page: Page, bookmarkName: string) {
   return page.getByRole("article", { name: bookmarkName, exact: true });
 }
 
+// The page-header's total-count description ("N закладок") always starts
+// with a digit — unlike the empty-state title ("Нет закладок") or the
+// search live-region's "Найдено N закладок", which don't.
+function totalCountText(page: Page) {
+  return page.locator("p").filter({ hasText: /^\d+\s/ }).first();
+}
+
 // DOM order of bookmark `<article aria-label>`s within a category section —
 // used by the reorder tests below to assert the post-drag/keyboard order,
 // since CSS grid placement never reorders the underlying DOM.
@@ -633,6 +640,61 @@ test("AC-BM-019: a query matches on a URL substring, not just name/description",
   await page.getByLabel("Поиск закладок", { exact: true }).fill(urlToken);
 
   await expect(bookmarkArticle(page, bookmarkName)).toBeVisible();
+});
+
+test("the page header shows the total bookmark count across all categories", async ({
+  page,
+  testData,
+}) => {
+  const categoryName = testData.name("Total Count Cat");
+  const bookmarkName = testData.name("Total Count Bookmark");
+  await createCategory(page, categoryName, testData.registerCategory);
+  await createBookmark(page, categoryName, {
+    name: bookmarkName,
+    url: testData.localUrl(`/settings?bookmark=${testData.suffix}`),
+  });
+
+  // With no search/filter active, every bookmark article on the page is
+  // counted — the header total must match that number exactly.
+  const totalArticles = await page.getByRole("article").count();
+  await expect(totalCountText(page)).toHaveText(
+    new RegExp(`^${totalArticles}\\s`),
+  );
+});
+
+test("the category filter dropdown shows only the selected category, and resetting to «Все категории» restores the full list", async ({
+  page,
+  testData,
+}) => {
+  const categoryA = testData.name("Category Filter A");
+  const categoryB = testData.name("Category Filter B");
+  const bookmarkA = testData.name("Category Filter Bookmark A");
+  const bookmarkB = testData.name("Category Filter Bookmark B");
+
+  await createCategory(page, categoryA, testData.registerCategory);
+  await createBookmark(page, categoryA, {
+    name: bookmarkA,
+    url: testData.localUrl(`/settings?bookmark=cat-filter-a-${testData.suffix}`),
+  });
+  await createCategory(page, categoryB, testData.registerCategory);
+  await createBookmark(page, categoryB, {
+    name: bookmarkB,
+    url: testData.localUrl(`/settings?bookmark=cat-filter-b-${testData.suffix}`),
+  });
+
+  await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
+  await page.getByRole("option", { name: categoryA, exact: true }).click();
+
+  await expect(categorySection(page, categoryA)).toBeVisible();
+  await expect(categorySection(page, categoryB)).toHaveCount(0);
+  await expect(bookmarkArticle(page, bookmarkA)).toBeVisible();
+  await expect(bookmarkArticle(page, bookmarkB)).toHaveCount(0);
+
+  await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
+  await page.getByRole("option", { name: "Все категории", exact: true }).click();
+
+  await expect(categorySection(page, categoryA)).toBeVisible();
+  await expect(categorySection(page, categoryB)).toBeVisible();
 });
 
 test("AC-BM-022..025: keyboard-only reorder moves a bookmark within a category and persists after reload", async ({
