@@ -4,6 +4,7 @@ import { emptyResponse, jsonResponse } from "@/lib/api/response";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { env } from "@/lib/config/env";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
+import { recordActivity } from "@/lib/services/activity";
 import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { updateMailFilterRuleSchema } from "@/lib/validation/mail";
 
@@ -59,6 +60,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       id,
       parsed.data,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "update",
+      entityType: "mail_filter_rule",
+      entityId: id,
+    });
     return jsonResponse(rule);
   } catch (error) {
     return serviceErrorResponse(error);
@@ -79,6 +87,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
       authResult.operator.id,
       id,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "delete",
+      entityType: "mail_filter_rule",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return serviceErrorResponse(error);

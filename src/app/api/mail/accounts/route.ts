@@ -8,6 +8,7 @@ import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { MailTransportError } from "@/lib/mail";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -39,6 +40,14 @@ export async function POST(request: NextRequest) {
       operator.id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "mail_account",
+      entityId: account.id,
+      entityLabel: parsed.data.name,
+    });
     // Fire-and-forget first sync — don't block the 201; the lease makes
     // overlap with the scheduler safe, failures land in syncStatus/syncError.
     void syncAccount(account.id, workspace.id).catch(() => {});

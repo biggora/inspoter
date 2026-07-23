@@ -4,6 +4,7 @@ import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse } from "@/lib/api/response";
 import { revokeAgentToken } from "@/lib/services/serverMetrics";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function DELETE(
   request: NextRequest,
@@ -25,6 +26,13 @@ export async function DELETE(
 
   try {
     await revokeAgentToken(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "revoke",
+      entityType: "server_agent_token",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

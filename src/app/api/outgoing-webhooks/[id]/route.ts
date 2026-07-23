@@ -4,6 +4,7 @@ import { updateOutgoingWebhookSchema } from "@/lib/validation/outgoingWebhooks";
 import * as outgoingWebhooksService from "@/lib/services/outgoingWebhooks";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse, emptyResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -47,6 +48,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       workspace.id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "outgoing_webhook",
+      entityId: id,
+      entityLabel: parsed.data.name ?? null,
+    });
     return jsonResponse(updated);
   } catch (error) {
     return toErrorResponse(error);
@@ -58,11 +67,18 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   try {
     await outgoingWebhooksService.remove(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "delete",
+      entityType: "outgoing_webhook",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

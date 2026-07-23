@@ -4,13 +4,14 @@ import { bookmarkSchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = bookmarkSchema.safeParse(body);
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
       workspace.id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "bookmark",
+      entityId: bookmark.id,
+      entityLabel: parsed.data.name,
+    });
     return jsonResponse(bookmark, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

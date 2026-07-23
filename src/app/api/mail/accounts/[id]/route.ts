@@ -7,6 +7,7 @@ import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { MailTransportError } from "@/lib/mail";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -33,6 +34,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "mail_account",
+      entityId: id,
+    });
     return jsonResponse(account);
   } catch (error) {
     if (error instanceof WorkspaceOwnerRequiredError) {
@@ -64,6 +72,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   try {
     await mailAccountsService.deleteAccount(workspace.id, operator.id, id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "delete",
+      entityType: "mail_account",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     if (error instanceof WorkspaceOwnerRequiredError) {

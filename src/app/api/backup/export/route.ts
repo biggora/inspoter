@@ -5,6 +5,7 @@ import { exportWorkspace } from "@/lib/services/backup";
 import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
 import { mapBackupError } from "@/app/api/backup/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 // RFC 6266/5987: ASCII fallback in `filename`, percent-encoded UTF-8 in
 // `filename*`. Duplicated from
@@ -40,6 +41,13 @@ export async function POST(request: NextRequest) {
       workspace.id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "export",
+      entityType: "backup",
+      details: parsed.data.sections.join(", "),
+    });
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/octet-stream",

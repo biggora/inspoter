@@ -107,6 +107,7 @@ model Workspace {
   webhookDeliveries WebhookDelivery[]
   localServers      LocalServer[]
   serverAgentTokens ServerAgentToken[]
+  activities        Activity[]
 }
 
 model WorkspaceMember {
@@ -462,6 +463,27 @@ model MailFilterRun {
   @@unique([id, workspaceId])
   @@index([workspaceId, sourceRuleId, createdAt, id])
   @@index([status, leaseExpiresAt, id])
+}
+
+// --- Activity (user action journal) ---
+model Activity {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  operatorId   String
+  operatorName String
+  action       String
+  entityType   String
+  entityId     String?
+  entityLabel  String?
+  details      String?
+  timestamp    DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+
+  @@index([workspaceId, timestamp, id])
+  @@index([workspaceId, action, timestamp, id])
+  @@index([workspaceId, entityType, timestamp, id])
+  @@index([workspaceId, operatorId, timestamp, id])
 }
 
 // --- Logs (FR-LOG-001..002) ---

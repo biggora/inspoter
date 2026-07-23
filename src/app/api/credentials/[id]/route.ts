@@ -7,6 +7,7 @@ import {
 import * as credentialsService from "@/lib/services/credentials";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -34,6 +35,14 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       parsed.data.label,
       toCredentialData(parsed.data),
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "credential",
+      entityId: id,
+      entityLabel: parsed.data.label,
+    });
     return jsonResponse(credential);
   } catch (error) {
     if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {
@@ -60,6 +69,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   try {
     await credentialsService.requireWorkspaceOwner(workspace.id, operator.id);
     await credentialsService.deleteCredential(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "delete",
+      entityType: "credential",
+      entityId: id,
+    });
     return emptyResponse();
   } catch (error) {
     if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {

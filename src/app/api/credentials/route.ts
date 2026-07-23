@@ -7,6 +7,7 @@ import {
 import * as credentialsService from "@/lib/services/credentials";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -40,6 +41,14 @@ export async function POST(request: NextRequest) {
       parsed.data.label,
       toCredentialData(parsed.data),
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "credential",
+      entityId: credential.id,
+      entityLabel: parsed.data.label,
+    });
     return jsonResponse(credential, { status: 201 });
   } catch (error) {
     if (error instanceof credentialsService.WorkspaceOwnerRequiredError) {

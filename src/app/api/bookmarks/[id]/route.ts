@@ -4,6 +4,7 @@ import { bookmarkUpdateSchema } from "@/lib/validation/bookmarks";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -29,6 +30,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       workspace.id,
       parsed.data,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "update",
+      entityType: "bookmark",
+      entityId: id,
+      entityLabel: parsed.data.name,
+    });
     return jsonResponse(bookmark);
   } catch (error) {
     return toErrorResponse(error);
@@ -40,11 +49,19 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   try {
     await bookmarksService.deleteBookmark(id, workspace.id);
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "delete",
+      entityType: "bookmark",
+      entityId: id,
+      entityLabel: null,
+    });
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

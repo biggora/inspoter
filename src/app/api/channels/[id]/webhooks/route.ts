@@ -4,6 +4,7 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as webhookTokensService from "@/lib/services/webhookTokens";
 import { createChannelWebhookSchema } from "@/lib/validation/webhookTokens";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
@@ -52,9 +54,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const created = await webhookTokensService.createForChannel(
       id,
-      authResult.workspace.id,
+      workspace.id,
       parsed.data.name,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "channel_webhook",
+      entityId: created.webhook.id,
+      entityLabel: parsed.data.name,
+    });
     return jsonResponse(created, {
       status: 201,
       headers: SECRET_RESPONSE_HEADERS,

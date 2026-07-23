@@ -4,6 +4,7 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as messagesService from "@/lib/services/messages";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 const createChannelSchema = z.object({
   categoryId: z.string().min(1, "categoryId is required"),
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
 
   const body = await request.json().catch(() => null);
   const parsed = createChannelSchema.safeParse(body);
@@ -48,6 +49,13 @@ export async function POST(request: NextRequest) {
       parsed.data.categoryId,
       parsed.data.name,
     );
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "create",
+      entityType: "channel",
+      entityId: channel.id,
+    });
     return jsonResponse(channel, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);

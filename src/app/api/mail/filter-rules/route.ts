@@ -4,6 +4,7 @@ import { env } from "@/lib/config/env";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
+import { recordActivity } from "@/lib/services/activity";
 import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import {
   createMailFilterRuleSchema,
@@ -82,6 +83,13 @@ export async function POST(request: NextRequest) {
       authResult.operator.id,
       parsed.data,
     );
+    recordActivity(authResult.workspace.id, {
+      operatorId: authResult.operator.id,
+      operatorName: authResult.operator.username,
+      action: "create",
+      entityType: "mail_filter_rule",
+      entityId: rule.id,
+    });
     return jsonResponse(rule, { status: 201 });
   } catch (error) {
     return serviceErrorResponse(error);

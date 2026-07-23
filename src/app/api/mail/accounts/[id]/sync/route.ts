@@ -5,6 +5,7 @@ import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { WebhookAccountHasNoTransportError } from "@/lib/mail";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { recordActivity } from "@/lib/services/activity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { workspace } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   try {
@@ -28,6 +29,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (outcome.status === "error") {
       return jsonResponse({ error: outcome.error }, { status: 502 });
     }
+    recordActivity(workspace.id, {
+      operatorId: operator.id,
+      operatorName: operator.username,
+      action: "sync",
+      entityType: "mail_account",
+      entityId: id,
+    });
     return jsonResponse(outcome);
   } catch (error) {
     if (error instanceof WebhookAccountHasNoTransportError) {
