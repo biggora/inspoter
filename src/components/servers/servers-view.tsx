@@ -762,103 +762,108 @@ function ServerCard({
         )}
       </CardContent>
 
-      {isProvider && server.powerActionsAvailable && (
-        <CardFooter className="gap-2">
-          {availableActions.map((act) => {
-            const actionBusy = busy && busyAction === act.action;
+      {((isProvider && server.powerActionsAvailable) ||
+        metrics.state === "not_configured" ||
+        metrics.state === "revoked") && (
+        <CardFooter className="flex-wrap gap-2">
+          {isProvider &&
+            server.powerActionsAvailable &&
+            availableActions.map((act) => {
+              const actionBusy = busy && busyAction === act.action;
 
-            return (
-              <AlertDialog
-                key={act.action}
-                open={pendingAction === act.action}
-                onOpenChange={(open) => {
-                  if (open) {
-                    confirmingRef.current = false;
-                    setPendingAction(act.action);
-                  } else if (pendingAction === act.action) {
-                    setPendingAction(null);
-                  }
-                }}
-              >
-                <AlertDialogTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={actionBusy}
-                      onFocus={(event) => {
-                        activeTriggerRef.current = event.currentTarget;
-                      }}
-                    />
-                  }
+              return (
+                <AlertDialog
+                  key={act.action}
+                  open={pendingAction === act.action}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      confirmingRef.current = false;
+                      setPendingAction(act.action);
+                    } else if (pendingAction === act.action) {
+                      setPendingAction(null);
+                    }
+                  }}
                 >
-                  {actionBusy ? (
-                    <Spinner aria-hidden data-icon="inline-start" />
-                  ) : (
-                    <Icon
-                      name={act.icon}
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  )}
-                  {actionBusy
-                    ? t(PENDING_ACTION_LABEL_KEYS[act.action])
-                    : t(act.labelKey)}
-                </AlertDialogTrigger>
-                <AlertDialogContent
-                  finalFocus={() =>
-                    confirmingRef.current
-                      ? cardRef.current
-                      : activeTriggerRef.current
-                  }
-                >
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {t(act.confirmTitleKey, { name: server.name })}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t(act.confirmTextKey)}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant={
-                        act.action === "stop" ? "destructive" : "default"
-                      }
-                      onClick={() => handleConfirm(act.action)}
-                    >
-                      {t("confirmButton")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            );
-          })}
-          {availableActions.length === 0 && !busy && (
-            <span className="text-xs text-foreground-400">
-              {t("noActionsAvailable")}
-            </span>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={actionBusy}
+                        onFocus={(event) => {
+                          activeTriggerRef.current = event.currentTarget;
+                        }}
+                      />
+                    }
+                  >
+                    {actionBusy ? (
+                      <Spinner aria-hidden data-icon="inline-start" />
+                    ) : (
+                      <Icon
+                        name={act.icon}
+                        aria-hidden
+                        data-icon="inline-start"
+                      />
+                    )}
+                    {actionBusy
+                      ? t(PENDING_ACTION_LABEL_KEYS[act.action])
+                      : t(act.labelKey)}
+                  </AlertDialogTrigger>
+                  <AlertDialogContent
+                    finalFocus={() =>
+                      confirmingRef.current
+                        ? cardRef.current
+                        : activeTriggerRef.current
+                    }
+                  >
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t(act.confirmTitleKey, { name: server.name })}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(act.confirmTextKey)}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant={
+                          act.action === "stop" ? "destructive" : "default"
+                        }
+                        onClick={() => handleConfirm(act.action)}
+                      >
+                        {t("confirmButton")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              );
+            })}
+          {isProvider &&
+            server.powerActionsAvailable &&
+            availableActions.length === 0 &&
+            !busy && (
+              <span className="text-xs text-foreground-400">
+                {t("noActionsAvailable")}
+              </span>
+            )}
+          {(metrics.state === "not_configured" ||
+            metrics.state === "revoked") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onSetupMonitoring(server)}
+            >
+              <Icon
+                name="ri-shield-check-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              {metrics.state === "not_configured"
+                ? t("setupMonitoring")
+                : t("reconnectAgent")}
+            </Button>
           )}
-        </CardFooter>
-      )}
-
-      {(metrics.state === "not_configured" || metrics.state === "revoked") && (
-        <CardFooter className="gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onSetupMonitoring(server)}
-          >
-            <Icon
-              name="ri-shield-check-line"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            {metrics.state === "not_configured"
-              ? t("setupMonitoring")
-              : t("reconnectAgent")}
-          </Button>
         </CardFooter>
       )}
     </Card>
