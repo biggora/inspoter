@@ -276,7 +276,7 @@ A category may optionally act as a group containing one level of subcategories (
 
 ## 5.4 Mail (Q-14 multi-account client)
 
-**Route and scope:** /mail (three-pane client) and /settings/mail (owner account management); active-workspace accounts, folders, messages, and attachments. Trace: AC-MAIL-001..030, AC-WS-011.
+**Route and scope:** /mail (three-pane client) and /settings/mail (account management, any workspace member); active-workspace accounts, folders, messages, and attachments. Trace: AC-MAIL-001..030, AC-WS-011.
 
 **Layout/content (lg and up):** three columns — a 220px sidebar, a 420px message list, and a flexible reading pane.
 

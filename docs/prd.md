@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.12
-**Status:** Q-15 Phase 5 and workspace backup amendments reconciled; awaiting user verification
+**Version:** v3.13
+**Status:** Q-15 Phase 5 and workspace backup amendments reconciled; Mail account management opened to all workspace members (v3.13); awaiting user verification
 **Owner:** Product Analyst
-**Date:** 2026-07-21
+**Date:** 2026-07-24
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), the verbatim Mail-label request recorded in `specs/mail-label-filtering-plan.md` v0.3, `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -252,13 +252,13 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 
 **FR-MAIL-003: IMAP/SMTP account management**
 
-- Description: A workspace owner manages the workspace's mail accounts on `/settings/mail`: create, edit, test, and delete IMAP/SMTP accounts (host/port/TLS mode for IMAP and SMTP, username, password). Passwords are encrypted at rest (AES-256-GCM via `CREDENTIAL_ENCRYPTION_KEY`, same scheme as provider credentials) and never returned to the client. Accounts support MOCK mode (deterministic in-memory driver for dev/e2e) and REAL mode (imapflow/nodemailer, TLS-only). Members may read the account list (without secrets); all mutations are owner-only.
+- Description: Any workspace member manages the workspace's mail accounts on `/settings/mail`: create, edit, test, and delete IMAP/SMTP accounts (host/port/TLS mode for IMAP and SMTP, username, password). Passwords are encrypted at rest (AES-256-GCM via `CREDENTIAL_ENCRYPTION_KEY`, same scheme as provider credentials) and never returned to the client. Accounts support MOCK mode (deterministic in-memory driver for dev/e2e) and REAL mode (imapflow/nodemailer, TLS-only). **Amendment (v3.13):** account mutations are no longer owner-only — any authenticated member of the active workspace may create, edit, test, and delete accounts, matching the access model already used by provider credentials (§6.1 HC-15).
 - Priority: Must Have (Q-14 slice)
 - Acceptance Criteria:
-  - **AC-MAIL-007**: Given a workspace owner, When they create an IMAP account with valid connection fields and a password, Then the account is persisted with the password encrypted (AES-256-GCM), only a masked hint is ever returned by any API response, and a first synchronization is scheduled; Given a non-owner member, When they attempt any account mutation, Then the request is rejected (403) and nothing is persisted.
+  - **AC-MAIL-007**: Given an authenticated member of the active workspace, When they create an IMAP account with valid connection fields and a password, Then the account is persisted with the password encrypted (AES-256-GCM), only a masked hint is ever returned by any API response, and a first synchronization is scheduled; Given an operator with no membership in the active workspace, When they attempt any account mutation, Then the request is rejected and nothing is persisted.
   - **AC-MAIL-008**: Given the account form, When the operator uses «Проверить подключение», Then a transient driver verifies IMAP and SMTP connectivity from the raw input and returns per-protocol results without persisting anything.
-  - **AC-MAIL-009**: Given an existing account, When the owner edits it and leaves the password blank, Then the stored password is kept unchanged (blank-means-keep); When a new password is supplied, Then it replaces the stored one.
-  - **AC-MAIL-010**: Given an existing IMAP account, When the owner deletes it, Then the account and all of its folders, messages, and cached attachments are removed (cascade); Given the system WEBHOOK account, When deletion or edit is attempted, Then the request is rejected and the webhook mailbox remains intact.
+  - **AC-MAIL-009**: Given an existing account, When a member edits it and leaves the password blank, Then the stored password is kept unchanged (blank-means-keep); When a new password is supplied, Then it replaces the stored one.
+  - **AC-MAIL-010**: Given an existing IMAP account, When a member deletes it, Then the account and all of its folders, messages, and cached attachments are removed (cascade); Given the system WEBHOOK account, When deletion or edit is attempted, Then the request is rejected and the webhook mailbox remains intact.
   - **AC-MAIL-011**: Given any workspace, When Mail is used, Then exactly one system WEBHOOK account exists for that workspace (backfilled by migration for existing workspaces, lazily created for new ones; enforced by a partial unique index), and webhook-ingested entries are stored in its «Входящие» folder.
 
 **FR-MAIL-004: IMAP synchronization**
@@ -960,6 +960,12 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.13 — 2026-07-24 (Mail account management opened to all workspace members)
+
+- Reversed the owner-only account-mutation rule from FR-MAIL-003/AC-MAIL-007/009/010 (v3.7): any authenticated member of the active workspace may now create, edit, test, and delete IMAP/SMTP mail accounts, matching provider credentials' existing any-member access model (§6.1 HC-15). Reworded AC-MAIL-007/009/010 accordingly; AC-MAIL-008 was already role-agnostic and is unchanged.
+- No AC ID was added, renumbered, or retired; the 176 unique-criteria accounting from v3.11 is unchanged.
+- User decision recorded in `docs/progress.md` Decisions log, 2026-07-24.
 
 ### v3.10 — 2026-07-20 (workspace backup/restore amendment)
 

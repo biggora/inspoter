@@ -130,7 +130,6 @@ beforeAll(async () => {
   // --- mail: IMAP MailAccount (real encrypted password) + folder + item + attachment ---
   const account = await mailAccountsService.createAccount(
     workspaceA.id,
-    ownerOp.id,
     {
       name: `Mail Account ${RUN_ID}`,
       email: `mail-${RUN_ID}@example.com`,

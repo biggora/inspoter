@@ -3,7 +3,6 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { updateMailAccountSchema } from "@/lib/validation/mail";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
 import { EncryptionNotConfiguredError } from "@/lib/services/credentials";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { MailTransportError } from "@/lib/mail";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
@@ -30,7 +29,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   try {
     const account = await mailAccountsService.updateAccount(
       workspace.id,
-      operator.id,
       id,
       parsed.data,
     );
@@ -43,9 +41,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(account);
   } catch (error) {
-    if (error instanceof WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }
@@ -71,7 +66,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    await mailAccountsService.deleteAccount(workspace.id, operator.id, id);
+    await mailAccountsService.deleteAccount(workspace.id, id);
     recordActivity(workspace.id, {
       operatorId: operator.id,
       operatorName: operator.username,
@@ -81,9 +76,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    if (error instanceof WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof mailAccountsService.WebhookAccountProtectedError) {
       return jsonResponse({ error: error.message }, { status: 400 });
     }

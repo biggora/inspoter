@@ -3,11 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { decrypt } from "@/lib/crypto/credentials";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 
-// Mail account service (plan §4): CRUD with encrypted app-passwords, owner
-// gating, webhook-account protection. Uses mode MOCK everywhere so verify()
-// runs against the in-memory driver — zero network calls.
+// Mail account service (plan §4): CRUD with encrypted app-passwords, any
+// workspace member may manage accounts, webhook-account protection. Uses
+// mode MOCK everywhere so verify() runs against the in-memory driver — zero
+// network calls.
 // CREDENTIAL_ENCRYPTION_KEY is not in scripts/test-env.mjs's TEST_ENV_KEYS
 // allowlist, so it must be set directly here — a fixed 64-char hex test key.
 process.env.CREDENTIAL_ENCRYPTION_KEY ??=
@@ -77,7 +77,6 @@ describe("createAccount", () => {
   it("encrypts the password (round-trip via crypto) and verifies a MOCK account", async () => {
     const summary = await mailAccountsService.createAccount(
       workspaceId,
-      ownerId,
       accountInput({ name: `${NAME_PREFIX}-create` }),
     );
 
@@ -104,14 +103,12 @@ describe("createAccount", () => {
     });
   });
 
-  it("rejects a MEMBER with WorkspaceOwnerRequiredError", async () => {
-    await expect(
-      mailAccountsService.createAccount(
-        workspaceId,
-        memberId,
-        accountInput({ name: `${NAME_PREFIX}-member-denied` }),
-      ),
-    ).rejects.toThrow(WorkspaceOwnerRequiredError);
+  it("allows a MEMBER to create an account (no owner-only gate)", async () => {
+    const summary = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-member-allowed` }),
+    );
+    expect(summary.kind).toBe("IMAP");
   });
 });
 
@@ -135,13 +132,11 @@ describe("updateAccount", () => {
   it("keeps the stored password when the input password is empty/absent", async () => {
     const created = await mailAccountsService.createAccount(
       workspaceId,
-      ownerId,
       accountInput({ name: `${NAME_PREFIX}-update-keep` }),
     );
 
     const updated = await mailAccountsService.updateAccount(
       workspaceId,
-      ownerId,
       created.id,
       { name: `${NAME_PREFIX}-update-kept`, imapHost: "imap2.example.ru" },
     );
@@ -165,13 +160,11 @@ describe("updateAccount", () => {
   it("re-encrypts when a new password is provided", async () => {
     const created = await mailAccountsService.createAccount(
       workspaceId,
-      ownerId,
       accountInput({ name: `${NAME_PREFIX}-update-pass` }),
     );
 
     const updated = await mailAccountsService.updateAccount(
       workspaceId,
-      ownerId,
       created.id,
       { password: "new-app-password" },
     );
@@ -196,7 +189,7 @@ describe("updateAccount", () => {
     const webhook = list.find((a) => a.kind === "WEBHOOK")!;
 
     await expect(
-      mailAccountsService.updateAccount(workspaceId, ownerId, webhook.id, {
+      mailAccountsService.updateAccount(workspaceId, webhook.id, {
         imapHost: "imap.example.ru",
       }),
     ).rejects.toThrow(mailAccountsService.WebhookAccountProtectedError);
@@ -204,7 +197,6 @@ describe("updateAccount", () => {
     // Renaming alone is allowed.
     const renamed = await mailAccountsService.updateAccount(
       workspaceId,
-      ownerId,
       webhook.id,
       { name: "Webhook" },
     );
@@ -216,11 +208,10 @@ describe("deleteAccount", () => {
   it("deletes an IMAP account", async () => {
     const created = await mailAccountsService.createAccount(
       workspaceId,
-      ownerId,
       accountInput({ name: `${NAME_PREFIX}-delete` }),
     );
 
-    await mailAccountsService.deleteAccount(workspaceId, ownerId, created.id);
+    await mailAccountsService.deleteAccount(workspaceId, created.id);
 
     const stored = await db.mailAccount.findUnique({
       where: { id: created.id },
@@ -233,7 +224,7 @@ describe("deleteAccount", () => {
     const webhook = list.find((a) => a.kind === "WEBHOOK")!;
 
     await expect(
-      mailAccountsService.deleteAccount(workspaceId, ownerId, webhook.id),
+      mailAccountsService.deleteAccount(workspaceId, webhook.id),
     ).rejects.toThrow(mailAccountsService.WebhookAccountProtectedError);
   });
 });

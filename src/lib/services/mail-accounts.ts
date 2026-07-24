@@ -14,7 +14,6 @@ import {
 } from "@/lib/crypto/credentials";
 import { getMailDriver, getMailDriverFromConfig } from "@/lib/mail";
 import { EncryptionNotConfiguredError } from "@/lib/services/credentials";
-import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
 
 export class MailAccountNotFoundError extends Error {
   constructor(id: string) {
@@ -205,10 +204,8 @@ export async function listAccounts(
 
 export async function createAccount(
   workspaceId: string,
-  operatorId: string,
   input: CreateMailAccountData,
 ): Promise<MailAccountSummary> {
-  await requireWorkspaceOwner(workspaceId, operatorId);
   if (!isEncryptionConfigured()) {
     throw new EncryptionNotConfiguredError();
   }
@@ -256,12 +253,9 @@ const CONNECTION_FIELDS = [
 
 export async function updateAccount(
   workspaceId: string,
-  operatorId: string,
   id: string,
   input: UpdateMailAccountData,
 ): Promise<MailAccountSummary> {
-  await requireWorkspaceOwner(workspaceId, operatorId);
-
   const existing = await db.mailAccount.findFirst({
     where: { id, workspaceId },
   });
@@ -338,11 +332,8 @@ export async function updateAccount(
 
 export async function deleteAccount(
   workspaceId: string,
-  operatorId: string,
   id: string,
 ): Promise<void> {
-  await requireWorkspaceOwner(workspaceId, operatorId);
-
   const existing = await db.mailAccount.findFirst({
     where: { id, workspaceId },
   });

@@ -4,7 +4,6 @@ import { createMailAccountSchema } from "@/lib/validation/mail";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
 import { syncAccount } from "@/lib/services/mail-sync";
 import { EncryptionNotConfiguredError } from "@/lib/services/credentials";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 import { MailTransportError } from "@/lib/mail";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
@@ -37,7 +36,6 @@ export async function POST(request: NextRequest) {
   try {
     const account = await mailAccountsService.createAccount(
       workspace.id,
-      operator.id,
       parsed.data,
     );
     recordActivity(workspace.id, {
@@ -53,9 +51,6 @@ export async function POST(request: NextRequest) {
     void syncAccount(account.id, workspace.id).catch(() => {});
     return jsonResponse(account, { status: 201 });
   } catch (error) {
-    if (error instanceof WorkspaceOwnerRequiredError) {
-      return jsonResponse({ error: error.message }, { status: 403 });
-    }
     if (error instanceof EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }
