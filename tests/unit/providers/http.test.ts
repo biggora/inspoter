@@ -35,6 +35,26 @@ describe("createProviderHttpClient().request()", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("returns an error instead of throwing when the response body is not valid JSON", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response("<html>not json</html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createProviderHttpClient();
+    const result = await client.request({ path: "/things" });
+
+    expect(result).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Invalid response from provider",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("returns 'Authentication failed' on 401 without retrying", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(401, {}));
     vi.stubGlobal("fetch", fetchMock);

@@ -8,30 +8,36 @@ import type {
 
 const BASE_URL = "https://developers.hostinger.com";
 
-interface HostingerDomain {
-  id?: number | string;
+interface HostingerWebsite {
   domain?: string;
-  name?: string;
-  status?: string;
-  type?: string;
-  expires_at?: string | null;
+  vhost_type?: string;
+  is_enabled?: boolean;
+  username?: string;
+  client_id?: number;
+  order_id?: number;
+  created_at?: string;
+  root_directory?: string;
+  parent_domain?: string;
 }
 
-function toStatus(status: string | undefined): HostingAccountStatus {
-  const value = (status ?? "").toLowerCase();
-  if (value === "active") return "active";
-  if (value === "suspended" || value === "expired") return "suspended";
+interface HostingerWebsitesResponse {
+  data?: HostingerWebsite[];
+}
+
+function toStatus(isEnabled: boolean | undefined): HostingAccountStatus {
+  if (isEnabled === true) return "active";
+  if (isEnabled === false) return "suspended";
   return "unknown";
 }
 
-function toAccount(item: HostingerDomain): HostingAccount {
-  const domain = item.domain ?? item.name ?? "";
+function toAccount(item: HostingerWebsite): HostingAccount {
+  const domain = item.domain ?? "";
   return {
-    id: String(item.id ?? domain),
+    id: domain,
     domain,
-    user: "",
-    plan: item.type ?? "",
-    status: toStatus(item.status),
+    user: item.username ?? "",
+    plan: item.vhost_type ?? "",
+    status: toStatus(item.is_enabled),
     ip: "",
     diskUsedMb: null,
     diskLimitMb: null,
@@ -39,7 +45,7 @@ function toAccount(item: HostingerDomain): HostingAccount {
     bandwidthLimitMb: null,
     databases: null,
     emailAccounts: null,
-    expiresAt: item.expires_at ?? null,
+    expiresAt: null,
     supportsSuspend: false,
   };
 }
@@ -68,11 +74,11 @@ export class HostingerProvider implements HostingProvider {
   }
 
   async listAccounts(): Promise<ProviderResult<HostingAccount[]>> {
-    const result = await this.client.request<HostingerDomain[]>({
-      path: "/api/domains/v1/portfolio",
+    const result = await this.client.request<HostingerWebsitesResponse>({
+      path: "/api/hosting/v1/websites?per_page=100",
     });
     if (!result.ok) return result;
-    const items = Array.isArray(result.data) ? result.data : [];
+    const items = Array.isArray(result.data?.data) ? result.data.data : [];
     return { ok: true, data: items.map(toAccount) };
   }
 

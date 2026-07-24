@@ -112,7 +112,16 @@ export function createProviderHttpClient(
 
       const text = await response.text();
       if (!text) return { ok: true, data: undefined as T };
-      const data = JSON.parse(text) as T;
+      let data: T;
+      try {
+        data = JSON.parse(text) as T;
+      } catch {
+        return {
+          ok: false,
+          kind: "error",
+          message: "Invalid response from provider",
+        };
+      }
       return { ok: true, data };
     }
 

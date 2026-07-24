@@ -159,21 +159,52 @@ describe("CpanelWhmProvider.listAccounts mapping", () => {
 });
 
 describe("HostingerProvider.listAccounts mapping", () => {
-  it("maps portfolio domains and keeps usage metrics null", async () => {
-    mockFetchOnce([
-      { id: 1, domain: "example.com", status: "active", type: "domain" },
-    ]);
+  it("maps websites response and keeps usage metrics null", async () => {
+    mockFetchOnce({
+      data: [
+        {
+          domain: "example.com",
+          vhost_type: "main",
+          is_enabled: true,
+          username: "u12345",
+        },
+      ],
+      meta: { pagination: {} },
+    });
 
     const provider = new HostingerProvider("cred-h", "Hostinger", "token");
     const result = await provider.listAccounts();
     if (!result.ok) throw new Error("expected ok result");
 
     expect(result.data[0]).toMatchObject({
-      id: "1",
+      id: "example.com",
       domain: "example.com",
+      user: "u12345",
+      plan: "main",
       status: "active",
       diskUsedMb: null,
       supportsSuspend: false,
+    });
+  });
+
+  it("maps is_enabled: false to a suspended status", async () => {
+    mockFetchOnce({
+      data: [
+        {
+          domain: "disabled.com",
+          vhost_type: "addon",
+          is_enabled: false,
+          username: "u1",
+        },
+      ],
+    });
+
+    const provider = new HostingerProvider("cred-h", "Hostinger", "token");
+    const result = await provider.listAccounts();
+    if (!result.ok) throw new Error("expected ok result");
+
+    expect(result.data[0]).toMatchObject({
+      status: "suspended",
     });
   });
 });
