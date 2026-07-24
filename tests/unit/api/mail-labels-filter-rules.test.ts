@@ -27,6 +27,7 @@ let workspaceId: string;
 let otherWorkspaceId: string;
 let ownerId: string;
 let memberId: string;
+let outsiderId: string;
 let accountId: string;
 
 function request(
@@ -65,20 +66,23 @@ function context(operatorId: string, username: string): AuthContext {
 }
 
 beforeAll(async () => {
-  const [workspace, otherWorkspace, owner, member] = await Promise.all([
-    db.workspace.create({
-      data: { name: `${PREFIX}-workspace`, slug: `${PREFIX}-workspace` },
-    }),
-    db.workspace.create({
-      data: { name: `${PREFIX}-other`, slug: `${PREFIX}-other` },
-    }),
-    db.operator.create({ data: { username: `${PREFIX}-owner` } }),
-    db.operator.create({ data: { username: `${PREFIX}-member` } }),
-  ]);
+  const [workspace, otherWorkspace, owner, member, outsider] =
+    await Promise.all([
+      db.workspace.create({
+        data: { name: `${PREFIX}-workspace`, slug: `${PREFIX}-workspace` },
+      }),
+      db.workspace.create({
+        data: { name: `${PREFIX}-other`, slug: `${PREFIX}-other` },
+      }),
+      db.operator.create({ data: { username: `${PREFIX}-owner` } }),
+      db.operator.create({ data: { username: `${PREFIX}-member` } }),
+      db.operator.create({ data: { username: `${PREFIX}-outsider` } }),
+    ]);
   workspaceId = workspace.id;
   otherWorkspaceId = otherWorkspace.id;
   ownerId = owner.id;
   memberId = member.id;
+  outsiderId = outsider.id;
   await db.workspaceMember.createMany({
     data: [
       { workspaceId, operatorId: ownerId, role: "OWNER" },
@@ -98,7 +102,7 @@ afterAll(async () => {
     where: { id: { in: [workspaceId, otherWorkspaceId] } },
   });
   await db.operator.deleteMany({
-    where: { id: { in: [ownerId, memberId] } },
+    where: { id: { in: [ownerId, memberId, outsiderId] } },
   });
 });
 
@@ -131,9 +135,18 @@ describe("Mail label routes", () => {
     );
   });
 
-  it("rejects member creation and strict invalid bodies", async () => {
+  it("allows member creation, rejects non-members and strict invalid bodies", async () => {
     const { POST } = await import("@/app/api/mail/labels/route");
     auth.context = context(memberId, `${PREFIX}-member`);
+    const allowed = await POST(
+      request("/api/mail/labels", {
+        method: "POST",
+        body: JSON.stringify({ name: "Member created", color: "SLATE" }),
+      }),
+    );
+    expect(allowed.status).toBe(201);
+
+    auth.context = context(outsiderId, `${PREFIX}-outsider`);
     const denied = await POST(
       request("/api/mail/labels", {
         method: "POST",
@@ -141,6 +154,7 @@ describe("Mail label routes", () => {
       }),
     );
     expect(denied.status).toBe(403);
+    expect(await denied.json()).toEqual({ error: "WORKSPACE_MEMBER_REQUIRED" });
 
     auth.context = context(ownerId, `${PREFIX}-owner`);
     const invalid = await POST(
@@ -469,7 +483,7 @@ describe("Mail filter-rule routes", () => {
     }
   });
 
-  it("patches and deletes rules, rejects members, and validates predicate clearing", async () => {
+  it("patches and deletes rules, allows members, rejects non-members, and validates predicate clearing", async () => {
     const [firstLabel, secondLabel] = await Promise.all([
       db.mailLabel.create({
         data: {
@@ -538,14 +552,28 @@ describe("Mail filter-rule routes", () => {
     expect(invalid.status).toBe(400);
 
     auth.context = context(memberId, `${PREFIX}-member`);
-    const forbidden = await route.PATCH(
+    const memberPatched = await route.PATCH(
       request(`/api/mail/filter-rules/${rule.id}`, {
         method: "PATCH",
         body: JSON.stringify({ name: "Member edit" }),
       }),
       { params: Promise.resolve({ id: rule.id }) },
     );
+    expect(memberPatched.status).toBe(200);
+    expect(await memberPatched.json()).toMatchObject({ name: "Member edit" });
+
+    auth.context = context(outsiderId, `${PREFIX}-outsider`);
+    const forbidden = await route.PATCH(
+      request(`/api/mail/filter-rules/${rule.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: "Outsider edit" }),
+      }),
+      { params: Promise.resolve({ id: rule.id }) },
+    );
     expect(forbidden.status).toBe(403);
+    expect(await forbidden.json()).toEqual({
+      error: "WORKSPACE_MEMBER_REQUIRED",
+    });
 
     auth.context = context(ownerId, `${PREFIX}-owner`);
     const deleted = await route.DELETE(
@@ -604,7 +632,7 @@ describe("Mail filter-rule routes", () => {
     expect(await foreign.json()).toEqual({ error: "RESOURCE_NOT_FOUND" });
   });
 
-  it("returns member+foreign list/create ids as 404 before authorization", async () => {
+  it("resolves foreign list/create ids as 404 before authorization and serves members", async () => {
     const foreignAccount = (await getOrCreateWebhookAccount(otherWorkspaceId))
       .account;
     const [localLabel, foreignLabel] = await Promise.all([
@@ -636,7 +664,7 @@ describe("Mail filter-rule routes", () => {
     const localList = await GET(
       request(`/api/mail/filter-rules?accountId=${accountId}`),
     );
-    expect(localList.status).toBe(403);
+    expect(localList.status).toBe(200);
 
     for (const input of [
       { accountId: foreignAccount.id, labelId: localLabel.id },
@@ -657,7 +685,7 @@ describe("Mail filter-rule routes", () => {
     }
 
     const before = await db.mailFilterRule.count({ where: { workspaceId } });
-    const forbidden = await POST(
+    const created = await POST(
       request("/api/mail/filter-rules", {
         method: "POST",
         body: JSON.stringify({
@@ -668,13 +696,30 @@ describe("Mail filter-rule routes", () => {
         }),
       }),
     );
+    expect(created.status).toBe(201);
+    expect(await db.mailFilterRule.count({ where: { workspaceId } })).toBe(
+      before + 1,
+    );
+
+    auth.context = context(outsiderId, `${PREFIX}-outsider`);
+    const forbidden = await POST(
+      request("/api/mail/filter-rules", {
+        method: "POST",
+        body: JSON.stringify({
+          accountId,
+          labelId: localLabel.id,
+          name: "Outsider local route",
+          fromAddress: "outsider-local-route@example.com",
+        }),
+      }),
+    );
     expect(forbidden.status).toBe(403);
     expect(await db.mailFilterRule.count({ where: { workspaceId } })).toBe(
-      before,
+      before + 1,
     );
   });
 
-  it("creates an optional run and exposes owner-only status and bounded retry routes", async () => {
+  it("creates an optional run and exposes member status and bounded retry routes", async () => {
     auth.context = context(ownerId, `${PREFIX}-owner`);
     const inbox = await db.mailFolder.findFirstOrThrow({
       where: { workspaceId, accountId, specialUse: "INBOX" },
@@ -737,7 +782,18 @@ describe("Mail filter-rule routes", () => {
       request(`/api/mail/filter-runs/${runId}`),
       { params: Promise.resolve({ id: runId }) },
     );
-    expect(memberStatus.status).toBe(403);
+    expect(memberStatus.status).toBe(200);
+    expect(await memberStatus.json()).toMatchObject({ ruleId: rule.id });
+
+    auth.context = context(outsiderId, `${PREFIX}-outsider`);
+    const outsiderStatus = await statusRoute.GET(
+      request(`/api/mail/filter-runs/${runId}`),
+      { params: Promise.resolve({ id: runId }) },
+    );
+    expect(outsiderStatus.status).toBe(403);
+    expect(await outsiderStatus.json()).toEqual({
+      error: "WORKSPACE_MEMBER_REQUIRED",
+    });
     const foreignStatus = await statusRoute.GET(
       request("/api/mail/filter-runs/not-in-this-workspace"),
       { params: Promise.resolve({ id: "not-in-this-workspace" }) },
