@@ -208,6 +208,227 @@ describe("deleteCredential", () => {
   });
 });
 
+describe("deleteCredential with linked local servers", () => {
+  async function createLinkedServer(
+    credentialId: string,
+    displayName: string,
+    providerRemoteId: string,
+  ) {
+    return db.localServer.create({
+      data: {
+        workspaceId,
+        origin: "PROVIDER",
+        displayName,
+        providerCredentialId: credentialId,
+        providerCredentialWorkspaceId: workspaceId,
+        providerRemoteId,
+        providerLastSeenAt: new Date(),
+      },
+    });
+  }
+
+  async function createAddress(
+    localServerId: string,
+    address: string,
+    source: "AGENT" | "PROVIDER",
+    overrides: { isEnrollmentClaim?: boolean; matchKey?: string | null } = {},
+  ) {
+    return db.localServerAddress.create({
+      data: {
+        workspaceId,
+        localServerId,
+        address,
+        family: "IPV4",
+        scope: "GLOBAL",
+        source,
+        isCurrent: true,
+        isEnrollmentClaim: overrides.isEnrollmentClaim ?? false,
+        matchKey: overrides.matchKey ?? null,
+      },
+    });
+  }
+
+  async function createSnapshot(localServerId: string, hostname: string) {
+    return db.serverMetricSnapshot.create({
+      data: {
+        localServerId,
+        workspaceId,
+        schemaVersion: 1,
+        agentVersion: "1.0.0",
+        hostname,
+        capturedAt: new Date(),
+        cpuUsagePercent: 10,
+        load1: 0.1,
+        load5: 0.2,
+        load15: 0.3,
+        memoryTotalBytes: BigInt(1000),
+        memoryAvailableBytes: BigInt(500),
+        swapTotalBytes: BigInt(0),
+        swapFreeBytes: BigInt(0),
+        filesystemTotalBytes: BigInt(2000),
+        filesystemAvailableBytes: BigInt(1000),
+        uptimeSeconds: BigInt(3600),
+      },
+    });
+  }
+
+  it("detaches a server with an active metrics agent to AGENT origin and converts its agent address into an enrollment claim", async () => {
+    const agentIp = "203.0.113.10";
+    const credential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${NAME_PREFIX}-detach`,
+      { type: "HETZNER_CLOUD", apiToken: "hc-detach-token" },
+    );
+    const server = await createLinkedServer(
+      credential.id,
+      "detach-server",
+      "remote-detach",
+    );
+    const agentAddress = await createAddress(server.id, agentIp, "AGENT");
+    const providerAddress = await createAddress(server.id, agentIp, "PROVIDER");
+    await createSnapshot(server.id, "detach-host");
+
+    await credentialsService.deleteCredential(credential.id, workspaceId);
+
+    expect(
+      await db.providerCredential.findUnique({ where: { id: credential.id } }),
+    ).toBeNull();
+
+    const detached = await db.localServer.findUniqueOrThrow({
+      where: { id: server.id },
+    });
+    expect(detached).toMatchObject({
+      origin: "AGENT",
+      providerCredentialId: null,
+      providerCredentialWorkspaceId: null,
+      providerRemoteId: null,
+      providerLastSeenAt: null,
+      providerMissingAt: null,
+    });
+
+    const claim = await db.localServerAddress.findUniqueOrThrow({
+      where: { id: agentAddress.id },
+    });
+    expect(claim).toMatchObject({
+      isCurrent: true,
+      isEnrollmentClaim: true,
+      matchKey: agentIp,
+    });
+
+    const retired = await db.localServerAddress.findUniqueOrThrow({
+      where: { id: providerAddress.id },
+    });
+    expect(retired).toMatchObject({
+      isCurrent: false,
+      isEnrollmentClaim: false,
+      matchKey: null,
+    });
+    expect(retired.retiredAt).not.toBeNull();
+
+    expect(
+      await db.serverMetricSnapshot.findUnique({
+        where: { localServerId: server.id },
+      }),
+    ).not.toBeNull();
+  });
+
+  it("deletes linked servers without an active metrics agent along with the credential", async () => {
+    const credential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${NAME_PREFIX}-cascade`,
+      { type: "HETZNER_CLOUD", apiToken: "hc-cascade-token" },
+    );
+    const server = await createLinkedServer(
+      credential.id,
+      "cascade-server",
+      "remote-cascade",
+    );
+    await createAddress(server.id, "203.0.113.20", "PROVIDER");
+
+    await credentialsService.deleteCredential(credential.id, workspaceId);
+
+    expect(
+      await db.providerCredential.findUnique({ where: { id: credential.id } }),
+    ).toBeNull();
+    expect(
+      await db.localServer.findUnique({ where: { id: server.id } }),
+    ).toBeNull();
+    expect(
+      await db.localServerAddress.count({
+        where: { workspaceId, localServerId: server.id },
+      }),
+    ).toBe(0);
+  });
+
+  it("throws CredentialDeleteConflictError when another server claims the agent address, leaving no partial writes", async () => {
+    const conflictIp = "203.0.113.30";
+    const cleanIp = "203.0.113.31";
+    const credential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${NAME_PREFIX}-conflict`,
+      { type: "HETZNER_CLOUD", apiToken: "hc-conflict-token" },
+    );
+    const server = await createLinkedServer(
+      credential.id,
+      "conflict-server",
+      "remote-conflict",
+    );
+    const cleanAddress = await createAddress(server.id, cleanIp, "AGENT");
+    const conflictAddress = await createAddress(server.id, conflictIp, "AGENT");
+    const providerAddress = await createAddress(
+      server.id,
+      conflictIp,
+      "PROVIDER",
+    );
+    await createSnapshot(server.id, "conflict-host");
+
+    const rival = await db.localServer.create({
+      data: { workspaceId, origin: "AGENT", displayName: "rival-server" },
+    });
+    await createAddress(rival.id, conflictIp, "AGENT", {
+      isEnrollmentClaim: true,
+      matchKey: conflictIp,
+    });
+
+    await expect(
+      credentialsService.deleteCredential(credential.id, workspaceId),
+    ).rejects.toThrow(credentialsService.CredentialDeleteConflictError);
+
+    // Transaction rollback: credential, server link, and all addresses untouched.
+    expect(
+      await db.providerCredential.findUnique({ where: { id: credential.id } }),
+    ).not.toBeNull();
+
+    const untouchedServer = await db.localServer.findUniqueOrThrow({
+      where: { id: server.id },
+    });
+    expect(untouchedServer).toMatchObject({
+      origin: "PROVIDER",
+      providerCredentialId: credential.id,
+      providerRemoteId: "remote-conflict",
+    });
+
+    for (const addressId of [cleanAddress.id, conflictAddress.id]) {
+      const address = await db.localServerAddress.findUniqueOrThrow({
+        where: { id: addressId },
+      });
+      expect(address).toMatchObject({
+        isCurrent: true,
+        isEnrollmentClaim: false,
+        matchKey: null,
+      });
+    }
+
+    const provider = await db.localServerAddress.findUniqueOrThrow({
+      where: { id: providerAddress.id },
+    });
+    expect(provider).toMatchObject({ isCurrent: true, retiredAt: null });
+  });
+});
+
 describe("getDecryptedCredentials for a workspace with none", () => {
   it("returns an empty array", async () => {
     const emptyWorkspace = await db.workspace.create({
