@@ -298,7 +298,7 @@
   "errorLabelLimitReached": "This workspace has reached its label limit.",
   "errorRuleLimitReached": "This account has reached its active-rule limit.",
   "errorFilterResourceNotFound": "The account or label is no longer available.",
-  "errorOwnerRequired": "Only workspace owners can manage labels and filter rules.",
+  "errorMembershipRequired": "You are no longer a member of this workspace.",
   "validationLabelNameRequired": "Enter a label name.",
   "validationLabelNameTooLong": "Label names can contain at most 40 characters.",
   "validationRuleNameRequired": "Enter a rule name.",

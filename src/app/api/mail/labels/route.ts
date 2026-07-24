@@ -4,7 +4,7 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailLabelsService from "@/lib/services/mail-labels";
 import { recordActivity } from "@/lib/services/activity";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 import {
   createMailLabelSchema,
   listMailLabelsQuerySchema,
@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(label, { status: 201 });
   } catch (error) {
-    if (error instanceof WorkspaceOwnerRequiredError) {
+    if (error instanceof WorkspaceMemberRequiredError) {
       return jsonResponse(
-        { error: "WORKSPACE_OWNER_REQUIRED" },
+        { error: "WORKSPACE_MEMBER_REQUIRED" },
         { status: 403 },
       );
     }

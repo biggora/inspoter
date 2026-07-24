@@ -298,7 +298,7 @@
   "errorLabelLimitReached": "Достигнут лимит меток для рабочего пространства.",
   "errorRuleLimitReached": "Достигнут лимит активных правил для аккаунта.",
   "errorFilterResourceNotFound": "Аккаунт или метка больше недоступны.",
-  "errorOwnerRequired": "Только владелец рабочего пространства может управлять метками и правилами.",
+  "errorMembershipRequired": "Вы больше не являетесь участником этого рабочего пространства.",
   "validationLabelNameRequired": "Введите название метки.",
   "validationLabelNameTooLong": "Название метки не должно превышать 40 символов.",
   "validationRuleNameRequired": "Введите название правила.",

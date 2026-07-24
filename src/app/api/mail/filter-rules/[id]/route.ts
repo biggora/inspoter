@@ -4,7 +4,7 @@ import { emptyResponse, jsonResponse } from "@/lib/api/response";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
 import { recordActivity } from "@/lib/services/activity";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 import { updateMailFilterRuleSchema } from "@/lib/validation/mail";
 
 interface RouteContext {
@@ -17,8 +17,11 @@ function serviceErrorResponse(error: unknown) {
   ) {
     return jsonResponse({ error: error.code }, { status: 404 });
   }
-  if (error instanceof WorkspaceOwnerRequiredError) {
-    return jsonResponse({ error: "WORKSPACE_OWNER_REQUIRED" }, { status: 403 });
+  if (error instanceof WorkspaceMemberRequiredError) {
+    return jsonResponse(
+      { error: "WORKSPACE_MEMBER_REQUIRED" },
+      { status: 403 },
+    );
   }
   if (
     error instanceof

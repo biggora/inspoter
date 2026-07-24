@@ -28,8 +28,8 @@ The first milestone proves one complete operator flow:
 - Labels are shared across the active workspace.
 - Labels exist only in Inspoter. Gmail labels, `X-GM-LABELS`, and IMAP keyword
   synchronization are out of scope.
-- Workspace owners manage label definitions and automatic filter rules.
-- All workspace members may manually label messages and filter the list.
+- All active-workspace members manage label definitions, automatic filter
+  rules, manual assignments, and list filtering.
 - Rules target one mail account and incoming messages.
 - Initial criteria are exact sender and subject substring.
 - When both criteria are present, they use AND semantics.
@@ -305,7 +305,7 @@ user has verified the completed phase.
 
 ### Phase 1 — Architecture and contract preparation (Tasks 1–7)
 
-1. [x] Record MVP decisions: workspace-scoped local labels, owner-managed rules,
+1. [x] Record MVP decisions: workspace-scoped local labels, member-managed rules,
        member-managed message assignments, incoming account-scoped rules, and no
        remote Gmail/IMAP label synchronization.
 2. [x] Add `FR-MAIL-008`, `FR-MAIL-009`, and `AC-MAIL-031..045` to
@@ -341,7 +341,7 @@ user has verified the completed phase.
 13. [x] Add `mail-labels.ts` service with workspace-scoped create/list behavior,
         normalized uniqueness handling, authorization, and transactional limits.
 14. [x] Add `mail-filter-rules.ts` service with account/label ownership checks,
-        exact-sender creation/listing, stable rule order, and owner authorization.
+        exact-sender creation/listing, stable rule order, and member authorization.
 15. [x] Introduce shared message-label evaluation seam and transaction-scoped
         account advisory lock; load active rules only after acquiring the lock.
 16. [x] Integrate evaluator into webhook mail persistence and emit webhook events
@@ -445,13 +445,13 @@ user has verified the completed phase.
 
 55. [x] Add typed client wrappers for label update and delete using the existing
         workspace-scoped API contracts.
-56. [x] Add an owner-only **Manage labels** header action and responsive dialog
+56. [x] Add a member-visible **Manage labels** header action and responsive dialog
         for standalone create, rename, recolor, keyboard reorder, and confirmed
         safe delete.
 57. [x] Refresh sidebar, message list, and reading pane after mutations; clear an
         active deleted-label facet before reloading results.
 58. [x] Add complete English/Russian copy plus focused unit and responsive
-        Playwright coverage for name/color creation, CRUD controls, owner/member
+        Playwright coverage for name/color creation, CRUD controls, member
         visibility, focus restoration, accessibility, and overflow.
 59. [x] Pass the Phase 6 gate: formatting, typecheck, lint, focused unit/E2E,
         blocking-finding-free independent review, and user-visible verification.
@@ -481,7 +481,7 @@ Preserve existing `AC-MAIL-001..030`. Add two requirements:
 
 ### `FR-MAIL-009` — Mail filter rules
 
-- **AC-MAIL-039:** An owner can create an active account-scoped rule with at
+- **AC-MAIL-039:** An active-workspace member can create an active account-scoped rule with at
   least one supported predicate and a target label.
 - **AC-MAIL-040:** Matching uses canonical case-insensitive AND semantics.
 - **AC-MAIL-041:** Future matching webhook and IMAP messages receive the target

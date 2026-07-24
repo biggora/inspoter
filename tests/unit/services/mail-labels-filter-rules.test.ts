@@ -7,7 +7,7 @@ import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
 import * as mailLabelsService from "@/lib/services/mail-labels";
 import * as mailLabelAssignmentsService from "@/lib/services/mail-label-assignments";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 
 const PREFIX = `mail-labels-${randomUUID()}`;
 let workspaceId: string;
@@ -68,13 +68,19 @@ describe("Mail label service", () => {
     ).rejects.toBeInstanceOf(mailLabelsService.MailLabelNameConflictError);
   });
 
-  it("allows only owners to create definitions", async () => {
+  it("allows members to create definitions and rejects non-members", async () => {
+    const label = await mailLabelsService.createLabel(workspaceId, memberId, {
+      name: "Member label",
+      color: "SLATE",
+    });
+    expect(label.name).toBe("Member label");
+
     await expect(
-      mailLabelsService.createLabel(workspaceId, memberId, {
-        name: "Member label",
+      mailLabelsService.createLabel(workspaceId, randomUUID(), {
+        name: "Non-member label",
         color: "SLATE",
       }),
-    ).rejects.toBeInstanceOf(WorkspaceOwnerRequiredError);
+    ).rejects.toBeInstanceOf(WorkspaceMemberRequiredError);
   });
 
   it("enforces the transactional 100-label limit", async () => {
@@ -242,7 +248,7 @@ describe("Mail label service", () => {
     ).toBeNull();
   });
 
-  it("returns not-found before the owner gate for a foreign label", async () => {
+  it("returns not-found before the membership gate for a foreign label", async () => {
     const foreign = await mailLabelsService.createLabel(
       otherWorkspaceId,
       ownerId,
@@ -382,7 +388,7 @@ describe("Exact-sender rule service and incoming evaluator", () => {
     );
   });
 
-  it("resolves foreign list/create ids before the member owner gate", async () => {
+  it("resolves foreign ids before membership checks and allows local member access", async () => {
     const foreignAccount = await db.mailAccount.findFirstOrThrow({
       where: { workspaceId: otherWorkspaceId },
       select: { id: true },
@@ -407,13 +413,14 @@ describe("Exact-sender rule service and incoming evaluator", () => {
     ).rejects.toBeInstanceOf(
       mailFilterRulesService.MailFilterRuleResourceNotFoundError,
     );
-    await expect(
-      mailFilterRulesService.listMailFilterRules(
-        workspaceId,
-        memberId,
-        webhookAccountId,
-      ),
-    ).rejects.toBeInstanceOf(WorkspaceOwnerRequiredError);
+    const memberRules = await mailFilterRulesService.listMailFilterRules(
+      workspaceId,
+      memberId,
+      webhookAccountId,
+    );
+    expect(
+      memberRules.every((rule) => rule.accountId === webhookAccountId),
+    ).toBe(true);
 
     for (const input of [
       { accountId: foreignAccount.id, labelId: localLabel.id },
@@ -431,16 +438,14 @@ describe("Exact-sender rule service and incoming evaluator", () => {
     }
 
     const before = await db.mailFilterRule.count({ where: { workspaceId } });
-    await expect(
-      mailFilterRulesService.createMailFilterRule(workspaceId, memberId, {
-        accountId: webhookAccountId,
-        labelId: localLabel.id,
-        name: "Member local create",
-        fromAddress: "member-local@example.com",
-      }),
-    ).rejects.toBeInstanceOf(WorkspaceOwnerRequiredError);
+    await mailFilterRulesService.createMailFilterRule(workspaceId, memberId, {
+      accountId: webhookAccountId,
+      labelId: localLabel.id,
+      name: "Member local create",
+      fromAddress: "member-local@example.com",
+    });
     expect(await db.mailFilterRule.count({ where: { workspaceId } })).toBe(
-      before,
+      before + 1,
     );
   });
 

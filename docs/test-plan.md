@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.5
-**Status:** Q-15 Phase 5, public OpenAPI, and VPS Metrics Agent coverage reconciled; awaiting user verification.
+**Version:** 1.6
+**Status:** Mail label/filter member-management authorization reconciled; awaiting user verification.
 **Owner:** tester
 **Date:** 2026-07-20
 **Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.12, `docs/architecture.md` v1.10, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.12, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
+**Normative inputs:** `docs/prd.md` v3.14, `docs/architecture.md` v1.12, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.6 — 2026-07-24:** opened Mail label definitions, automatic filter rules, and backfill controls to every authenticated active-workspace member; retained membership and workspace-isolation checks.
 - **v1.5 — 2026-07-21:** reconciled public OpenAPI, VPS Metrics Agent, and implemented Q-15 behavior; retained the guarded Phase 5 migration/performance/backup/rollback/restart evidence and final regression/review gate. User verification remains required.
 - **v1.4 — 2026-07-20:** added Q-15 Phase 2–5 service/API/component/Playwright, concurrency, isolation, accessibility, responsive, migration, rollback, recovery, and performance cases for AC-MAIL-031..045.
 - **v1.3 — 2026-07-20:** added §10 for the checked-in two-operation OpenAPI contract, authenticated Swagger UI, secret controls, CI gates, and static-bundle verification.
@@ -286,7 +287,7 @@ Before R2.8, AC-WS-008/010/011 remain PARTIAL even when every individual facet i
 
 | AC-ID            | Test file : case                                                                                                                                                                                                                                                                | Status |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| AC-MAIL-007      | `tests/unit/services/mail-accounts.test.ts` : "encrypts the password (round-trip via crypto) and verifies a MOCK account"; "allows a MEMBER to create an account (no owner-only gate)"; "…returns no secret fields" (prd.md v3.13 reversed the owner-only mutation rule)         | PASS   |
+| AC-MAIL-007      | `tests/unit/services/mail-accounts.test.ts` : "encrypts the password (round-trip via crypto) and verifies a MOCK account"; "allows a MEMBER to create an account (no owner-only gate)"; "…returns no secret fields" (prd.md v3.13 reversed the owner-only mutation rule)        | PASS   |
 | AC-MAIL-008      | `tests/unit/services/mail-accounts.test.ts` : "testConnection — returns imapOk/smtpOk true for a MOCK config" · `e2e/mail-client.spec.ts` fixture creates the MOCK account through the settings flow                                                                            | PASS   |
 | AC-MAIL-009      | `tests/unit/services/mail-accounts.test.ts` : "keeps the stored password when the input password is empty/absent"; "re-encrypts when a new password is provided"                                                                                                                | PASS   |
 | AC-MAIL-010      | `tests/unit/services/mail-accounts.test.ts` : "deletes an IMAP account"; "refuses to delete the WEBHOOK account"; "rejects connection-field changes on the WEBHOOK account"                                                                                                     | PASS   |
@@ -365,24 +366,24 @@ The checked-in contract covers only the two external webhook ingress operations.
 
 ### 11.1 Server service — DB integration (`tests/unit/services/servers.test.ts`)
 
-| AC-ID / Area            | Test case                                                                          | Status |
-| ----------------------- | ---------------------------------------------------------------------------------- | ------ |
-| AC-SRV-002              | reconciles provider inventory into present provider-origin DTOs                    | PASS   |
-| Idempotency             | reuses the same localServerId for a server already reconciled                      | PASS   |
-| Error isolation         | isolates a failing provider's error without dropping the working provider          | PASS   |
-| Missing detection       | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS   |
-| AC-SRV-001              | getComposedServer returns a composed DTO merged with live provider data            | PASS   |
-| Not found               | getComposedServer returns null when no LocalServer row matches                     | PASS   |
-| Metrics: not_configured | reports not_configured when no snapshot exists (was: when no agent token exists)   | PASS   |
+| AC-ID / Area            | Test case                                                                          | Status     |
+| ----------------------- | ---------------------------------------------------------------------------------- | ---------- |
+| AC-SRV-002              | reconciles provider inventory into present provider-origin DTOs                    | PASS       |
+| Idempotency             | reuses the same localServerId for a server already reconciled                      | PASS       |
+| Error isolation         | isolates a failing provider's error without dropping the working provider          | PASS       |
+| Missing detection       | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS       |
+| AC-SRV-001              | getComposedServer returns a composed DTO merged with live provider data            | PASS       |
+| Not found               | getComposedServer returns null when no LocalServer row matches                     | PASS       |
+| Metrics: not_configured | reports not_configured when no snapshot exists (was: when no agent token exists)   | PASS       |
 | Metrics: waiting        | reports waiting for a bound token with no snapshot yet — state removed 2026-07-24  | SUPERSEDED |
-| Metrics: live           | reports live for a fresh snapshot                                                  | PASS   |
-| Metrics: stale          | reports stale past the 180s threshold                                              | PASS   |
+| Metrics: live           | reports live for a fresh snapshot                                                  | PASS       |
+| Metrics: stale          | reports stale past the 180s threshold                                              | PASS       |
 | Metrics: revoked        | reports revoked once the only bound token is revoked — state removed 2026-07-24    | SUPERSEDED |
-| AC-SRV-004              | start transitions a stopped server to running within the 30s poll window           | PASS   |
-| AC-SRV-005              | stop transitions a running server to stopped within the 30s poll window            | PASS   |
-| AC-SRV-006              | restart transitions a running server back to running within the 60s poll window    | PASS   |
-| Power: not found        | returns 'Server not found' for an unknown id                                       | PASS   |
-| Power: unknown provider | returns an error for an unknown providerId                                         | PASS   |
+| AC-SRV-004              | start transitions a stopped server to running within the 30s poll window           | PASS       |
+| AC-SRV-005              | stop transitions a running server to stopped within the 30s poll window            | PASS       |
+| AC-SRV-006              | restart transitions a running server back to running within the 60s poll window    | PASS       |
+| Power: not found        | returns 'Server not found' for an unknown id                                       | PASS       |
+| Power: unknown provider | returns an error for an unknown providerId                                         | PASS       |
 
 ### 11.2 Hetzner Cloud pagination (`tests/unit/providers/hetzner-cloud.test.ts`)
 
@@ -414,16 +415,16 @@ AC-MAIL-001..030 remained green at the final gate.
 
 ### 12.1 Service, matcher, and API contract
 
-| ID          | Acceptance/evidence target                                                                                                                                                                                                     | Phase | Status |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: | ------ |
-| ML-SVC-001  | Label normalization runs NFKC → trim → collapse internal whitespace to one ASCII space → locale-stable lowercase; display casing remains; 0/1/40/41-character boundaries and Unicode equivalents are covered.                  |     2 | PASS   |
-| ML-SVC-002  | Create/list is active-workspace scoped, owner-only for definitions, stable by `(position, id)`, rejects normalized duplicate with 409 `LABEL_NAME_CONFLICT`, and transactionally enforces 100 labels under concurrent creates. |   2–3 | PASS   |
-| ML-SVC-003  | Rename/recolor/reorder/delete covers all colors, stable order, cascade of assignments, and 409 `LABEL_IN_USE` for active or inactive rule references.                                                                          |     3 | PASS   |
-| ML-RULE-001 | Exact-sender create/list requires one owned account/label, owner role, 1/80 rule-name and 0/320/321 sender boundaries, stable `(position, id)` order, and 100-active-rule transactional limit.                                 |     2 | PASS   |
-| ML-RULE-002 | Subject predicate covers 0/1/200/201 boundaries; sender+subject use canonical case-insensitive AND; empty predicate sets reject; rule rename/edit/enable/disable/reorder/delete preserve assignments.                          |     4 | PASS   |
-| ML-ASGN-001 | Add/remove assignment is owner/member accessible and idempotent; retries and multiple rules targeting one label leave one `(mailItemId, labelId)` row.                                                                         |   2–3 | PASS   |
-| ML-API-001  | Label, assignment, rule, and run routes require authenticated active workspace header, strict Zod bodies/queries, existing response envelopes, documented status/error codes, and non-disclosing 404 for missing/foreign ids.  |   2–5 | PASS   |
-| ML-DTO-001  | List/detail return bounded `{id,name,color}` label metadata; 50-row list contains no `bodyText`, `bodyHtml`, attachment `content`, or attachment bytes.                                                                        |     2 | PASS   |
+| ID          | Acceptance/evidence target                                                                                                                                                                                                    | Phase | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
+| ML-SVC-001  | Label normalization runs NFKC → trim → collapse internal whitespace to one ASCII space → locale-stable lowercase; display casing remains; 0/1/40/41-character boundaries and Unicode equivalents are covered.                 |     2 | PASS   |
+| ML-SVC-002  | Create/list is active-workspace scoped and member-accessible, stable by `(position, id)`, rejects normalized duplicate with 409 `LABEL_NAME_CONFLICT`, and transactionally enforces 100 labels under concurrent creates.      |   2–3 | PASS   |
+| ML-SVC-003  | Rename/recolor/reorder/delete covers all colors, stable order, cascade of assignments, and 409 `LABEL_IN_USE` for active or inactive rule references.                                                                         |     3 | PASS   |
+| ML-RULE-001 | Exact-sender create/list requires active-workspace membership plus one scoped account/label, 1/80 rule-name and 0/320/321 sender boundaries, stable `(position, id)` order, and 100-active-rule transactional limit.          |     2 | PASS   |
+| ML-RULE-002 | Subject predicate covers 0/1/200/201 boundaries; sender+subject use canonical case-insensitive AND; empty predicate sets reject; rule rename/edit/enable/disable/reorder/delete preserve assignments.                         |     4 | PASS   |
+| ML-ASGN-001 | Add/remove assignment is owner/member accessible and idempotent; retries and multiple rules targeting one label leave one `(mailItemId, labelId)` row.                                                                        |   2–3 | PASS   |
+| ML-API-001  | Label, assignment, rule, and run routes require authenticated active workspace header, strict Zod bodies/queries, existing response envelopes, documented status/error codes, and non-disclosing 404 for missing/foreign ids. |   2–5 | PASS   |
+| ML-DTO-001  | List/detail return bounded `{id,name,color}` label metadata; 50-row list contains no `bodyText`, `bodyHtml`, attachment `content`, or attachment bytes.                                                                       |     2 | PASS   |
 
 ### 12.2 Matching, persistence, and controlled concurrency
 
@@ -438,12 +439,12 @@ AC-MAIL-001..030 remained green at the final gate.
 
 ### 12.3 Workspace isolation, filtering, and pagination
 
-| ID            | Acceptance/evidence target                                                                                                                                                                                                              | Phase | Status |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
-| ML-ISO-001    | Two workspaces with owner/member fixtures exercise every label/rule/account/message foreign-id combination: 404, zero cross-workspace writes, no existence leak. Members may assign/filter; label-definition/rule mutations return 403. |   2–5 | PASS   |
-| ML-FILTER-001 | `labelId` intersects account, folder, unread, query, sort, and workspace predicates; **All labels** clears only label facet.                                                                                                            |     3 | PASS   |
-| ML-CURSOR-001 | Cursor includes workspace and normalized full-filter fingerprint; changed workspace/account/folder/label/query/unread/sort resets safely, while an unchanged filter returns stable, nonduplicated pages across equal timestamps.        |     3 | PASS   |
-| ML-SWITCH-001 | Workspace/account/folder/label changes reset pagination and selected detail; stale responses cannot repaint destination scope.                                                                                                          |     3 | PASS   |
+| ID            | Acceptance/evidence target                                                                                                                                                                                                                         | Phase | Status |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
+| ML-ISO-001    | Two workspaces with owner/member fixtures exercise every label/rule/account/message foreign-id combination: members may manage labels/rules in their active workspace; foreign ids return 404 with zero cross-workspace writes or existence leaks. |   2–5 | PASS   |
+| ML-FILTER-001 | `labelId` intersects account, folder, unread, query, sort, and workspace predicates; **All labels** clears only label facet.                                                                                                                       |     3 | PASS   |
+| ML-CURSOR-001 | Cursor includes workspace and normalized full-filter fingerprint; changed workspace/account/folder/label/query/unread/sort resets safely, while an unchanged filter returns stable, nonduplicated pages across equal timestamps.                   |     3 | PASS   |
+| ML-SWITCH-001 | Workspace/account/folder/label changes reset pagination and selected detail; stale responses cannot repaint destination scope.                                                                                                                     |     3 | PASS   |
 
 ### 12.4 Component, accessibility, responsive, and operator journeys
 
@@ -451,28 +452,28 @@ AC-MAIL-001..030 remained green at the final gate.
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ------ |
 | ML-UI-001   | `LabelChip` follows subject inside one row button, is noninteractive, truncates with full accessible name, shows two desktop/one narrow plus exact `+N`, and row accessible name includes complete label names.               |   2–3 | PASS   |
 | ML-UI-002   | Desktop sidebar and mobile Sheet show Labels below folders with selected state and **All labels** behavior; full picker supports add/remove, loading/failure recovery, Arrow/Enter/Space/Escape, and exact focus restoration. |     3 | PASS   |
-| ML-UI-003   | Owner rule dialog prefills account/sender, permits edits plus select/create label, validates inline, preserves input on failure, announces success, and restores opener focus; member does not receive owner mutation action. |   2–4 | PASS   |
+| ML-UI-003   | Member-visible rule dialog prefills account/sender, permits edits plus select/create label, validates inline, preserves input on failure, announces success, and restores opener focus.                                       |   2–4 | PASS   |
 | ML-I18N-001 | English and Russian cover every Slice 1–4 label/rule string, validation, conflict, empty/loading/error state, success announcement, and accessible-only expansion; locale change leaves stored content/matching unchanged.    |   2–4 | PASS   |
 | ML-A11Y-001 | Keyboard-only desktop/mobile journeys and Axe serious/critical=0 cover row, sidebar/sheet, picker, reading pane, and rule/run dialogs; identity never depends on color.                                                       |   2–5 | PASS   |
 | ML-RESP-001 | Playwright at 375px, 420px, and 1440px proves chip limits, contained popover/dialog/sheet, visible actions, working row activation, and no body horizontal overflow.                                                          |   2–5 | PASS   |
-| ML-E2E-001  | Tracer: owner opens message → Filter messages like this → creates/selects label → saves exact-sender rule → ingests matching and nonmatching webhook mail → only matching row shows label.                                    |     2 | PASS   |
+| ML-E2E-001  | Tracer: active-workspace member opens message → Filter messages like this → creates/selects label → saves exact-sender rule → ingests matching and nonmatching webhook mail → only matching row shows label.                  |     2 | PASS   |
 | ML-E2E-002  | Owner/member manual-label and combined-filter journey, including mobile keyboard flow and account/workspace switching.                                                                                                        |     3 | PASS   |
 | ML-E2E-003  | Rule create/edit/disable/delete journey proves future behavior changes while previous assignments remain.                                                                                                                     |     4 | PASS   |
 
 ### 12.5 Migration, backfill, performance, deployment, and rollback
 
-| ID              | Acceptance/evidence target                                                                                                                                                                                                     | Phase | Status                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: | -------------------------------------------- |
-| ML-MIG-001      | Phase-2 additive migration passes Prisma validation, fresh historical replay, populated-current upgrade, raw workspace-check rejection, expected indexes/FKs, and unchanged counts/hashes for existing Mail data.              |     2 | PASS — Phase 2 replay evidence               |
-| ML-MIG-002      | Phase-5 additive run migration replays fresh and populated states; partial unique index permits only one pending/running run per rule.                                                                                         |     5 | PASS — fresh + populated 18-migration replay |
-| ML-RUN-001      | Same-timestamp cutoff uses inclusive cutoff/exclusive cursor; 200-row batches atomically commit assignments/counts/cursor; processed/matched meanings include pre-labeled matches exactly as specified.                        |     5 | PASS — service and scheduler regressions     |
-| ML-RUN-002      | Crash before commit advances nothing; crash after commit resumes after cursor; two workers, lease renewal/expiry takeover, three-failure ceiling, and manual retry preserve snapshot and committed progress.                   |     5 | PASS — recovery/concurrency regressions      |
-| ML-RUN-003      | Live/backfill overlap creates one assignment; post-cutoff mail uses live path only; rule edits during active run cannot change immutable snapshot. Polling stops on completed/failed and retry is bounded.                     |     5 | PASS — overlap/snapshot/UI regressions       |
-| ML-SCHED-001    | Instrumentation starts no new timer/scheduler; existing Mail scheduler claims bounded run work and restart recovery resumes durable state.                                                                                     |     5 | PASS — exact 200/201 restart recovery        |
-| ML-PERF-001     | Large seeded dataset records query plan, p50/p95 elapsed time, rows scanned, and DB/fixture details for a labeled 50-row combined-filter page and 200-row backfill batch; index changes require before/after evidence.         |     5 | PASS — 20,000-row service-path measurement   |
-| ML-DEPLOY-001   | Label UI/routes/evaluation/claims are always active after migration; deployment smoke covers labels alongside existing Mail behavior.                                                                                       |   2–5 | CURRENT SOURCE — deployment pending          |
-| ML-BACKUP-001   | Dated encrypted pre-migration backup has owner/retention, row counts/checksums, and successful disposable restore evidence for documented Mail/label tables.                                                                   |  2, 5 | PASS — encrypted restore and hash comparison |
-| ML-ROLLBACK-001 | Rehearsal runs a prior compatible binary against additive schema and proves accounts/folders/messages/attachments/flags/bodies/actions unchanged while preserving label data.                                                   |     5 | PASS — prior runtime + zero integrity diffs  |
+| ID              | Acceptance/evidence target                                                                                                                                                                                             | Phase | Status                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | -------------------------------------------- |
+| ML-MIG-001      | Phase-2 additive migration passes Prisma validation, fresh historical replay, populated-current upgrade, raw workspace-check rejection, expected indexes/FKs, and unchanged counts/hashes for existing Mail data.      |     2 | PASS — Phase 2 replay evidence               |
+| ML-MIG-002      | Phase-5 additive run migration replays fresh and populated states; partial unique index permits only one pending/running run per rule.                                                                                 |     5 | PASS — fresh + populated 18-migration replay |
+| ML-RUN-001      | Same-timestamp cutoff uses inclusive cutoff/exclusive cursor; 200-row batches atomically commit assignments/counts/cursor; processed/matched meanings include pre-labeled matches exactly as specified.                |     5 | PASS — service and scheduler regressions     |
+| ML-RUN-002      | Crash before commit advances nothing; crash after commit resumes after cursor; two workers, lease renewal/expiry takeover, three-failure ceiling, and manual retry preserve snapshot and committed progress.           |     5 | PASS — recovery/concurrency regressions      |
+| ML-RUN-003      | Live/backfill overlap creates one assignment; post-cutoff mail uses live path only; rule edits during active run cannot change immutable snapshot. Polling stops on completed/failed and retry is bounded.             |     5 | PASS — overlap/snapshot/UI regressions       |
+| ML-SCHED-001    | Instrumentation starts no new timer/scheduler; existing Mail scheduler claims bounded run work and restart recovery resumes durable state.                                                                             |     5 | PASS — exact 200/201 restart recovery        |
+| ML-PERF-001     | Large seeded dataset records query plan, p50/p95 elapsed time, rows scanned, and DB/fixture details for a labeled 50-row combined-filter page and 200-row backfill batch; index changes require before/after evidence. |     5 | PASS — 20,000-row service-path measurement   |
+| ML-DEPLOY-001   | Label UI/routes/evaluation/claims are always active after migration; deployment smoke covers labels alongside existing Mail behavior.                                                                                  |   2–5 | CURRENT SOURCE — deployment pending          |
+| ML-BACKUP-001   | Dated encrypted pre-migration backup has owner/retention, row counts/checksums, and successful disposable restore evidence for documented Mail/label tables.                                                           |  2, 5 | PASS — encrypted restore and hash comparison |
+| ML-ROLLBACK-001 | Rehearsal runs a prior compatible binary against additive schema and proves accounts/folders/messages/attachments/flags/bodies/actions unchanged while preserving label data.                                          |     5 | PASS — prior runtime + zero integrity diffs  |
 
 ### 12.6 Per-phase gates
 

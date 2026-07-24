@@ -4,15 +4,18 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
 import { recordActivity } from "@/lib/services/activity";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 import {
   createMailFilterRuleSchema,
   listMailFilterRulesQuerySchema,
 } from "@/lib/validation/mail";
 
 function serviceErrorResponse(error: unknown) {
-  if (error instanceof WorkspaceOwnerRequiredError) {
-    return jsonResponse({ error: "WORKSPACE_OWNER_REQUIRED" }, { status: 403 });
+  if (error instanceof WorkspaceMemberRequiredError) {
+    return jsonResponse(
+      { error: "WORKSPACE_MEMBER_REQUIRED" },
+      { status: 403 },
+    );
   }
   if (
     error instanceof mailFilterRulesService.MailFilterRuleResourceNotFoundError

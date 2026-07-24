@@ -9,7 +9,7 @@ import {
   normalizeMailLabelName,
 } from "@/lib/mail-label-normalization";
 import { acquireMailAdvisoryLock } from "@/lib/services/mail-locks";
-import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
+import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
 
 export const MAIL_LABEL_LIMIT = 100;
 
@@ -126,7 +126,7 @@ export async function createLabel(
   operatorId: string,
   input: CreateMailLabelInput,
 ) {
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
   const name = normalizeMailLabelDisplayName(input.name);
   const normalizedName = normalizeMailLabelName(input.name);
   const color = parseMailLabelColor(input.color);
@@ -170,10 +170,10 @@ export async function updateLabel(
   id: string,
   input: UpdateMailLabelInput,
 ) {
-  // Resolve workspace scope before the role check so foreign ids always use
-  // the same non-disclosing 404 contract, including for members.
+  // Resolve workspace scope before the membership check so foreign ids always
+  // use the same non-disclosing 404 contract.
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   const name =
     input.name === undefined
@@ -242,7 +242,7 @@ export async function deleteLabel(
   id: string,
 ): Promise<void> {
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   try {
     await db.$transaction(async (tx) => {

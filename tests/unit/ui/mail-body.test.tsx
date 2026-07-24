@@ -6,32 +6,34 @@ import { describe, expect, it } from "vitest";
 import { MailBody } from "@/components/mail/mail-body";
 
 describe("MailBody", () => {
-  it("removes authored foreground colors so the theme controls contrast", () => {
+  it("preserves authored colors for branded email controls", () => {
     const { container } = render(
       <MailBody
         bodyText="Fallback"
         bodyHtml={
-          '<p style="color: #000 !important; background-color: #eee">Readable <span style="-webkit-text-fill-color: black">nested</span> <font color="black">legacy</font> <a href="https://example.com">link</a><script>alert(1)</script></p>'
+          '<div style="color: rgb(255, 255, 255)"><a href="https://example.com" style="text-decoration: none; background-color: rgb(11, 87, 208); color: rgb(255, 255, 255)">Check activity</a><span style="-webkit-text-fill-color: white">nested</span><font color="white">legacy</font><script>alert(1)</script></div>'
         }
       />,
     );
 
     const body = container.querySelector(".mail-body-content");
-    const paragraph = container.querySelector("p");
+    const authoredContainer = body?.querySelector("div");
     const nested = screen.getByText("nested");
     const legacy = screen.getByText("legacy");
+    const link = screen.getByRole("link", { name: "Check activity" });
 
     expect(body).not.toBeNull();
-    expect(paragraph).not.toBeNull();
-    expect((paragraph as HTMLElement).style.color).toBe("");
-    expect(paragraph).toHaveStyle({ backgroundColor: "#eee" });
-    expect(nested.getAttribute("style")).toBeNull();
-    expect(legacy).not.toHaveAttribute("color");
+    expect(authoredContainer).toHaveStyle({ color: "rgb(255, 255, 255)" });
+    expect(link).toHaveStyle({
+      backgroundColor: "rgb(11, 87, 208)",
+      color: "rgb(255, 255, 255)",
+      textDecoration: "none",
+    });
+    expect(nested).toHaveAttribute("style", "-webkit-text-fill-color: white");
+    expect(legacy).toHaveAttribute("color", "white");
     expect(container.querySelector("script")).toBeNull();
-    expect(screen.getByRole("link", { name: "link" })).toHaveAttribute(
-      "rel",
-      "noopener noreferrer",
-    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("uses theme-aware text for plain-text messages", () => {

@@ -4,7 +4,7 @@ import {
   runMailAccountTransaction,
   type MailAccountTransactionRunner,
 } from "@/lib/services/mail-locks";
-import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
+import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
 import {
   createMailFilterRunInTransaction,
   MAIL_FILTER_RUN_DTO_SELECT,
@@ -130,7 +130,7 @@ export async function listMailFilterRules(
     select: { id: true },
   });
   if (!account) throw new MailFilterRuleResourceNotFoundError();
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   const rules = await db.mailFilterRule.findMany({
     where: { workspaceId, accountId },
@@ -163,7 +163,7 @@ export async function createMailFilterRule(
     }),
   ]);
   if (!account || !label) throw new MailFilterRuleResourceNotFoundError();
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   try {
     return await runAccountTransaction(input.accountId, async (tx) => {
@@ -235,7 +235,7 @@ export async function updateMailFilterRule(
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ) {
   const scopedRule = await requireRuleInWorkspace(workspaceId, id);
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   try {
     return await runAccountTransaction(scopedRule.accountId, async (tx) => {
@@ -328,7 +328,7 @@ export async function deleteMailFilterRule(
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ): Promise<void> {
   const scopedRule = await requireRuleInWorkspace(workspaceId, id);
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
 
   try {
     await runAccountTransaction(scopedRule.accountId, async (tx) => {

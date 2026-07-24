@@ -3,7 +3,7 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as mailFilterRunsService from "@/lib/services/mail-filter-runs";
-import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
+import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -15,8 +15,11 @@ function serviceErrorResponse(error: unknown) {
   ) {
     return jsonResponse({ error: error.code }, { status: 404 });
   }
-  if (error instanceof WorkspaceOwnerRequiredError) {
-    return jsonResponse({ error: "WORKSPACE_OWNER_REQUIRED" }, { status: 403 });
+  if (error instanceof WorkspaceMemberRequiredError) {
+    return jsonResponse(
+      { error: "WORKSPACE_MEMBER_REQUIRED" },
+      { status: 403 },
+    );
   }
   if (error instanceof mailFilterRunsService.MailFilterRunRetryConflictError) {
     return jsonResponse({ error: error.code }, { status: 409 });

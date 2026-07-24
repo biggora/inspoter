@@ -43,7 +43,7 @@ import { LabelChip } from "./label-chip";
 const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   ACTIVE_RULE_LIMIT_REACHED: "errorRuleLimitReached",
   RESOURCE_NOT_FOUND: "errorFilterResourceNotFound",
-  WORKSPACE_OWNER_REQUIRED: "errorOwnerRequired",
+  WORKSPACE_MEMBER_REQUIRED: "errorMembershipRequired",
   FILTER_RUN_NOT_RETRYABLE: "errorFilterRunNotRetryable",
 };
 

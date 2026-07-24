@@ -1301,13 +1301,19 @@ test("manual labels, combined browsing, keyboard and member access", async ({
           name: "Фильтровать похожие письма",
           exact: true,
         }),
-      ).toHaveCount(0);
+      ).toBeVisible();
       await expect(
         memberPage.getByRole("button", {
           name: "Управление метками",
           exact: true,
         }),
-      ).toHaveCount(0);
+      ).toBeVisible();
+      await expect(
+        memberPage.getByRole("button", {
+          name: "Управление фильтрами",
+          exact: true,
+        }),
+      ).toBeVisible();
 
       const memberPickerTrigger = memberPage.getByRole("button", {
         name: "Изменить метки",

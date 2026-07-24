@@ -1,7 +1,7 @@
 # Design Specification — inspoter
 
-**Version:** v2.12
-**Status:** Q-15 Phase 5 responsive/accessibility gate passed; awaiting user verification
+**Version:** v2.13
+**Status:** Mail label and filter controls opened to all active-workspace members; awaiting user verification
 **Owner:** UI/UX Designer
 **Date:** 2026-07-20
 **Source of truth for:** frontend implementor and test engineer
@@ -29,7 +29,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 - Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
 - Q-5 (superseded by Q-14, 2026-07-18): Mail is a full multi-account IMAP/SMTP client — three-pane layout, folders, read/unread, delete/archive, attachments, and plain-text compose/reply/forward (§5.4). Rich-text compose, attachment forwarding, and OAuth remain excluded.
-- Q-15 (2026-07-20): Mail adds workspace-local labels and account-scoped incoming-message filter rules (§5.4). Labels use existing dense, border-defined badge/control language; color supplements visible text and never implies provider synchronization. Owners manage definitions/rules; members may manually assign existing labels and filter the list.
+- Q-15 (2026-07-20; authorization amended 2026-07-24): Mail adds workspace-local labels and account-scoped incoming-message filter rules (§5.4). Labels use existing dense, border-defined badge/control language; color supplements visible text and never implies provider synchronization. Every active-workspace member may manage definitions/rules, manually assign labels, and filter the list.
 - Q-6: Servers permits inventory/status plus start, stop, and restart only.
 - Q-7 and AC-ALR-008: Alerts permits confirmed deletion; acknowledge and resolve controls do not exist.
 - D-21/Q-13: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts, Settings, webhook tokens, selected detail, exclusive local provider-resource bindings, mock state, caches, and cursors follow the active workspace. Provider credentials alone remain deployment-global `.env` secrets. Removing a local binding or workspace never deletes an upstream provider resource. D-20 is superseded and non-normative.
@@ -320,15 +320,14 @@ A category may optionally act as a group containing one level of subcategories (
   unread, query, and sort facets. **All labels** clears only `labelId`. Any label
   change resets pagination and selected detail; account/workspace changes reset
   the label facet when its id is invalid for the new scope.
-- Workspace owners see **Manage labels** in the Mail header beside filter
+- Active-workspace members see **Manage labels** in the Mail header beside filter
   management. Its responsive dialog provides standalone create, rename,
   recolor, keyboard move-up/down, and confirmed safe-delete controls. Every
   color choice shows a visible localized name and swatch; a live chip preview
   reinforces the result without making color the label's only identity.
   Successful mutations refresh the sidebar, message list, and open detail. If
   the active label is deleted, the label facet clears before the list reloads.
-  Members keep label filtering and manual assignment but never receive this
-  definition-management control.
+  The same workspace-membership boundary protects definition management.
 
 ### 5.4.2 Reading-pane controls and label picker (Q-15 current)
 
@@ -338,8 +337,8 @@ A category may optionally act as a group containing one level of subcategories (
   Arrow keys move options, Enter/Space toggles, Escape closes, and focus returns
   to trigger. Pending mutations disable only the affected option, preserve last
   confirmed state on failure, and expose localized loading/error feedback.
-- Owners see **Filter messages like this**. Members do not receive a rule mutation
-  control. Invoking the action opens a dialog prefilled with current account and
+- Every active-workspace member sees **Filter messages like this**. Invoking the
+  action opens a dialog prefilled with current account and
   sender; sender remains editable. The dialog permits selecting a target label or
   creating one inline, entering a rule name, editing subject substring, and
   selecting the initially unchecked **Apply to existing mail** option.
@@ -492,6 +491,12 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.13 — 2026-07-24 (Mail labels and rules opened to members)
+
+Removes owner-only visibility from **Manage labels**, **Manage filters**, and
+**Filter messages like this**. Every active-workspace member receives these
+controls; workspace isolation remains unchanged.
 
 ### v2.12 — 2026-07-21 (Mail labels final UI verification)
 

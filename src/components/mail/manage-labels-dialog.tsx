@@ -52,7 +52,7 @@ const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   LABEL_LIMIT_REACHED: "errorLabelLimitReached",
   LABEL_IN_USE: "errorLabelInUse",
   RESOURCE_NOT_FOUND: "errorLabelDefinitionNotFound",
-  WORKSPACE_OWNER_REQUIRED: "errorOwnerRequired",
+  WORKSPACE_MEMBER_REQUIRED: "errorMembershipRequired",
 };
 
 type EditorState =

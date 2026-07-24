@@ -64,7 +64,7 @@ const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   LABEL_LIMIT_REACHED: "errorLabelLimitReached",
   ACTIVE_RULE_LIMIT_REACHED: "errorRuleLimitReached",
   RESOURCE_NOT_FOUND: "errorFilterResourceNotFound",
-  WORKSPACE_OWNER_REQUIRED: "errorOwnerRequired",
+  WORKSPACE_MEMBER_REQUIRED: "errorMembershipRequired",
 };
 
 export interface FilterRuleFormProps {

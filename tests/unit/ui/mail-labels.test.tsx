@@ -339,9 +339,7 @@ describe("Mail client state boundaries", () => {
       status: "RUNNING",
     });
 
-    renderWithIntl(
-      <MailClientView workspaceId="backfill-workspace" canManageRules />,
-    );
+    renderWithIntl(<MailClientView workspaceId="backfill-workspace" />);
 
     const list = await screen.findByRole("list", { name: "Список писем" });
     const row = within(list).getByRole("button", {
@@ -422,7 +420,7 @@ describe("Mail label chips", () => {
     });
   });
 
-  it("lets an owner create a standalone label with a visible color choice", async () => {
+  it("lets an operator create a standalone label with a visible color choice", async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
     apiMocks.createMailLabel.mockResolvedValueOnce({
@@ -606,9 +604,7 @@ describe("Mail label chips", () => {
       .mockResolvedValueOnce([label])
       .mockResolvedValueOnce([]);
 
-    renderWithIntl(
-      <MailClientView workspaceId="delete-filter-workspace" canManageRules />,
-    );
+    renderWithIntl(<MailClientView workspaceId="delete-filter-workspace" />);
 
     const labelsNav = await screen.findByRole("navigation", { name: "Метки" });
     await user.click(
@@ -642,22 +638,17 @@ describe("Mail label chips", () => {
     );
   });
 
-  it("shows label management only to workspace owners", async () => {
-    const { unmount } = renderWithIntl(
-      <MailClientView workspaceId="owner-workspace" canManageRules />,
-    );
+  it("shows label and filter management to workspace operators", async () => {
+    renderWithIntl(<MailClientView workspaceId="member-workspace" />);
     expect(
       await screen.findByRole("button", { name: "Управление метками" }),
     ).toBeInTheDocument();
-    unmount();
-
-    renderWithIntl(<MailClientView workspaceId="member-workspace" />);
     expect(
-      await screen.findByRole("navigation", { name: "Метки" }),
+      screen.getByRole("button", { name: "Управление фильтрами" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Управление метками" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("navigation", { name: "Метки" }),
+    ).toBeInTheDocument();
   });
 
   it("renders label metadata inside the existing message-row button", () => {

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { matchesMailFilter } from "@/lib/mail-filter-matcher";
-import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
+import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
 
 export const MAIL_FILTER_RUN_BATCH_SIZE = 200;
 export const MAIL_FILTER_RUN_LEASE_MS = 5 * 60 * 1000;
@@ -149,7 +149,7 @@ export async function getMailFilterRun(
     select: MAIL_FILTER_RUN_DTO_SELECT,
   });
   if (!run) throw new MailFilterRunResourceNotFoundError();
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
   return toMailFilterRunDto(run);
 }
 
@@ -163,7 +163,7 @@ export async function retryMailFilterRun(
     select: { id: true, status: true },
   });
   if (!scoped) throw new MailFilterRunResourceNotFoundError();
-  await requireWorkspaceOwner(workspaceId, operatorId);
+  await requireWorkspaceMember(workspaceId, operatorId);
   if (scoped.status !== "FAILED") throw new MailFilterRunRetryConflictError();
 
   const updated = await db.mailFilterRun.updateMany({

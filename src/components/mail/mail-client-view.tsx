@@ -132,18 +132,13 @@ function applyRuleLabel<T extends MailListItemDto | MailDetailDto>(
 // swap in place and the sidebar lives in a Sheet.
 export interface MailClientViewProps {
   workspaceId: string;
-  canManageRules?: boolean;
 }
 
-export function MailClientView({ workspaceId, ...props }: MailClientViewProps) {
-  return <MailClientCoordinator key={workspaceId} {...props} />;
+export function MailClientView({ workspaceId }: MailClientViewProps) {
+  return <MailClientCoordinator key={workspaceId} />;
 }
 
-type MailClientCoordinatorProps = Omit<MailClientViewProps, "workspaceId">;
-
-function MailClientCoordinator({
-  canManageRules = false,
-}: MailClientCoordinatorProps) {
+function MailClientCoordinator() {
   const t = useTranslations("mail");
   const [accounts, setAccounts] = useState<MailAccountDto[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -835,39 +830,31 @@ function MailClientCoordinator({
 
   const headerActions = (
     <>
-      {canManageRules && (
-        <>
-          <Button
-            ref={manageLabelsTriggerRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setManageLabelsOpen(true)}
-          >
-            <Icon
-              name="ri-price-tag-3-line"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            {t("manageLabelsButton")}
-          </Button>
-          <Button
-            ref={filterRulesTriggerRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!selectedAccount}
-            onClick={() => setFilterRulesOpen(true)}
-          >
-            <Icon
-              name="ri-filter-settings-line"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            {t("manageFilterRulesButton")}
-          </Button>
-        </>
-      )}
+      <Button
+        ref={manageLabelsTriggerRef}
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setManageLabelsOpen(true)}
+      >
+        <Icon name="ri-price-tag-3-line" aria-hidden data-icon="inline-start" />
+        {t("manageLabelsButton")}
+      </Button>
+      <Button
+        ref={filterRulesTriggerRef}
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={!selectedAccount}
+        onClick={() => setFilterRulesOpen(true)}
+      >
+        <Icon
+          name="ri-filter-settings-line"
+          aria-hidden
+          data-icon="inline-start"
+        />
+        {t("manageFilterRulesButton")}
+      </Button>
       <Button onClick={() => setAddAccountOpen(true)}>
         <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
         {t("addAccountButton")}
@@ -1069,7 +1056,7 @@ function MailClientCoordinator({
             labelMutationError={labelMutationError}
             onRetryLabels={() => setLabelsReload((value) => value + 1)}
             onToggleLabel={handleToggleLabel}
-            canCreateFilter={canManageRules}
+            canCreateFilter
             onCreateFilter={() => setFilterRuleOpen(true)}
             filterTriggerRef={filterRuleTriggerRef}
             replyComposer={

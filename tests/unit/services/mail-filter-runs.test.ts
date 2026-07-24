@@ -295,12 +295,9 @@ describe("durable Mail filter runs", () => {
     expect(failed.status).toBe("FAILED");
     expect(failed.attempts).toBe(3);
 
-    await expect(
-      runsService.retryMailFilterRun(workspaceId, memberId, failed.id),
-    ).rejects.toThrow("Only the workspace owner");
     const retried = await runsService.retryMailFilterRun(
       workspaceId,
-      ownerId,
+      memberId,
       failed.id,
     );
     expect(retried).toMatchObject({
