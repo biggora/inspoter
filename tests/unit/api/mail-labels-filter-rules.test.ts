@@ -702,6 +702,21 @@ describe("Mail filter-rule routes", () => {
     );
 
     auth.context = context(outsiderId, `${PREFIX}-outsider`);
+    const outsiderList = await GET(
+      request(`/api/mail/filter-rules?accountId=${accountId}`),
+    );
+    expect(outsiderList.status).toBe(403);
+    expect(await outsiderList.json()).toEqual({
+      error: "WORKSPACE_MEMBER_REQUIRED",
+    });
+    const outsiderForeignList = await GET(
+      request(`/api/mail/filter-rules?accountId=${foreignAccount.id}`),
+    );
+    expect(outsiderForeignList.status).toBe(404);
+    expect(await outsiderForeignList.json()).toEqual({
+      error: "RESOURCE_NOT_FOUND",
+    });
+
     const forbidden = await POST(
       request("/api/mail/filter-rules", {
         method: "POST",
