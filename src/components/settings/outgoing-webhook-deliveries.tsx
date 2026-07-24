@@ -133,7 +133,7 @@ export function OutgoingWebhookDeliveries({
             description={t("emptyDeliveriesDescription")}
           />
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div>
             <Table>
               <TableHeader>
                 <TableRow>

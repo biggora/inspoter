@@ -173,8 +173,8 @@ function FilterRunDetails({
   }
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-4 p-4">
         <div
           role="status"
           aria-live="polite"
@@ -422,7 +422,7 @@ export function FilterRulesDialog({
           if (!busy || nextOpen) onOpenChange(nextOpen);
         }}
       >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogContent className="gap-0 p-0 sm:max-w-2xl">
           <DialogHeader className="shrink-0 border-b border-background-100 p-4 pr-12">
             <div className="flex min-w-0 items-start gap-2">
               {(editingRule || viewingRun) && (
@@ -482,8 +482,8 @@ export function FilterRulesDialog({
               onBack={() => returnToList(viewingRun.ruleId)}
             />
           ) : (
-            <div className="flex min-h-0 flex-col">
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="flex flex-col">
+              <div className="p-4">
                 {loadError ? (
                   <EmptyState
                     bordered={false}

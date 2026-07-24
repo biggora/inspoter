@@ -245,8 +245,8 @@ export function FilterRuleForm({
   const creatingLabel = selectedLabelId === CREATE_LABEL_VALUE;
 
   return (
-    <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+    <form onSubmit={handleSubmit} className="flex flex-col">
+      <div className="p-4">
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="filter-rule-account">
@@ -474,7 +474,7 @@ export function FilterRuleDialog({
         if (!submitting || nextOpen) onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="gap-0 p-0 sm:max-w-lg">
         <DialogHeader className="shrink-0 border-b border-background-100 p-4 pr-12">
           <DialogTitle>{t("filterRuleDialogTitle")}</DialogTitle>
           <DialogDescription>
