@@ -152,7 +152,7 @@ function OriginalPreview({ original }: { original: MailDetailDto }) {
         <p className="mb-2 text-xs text-foreground-400">
           {original.fromName || original.from} · {original.subject}
         </p>
-        <pre className="max-h-40 overflow-auto font-sans text-xs leading-5 whitespace-pre-wrap text-foreground-600">
+        <pre className="font-sans text-xs leading-5 whitespace-pre-wrap break-words text-foreground-600">
           {original.bodyText}
         </pre>
       </div>
@@ -474,7 +474,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
         <div
           className={cn(
             "space-y-3",
-            variant === "dialog" && "min-h-0 flex-1 overflow-y-auto px-5 py-4",
+            variant === "dialog" && "px-5 py-4",
           )}
         >
           <div className="flex items-end gap-2">
@@ -724,7 +724,7 @@ export function ComposeDialog({
       >
         <DialogContent
           showCloseButton={false}
-          className="h-dvh max-h-dvh w-full max-w-none grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-none p-0 sm:h-[min(780px,calc(100dvh-2rem))] sm:max-h-[calc(100dvh-2rem)] sm:max-w-4xl sm:rounded-xl"
+          className="w-full max-w-none gap-0 rounded-none p-0 sm:max-w-4xl sm:rounded-xl"
         >
           <DialogHeader className="flex-row items-center justify-between border-b px-5 py-4">
             <DialogTitle>{title}</DialogTitle>

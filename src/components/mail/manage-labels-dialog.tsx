@@ -237,7 +237,7 @@ export function ManageLabelsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogContent className="gap-0 p-0 sm:max-w-xl">
           <DialogHeader className="border-b border-background-100 p-4 pr-12">
             <DialogTitle>{t("manageLabelsTitle")}</DialogTitle>
             <DialogDescription>
@@ -245,7 +245,7 @@ export function ManageLabelsDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 overflow-y-auto p-4">
+          <div className="p-4">
             {editor ? (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

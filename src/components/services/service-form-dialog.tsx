@@ -233,7 +233,7 @@ export function ServiceFormDialog({
         <form
           onSubmit={handleSubmit}
           noValidate
-          className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto"
+          className="flex flex-col gap-4"
         >
           <FieldGroup>
             <Field data-invalid={!!errors.name || undefined}>

@@ -65,7 +65,7 @@ export function MetricsAgentDialog({
             <span className="text-sm font-medium text-foreground">
               {t("installationTitle")}
             </span>
-            <pre className="max-h-64 overflow-auto rounded-md border border-border bg-(--bg-sunken) p-3 font-mono text-xs whitespace-pre-wrap text-foreground">
+            <pre className="rounded-md border border-border bg-(--bg-sunken) p-3 font-mono text-xs whitespace-pre-wrap break-words text-foreground">
               {installSnippet()}
             </pre>
           </div>
