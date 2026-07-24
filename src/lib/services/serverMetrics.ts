@@ -364,47 +364,56 @@ async function enrollProviderServer(
       },
     });
 
-    let serverId: string;
-    const created = !existing;
-
     if (existing) {
-      serverId = existing.id;
+      const serverId = existing.id;
+
+      // Stale payloads must not mutate anything: check the snapshot guard
+      // FIRST and bail with zero other writes (no hostname/
+      // providerLastSeenAt update, no address observations) when it's
+      // out-of-order.
+      const applied = await applySnapshot(tx, serverId, workspaceId, payload);
+      if (!applied) {
+        return {
+          status: 200,
+          code: "SNAPSHOT_IGNORED_OUT_OF_ORDER",
+          localServerId: serverId,
+        };
+      }
+
       await tx.localServer.update({
         where: { id: serverId },
         data: { hostname: payload.hostname, providerLastSeenAt: new Date() },
       });
-    } else {
-      const row = await tx.localServer.create({
-        data: {
-          workspaceId,
-          origin: "PROVIDER",
-          displayName: candidate.name || payload.hostname,
-          hostname: payload.hostname,
-          providerCredentialId: candidate.credentialId,
-          providerCredentialWorkspaceId: workspaceId,
-          providerRemoteId: candidate.remoteId,
-          providerLastSeenAt: new Date(),
-        },
-      });
-      serverId = row.id;
+
+      // Address rows for this server may already exist (pre-existing
+      // PROVIDER-sourced rows, or AGENT-sourced rows from a prior ingest)
+      // -- use the update-style upsert so the [workspaceId, localServerId,
+      // address, source] unique constraint is never hit.
+      await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
+
+      return { status: 200, code: "SNAPSHOT_UPDATED", localServerId: serverId };
     }
 
-    // Address rows for this server may already exist (pre-existing
-    // PROVIDER-sourced rows, or AGENT-sourced rows from a prior ingest) --
-    // use the update-style upsert so the [workspaceId, localServerId,
-    // address, source] unique constraint is never hit.
+    // Freshly created below -- no prior snapshot can exist, so the guard
+    // always applies; unaffected by the ordering rule above.
+    const row = await tx.localServer.create({
+      data: {
+        workspaceId,
+        origin: "PROVIDER",
+        displayName: candidate.name || payload.hostname,
+        hostname: payload.hostname,
+        providerCredentialId: candidate.credentialId,
+        providerCredentialWorkspaceId: workspaceId,
+        providerRemoteId: candidate.remoteId,
+        providerLastSeenAt: new Date(),
+      },
+    });
+    const serverId = row.id;
+
+    await applySnapshot(tx, serverId, workspaceId, payload);
     await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
 
-    const applied = await applySnapshot(tx, serverId, workspaceId, payload);
-
-    if (created) {
-      return { status: 201, code: "AGENT_ENROLLED", localServerId: serverId };
-    }
-    return {
-      status: 200,
-      code: applied ? "SNAPSHOT_UPDATED" : "SNAPSHOT_IGNORED_OUT_OF_ORDER",
-      localServerId: serverId,
-    };
+    return { status: 201, code: "AGENT_ENROLLED", localServerId: serverId };
   });
 }
 
@@ -658,27 +667,6 @@ function snapshotData(
   return {
     localServerId,
     workspaceId,
-    schemaVersion: payload.schemaVersion,
-    agentVersion: payload.agentVersion,
-    hostname: payload.hostname,
-    capturedAt: payload.capturedAt,
-    receivedAt: new Date(),
-    cpuUsagePercent: payload.cpu.usagePercent,
-    load1: payload.cpu.load1,
-    load5: payload.cpu.load5,
-    load15: payload.cpu.load15,
-    memoryTotalBytes: BigInt(payload.memory.totalBytes),
-    memoryAvailableBytes: BigInt(payload.memory.availableBytes),
-    swapTotalBytes: BigInt(payload.memory.swapTotalBytes),
-    swapFreeBytes: BigInt(payload.memory.swapFreeBytes),
-    filesystemTotalBytes: BigInt(payload.filesystem.totalBytes),
-    filesystemAvailableBytes: BigInt(payload.filesystem.availableBytes),
-    uptimeSeconds: BigInt(payload.uptimeSeconds),
-  };
-}
-
-function snapshotUpdateData(payload: ParsedMetricsPayload) {
-  return {
     schemaVersion: payload.schemaVersion,
     agentVersion: payload.agentVersion,
     hostname: payload.hostname,

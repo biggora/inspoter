@@ -21,6 +21,20 @@ function evictExpiredWindows(now: number, windowMs: number): void {
   }
 }
 
+// Hard cap: even if every tracked key is still within its window (so
+// nothing above can be swept as expired), a new key must never be allowed
+// to grow the map past MAX_TRACKED_KEYS -- drop the oldest windows first.
+function evictOldestWindows(cap: number): void {
+  if (windows.size < cap) return;
+  const oldestFirst = [...windows.entries()].sort(
+    (a, b) => a[1].windowStart - b[1].windowStart,
+  );
+  const removeCount = windows.size - cap + 1;
+  for (let i = 0; i < removeCount; i++) {
+    windows.delete(oldestFirst[i][0]);
+  }
+}
+
 export function checkRateLimit(
   key: string,
   options?: { limit?: number },
@@ -34,6 +48,9 @@ export function checkRateLimit(
 
   if (windows.size > MAX_TRACKED_KEYS) {
     evictExpiredWindows(now, windowMs);
+  }
+  if (windows.size >= MAX_TRACKED_KEYS && !windows.has(key)) {
+    evictOldestWindows(MAX_TRACKED_KEYS);
   }
 
   const state = windows.get(key);

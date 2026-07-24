@@ -23,6 +23,16 @@ function metricsResponse(
   return NextResponse.json(body, { status, headers: NO_STORE });
 }
 
+function rateLimitedResponse(check: { retryAfterMs?: number }): NextResponse {
+  const retryAfter = Math.max(1, Math.ceil((check.retryAfterMs ?? 1000) / 1000));
+  const resp = metricsResponse(
+    { error: "RATE_LIMITED", message: "Token submission limit exceeded" },
+    429,
+  );
+  resp.headers.set("Retry-After", String(retryAfter));
+  return resp;
+}
+
 export async function POST(request: NextRequest) {
   const contentLength = request.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
@@ -49,23 +59,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const clientIp = forwardedFor?.split(",")[0]?.trim() || "direct";
-  const perIpCheck = checkRateLimit(`${tokenContext.tokenId}:${clientIp}`);
+  // Ceiling check first: an attacker with an exhausted per-token ceiling
+  // must not be able to create new per-IP keys (e.g. by spoofing
+  // x-forwarded-for) just to probe/grow the rate-limit map.
   const perTokenCheck = checkRateLimit(tokenContext.tokenId, {
     limit: env.SERVER_METRICS_RATE_LIMIT * TOKEN_CEILING_MULTIPLIER,
   });
-  if (!perIpCheck.allowed || !perTokenCheck.allowed) {
-    const retryAfterMs =
-      Math.max(perIpCheck.retryAfterMs ?? 0, perTokenCheck.retryAfterMs ?? 0) ||
-      1000;
-    const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
-    const resp = metricsResponse(
-      { error: "RATE_LIMITED", message: "Token submission limit exceeded" },
-      429,
-    );
-    resp.headers.set("Retry-After", String(retryAfter));
-    return resp;
+  if (!perTokenCheck.allowed) {
+    return rateLimitedResponse(perTokenCheck);
+  }
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const clientIp = forwardedFor?.split(",")[0]?.trim() || "direct";
+  const perIpCheck = checkRateLimit(`${tokenContext.tokenId}:${clientIp}`);
+  if (!perIpCheck.allowed) {
+    return rateLimitedResponse(perIpCheck);
   }
 
   let rawBody: unknown;
