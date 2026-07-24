@@ -7,6 +7,7 @@ import {
   channelWebhookPayloadSchema,
   idempotencyKeySchema,
 } from "@/lib/validation/webhookTokens";
+import { validateMetricsPayload } from "@/lib/validation/server-metrics";
 
 interface SchemaObject {
   $ref?: string;
@@ -79,6 +80,11 @@ const channelPath = "/api/webhooks/channels/{webhookId}/{token}";
 const typed = spec.paths[typedPath].post;
 const channel = spec.paths[channelPath].post;
 const responseStatuses = ["200", "201", "400", "401", "413", "429", "500"];
+const metricsPath = "/api/server-metrics";
+const metrics = spec.paths[metricsPath].post;
+const metricsResponseStatuses = [
+  "200", "201", "400", "401", "409", "413", "422", "429", "500", "503",
+];
 
 function resolveRef<T>(value: T & { $ref?: string }): T {
   if (!value.$ref?.startsWith("#/")) return value;
@@ -152,8 +158,10 @@ function forbiddenExampleEntries(
 }
 
 describe("public OpenAPI contract", () => {
-  it("contains exactly the two public POST webhook paths", () => {
-    expect(Object.keys(spec.paths).sort()).toEqual([channelPath, typedPath]);
+  it("contains exactly the expected public POST paths", () => {
+    expect(Object.keys(spec.paths).sort()).toEqual(
+      [metricsPath, channelPath, typedPath].sort(),
+    );
     for (const pathItem of Object.values(spec.paths)) {
       expect(Object.keys(pathItem)).toEqual(["post"]);
     }
@@ -305,5 +313,82 @@ describe("public OpenAPI contract", () => {
       collectStringValues(spec).filter((value) => /^https?:\/\//i.test(value)),
     ).toEqual([]);
     expect(forbiddenExampleEntries(spec)).toEqual([]);
+  });
+
+  it("documents the strict metrics payload and validates its safe example", () => {
+    const media = metrics.requestBody?.content?.["application/json"];
+    const schema = resolveRef(media?.schema ?? {});
+    expect(metrics.requestBody?.required).toBe(true);
+    expect(schema.additionalProperties).toBe(false);
+    expect(schema.required).toEqual(
+      expect.arrayContaining([
+        "schemaVersion",
+        "agentVersion",
+        "capturedAt",
+        "hostname",
+        "ips",
+        "cpu",
+        "memory",
+        "filesystem",
+        "uptimeSeconds",
+      ]),
+    );
+    expect(schema.properties?.schemaVersion).toMatchObject({ const: 1 });
+    expect(schema.properties?.hostname).toMatchObject({
+      minLength: 1,
+      maxLength: 255,
+    });
+    expect(schema.properties?.agentVersion).toMatchObject({
+      minLength: 1,
+      maxLength: 64,
+    });
+
+    const ipsSchema = schema.properties?.ips;
+    expect(ipsSchema).toMatchObject({ minItems: 1, maxItems: 16 });
+
+    expect(validateMetricsPayload(media?.example).success).toBe(true);
+  });
+
+  it("uses bearer auth for metrics ingestion", () => {
+    expect(metrics.security).toEqual([{ WebhookBearer: [] }]);
+  });
+
+  it("keeps metrics success and error response models distinct", () => {
+    const metricsSuccess = spec.components?.schemas?.MetricsSuccess;
+    const metricsError = spec.components?.schemas?.MetricsError;
+
+    expect(Object.keys(metrics.responses ?? {}).sort()).toEqual(
+      [...metricsResponseStatuses].sort(),
+    );
+    expect(responseSchema(metrics, "200")).toBe(metricsSuccess);
+    expect(responseSchema(metrics, "201")).toBe(metricsSuccess);
+    for (const status of ["400", "401", "409", "413", "422", "429", "503"]) {
+      expect(responseSchema(metrics, status)).toBe(metricsError);
+    }
+    expect(metrics.responses?.["500"]?.description).toBeTruthy();
+    expect(metrics.responses?.["500"]?.content).toBeUndefined();
+  });
+
+  it("sets Cache-Control and Retry-After headers on metrics responses", () => {
+    const handledStatuses = metricsResponseStatuses.filter(
+      (s) => s !== "500",
+    );
+    for (const status of handledStatuses) {
+      expect(
+        metrics.responses?.[status]?.headers?.["Cache-Control"],
+      ).toBeTruthy();
+    }
+    expect(metrics.responses?.["500"]?.headers).toBeUndefined();
+
+    expect(
+      metrics.responses?.["429"]?.headers?.["Retry-After"],
+    ).toBeTruthy();
+    for (const status of metricsResponseStatuses.filter(
+      (s) => s !== "429",
+    )) {
+      expect(
+        metrics.responses?.[status]?.headers?.["Retry-After"],
+      ).toBeUndefined();
+    }
   });
 });

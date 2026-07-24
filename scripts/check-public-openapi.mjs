@@ -93,6 +93,7 @@ try {
 }
 
 const expectedPaths = [
+  "/api/server-metrics",
   "/api/webhooks/channels/{webhookId}/{token}",
   "/api/webhooks/{type}",
 ];
@@ -118,19 +119,21 @@ for (const publicPath of expectedPaths) {
   );
 }
 
+const metricsPath = "/api/server-metrics";
 const typedPath = "/api/webhooks/{type}";
 const channelPath = "/api/webhooks/channels/{webhookId}/{token}";
+const metrics = spec.paths?.[metricsPath]?.post;
 const typed = spec.paths?.[typedPath]?.post;
 const channel = spec.paths?.[channelPath]?.post;
-const operations = [typed, channel].filter(Boolean);
+const operations = [metrics, typed, channel].filter(Boolean);
 const operationIds = operations.map((operation) => operation.operationId);
 check(
-  operationIds.length === 2 &&
+  operationIds.length === 3 &&
     operationIds.every(
       (operationId) =>
         typeof operationId === "string" && operationId.trim().length > 0,
     ),
-  "both POST operations must have non-empty operationId values",
+  "all POST operations must have non-empty operationId values",
 );
 check(
   new Set(operationIds).size === operationIds.length,
@@ -138,6 +141,7 @@ check(
 );
 
 const routeSources = [
+  [metricsPath, "src/app/api/server-metrics/route.ts"],
   [typedPath, "src/app/api/webhooks/[type]/route.ts"],
   [channelPath, "src/app/api/webhooks/channels/[webhookId]/[token]/route.ts"],
 ];
@@ -158,6 +162,10 @@ for (const [publicPath, relativeSource] of routeSources) {
   );
 }
 
+check(
+  sameJson(metrics?.security, [{ WebhookBearer: [] }]),
+  `${metricsPath} security must be exactly [{"WebhookBearer":[]}]`,
+);
 check(
   sameJson(typed?.security, [{ WebhookBearer: [] }]),
   `${typedPath} security must be exactly [{"WebhookBearer":[]}]`,
@@ -209,19 +217,47 @@ check(
   "token path parameter must not define an example or default",
 );
 
-const expectedResponses = ["200", "201", "400", "401", "413", "429", "500"];
+const webhookExpectedResponses = [
+  "200", "201", "400", "401", "413", "429", "500",
+];
 for (const [label, operation] of [
   [typedPath, typed],
   [channelPath, channel],
 ]) {
   const responses = Object.keys(operation?.responses ?? {});
   check(
-    sameJson(responses, expectedResponses),
-    `${label} responses must be exactly ${expectedResponses.join(", ")}; found ${responses.join(", ") || "none"}`,
+    sameJson(responses, webhookExpectedResponses),
+    `${label} responses must be exactly ${webhookExpectedResponses.join(", ")}; found ${responses.join(", ") || "none"}`,
   );
   check(
     Boolean(operation?.responses?.["429"]?.headers?.["Retry-After"]),
     `${label} response 429 must define Retry-After`,
+  );
+}
+
+const metricsExpectedResponses = [
+  "200", "201", "400", "401", "409", "413", "422", "429", "500", "503",
+];
+{
+  const responses = Object.keys(metrics?.responses ?? {});
+  check(
+    sameJson(responses, metricsExpectedResponses),
+    `${metricsPath} responses must be exactly ${metricsExpectedResponses.join(", ")}; found ${responses.join(", ") || "none"}`,
+  );
+  check(
+    Boolean(metrics?.responses?.["429"]?.headers?.["Retry-After"]),
+    `${metricsPath} response 429 must define Retry-After`,
+  );
+  const handledStatuses = metricsExpectedResponses.filter((s) => s !== "500");
+  for (const status of handledStatuses) {
+    check(
+      Boolean(metrics?.responses?.[status]?.headers?.["Cache-Control"]),
+      `${metricsPath} response ${status} must define Cache-Control`,
+    );
+  }
+  check(
+    metrics?.responses?.["500"]?.headers === undefined,
+    `${metricsPath} response 500 must not define headers`,
   );
 }
 
@@ -314,7 +350,7 @@ for (const [label, operation] of [
   [typedPath, typed],
   [channelPath, channel],
 ]) {
-  for (const status of expectedResponses.filter(
+  for (const status of webhookExpectedResponses.filter(
     (candidate) => candidate !== "429",
   )) {
     check(
@@ -435,6 +471,63 @@ try {
   );
 }
 
+const metricsError = spec.components?.schemas?.MetricsError;
+check(
+  metricsError?.type === "object" &&
+    metricsError?.additionalProperties === false &&
+    sameJson(metricsError?.required, ["error", "message"]) &&
+    metricsError?.properties?.error?.type === "string" &&
+    metricsError?.properties?.message?.type === "string",
+  "components.schemas.MetricsError must be an object requiring string error and message properties",
+);
+for (const status of ["400", "401", "409", "413", "422", "429", "503"]) {
+  check(
+    jsonResponseSchema(metrics?.responses?.[status]) === metricsError,
+    `${metricsPath} response ${status} must resolve to components.schemas.MetricsError`,
+  );
+}
+
+const metricsSuccess = spec.components?.schemas?.MetricsSuccess;
+check(
+  metricsSuccess?.type === "object" &&
+    metricsSuccess?.additionalProperties === false &&
+    sameJson(metricsSuccess?.required, ["code", "localServerId"]) &&
+    metricsSuccess?.properties?.code?.type === "string" &&
+    metricsSuccess?.properties?.localServerId?.type === "string",
+  "components.schemas.MetricsSuccess must be an object requiring string code and localServerId properties",
+);
+for (const status of ["200", "201"]) {
+  check(
+    jsonResponseSchema(metrics?.responses?.[status]) === metricsSuccess,
+    `${metricsPath} response ${status} must resolve to components.schemas.MetricsSuccess`,
+  );
+}
+check(
+  typeof metrics?.responses?.["500"]?.description === "string" &&
+    metrics.responses["500"].description.trim().length > 0 &&
+    metrics.responses["500"].content === undefined,
+  `${metricsPath} response 500 must have a description and no content`,
+);
+
+const metricsPayload = spec.components?.schemas?.ServerMetricsPayload;
+check(
+  metricsPayload?.type === "object" &&
+    metricsPayload?.additionalProperties === false,
+  "components.schemas.ServerMetricsPayload must be a strict object",
+);
+check(
+  metrics?.requestBody?.required === true,
+  `${metricsPath} requestBody must be required`,
+);
+const metricsRequestSchema = resolveSchema(
+  spec,
+  metrics?.requestBody?.content?.["application/json"]?.schema,
+);
+check(
+  metricsRequestSchema === metricsPayload,
+  `${metricsPath} request schema must resolve to components.schemas.ServerMetricsPayload`,
+);
+
 const serialized = JSON.stringify(spec);
 check(
   !/x-inspoter-workspace/i.test(serialized),
@@ -472,5 +565,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Public OpenAPI contract check passed (2 paths, 2 POST operations).",
+  "Public OpenAPI contract check passed (3 paths, 3 POST operations).",
 );

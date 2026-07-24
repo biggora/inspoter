@@ -42,7 +42,7 @@ test("an invalid session cookie is rejected by authoritative dashboard auth", as
   await expect(page).toHaveURL(/\/login(?:\?|$)/);
 });
 
-test("authenticated operator opens the two-operation Swagger reference without external requests", async ({
+test("authenticated operator opens the three-operation Swagger reference without external requests", async ({
   page,
 }) => {
   await login(page);
@@ -65,16 +65,17 @@ test("authenticated operator opens the two-operation Swagger reference without e
   await expect(page).toHaveURL(new RegExp(`${API_DOCS_PATH}$`));
 
   const operationPaths = page.locator(".swagger-ui .opblock-summary-path");
-  await expect(operationPaths).toHaveCount(2);
+  await expect(operationPaths).toHaveCount(3);
   expect(
     (await operationPaths.allTextContents()).map((path) => path.trim()).sort(),
   ).toEqual(
     [
+      "/api/server-metrics",
       "/api/webhooks/{type}",
       "/api/webhooks/channels/{webhookId}/{token}",
     ].sort(),
   );
-  await expect(page.locator(".swagger-ui .opblock-post")).toHaveCount(2);
+  await expect(page.locator(".swagger-ui .opblock-post")).toHaveCount(3);
   await expect(page.getByText("/api/services", { exact: false })).toHaveCount(
     0,
   );

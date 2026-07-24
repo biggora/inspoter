@@ -1,13 +1,13 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Inspoter Public Webhook API",
+    "title": "Inspoter Public API",
     "version": "0.1.0",
     "license": {
       "name": "UNLICENSED",
       "identifier": "LicenseRef-UNLICENSED"
     },
-    "description": "Public endpoints for ingesting workspace events and channel messages."
+    "description": "Public endpoints for ingesting workspace events, channel messages, and server metrics."
   },
   "servers": [
     {
@@ -15,6 +15,196 @@
     }
   ],
   "paths": {
+    "/api/server-metrics": {
+      "post": {
+        "operationId": "ingestServerMetrics",
+        "summary": "Ingest a server metrics snapshot",
+        "description": "Accepts a metrics snapshot from a monitoring agent. The token identifies the workspace; once bound to a server the snapshot updates its latest reading. An unbound token triggers enrollment.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerMetricsPayload"
+              },
+              "example": {
+                "schemaVersion": 1,
+                "agentVersion": "1.0.0",
+                "capturedAt": "2026-07-20T12:00:00Z",
+                "hostname": "web-1.example.invalid",
+                "ips": ["198.51.100.10"],
+                "cpu": {
+                  "usagePercent": 42.5,
+                  "load1": 1.2,
+                  "load5": 0.9,
+                  "load15": 0.7
+                },
+                "memory": {
+                  "totalBytes": 8589934592,
+                  "availableBytes": 4294967296,
+                  "swapTotalBytes": 2147483648,
+                  "swapFreeBytes": 2147483648
+                },
+                "filesystem": {
+                  "mount": "/",
+                  "totalBytes": 107374182400,
+                  "availableBytes": 53687091200
+                },
+                "uptimeSeconds": 86400
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The snapshot was accepted for an already-enrolled server.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsSuccess"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The monitoring agent was enrolled and its first snapshot was stored.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The JSON body is missing, unparseable, or fails schema validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, invalid, expired, or revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The reported addresses conflict with another server or the match is ambiguous.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the 16 KiB size limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The schema version is unsupported or the capturedAt timestamp is too far in the future.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The token has exceeded its submission rate limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          },
+          "503": {
+            "description": "A configured provider's inventory API is temporarily unavailable.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/webhooks/{type}": {
       "post": {
         "operationId": "ingestWebhook",
@@ -637,6 +827,93 @@
             "maxLength": 80,
             "description": "Optional author name. Leading and trailing whitespace is removed before validation."
           }
+        }
+      },
+      "MetricsError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "MetricsSuccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "localServerId"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "SNAPSHOT_UPDATED",
+              "SNAPSHOT_IGNORED_OUT_OF_ORDER",
+              "AGENT_ENROLLED"
+            ]
+          },
+          "localServerId": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerMetricsPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion", "agentVersion", "capturedAt", "hostname",
+          "ips", "cpu", "memory", "filesystem", "uptimeSeconds"
+        ],
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "agentVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "capturedAt": { "type": "string", "format": "date-time" },
+          "hostname": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "ips": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "maxItems": 16
+          },
+          "cpu": { "$ref": "#/components/schemas/MetricsCpu" },
+          "memory": { "$ref": "#/components/schemas/MetricsMemory" },
+          "filesystem": { "$ref": "#/components/schemas/MetricsFilesystem" },
+          "uptimeSeconds": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "MetricsCpu": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["usagePercent", "load1", "load5", "load15"],
+        "properties": {
+          "usagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+          "load1": { "type": "number", "minimum": 0 },
+          "load5": { "type": "number", "minimum": 0 },
+          "load15": { "type": "number", "minimum": 0 }
+        }
+      },
+      "MetricsMemory": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["totalBytes", "availableBytes", "swapTotalBytes", "swapFreeBytes"],
+        "properties": {
+          "totalBytes": { "type": "integer", "minimum": 0 },
+          "availableBytes": { "type": "integer", "minimum": 0 },
+          "swapTotalBytes": { "type": "integer", "minimum": 0 },
+          "swapFreeBytes": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "MetricsFilesystem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mount", "totalBytes", "availableBytes"],
+        "properties": {
+          "mount": { "type": "string", "const": "/" },
+          "totalBytes": { "type": "integer", "minimum": 0 },
+          "availableBytes": { "type": "integer", "minimum": 0 }
         }
       }
     }
