@@ -29,6 +29,11 @@ export function Pagination({
 }: PaginationProps) {
   const t = useTranslations("shell");
 
+  // Nothing to navigate to in either direction — a lone "Page 1" is noise.
+  if (!hasPrevious && !hasNext) {
+    return null;
+  }
+
   return (
     <div
       data-slot="pagination"
