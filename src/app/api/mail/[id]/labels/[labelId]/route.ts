@@ -2,15 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
-import { env } from "@/lib/config/env";
 import * as mailLabelAssignmentsService from "@/lib/services/mail-label-assignments";
 
 interface RouteContext {
   params: Promise<{ id: string; labelId: string }>;
-}
-
-function disabledResponse() {
-  return jsonResponse({ error: "Resource not found." }, { status: 404 });
 }
 
 function serviceErrorResponse(error: unknown) {
@@ -24,7 +19,6 @@ function serviceErrorResponse(error: unknown) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
@@ -44,7 +38,6 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );

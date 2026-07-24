@@ -470,9 +470,9 @@ AC-MAIL-001..030 remained green at the final gate.
 | ML-RUN-003      | Live/backfill overlap creates one assignment; post-cutoff mail uses live path only; rule edits during active run cannot change immutable snapshot. Polling stops on completed/failed and retry is bounded.                     |     5 | PASS — overlap/snapshot/UI regressions       |
 | ML-SCHED-001    | Instrumentation starts no new timer/scheduler; existing Mail scheduler claims bounded run work and restart recovery resumes durable state.                                                                                     |     5 | PASS — exact 200/201 restart recovery        |
 | ML-PERF-001     | Large seeded dataset records query plan, p50/p95 elapsed time, rows scanned, and DB/fixture details for a labeled 50-row combined-filter page and 200-row backfill batch; index changes require before/after evidence.         |     5 | PASS — 20,000-row service-path measurement   |
-| ML-DEPLOY-001   | With `MAIL_LABELS_ENABLED=false`, new UI/routes/evaluation/claims stay dark and existing Mail smoke passes; controlled enable exposes only completed phase behavior.                                                           |   2–5 | PASS — flag-off/on runtime rehearsal         |
+| ML-DEPLOY-001   | Label UI/routes/evaluation/claims are always active after migration; deployment smoke covers labels alongside existing Mail behavior.                                                                                       |   2–5 | CURRENT SOURCE — deployment pending          |
 | ML-BACKUP-001   | Dated encrypted pre-migration backup has owner/retention, row counts/checksums, and successful disposable restore evidence for documented Mail/label tables.                                                                   |  2, 5 | PASS — encrypted restore and hash comparison |
-| ML-ROLLBACK-001 | Rehearsal disables exposure, runs prior compatible binary against additive schema, and proves accounts/folders/messages/attachments/flags/bodies/actions unchanged; preserved label data reappears after compatible re-enable. |     5 | PASS — prior runtime + zero integrity diffs  |
+| ML-ROLLBACK-001 | Rehearsal runs a prior compatible binary against additive schema and proves accounts/folders/messages/attachments/flags/bodies/actions unchanged while preserving label data.                                                   |     5 | PASS — prior runtime + zero integrity diffs  |
 
 ### 12.6 Per-phase gates
 
@@ -565,14 +565,11 @@ restore/hash comparison does not pass `ML-BACKUP-001`.
   identical counts and SHA-256 hashes for all eight protected Mail tables and
   identical history for all 18 migrations; the restore database was removed.
   The encryption key was not persisted.
-- `ML-DEPLOY-001` PASS: the current production build ran with
-  `MAIL_LABELS_ENABLED=false`; all three label/rule/run route families returned
-  404, label/filter UI counts were zero, and a pending run remained unclaimed
-  at zero processed rows across multiple 500 ms Mail ticks. Existing account,
-  folder, message list/detail, attachment-byte, and reversible unread/read
-  smoke passed. The live persistence path's direct flag guard was source-reviewed;
-  no separate flag-off ingestion runtime assertion was retained. Re-enabling
-  exposed the preserved `Migration label` through both API and UI.
+- `ML-DEPLOY-001` CURRENT SOURCE / PENDING DEPLOYMENT: the runtime feature gate
+  was removed. Label/rule/run routes, UI, live evaluation, and pending-run
+  claims are always active after migrations. Updated regression coverage keeps
+  the existing account, folder, message list/detail, attachment-byte, and
+  reversible unread/read smoke alongside label API/UI verification.
 - `ML-ROLLBACK-001` PASS: a derived temporary copy of the preserved Phase 4
   runtime ran against the additive Phase 5 schema on port 3921 and passed the
   same existing Mail smoke. Its incomplete archived package required a

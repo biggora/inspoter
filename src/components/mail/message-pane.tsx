@@ -87,7 +87,6 @@ export interface MessagePaneProps {
   /** Message sits in the TRASH folder — deleting is permanent (confirm). */
   isInTrash: boolean;
   isDraft: boolean;
-  mailLabelsEnabled: boolean;
   labels: MailLabelDto[];
   labelsLoading: boolean;
   labelsError: string | null;
@@ -121,7 +120,6 @@ export function MessagePane({
   canArchive,
   isInTrash,
   isDraft,
-  mailLabelsEnabled,
   labels,
   labelsLoading,
   labelsError,
@@ -228,34 +226,28 @@ export function MessagePane({
         <h2 className="mb-3 font-heading text-lg font-semibold text-foreground-900">
           {detail.subject}
         </h2>
-        {(mailLabelsEnabled || detail.labels.length > 0) && (
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            {detail.labels.length > 0 && (
-              <div
-                className="flex flex-wrap gap-1.5"
-                aria-label={t("appliedLabelsAriaLabel")}
-              >
-                {detail.labels.map((label) => (
-                  <LabelChip key={label.id} label={label} />
-                ))}
-              </div>
-            )}
-            {mailLabelsEnabled && (
-              <MessageLabelPicker
-                labels={labels}
-                appliedLabelIds={
-                  new Set(detail.labels.map((label) => label.id))
-                }
-                loading={labelsLoading}
-                error={labelsError}
-                mutationError={labelMutationError}
-                pendingLabelIds={pendingLabelIds}
-                onRetry={onRetryLabels}
-                onToggle={onToggleLabel}
-              />
-            )}
-          </div>
-        )}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {detail.labels.length > 0 && (
+            <div
+              className="flex flex-wrap gap-1.5"
+              aria-label={t("appliedLabelsAriaLabel")}
+            >
+              {detail.labels.map((label) => (
+                <LabelChip key={label.id} label={label} />
+              ))}
+            </div>
+          )}
+          <MessageLabelPicker
+            labels={labels}
+            appliedLabelIds={new Set(detail.labels.map((label) => label.id))}
+            loading={labelsLoading}
+            error={labelsError}
+            mutationError={labelMutationError}
+            pendingLabelIds={pendingLabelIds}
+            onRetry={onRetryLabels}
+            onToggle={onToggleLabel}
+          />
+        </div>
         <div className="flex items-start gap-3">
           <span
             aria-hidden

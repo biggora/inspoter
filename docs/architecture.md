@@ -850,10 +850,10 @@ processes one 200-row batch per run. Nonterminal claims remain in process for
 the next tick; completed, failed, or lease-lost claims are removed. IMAP work
 and run work share the existing reentrancy guard.
 `src/instrumentation.ts` keeps its existing Mail scheduler registration; the
-feature adds neither a third scheduler nor another interval. With
-`MAIL_LABELS_ENABLED=false`, claims stay dark. Expired durable leases recover on
-a later tick after restart. Live-message evaluation remains the only path for
-messages created after the captured cutoff.
+feature adds neither a third scheduler nor another interval. Label/rule
+evaluation and pending-run claims are always active. Expired durable leases
+recover on a later tick after restart. Live-message evaluation remains the only
+path for messages created after the captured cutoff.
 
 ### 7D.5 UIDVALIDITY limitation
 

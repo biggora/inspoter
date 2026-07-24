@@ -1,16 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import * as mailService from "@/lib/services/mail";
-import { env } from "@/lib/config/env";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { listMailQuerySchema } from "@/lib/validation/mail";
 
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
-  if (sp.has("labelId") && !env.MAIL_LABELS_ENABLED) {
-    return jsonResponse({ error: "Resource not found." }, { status: 404 });
-  }
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );

@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
-import { env } from "@/lib/config/env";
 import { db } from "@/lib/db";
 import { matchesMailFilter } from "@/lib/mail-filter-matcher";
 import { requireWorkspaceOwner } from "@/lib/services/workspace-auth";
@@ -186,7 +185,7 @@ export async function claimMailFilterRuns(
   limit: number,
   runtime: MailFilterRunRuntime = DEFAULT_RUNTIME,
 ): Promise<ClaimedMailFilterRun[]> {
-  if (!env.MAIL_LABELS_ENABLED || limit <= 0) return [];
+  if (limit <= 0) return [];
   const now = runtime.now();
   const candidates = await db.mailFilterRun.findMany({
     where: {

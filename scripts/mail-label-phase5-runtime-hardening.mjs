@@ -85,13 +85,12 @@ async function assertPortFree(port) {
   });
 }
 
-function startServer({ runtimeDirectory, port, labelsEnabled, tickMs, env }) {
+function startServer({ runtimeDirectory, port, tickMs, env }) {
   const childEnvironment = createTestChildEnvironment({
     ...env,
     NODE_ENV: "production",
     HOSTNAME: HOST,
     PORT: String(port),
-    MAIL_LABELS_ENABLED: labelsEnabled ? "true" : "false",
     MAIL_SYNC_TICK_MS: String(tickMs),
     SERVICE_SCHEDULER_TICK_MS: "600000",
     WEBHOOK_SCHEDULER_TICK_MS: "600000",
@@ -286,47 +285,7 @@ async function smokeExistingMail(baseUrl, environment, fixture) {
   }
 }
 
-async function verifyFlagOff(baseUrl, environment, fixture) {
-  const session = await login(baseUrl, environment);
-  try {
-    const routeStatuses = {};
-    const headers = { [WORKSPACE_HEADER]: fixture.workspaceId };
-    for (const path of [
-      "/api/mail/labels",
-      `/api/mail/filter-rules?accountId=${fixture.accountId}`,
-      `/api/mail/filter-runs/${ROLLBACK_RUN_ID}`,
-    ]) {
-      const response = await session.context.request.get(`${baseUrl}${path}`, {
-        headers,
-      });
-      routeStatuses[path] = response.status();
-      assert(response.status() === 404, `${path} was not dark (404).`);
-    }
-
-    await session.page.goto("/en/mail");
-    await session.page.getByRole("heading", { name: "Mail" }).waitFor();
-    const uiCounts = {
-      labelsNavigation: await session.page
-        .getByRole("navigation", { name: "Labels" })
-        .count(),
-      manageFilters: await session.page
-        .getByRole("button", { name: "Manage filters" })
-        .count(),
-      preservedLabelText: await session.page
-        .getByText("Migration label", { exact: true })
-        .count(),
-    };
-    assert(
-      Object.values(uiCounts).every((count) => count === 0),
-      "Label/filter UI remained visible while the feature was off.",
-    );
-    return { routeStatuses, uiCounts };
-  } finally {
-    await session.browser.close();
-  }
-}
-
-async function verifyFlagOn(baseUrl, environment, fixture) {
+async function verifyLabelsAvailable(baseUrl, environment, fixture) {
   const session = await login(baseUrl, environment);
   const headers = { [WORKSPACE_HEADER]: fixture.workspaceId };
   try {
@@ -334,7 +293,7 @@ async function verifyFlagOn(baseUrl, environment, fixture) {
       await session.context.request.get(`${baseUrl}/api/mail/labels`, {
         headers,
       }),
-      "Enabled Mail label list",
+      "Mail label list",
     );
     assert(
       labels.some((label) => label.id === fixture.labelId),
@@ -690,13 +649,12 @@ async function main() {
     activeServer = startServer({
       runtimeDirectory: CURRENT_RUNTIME,
       port: CURRENT_PORT,
-      labelsEnabled: false,
-      tickMs: 500,
+      tickMs: 600_000,
       env: environment,
     });
-    processes.push({ role: "current-flag-off", pid: activeServer.pid });
+    processes.push({ role: "current-labels-always-on", pid: activeServer.pid });
     await waitForServer(activeServer);
-    const flagOff = await verifyFlagOff(
+    const labelsAvailable = await verifyLabelsAvailable(
       activeServer.baseUrl,
       environment,
       fixture,
@@ -706,13 +664,12 @@ async function main() {
       environment,
       fixture,
     );
-    await delay(1_500);
-    const darkRun = await readRun(environment.DATABASE_URL, ROLLBACK_RUN_ID);
+    const pendingRun = await readRun(environment.DATABASE_URL, ROLLBACK_RUN_ID);
     assert(
-      darkRun.status === "PENDING" &&
-        darkRun.processedCount === 0 &&
-        darkRun.leaseToken === null,
-      "Flag-off server claimed or processed a filter run.",
+      pendingRun.status === "PENDING" &&
+        pendingRun.processedCount === 0 &&
+        pendingRun.leaseToken === null,
+      "Long-interval smoke server unexpectedly processed a filter run.",
     );
     await stopServer(activeServer);
     activeServer = undefined;
@@ -722,31 +679,12 @@ async function main() {
     activeServer = startServer({
       runtimeDirectory: phase4Derived.directory,
       port: PHASE4_PORT,
-      labelsEnabled: false,
       tickMs: 600_000,
       env: environment,
     });
     processes.push({ role: "phase4-additive-schema", pid: activeServer.pid });
     await waitForServer(activeServer);
     const phase4MailSmoke = await smokeExistingMail(
-      activeServer.baseUrl,
-      environment,
-      fixture,
-    );
-    await stopServer(activeServer);
-    activeServer = undefined;
-
-    await assertPortFree(CURRENT_PORT);
-    activeServer = startServer({
-      runtimeDirectory: CURRENT_RUNTIME,
-      port: CURRENT_PORT,
-      labelsEnabled: true,
-      tickMs: 600_000,
-      env: environment,
-    });
-    processes.push({ role: "current-flag-on", pid: activeServer.pid });
-    await waitForServer(activeServer);
-    const flagOn = await verifyFlagOn(
       activeServer.baseUrl,
       environment,
       fixture,
@@ -779,7 +717,6 @@ async function main() {
     activeServer = startServer({
       runtimeDirectory: CURRENT_RUNTIME,
       port: CURRENT_PORT,
-      labelsEnabled: true,
       tickMs: 5_000,
       env: environment,
     });
@@ -809,7 +746,6 @@ async function main() {
     activeServer = startServer({
       runtimeDirectory: CURRENT_RUNTIME,
       port: CURRENT_PORT,
-      labelsEnabled: true,
       tickMs: 1_000,
       env: environment,
     });
@@ -863,15 +799,14 @@ async function main() {
       ports: { current: CURRENT_PORT, phase4: PHASE4_PORT },
       processes,
       deployment: {
-        flagOff,
+        labelsAvailable,
         currentMailSmoke,
-        unclaimedRun: {
-          id: darkRun.id,
-          status: darkRun.status,
-          processedCount: darkRun.processedCount,
-          leaseToken: darkRun.leaseToken,
+        pendingRun: {
+          id: pendingRun.id,
+          status: pendingRun.status,
+          processedCount: pendingRun.processedCount,
+          leaseToken: pendingRun.leaseToken,
         },
-        flagOn,
       },
       rollback: {
         phase4Runtime: {

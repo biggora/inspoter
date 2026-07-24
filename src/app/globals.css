@@ -159,6 +159,9 @@
   .focus-control:focus-visible { border-color: var(--focus-ring); outline: 2px solid oklch(var(--primary-400) / .35); outline-offset: 0; }
   .shell-icon-tile { display: inline-flex; width: 28px; height: 28px; flex: 0 0 28px; align-items: center; justify-content: center; border-radius: var(--radius-md); background: oklch(var(--secondary-100) / .72); color: oklch(var(--secondary-700)); }
   .shell-nav-item[data-active="true"] .shell-icon-tile { background: oklch(var(--primary-100)); color: oklch(var(--primary-700)); }
+  .dark .mail-body-content :where(*) { color: inherit !important; }
+  .dark .mail-body-content :where(a) { color: oklch(var(--accent-700)) !important; }
+  .dark .mail-body-content :where(blockquote) { color: var(--text-secondary) !important; }
   .reduced-motion, .reduced-motion * { animation: none !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
 }
 

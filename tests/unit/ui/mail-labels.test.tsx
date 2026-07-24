@@ -261,9 +261,7 @@ describe("Mail client state boundaries", () => {
       removed = true;
     });
 
-    renderWithIntl(
-      <MailClientView workspaceId="workspace-1" mailLabelsEnabled />,
-    );
+    renderWithIntl(<MailClientView workspaceId="workspace-1" />);
 
     const labelsNav = await screen.findByRole("navigation", { name: "Метки" });
     await user.click(
@@ -342,11 +340,7 @@ describe("Mail client state boundaries", () => {
     });
 
     renderWithIntl(
-      <MailClientView
-        workspaceId="backfill-workspace"
-        mailLabelsEnabled
-        canManageRules
-      />,
+      <MailClientView workspaceId="backfill-workspace" canManageRules />,
     );
 
     const list = await screen.findByRole("list", { name: "Список писем" });
@@ -613,11 +607,7 @@ describe("Mail label chips", () => {
       .mockResolvedValueOnce([]);
 
     renderWithIntl(
-      <MailClientView
-        workspaceId="delete-filter-workspace"
-        mailLabelsEnabled
-        canManageRules
-      />,
+      <MailClientView workspaceId="delete-filter-workspace" canManageRules />,
     );
 
     const labelsNav = await screen.findByRole("navigation", { name: "Метки" });
@@ -654,20 +644,14 @@ describe("Mail label chips", () => {
 
   it("shows label management only to workspace owners", async () => {
     const { unmount } = renderWithIntl(
-      <MailClientView
-        workspaceId="owner-workspace"
-        mailLabelsEnabled
-        canManageRules
-      />,
+      <MailClientView workspaceId="owner-workspace" canManageRules />,
     );
     expect(
       await screen.findByRole("button", { name: "Управление метками" }),
     ).toBeInTheDocument();
     unmount();
 
-    renderWithIntl(
-      <MailClientView workspaceId="member-workspace" mailLabelsEnabled />,
-    );
+    renderWithIntl(<MailClientView workspaceId="member-workspace" />);
     expect(
       await screen.findByRole("navigation", { name: "Метки" }),
     ).toBeInTheDocument();
@@ -732,7 +716,6 @@ describe("Mail label chips", () => {
         onRetryFolders={vi.fn()}
         selectedFolderId={null}
         onSelectFolder={vi.fn()}
-        mailLabelsEnabled
         labels={ITEM.labels.map((label, index) => ({
           ...label,
           messageCount: [12, 3, 0][index],
