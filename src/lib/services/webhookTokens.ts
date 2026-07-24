@@ -117,10 +117,22 @@ export async function rotate(
   const { secret, tokenHash, tokenPrefix } = generateToken();
 
   const created = await db.$transaction(async (tx) => {
-    await tx.webhookToken.update({
-      where: { id },
+    // Conditional revoke: only one of two concurrent rotate() calls for the
+    // same token can win this update (the loser's row is no longer
+    // revokedAt: null once it runs), so at most one replacement token is
+    // ever created.
+    const revoked = await tx.webhookToken.updateMany({
+      where: { id, workspaceId, channelId: null, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (revoked.count === 0) {
+      const current = await tx.webhookToken.findFirst({
+        where: { id, workspaceId, channelId: null },
+        select: { id: true },
+      });
+      if (!current) throw new WebhookTokenNotFoundError();
+      throw new WebhookTokenRevokedError();
+    }
 
     return tx.webhookToken.create({
       data: { workspaceId, name: existing.name, tokenHash, tokenPrefix },

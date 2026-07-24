@@ -27,6 +27,8 @@ function isPrismaUniqueConstraintError(
 
 const DISCOVERY_DEADLINE_MS = 45_000;
 
+type PrismaTx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
 export interface MetricsTokenContext {
   tokenId: string;
   workspaceId: string;
@@ -169,7 +171,16 @@ export async function processMetricsIngestion(
   try {
     if (claimedServerIds.size === 1) {
       const [serverId] = claimedServerIds;
-      return await steadyStateIngestion(serverId, ctx.workspaceId, payload);
+      // reportedGlobalIpv4s is non-empty here (it's what produced the claim
+      // match above) -- steadyStateIngestion re-verifies inside the
+      // transaction that the claim still holds, closing the window between
+      // this read and the write.
+      return await steadyStateIngestion(
+        serverId,
+        ctx.workspaceId,
+        payload,
+        reportedGlobalIpv4s,
+      );
     }
 
     return await matchOrEnroll(ctx, payload, reportedGlobalIpv4s);
@@ -188,44 +199,113 @@ export async function processMetricsIngestion(
   }
 }
 
+// DB-level out-of-order guard, single atomic statement: INSERT .. ON
+// CONFLICT DO UPDATE .. WHERE stale-check makes "does a row already exist",
+// "is this payload newer than what's stored", and "write it" one Postgres
+// statement. A plain updateMany-then-create sequence let two concurrent
+// first-time snapshots for the same server both see no row, race to
+// create, and have the loser's P2002 abort the whole transaction --
+// surfacing as a misclassified ADDRESS_CONFLICT. Here the loser's WHERE
+// condition just evaluates false and the statement is a no-op for it.
+async function applySnapshot(
+  tx: PrismaTx,
+  serverId: string,
+  workspaceId: string,
+  payload: ParsedMetricsPayload,
+): Promise<boolean> {
+  const receivedAt = new Date();
+  const affected = await tx.$executeRaw`
+    INSERT INTO "ServerMetricSnapshot" (
+      "localServerId", "workspaceId", "schemaVersion", "agentVersion", "hostname",
+      "capturedAt", "receivedAt", "cpuUsagePercent", "load1", "load5", "load15",
+      "memoryTotalBytes", "memoryAvailableBytes", "swapTotalBytes", "swapFreeBytes",
+      "filesystemTotalBytes", "filesystemAvailableBytes", "uptimeSeconds"
+    )
+    VALUES (
+      ${serverId}, ${workspaceId}, ${payload.schemaVersion}, ${payload.agentVersion}, ${payload.hostname},
+      ${payload.capturedAt}, ${receivedAt}, ${payload.cpu.usagePercent}, ${payload.cpu.load1}, ${payload.cpu.load5}, ${payload.cpu.load15},
+      ${BigInt(payload.memory.totalBytes)}, ${BigInt(payload.memory.availableBytes)}, ${BigInt(payload.memory.swapTotalBytes)}, ${BigInt(payload.memory.swapFreeBytes)},
+      ${BigInt(payload.filesystem.totalBytes)}, ${BigInt(payload.filesystem.availableBytes)}, ${BigInt(payload.uptimeSeconds)}
+    )
+    ON CONFLICT ("localServerId") DO UPDATE SET
+      "schemaVersion" = EXCLUDED."schemaVersion",
+      "agentVersion" = EXCLUDED."agentVersion",
+      "hostname" = EXCLUDED."hostname",
+      "capturedAt" = EXCLUDED."capturedAt",
+      "receivedAt" = EXCLUDED."receivedAt",
+      "cpuUsagePercent" = EXCLUDED."cpuUsagePercent",
+      "load1" = EXCLUDED."load1",
+      "load5" = EXCLUDED."load5",
+      "load15" = EXCLUDED."load15",
+      "memoryTotalBytes" = EXCLUDED."memoryTotalBytes",
+      "memoryAvailableBytes" = EXCLUDED."memoryAvailableBytes",
+      "swapTotalBytes" = EXCLUDED."swapTotalBytes",
+      "swapFreeBytes" = EXCLUDED."swapFreeBytes",
+      "filesystemTotalBytes" = EXCLUDED."filesystemTotalBytes",
+      "filesystemAvailableBytes" = EXCLUDED."filesystemAvailableBytes",
+      "uptimeSeconds" = EXCLUDED."uptimeSeconds"
+    WHERE "ServerMetricSnapshot"."capturedAt" < EXCLUDED."capturedAt"
+  `;
+
+  return affected > 0;
+}
+
+// Shared body for "ingest into an already-known server": optionally
+// re-verifies a claim, applies the snapshot (out-of-order safe), then
+// refreshes addresses/hostname. Runs inside a caller-supplied transaction
+// so it can also be used from enrollNatOnlyServer's advisory-locked tx.
+async function applySteadyState(
+  tx: PrismaTx,
+  serverId: string,
+  workspaceId: string,
+  payload: ParsedMetricsPayload,
+  claimGuard?: string[],
+): Promise<boolean> {
+  if (claimGuard) {
+    // The claim that resolved this server was read outside the
+    // transaction; re-verify AND row-lock it (FOR UPDATE) before writing,
+    // so a concurrent transfer/retire blocks on this row until we commit
+    // instead of racing past a plain (non-locking) read.
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "LocalServerAddress"
+      WHERE "workspaceId" = ${workspaceId} AND "localServerId" = ${serverId}
+        AND "matchKey" IN (${Prisma.join(claimGuard)})
+        AND "isCurrent" = true AND "isEnrollmentClaim" = true
+      LIMIT 1 FOR UPDATE`;
+    if (locked.length === 0) {
+      throw new ServerMetricsError(
+        "ADDRESS_CONFLICT",
+        "Claimed address was released or reassigned before ingestion completed",
+      );
+    }
+  }
+
+  const applied = await applySnapshot(tx, serverId, workspaceId, payload);
+  if (!applied) return false;
+
+  await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
+
+  await tx.localServer.update({
+    where: { id: serverId },
+    data: { hostname: payload.hostname },
+  });
+
+  return true;
+}
+
 async function steadyStateIngestion(
   serverId: string,
   workspaceId: string,
   payload: ParsedMetricsPayload,
+  claimGuard?: string[],
 ): Promise<IngestionResult> {
-  const updated = await db.$transaction(async (tx) => {
-    const existing = await tx.serverMetricSnapshot.findUnique({
-      where: { localServerId: serverId },
-    });
-
-    if (existing && payload.capturedAt <= existing.capturedAt) {
-      return false;
-    }
-
-    await updateAddressObservations(
-      tx,
-      serverId,
-      workspaceId,
-      payload.addresses,
-    );
-
-    await tx.serverMetricSnapshot.upsert({
-      where: { localServerId: serverId },
-      create: snapshotData(serverId, workspaceId, payload),
-      update: snapshotUpdateData(payload),
-    });
-
-    await tx.localServer.update({
-      where: { id: serverId },
-      data: { hostname: payload.hostname },
-    });
-
-    return true;
-  });
+  const applied = await db.$transaction((tx) =>
+    applySteadyState(tx, serverId, workspaceId, payload, claimGuard),
+  );
 
   return {
     status: 200,
-    code: updated ? "SNAPSHOT_UPDATED" : "SNAPSHOT_IGNORED_OUT_OF_ORDER",
+    code: applied ? "SNAPSHOT_UPDATED" : "SNAPSHOT_IGNORED_OUT_OF_ORDER",
     localServerId: serverId,
   };
 }
@@ -235,6 +315,13 @@ async function matchOrEnroll(
   payload: ParsedMetricsPayload,
   reportedGlobalIpv4s: string[],
 ): Promise<IngestionResult> {
+  // NAT-only hosts can never match provider inventory by IP -- skip the
+  // (expensive, 45s-deadline) discovery entirely instead of running it on
+  // every 60s push.
+  if (reportedGlobalIpv4s.length === 0) {
+    return enrollAgentOnlyServer(ctx.workspaceId, payload, reportedGlobalIpv4s);
+  }
+
   let candidates: ProviderCandidate[];
   try {
     candidates = await discoverProviderServers(ctx.workspaceId);
@@ -308,16 +395,77 @@ async function enrollProviderServer(
     // address, source] unique constraint is never hit.
     await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
 
-    await tx.serverMetricSnapshot.upsert({
-      where: { localServerId: serverId },
-      create: snapshotData(serverId, workspaceId, payload),
-      update: snapshotUpdateData(payload),
+    const applied = await applySnapshot(tx, serverId, workspaceId, payload);
+
+    if (created) {
+      return { status: 201, code: "AGENT_ENROLLED", localServerId: serverId };
+    }
+    return {
+      status: 200,
+      code: applied ? "SNAPSHOT_UPDATED" : "SNAPSHOT_IGNORED_OUT_OF_ORDER",
+      localServerId: serverId,
+    };
+  });
+}
+
+// NAT-only host reporting no global IPv4: no claim can disambiguate it, so
+// "reuse a prior enrollment for this hostname, else create" must be
+// serialized per (workspace, hostname) or two concurrent first pushes can
+// both miss the reuse check and create duplicate AGENT servers. A Postgres
+// advisory xact lock (same pattern as ensureDefaultWorkspace) makes the
+// find-or-create atomic without a schema-level uniqueness constraint on
+// hostname (which legitimately isn't unique -- provider servers can share
+// a hostname with an agent-only one).
+async function enrollNatOnlyServer(
+  workspaceId: string,
+  payload: ParsedMetricsPayload,
+): Promise<IngestionResult> {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${workspaceId}:${payload.hostname}`}))`;
+
+    const reusable = await tx.localServer.findFirst({
+      where: { workspaceId, origin: "AGENT", hostname: payload.hostname },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (reusable) {
+      const applied = await applySteadyState(
+        tx,
+        reusable.id,
+        workspaceId,
+        payload,
+      );
+      return {
+        status: 200,
+        code: applied ? "SNAPSHOT_UPDATED" : "SNAPSHOT_IGNORED_OUT_OF_ORDER",
+        localServerId: reusable.id,
+      };
+    }
+
+    const created = await tx.localServer.create({
+      data: {
+        workspaceId,
+        origin: "AGENT",
+        displayName: payload.hostname,
+        hostname: payload.hostname,
+      },
+    });
+
+    await createAddressObservations(
+      tx,
+      created.id,
+      workspaceId,
+      payload.addresses,
+    );
+
+    await tx.serverMetricSnapshot.create({
+      data: snapshotData(created.id, workspaceId, payload),
     });
 
     return {
-      status: created ? 201 : 200,
-      code: created ? "AGENT_ENROLLED" : "SNAPSHOT_UPDATED",
-      localServerId: serverId,
+      status: 201,
+      code: "AGENT_ENROLLED",
+      localServerId: created.id,
     };
   });
 }
@@ -328,14 +476,7 @@ async function enrollAgentOnlyServer(
   reportedGlobalIpv4s: string[],
 ): Promise<IngestionResult> {
   if (reportedGlobalIpv4s.length === 0) {
-    // NAT-only host reporting no global IPv4 -- reuse a prior AGENT-origin
-    // enrollment for the same hostname instead of creating a duplicate.
-    const reusable = await db.localServer.findFirst({
-      where: { workspaceId, origin: "AGENT", hostname: payload.hostname },
-    });
-    if (reusable) {
-      return steadyStateIngestion(reusable.id, workspaceId, payload);
-    }
+    return enrollNatOnlyServer(workspaceId, payload);
   }
 
   return db.$transaction(async (tx) => {
@@ -385,7 +526,7 @@ async function enrollAgentOnlyServer(
 }
 
 async function createAddressObservations(
-  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  tx: PrismaTx,
   serverId: string,
   workspaceId: string,
   addresses: ClassifiedAddress[],
@@ -411,7 +552,7 @@ async function createAddressObservations(
 }
 
 async function updateAddressObservations(
-  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  tx: PrismaTx,
   serverId: string,
   workspaceId: string,
   addresses: ClassifiedAddress[],

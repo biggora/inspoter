@@ -7,17 +7,38 @@ interface WindowState {
 
 const windows = new Map<string, WindowState>();
 
-export function checkRateLimit(tokenId: string): {
+// The map is keyed by caller-chosen strings (e.g. `${tokenId}:${clientIp}`)
+// with no natural cap, so a spoofed-IP attacker could otherwise grow it
+// unboundedly. Lazily sweep out expired windows once the map gets large
+// instead of running a background timer.
+const MAX_TRACKED_KEYS = 10_000;
+
+function evictExpiredWindows(now: number, windowMs: number): void {
+  for (const [key, state] of windows) {
+    if (now - state.windowStart >= windowMs) {
+      windows.delete(key);
+    }
+  }
+}
+
+export function checkRateLimit(
+  key: string,
+  options?: { limit?: number },
+): {
   allowed: boolean;
   retryAfterMs?: number;
 } {
   const now = Date.now();
-  const limit = env.SERVER_METRICS_RATE_LIMIT;
+  const limit = options?.limit ?? env.SERVER_METRICS_RATE_LIMIT;
   const windowMs = env.SERVER_METRICS_RATE_WINDOW_MS;
 
-  const state = windows.get(tokenId);
+  if (windows.size > MAX_TRACKED_KEYS) {
+    evictExpiredWindows(now, windowMs);
+  }
+
+  const state = windows.get(key);
   if (!state || now - state.windowStart >= windowMs) {
-    windows.set(tokenId, { count: 1, windowStart: now });
+    windows.set(key, { count: 1, windowStart: now });
     return { allowed: true };
   }
 

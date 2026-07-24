@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { validateMetricsPayload } from "@/lib/validation/server-metrics";
 import { checkRateLimit } from "@/lib/server-metrics/ratelimit";
+import { env } from "@/lib/config/env";
 import {
   authenticateMetricsToken,
   processMetricsIngestion,
@@ -9,6 +10,11 @@ import {
 
 const MAX_BODY_BYTES = 16 * 1024;
 const NO_STORE = { "Cache-Control": "no-store" } as const;
+// Per-token ceiling on top of the per-token+IP window: bounds how much a
+// single token can be hammered from many spoofed x-forwarded-for values,
+// while staying generous enough for a token shared across many real
+// servers (each gets its own per-IP window under this ceiling).
+const TOKEN_CEILING_MULTIPLIER = 25;
 
 function metricsResponse(
   body: Record<string, unknown>,
@@ -45,13 +51,15 @@ export async function POST(request: NextRequest) {
 
   const forwardedFor = request.headers.get("x-forwarded-for");
   const clientIp = forwardedFor?.split(",")[0]?.trim() || "direct";
-  const rateKey = `${tokenContext.tokenId}:${clientIp}`;
-  const rateCheck = checkRateLimit(rateKey);
-  if (!rateCheck.allowed) {
-    const retryAfter = Math.max(
-      1,
-      Math.ceil((rateCheck.retryAfterMs ?? 1000) / 1000),
-    );
+  const perIpCheck = checkRateLimit(`${tokenContext.tokenId}:${clientIp}`);
+  const perTokenCheck = checkRateLimit(tokenContext.tokenId, {
+    limit: env.SERVER_METRICS_RATE_LIMIT * TOKEN_CEILING_MULTIPLIER,
+  });
+  if (!perIpCheck.allowed || !perTokenCheck.allowed) {
+    const retryAfterMs =
+      Math.max(perIpCheck.retryAfterMs ?? 0, perTokenCheck.retryAfterMs ?? 0) ||
+      1000;
+    const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
     const resp = metricsResponse(
       { error: "RATE_LIMITED", message: "Token submission limit exceeded" },
       429,
