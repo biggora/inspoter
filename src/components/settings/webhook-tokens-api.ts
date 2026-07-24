@@ -87,4 +87,8 @@ export const webhookTokensApi = {
     request<CreatedWebhookTokenDto>(`/api/webhook-tokens/${id}/rotate`, {
       method: "POST",
     }),
+  removePermanently: (id: string) =>
+    request<void>(`/api/webhook-tokens/${id}?permanent=true`, {
+      method: "DELETE",
+    }),
 };

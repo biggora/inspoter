@@ -13,6 +13,7 @@ import {
 import { ServerMetricsError } from "@/lib/services/serverMetrics";
 import { CredentialDeleteConflictError } from "@/lib/services/credentials";
 import {
+  WebhookTokenActiveError,
   WebhookTokenNotFoundError,
   WebhookTokenRevokedError,
 } from "@/lib/services/webhookTokens";
@@ -72,6 +73,9 @@ export function toErrorResponse(error: unknown): NextResponse {
     return jsonResponse({ error: error.code }, { status: 404 });
   }
   if (error instanceof WebhookTokenRevokedError) {
+    return jsonResponse({ error: error.code }, { status: 409 });
+  }
+  if (error instanceof WebhookTokenActiveError) {
     return jsonResponse({ error: error.code }, { status: 409 });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {

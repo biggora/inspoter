@@ -92,6 +92,11 @@ export function WebhookTokensView() {
   );
   const [rotating, setRotating] = useState(false);
 
+  const [deleteTarget, setDeleteTarget] = useState<WebhookTokenDto | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState(false);
+
   const nameId = useId();
   const nameErrorId = useId();
 
@@ -197,6 +202,21 @@ export function WebhookTokensView() {
     }
   }
 
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await webhookTokensApi.removePermanently(deleteTarget.id);
+      toast.success(t("tokenDeletedToast"));
+      setDeleteTarget(null);
+      load();
+    } catch {
+      toast.error(t("deleteTokenError"));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <PageBody>
       <PageHeader
@@ -269,7 +289,15 @@ export function WebhookTokensView() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {!isRevoked && (
+                    {isRevoked ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteTarget(token)}
+                      >
+                        {t("deleteButton")}
+                      </Button>
+                    ) : (
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
@@ -435,6 +463,32 @@ export function WebhookTokensView() {
               disabled={rotating}
             >
               {rotating ? t("rotatingLabel") : t("rotateButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("deleteTokenConfirmTitle", { name: deleteTarget?.name ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteTokenConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? t("deletingLabel") : t("deleteButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

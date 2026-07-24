@@ -5,39 +5,50 @@ interface WindowState {
   windowStart: number;
 }
 
-const windows = new Map<string, WindowState>();
+// Two separate pools so per-IP eviction pressure can never reset a
+// per-token ceiling window: without this split, an attacker filling the
+// "ip" pool up to its cap (e.g. via spoofed x-forwarded-for values, one
+// per request, each individually within the ceiling) could evict a
+// "token" pool entry as its oldest window and bypass the ceiling by
+// resetting its count.
+const ipWindows = new Map<string, WindowState>();
+const tokenWindows = new Map<string, WindowState>();
 
-// The map is keyed by caller-chosen strings (e.g. `${tokenId}:${clientIp}`)
-// with no natural cap, so a spoofed-IP attacker could otherwise grow it
-// unboundedly. Lazily sweep out expired windows once the map gets large
-// instead of running a background timer.
-const MAX_TRACKED_KEYS = 10_000;
+// Only the "ip" pool has no natural cap (a spoofed-IP attacker can mint
+// unlimited keys) and needs a hard eviction cap. The "token" pool is
+// bounded by the number of real authenticated tokens, so it only needs
+// the cheap expired-window sweep.
+const MAX_TRACKED_IP_KEYS = 10_000;
 
-function evictExpiredWindows(now: number, windowMs: number): void {
-  for (const [key, state] of windows) {
+function evictExpiredWindows(
+  map: Map<string, WindowState>,
+  now: number,
+  windowMs: number,
+): void {
+  for (const [key, state] of map) {
     if (now - state.windowStart >= windowMs) {
-      windows.delete(key);
+      map.delete(key);
     }
   }
 }
 
 // Hard cap: even if every tracked key is still within its window (so
 // nothing above can be swept as expired), a new key must never be allowed
-// to grow the map past MAX_TRACKED_KEYS -- drop the oldest windows first.
-function evictOldestWindows(cap: number): void {
-  if (windows.size < cap) return;
-  const oldestFirst = [...windows.entries()].sort(
+// to grow the map past the cap -- drop the oldest windows first.
+function evictOldestWindows(map: Map<string, WindowState>, cap: number): void {
+  if (map.size < cap) return;
+  const oldestFirst = [...map.entries()].sort(
     (a, b) => a[1].windowStart - b[1].windowStart,
   );
-  const removeCount = windows.size - cap + 1;
+  const removeCount = map.size - cap + 1;
   for (let i = 0; i < removeCount; i++) {
-    windows.delete(oldestFirst[i][0]);
+    map.delete(oldestFirst[i][0]);
   }
 }
 
 export function checkRateLimit(
   key: string,
-  options?: { limit?: number },
+  options?: { limit?: number; pool?: "ip" | "token" },
 ): {
   allowed: boolean;
   retryAfterMs?: number;
@@ -45,17 +56,23 @@ export function checkRateLimit(
   const now = Date.now();
   const limit = options?.limit ?? env.SERVER_METRICS_RATE_LIMIT;
   const windowMs = env.SERVER_METRICS_RATE_WINDOW_MS;
+  const pool = options?.pool ?? "ip";
+  const map = pool === "token" ? tokenWindows : ipWindows;
 
-  if (windows.size > MAX_TRACKED_KEYS) {
-    evictExpiredWindows(now, windowMs);
-  }
-  if (windows.size >= MAX_TRACKED_KEYS && !windows.has(key)) {
-    evictOldestWindows(MAX_TRACKED_KEYS);
+  if (pool === "ip") {
+    if (map.size > MAX_TRACKED_IP_KEYS) {
+      evictExpiredWindows(map, now, windowMs);
+    }
+    if (map.size >= MAX_TRACKED_IP_KEYS && !map.has(key)) {
+      evictOldestWindows(map, MAX_TRACKED_IP_KEYS);
+    }
+  } else {
+    evictExpiredWindows(map, now, windowMs);
   }
 
-  const state = windows.get(key);
+  const state = map.get(key);
   if (!state || now - state.windowStart >= windowMs) {
-    windows.set(key, { count: 1, windowStart: now });
+    map.set(key, { count: 1, windowStart: now });
     return { allowed: true };
   }
 

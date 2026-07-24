@@ -42,6 +42,14 @@ export class WebhookTokenRevokedError extends Error {
   }
 }
 
+export class WebhookTokenActiveError extends Error {
+  code = "TOKEN_ACTIVE" as const;
+
+  constructor() {
+    super("Revoke the token before deleting it");
+  }
+}
+
 function generateToken(): {
   secret: string;
   tokenHash: string;
@@ -102,6 +110,19 @@ export async function revoke(id: string, workspaceId: string): Promise<void> {
     where: { id, workspaceId, channelId: null },
     data: { revokedAt: new Date() },
   });
+}
+
+// Permanent deletion of a workspace token. Only revoked tokens may be
+// deleted — an active token must go through revoke() first. IdempotencyKey
+// rows referencing the token cascade on delete (see prisma schema).
+export async function remove(id: string, workspaceId: string): Promise<void> {
+  const existing = await db.webhookToken.findFirst({
+    where: { id, workspaceId, channelId: null },
+  });
+  if (!existing) throw new WebhookTokenNotFoundError();
+  if (existing.revokedAt === null) throw new WebhookTokenActiveError();
+
+  await db.webhookToken.delete({ where: { id } });
 }
 
 export async function rotate(

@@ -211,6 +211,105 @@ describe("rotate()", () => {
   });
 });
 
+describe("remove()", () => {
+  it("permanently deletes a revoked token", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-remove-revoked`,
+    );
+    await webhookTokensService.revoke(created.id, workspaceId);
+
+    await webhookTokensService.remove(created.id, workspaceId);
+
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.id },
+    });
+    expect(stored).toBeNull();
+  });
+
+  it("cascades delete through the token's IdempotencyKey rows", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-remove-idempotency`,
+    );
+    await webhookTokensService.revoke(created.id, workspaceId);
+    await db.idempotencyKey.create({
+      data: {
+        workspaceId,
+        tokenId: created.id,
+        tokenWorkspaceId: workspaceId,
+        key: `remove-cascade-${randomUUID()}`,
+        targetType: "mail",
+        targetId: "test-target",
+      },
+    });
+
+    await webhookTokensService.remove(created.id, workspaceId);
+
+    expect(
+      await db.webhookToken.findUnique({ where: { id: created.id } }),
+    ).toBeNull();
+    expect(
+      await db.idempotencyKey.count({ where: { tokenId: created.id } }),
+    ).toBe(0);
+  });
+
+  it("throws WebhookTokenActiveError for a non-revoked token and leaves it in place", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-remove-active`,
+    );
+
+    await expect(
+      webhookTokensService.remove(created.id, workspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenActiveError);
+
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.id },
+    });
+    expect(stored).not.toBeNull();
+  });
+
+  it("throws WebhookTokenNotFoundError when removing with the wrong workspaceId", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-remove-foreign`,
+    );
+    await webhookTokensService.revoke(created.id, workspaceId);
+
+    await expect(
+      webhookTokensService.remove(created.id, otherWorkspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
+
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.id },
+    });
+    expect(stored).not.toBeNull();
+  });
+
+  it("throws WebhookTokenNotFoundError for a channel-bound token even when revoked", async () => {
+    const created = await webhookTokensService.createForChannel(
+      channelId,
+      workspaceId,
+      `${NAME_PREFIX}-remove-channel-bound`,
+    );
+    await webhookTokensService.revokeForChannel(
+      channelId,
+      created.webhook.id,
+      workspaceId,
+    );
+
+    await expect(
+      webhookTokensService.remove(created.webhook.id, workspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
+
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.webhook.id },
+    });
+    expect(stored).not.toBeNull();
+  });
+});
+
 describe("channel-scoped webhooks", () => {
   it("creates a channel-bound credential and returns its secret only in a relative one-time URL", async () => {
     const created = await webhookTokensService.createForChannel(

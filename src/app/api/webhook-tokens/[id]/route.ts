@@ -16,16 +16,28 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   if (authResult instanceof NextResponse) return authResult;
   const { operator, workspace } = authResult;
   const { id } = await params;
+  const permanent = request.nextUrl.searchParams.get("permanent") === "true";
 
   try {
-    await webhookTokensService.revoke(id, workspace.id);
-    recordActivity(workspace.id, {
-      operatorId: operator.id,
-      operatorName: operator.username,
-      action: "revoke",
-      entityType: "webhook_token",
-      entityId: id,
-    });
+    if (permanent) {
+      await webhookTokensService.remove(id, workspace.id);
+      recordActivity(workspace.id, {
+        operatorId: operator.id,
+        operatorName: operator.username,
+        action: "delete",
+        entityType: "webhook_token",
+        entityId: id,
+      });
+    } else {
+      await webhookTokensService.revoke(id, workspace.id);
+      recordActivity(workspace.id, {
+        operatorId: operator.id,
+        operatorName: operator.username,
+        action: "revoke",
+        entityType: "webhook_token",
+        entityId: id,
+      });
+    }
     return emptyResponse();
   } catch (error) {
     return toErrorResponse(error);

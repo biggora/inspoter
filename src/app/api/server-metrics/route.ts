@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
   // x-forwarded-for) just to probe/grow the rate-limit map.
   const perTokenCheck = checkRateLimit(tokenContext.tokenId, {
     limit: env.SERVER_METRICS_RATE_LIMIT * TOKEN_CEILING_MULTIPLIER,
+    pool: "token",
   });
   if (!perTokenCheck.allowed) {
     return rateLimitedResponse(perTokenCheck);
@@ -71,7 +72,9 @@ export async function POST(request: NextRequest) {
 
   const forwardedFor = request.headers.get("x-forwarded-for");
   const clientIp = forwardedFor?.split(",")[0]?.trim() || "direct";
-  const perIpCheck = checkRateLimit(`${tokenContext.tokenId}:${clientIp}`);
+  const perIpCheck = checkRateLimit(`${tokenContext.tokenId}:${clientIp}`, {
+    pool: "ip",
+  });
   if (!perIpCheck.allowed) {
     return rateLimitedResponse(perIpCheck);
   }
