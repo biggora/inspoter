@@ -17,7 +17,7 @@ type PrismaTransactionClient = Parameters<
 
 const STALE_THRESHOLD_MS = 180_000;
 
-type MetricsState = "not_configured" | "waiting" | "live" | "stale" | "revoked";
+type MetricsState = "not_configured" | "live" | "stale";
 
 export interface ServerMetricsDto {
   state: MetricsState;
@@ -75,29 +75,12 @@ export interface ComposedServersResponse {
   providerErrors: { providerId: string; label: string; error: string }[];
 }
 
-interface AgentTokenSlice {
-  state: string;
-  revokedAt: Date | null;
-  localServerId: string | null;
-}
-
 function computeMetricsState(
-  tokens: AgentTokenSlice[],
   snapshot: { receivedAt: Date } | null,
 ): MetricsState {
-  const hasActiveBoundToken = tokens.some(
-    (token) => token.state === "BOUND" && !token.revokedAt,
-  );
-  if (hasActiveBoundToken) {
-    if (!snapshot) return "waiting";
-    const ageMs = Date.now() - snapshot.receivedAt.getTime();
-    return ageMs < STALE_THRESHOLD_MS ? "live" : "stale";
-  }
-
-  const hasRevokedToken = tokens.some((token) => token.revokedAt !== null);
-  if (hasRevokedToken) return "revoked";
-
-  return "not_configured";
+  if (!snapshot) return "not_configured";
+  const ageMs = Date.now() - snapshot.receivedAt.getTime();
+  return ageMs < STALE_THRESHOLD_MS ? "live" : "stale";
 }
 
 function serializeSnapshot(
@@ -243,21 +226,12 @@ export async function listServers(
 
   const localServers = await db.localServer.findMany({
     where: { workspaceId },
-    include: {
-      metricSnapshot: true,
-      agentTokens: {
-        where: { localServerId: { not: null } },
-        select: { state: true, revokedAt: true, localServerId: true },
-      },
-    },
+    include: { metricSnapshot: true },
     orderBy: { createdAt: "asc" },
   });
 
   const servers: ComposedServerDto[] = localServers.map((local) => {
-    const metricsState = computeMetricsState(
-      local.agentTokens,
-      local.metricSnapshot,
-    );
+    const metricsState = computeMetricsState(local.metricSnapshot);
     const metrics = serializeSnapshot(local.metricSnapshot, metricsState);
 
     if (local.origin === "AGENT") {
@@ -327,13 +301,7 @@ export async function getComposedServer(
         providerRemoteId: remoteServerId,
       },
     },
-    include: {
-      metricSnapshot: true,
-      agentTokens: {
-        where: { localServerId: { not: null } },
-        select: { state: true, revokedAt: true, localServerId: true },
-      },
-    },
+    include: { metricSnapshot: true },
   });
   if (!local) return null;
 
@@ -353,10 +321,7 @@ export async function getComposedServer(
     }
   }
 
-  const metricsState = computeMetricsState(
-    local.agentTokens,
-    local.metricSnapshot,
-  );
+  const metricsState = computeMetricsState(local.metricSnapshot);
   const metrics = serializeSnapshot(local.metricSnapshot, metricsState);
 
   const dto: ProviderServerDto = {

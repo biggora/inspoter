@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { validateMetricsPayload } from "@/lib/validation/server-metrics";
 import { checkRateLimit } from "@/lib/server-metrics/ratelimit";
 import {
-  authenticateAgentToken,
+  authenticateMetricsToken,
   processMetricsIngestion,
   type IngestionResult,
 } from "@/lib/services/serverMetrics";
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
   const secret = bearer.slice(7);
 
-  const tokenContext = await authenticateAgentToken(secret);
+  const tokenContext = await authenticateMetricsToken(secret);
   if (!tokenContext) {
     return metricsResponse(
       { error: "UNAUTHORIZED", message: "Invalid, expired, or revoked token" },
@@ -43,7 +43,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rateCheck = checkRateLimit(tokenContext.tokenId);
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const clientIp = forwardedFor?.split(",")[0]?.trim() || "direct";
+  const rateKey = `${tokenContext.tokenId}:${clientIp}`;
+  const rateCheck = checkRateLimit(rateKey);
   if (!rateCheck.allowed) {
     const retryAfter = Math.max(
       1,
@@ -102,7 +105,6 @@ export async function POST(request: NextRequest) {
         UNAUTHORIZED: 401,
         SERVER_MATCH_AMBIGUOUS: 409,
         ADDRESS_CONFLICT: 409,
-        TOKEN_ALREADY_BOUND: 409,
         PROVIDER_INVENTORY_UNAVAILABLE: 503,
       };
       const status = statusMap[code] ?? 500;
@@ -112,11 +114,7 @@ export async function POST(request: NextRequest) {
   }
 
   return metricsResponse(
-    {
-      code: result.code,
-      tokenState: result.tokenState,
-      localServerId: result.localServerId,
-    },
+    { code: result.code, localServerId: result.localServerId },
     result.status,
   );
 }

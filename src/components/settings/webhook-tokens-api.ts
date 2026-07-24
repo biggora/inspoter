@@ -83,4 +83,8 @@ export const webhookTokensApi = {
     }),
   revoke: (id: string) =>
     request<void>(`/api/webhook-tokens/${id}`, { method: "DELETE" }),
+  rotate: (id: string) =>
+    request<CreatedWebhookTokenDto>(`/api/webhook-tokens/${id}/rotate`, {
+      method: "POST",
+    }),
 };

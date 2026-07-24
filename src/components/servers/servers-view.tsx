@@ -103,7 +103,6 @@ export function ServersView() {
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [enrollmentTarget, setEnrollmentTarget] = useState<{
     name: string;
-    localServerId: string;
   } | null>(null);
   const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
     new Map(),
@@ -238,10 +237,7 @@ export function ServersView() {
   );
 
   const handleSetupMonitoring = useCallback((server: ServerDto) => {
-    setEnrollmentTarget({
-      name: server.name,
-      localServerId: server.localServerId,
-    });
+    setEnrollmentTarget({ name: server.name });
   }, []);
 
   const pageState: PageState = loading
@@ -393,8 +389,6 @@ export function ServersView() {
             if (!open) setEnrollmentTarget(null);
           }}
           serverName={enrollmentTarget.name}
-          localServerId={enrollmentTarget.localServerId}
-          onTokenCreated={load}
         />
       )}
     </PageBody>
@@ -443,8 +437,6 @@ const metricsStateConfig: Record<
 > = {
   live: { labelKey: "metricsLive", variant: "success" },
   stale: { labelKey: "metricsStale", variant: "warning" },
-  waiting: { labelKey: "metricsWaiting", variant: "warning" },
-  revoked: { labelKey: "metricsRevoked", variant: "destructive" },
   not_configured: { labelKey: "metricsNotConfigured", variant: "secondary" },
 };
 
@@ -615,9 +607,7 @@ function ServerCard({
   const availableActions = isProvider ? getAvailableActions(server) : [];
 
   const showMetricsSection =
-    metrics.state === "live" ||
-    metrics.state === "stale" ||
-    (metrics.state === "revoked" && metrics.cpuUsagePercent !== null);
+    metrics.state === "live" || metrics.state === "stale";
 
   useEffect(() => {
     if (pendingAction === null && confirmingRef.current) {
@@ -746,9 +736,6 @@ function ServerCard({
             {t("monitoringNotConnected")}
           </p>
         )}
-        {metrics.state === "waiting" && (
-          <p className="text-xs text-foreground-400">{t("waitingForAgent")}</p>
-        )}
         {showMetricsSection && <MetricsSection metrics={metrics} />}
 
         {error && (
@@ -760,8 +747,7 @@ function ServerCard({
       </CardContent>
 
       {((isProvider && server.powerActionsAvailable) ||
-        metrics.state === "not_configured" ||
-        metrics.state === "revoked") && (
+        metrics.state === "not_configured") && (
         <CardFooter className="flex-wrap gap-2">
           {isProvider &&
             server.powerActionsAvailable &&
@@ -844,8 +830,7 @@ function ServerCard({
                 {t("noActionsAvailable")}
               </span>
             )}
-          {(metrics.state === "not_configured" ||
-            metrics.state === "revoked") && (
+          {metrics.state === "not_configured" && (
             <Button
               variant="outline"
               size="sm"
@@ -856,9 +841,7 @@ function ServerCard({
                 aria-hidden
                 data-icon="inline-start"
               />
-              {metrics.state === "not_configured"
-                ? t("setupMonitoring")
-                : t("reconnectAgent")}
+              {t("setupMonitoring")}
             </Button>
           )}
         </CardFooter>

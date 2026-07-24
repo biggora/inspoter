@@ -201,6 +201,22 @@ PRD v3.0 остаётся утверждённой базовой версией
 
 **Верификация (2026-07-21):** 40 файлов, +4337/-425 строк, commit `021c247`, fast-forward merge в `main`.
 
+## Веха Universal API tokens (2026-07-24)
+
+Механизм токенов метрик-агента переработан: модель `ServerAgentToken` и её state machine (UNBOUND/BOUND/REVOKED, привязка к конкретному серверу, owner-only управление) удалены миграцией `20260724100000_universal_api_tokens`. Агент аутентифицируется универсальными API-токенами — существующими workspace-токенами `WebhookToken` (`channelId: null`), которые теперь принимают и webhook-ингест, и `POST /api/server-metrics`.
+
+**Что реализовано:**
+
+- Универсальные API-токены: один workspace-токен для webhook-ингеста и метрик; полный lifecycle в Настройках — список/создание/отзыв/ротация (новый роут `POST /api/webhook-tokens/[id]/rotate`); все операции доступны любому участнику workspace, owner-гейта нет.
+- Идентификация сервера на каждом ингесте по IP-claims: заявленные глобальные IPv4 сначала матчатся с текущими claims `LocalServerAddress` (дешёвый путь без discovery), иначе — provider discovery (дедлайн 45 с) с claim на совпавшем provider-сервере, иначе — автосоздание agent-only `LocalServer` (для NAT-only хостов — reuse по hostname). Неоднозначность → 409 `SERVER_MATCH_AMBIGUOUS`; claims теперь создаются и для provider-origin серверов.
+- Состояния метрик упрощены до трёх: `not_configured` (нет snapshot) | `live` (моложе 180 с) | `stale`; `waiting`/`revoked` удалены.
+- Ответ ингеста — `{ code, localServerId }` без `tokenState`; Python-агент переходит в steady-state по 2xx с `localServerId`.
+- Rate limit по ключу `${tokenId}:${clientIp}` (ранее — только по токену).
+- UI: создание токена убрано с карточки сервера; карточка открывает stateless-диалог подключения агента (сниппет установки + ссылка на Настройки); страница «Webhook-токены» в Настройках переименована в «API-токены», добавлено действие ротации.
+- Роуты `/api/server-metrics/tokens/**` удалены; специфичные для agent-токенов разделы `specs/metrics-script.md` помечены как superseded.
+
+Документация: architecture.md v1.11 (§4.1, §7C), README (раздел «Метрики серверов»), test-plan.md §11 (superseded-строки), notice в `specs/metrics-script.md`.
+
 ## Decisions log
 
 - 2026-07-12 — Стек: Next.js fullstack (один деплой, self-hosted панель уровня Homarr); БД: PostgreSQL + Prisma; объём запуска: docs + tracer bullet. Решение пользователя.
@@ -227,6 +243,7 @@ PRD v3.0 остаётся утверждённой базовой версией
 - 2026-07-18 — Channel webhooks (binding): новые webhooks создаются из настроек конкретного канала, токен передаётся в URL, управлять ими может любой участник активного workspace. Legacy null-channel tokens сохраняют прежний workspace-wide контракт. Реакции, вложения, треды, редактирование, presence/calls, realtime и Discord wire compatibility вне v1. Local feature acceptance PASS; deployment-owned reverse-proxy path redaction остаётся PENDING, поэтому production readiness не заявлена (test-plan.md §9).
 - 2026-07-21 — VPS Metrics Agent (Slices 0–2): реализована полная система мониторинга метрик VPS — enrollment с IPv4 provider matching, публичный POST эндпоинт с Bearer auth и rate limiting, provider reconciliation, composed DTOs, Python Docker-агент, ordered deletion. Реализация по `specs/metrics-script.md`. Commit `021c247`, merge в `main`.
 - 2026-07-23 — Provider credentials (binding): управление учётными данными провайдеров (`/settings/providers` — добавление, изменение, удаление) больше не ограничено ролью OWNER; доступно любому участнику активного workspace. Устранён недокументированный owner-only гейт (`requireWorkspaceOwner`) в `/api/credentials` и `/api/credentials/[id]` — членство в workspace по-прежнему проверяется на уровне auth DAL. Owner-only поведение Mail/Backup/Server-metrics токенов не затронуто. Решение пользователя. Commit `052b0dd`, merge в `main`.
+- 2026-07-24 — Universal API tokens (binding): per-server agent-токены (`ServerAgentToken`, state machine UNBOUND/BOUND/REVOKED) заменены универсальными API-токенами — workspace-level `WebhookToken` (`channelId: null`) аутентифицирует и webhook-ингест, и `POST /api/server-metrics`. Управление токенами (список/создание/отзыв/ротация) — member-level, owner-гейта нет; это снимает оговорку решения 2026-07-23 в части server-metrics токенов. Идентификация сервера — claim-based: по заявленным глобальным IPv4 на каждом ингесте (claims `LocalServerAddress` → provider discovery → agent-only автосоздание), а не по привязке токена. Состояния метрик — `not_configured`/`live`/`stale`. Миграция `20260724100000_universal_api_tokens`; architecture.md v1.11 §7C.
 - 2026-07-14 — Документ architecture target version = v1.3: существующая v1.2 сохраняется как workspace-ревизия; scope остаётся remediation task 1.3.
 - 2026-07-14 — P1 P-RULE-3 checkpoint: runtime surfaces operational at http://127.0.0.1:3000; English Bookmarks/Domains inner content carried to R4.1; пользователь поручил продолжать без паузы.
 

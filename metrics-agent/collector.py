@@ -55,8 +55,8 @@ SERVER_IPS: list[str] = []
 # Tests may lower this to keep the suite fast.
 CPU_SAMPLE_INTERVAL = 1.0
 
-# Flips to True once the server has confirmed the bearer token is bound to
-# this agent (tokenState == "BOUND"), which shortens the request timeout.
+# Flips to True once the server has confirmed enrollment by returning a
+# non-empty localServerId, which shortens the request timeout.
 _bound_mode = False
 
 
@@ -372,9 +372,9 @@ def push_metrics(payload: dict, timeout: int):
             parsed = json.loads(response_body.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
             parsed = None
-        if isinstance(parsed, dict) and parsed.get("tokenState") == "BOUND":
+        if isinstance(parsed, dict) and parsed.get("localServerId"):
             if not _bound_mode:
-                logger.info("token bound; switching to steady-state interval")
+                logger.info("server enrolled; switching to steady-state interval")
             _bound_mode = True
 
     return status

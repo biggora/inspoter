@@ -1,5 +1,14 @@
 # VPS Metrics Agent — Implementation Plan
 
+> **⚠ PARTIALLY SUPERSEDED (2026-07-24).** The token model in this plan no longer matches the implementation. Migration `20260724100000_universal_api_tokens` dropped the `ServerAgentToken` model, so everything in this document that depends on it is historical only:
+>
+> - the `ServerAgentToken` state machine (`UNBOUND` → `BOUND` → `REVOKED`), per-server token binding, one-active-bound-per-server index, 15-minute unbound expiry, and the token state-field CHECK;
+> - the `tokenState` field in the `POST /api/server-metrics` response (the body is now `{ code, localServerId }`);
+> - the owner-only token-management acceptance criteria (token management is member-level);
+> - the `/api/server-metrics/tokens/**` management routes (removed).
+>
+> Replacement: **universal API tokens** — workspace-level `WebhookToken` rows (`channelId: null`) authenticate both webhook ingestion and `POST /api/server-metrics`, with list/create/revoke/rotate on `/api/webhook-tokens/**`. Server identity is resolved per ingest from reported global IPv4 address claims (claim match → provider discovery → agent-only auto-create), and metrics states are reduced to `not_configured`/`live`/`stale`. See `docs/architecture.md` §7C for the current design. The rest of this plan (schema for `LocalServer`/`LocalServerAddress`/`ServerMetricSnapshot`, agent container, payload validation, discovery deadline) remains historically accurate.
+
 **Artifact version:** v0.8
 **Status:** Draft implementation-ready after Slice 0 document/ADR approval; implementation has not started
 **Owner:** Implementation Planner

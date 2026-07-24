@@ -87,6 +87,11 @@ export function WebhookTokensView() {
   );
   const [revoking, setRevoking] = useState(false);
 
+  const [rotateTarget, setRotateTarget] = useState<WebhookTokenDto | null>(
+    null,
+  );
+  const [rotating, setRotating] = useState(false);
+
   const nameId = useId();
   const nameErrorId = useId();
 
@@ -174,6 +179,24 @@ export function WebhookTokensView() {
     }
   }
 
+  async function handleRotateConfirm() {
+    if (!rotateTarget) return;
+    setRotating(true);
+    try {
+      const rotated = await webhookTokensApi.rotate(rotateTarget.id);
+      toast.success(t("tokenRotatedToast"));
+      setRotateTarget(null);
+      setCopied(false);
+      setCreatedToken(rotated);
+      setCreateOpen(true);
+      load();
+    } catch {
+      toast.error(t("rotateTokenError"));
+    } finally {
+      setRotating(false);
+    }
+  }
+
   return (
     <PageBody>
       <PageHeader
@@ -247,13 +270,22 @@ export function WebhookTokensView() {
                   </TableCell>
                   <TableCell className="text-right">
                     {!isRevoked && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRevokeTarget(token)}
-                      >
-                        {t("revokeButton")}
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRotateTarget(token)}
+                        >
+                          {t("rotateButton")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRevokeTarget(token)}
+                        >
+                          {t("revokeButton")}
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -378,6 +410,31 @@ export function WebhookTokensView() {
               disabled={revoking}
             >
               {revoking ? t("revokingLabel") : t("revokeButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={rotateTarget !== null}
+        onOpenChange={(open) => !open && setRotateTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("rotateConfirmTitle", { name: rotateTarget?.name ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("rotateConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRotateConfirm}
+              disabled={rotating}
+            >
+              {rotating ? t("rotatingLabel") : t("rotateButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

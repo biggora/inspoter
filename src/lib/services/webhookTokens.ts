@@ -26,6 +26,22 @@ export class ChannelWebhookNotFoundError extends Error {
   }
 }
 
+export class WebhookTokenNotFoundError extends Error {
+  code = "TOKEN_NOT_FOUND" as const;
+
+  constructor() {
+    super("Webhook token not found");
+  }
+}
+
+export class WebhookTokenRevokedError extends Error {
+  code = "TOKEN_REVOKED" as const;
+
+  constructor() {
+    super("Cannot rotate a revoked token");
+  }
+}
+
 function generateToken(): {
   secret: string;
   tokenHash: string;
@@ -86,6 +102,32 @@ export async function revoke(id: string, workspaceId: string): Promise<void> {
     where: { id, workspaceId, channelId: null },
     data: { revokedAt: new Date() },
   });
+}
+
+export async function rotate(
+  id: string,
+  workspaceId: string,
+): Promise<{ id: string; token: string; prefix: string }> {
+  const existing = await db.webhookToken.findFirst({
+    where: { id, workspaceId, channelId: null },
+  });
+  if (!existing) throw new WebhookTokenNotFoundError();
+  if (existing.revokedAt) throw new WebhookTokenRevokedError();
+
+  const { secret, tokenHash, tokenPrefix } = generateToken();
+
+  const created = await db.$transaction(async (tx) => {
+    await tx.webhookToken.update({
+      where: { id },
+      data: { revokedAt: new Date() },
+    });
+
+    return tx.webhookToken.create({
+      data: { workspaceId, name: existing.name, tokenHash, tokenPrefix },
+    });
+  });
+
+  return { id: created.id, token: secret, prefix: tokenPrefix };
 }
 
 async function requireChannel(

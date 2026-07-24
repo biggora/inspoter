@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import * as webhookTokensService from "@/lib/services/webhookTokens";
+import * as serverMetricsService from "@/lib/services/serverMetrics";
 
 // Webhook token management service (FR-WH-002, AC-WH-008/009, NFR-SEC-002).
 
@@ -130,6 +131,83 @@ describe("AC-WH-009: revoke()", () => {
     const list = await webhookTokensService.list(workspaceId);
     const found = list.find((t) => t.id === created.id);
     expect(found?.revokedAt).not.toBeNull();
+  });
+});
+
+describe("rotate()", () => {
+  it("returns a new secret and prefix, revokes the old row, and carries the name forward", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-rotate`,
+    );
+
+    const rotated = await webhookTokensService.rotate(created.id, workspaceId);
+
+    expect(rotated.id).not.toBe(created.id);
+    expect(rotated.token).not.toBe(created.token);
+    expect(rotated.prefix).toBe(rotated.token.slice(0, 12));
+
+    const oldRow = await db.webhookToken.findUnique({
+      where: { id: created.id },
+    });
+    expect(oldRow?.revokedAt).not.toBeNull();
+
+    const newRow = await db.webhookToken.findUnique({
+      where: { id: rotated.id },
+    });
+    expect(newRow?.name).toBe(`${NAME_PREFIX}-rotate`);
+    expect(newRow?.revokedAt).toBeNull();
+  });
+
+  it("the rotated-in token authenticates metrics ingestion (hash lookup matches)", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-rotate-auth`,
+    );
+    const rotated = await webhookTokensService.rotate(created.id, workspaceId);
+
+    const context =
+      await serverMetricsService.authenticateMetricsToken(rotated.token);
+    expect(context).toEqual({ tokenId: rotated.id, workspaceId });
+
+    const oldContext =
+      await serverMetricsService.authenticateMetricsToken(created.token);
+    expect(oldContext).toBeNull();
+  });
+
+  it("throws WebhookTokenRevokedError when rotating an already-revoked token", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-rotate-revoked`,
+    );
+    await webhookTokensService.revoke(created.id, workspaceId);
+
+    await expect(
+      webhookTokensService.rotate(created.id, workspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenRevokedError);
+  });
+
+  it("throws WebhookTokenNotFoundError when rotating with the wrong workspaceId", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-rotate-foreign`,
+    );
+
+    await expect(
+      webhookTokensService.rotate(created.id, otherWorkspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
+  });
+
+  it("throws WebhookTokenNotFoundError for a channel-bound token (cannot be rotated)", async () => {
+    const created = await webhookTokensService.createForChannel(
+      channelId,
+      workspaceId,
+      `${NAME_PREFIX}-rotate-channel-bound`,
+    );
+
+    await expect(
+      webhookTokensService.rotate(created.webhook.id, workspaceId),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
   });
 });
 

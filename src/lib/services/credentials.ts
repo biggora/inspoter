@@ -236,13 +236,13 @@ export async function deleteCredential(
     const localServers = await tx.localServer.findMany({
       where: { providerCredentialId: id, workspaceId },
       include: {
-        agentTokens: { where: { state: "BOUND", revokedAt: null } },
+        metricSnapshot: true,
         addresses: { where: { isCurrent: true } },
       },
     });
 
     for (const server of localServers) {
-      const hasActiveAgent = server.agentTokens.length > 0;
+      const hasActiveAgent = server.metricSnapshot !== null;
 
       if (hasActiveAgent) {
         const agentGlobalIpv4s = server.addresses.filter(

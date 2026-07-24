@@ -361,6 +361,8 @@ The checked-in contract covers only the two external webhook ingress operations.
 
 ## 11. VPS Metrics Agent (2026-07-21)
 
+> **2026-07-24 — universal API tokens.** Migration `20260724100000_universal_api_tokens` dropped `ServerAgentToken`; metrics ingestion now authenticates with workspace-level universal API tokens (`WebhookToken`, `channelId: null`), and metrics states reduce to `not_configured` (no snapshot) / `live` / `stale`. Rows below tied to the removed token state machine or owner-only token management are marked SUPERSEDED and record historical evidence only; the remaining rows stay valid. See `docs/architecture.md` §7C.
+
 ### 11.1 Server service — DB integration (`tests/unit/services/servers.test.ts`)
 
 | AC-ID / Area            | Test case                                                                          | Status |
@@ -371,11 +373,11 @@ The checked-in contract covers only the two external webhook ingress operations.
 | Missing detection       | marks a LocalServer the provider no longer reports as missing, without deleting it | PASS   |
 | AC-SRV-001              | getComposedServer returns a composed DTO merged with live provider data            | PASS   |
 | Not found               | getComposedServer returns null when no LocalServer row matches                     | PASS   |
-| Metrics: not_configured | reports not_configured when no agent token exists                                  | PASS   |
-| Metrics: waiting        | reports waiting for a bound token with no snapshot yet                             | PASS   |
+| Metrics: not_configured | reports not_configured when no snapshot exists (was: when no agent token exists)   | PASS   |
+| Metrics: waiting        | reports waiting for a bound token with no snapshot yet — state removed 2026-07-24  | SUPERSEDED |
 | Metrics: live           | reports live for a fresh snapshot                                                  | PASS   |
 | Metrics: stale          | reports stale past the 180s threshold                                              | PASS   |
-| Metrics: revoked        | reports revoked once the only bound token is revoked                               | PASS   |
+| Metrics: revoked        | reports revoked once the only bound token is revoked — state removed 2026-07-24    | SUPERSEDED |
 | AC-SRV-004              | start transitions a stopped server to running within the 30s poll window           | PASS   |
 | AC-SRV-005              | stop transitions a running server to stopped within the 30s poll window            | PASS   |
 | AC-SRV-006              | restart transitions a running server back to running within the 60s poll window    | PASS   |

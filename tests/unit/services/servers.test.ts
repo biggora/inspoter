@@ -12,7 +12,10 @@ import type { ProviderResult } from "@/lib/providers/result";
 // state, so (unlike Slice 0/1) these are DB-integration tests: a real
 // ProviderCredential row backs the mocked provider's id since LocalServer's
 // providerCredentialId FK requires one, and reconciliation writes real
-// LocalServer/ServerAgentToken/ServerMetricSnapshot rows.
+// LocalServer/ServerMetricSnapshot rows. Metrics state is a 3-state
+// snapshot-only signal (not_configured/live/stale) — universal WebhookToken
+// auth (see serverMetrics.test.ts) replaced the old bound-agent-token
+// waiting/revoked states.
 process.env.CREDENTIAL_ENCRYPTION_KEY ??=
   "7d65bff94a983c4052b8fce4bbc9ed8a50c4c014fca6c22121a2662d9e9a2bea";
 
@@ -208,41 +211,13 @@ describe("getComposedServer()", () => {
 });
 
 describe("metrics state composition", () => {
-  it("reports not_configured when no agent token exists", async () => {
+  it("reports not_configured when no snapshot exists", async () => {
     const result = await serversService.getComposedServer(
       workspaceId,
       mockCredentialId,
       "srv-05",
     );
     expect(result?.metrics.state).toBe("not_configured");
-  });
-
-  it("reports waiting for a bound token with no snapshot yet", async () => {
-    const composed = await serversService.getComposedServer(
-      workspaceId,
-      mockCredentialId,
-      "srv-05",
-    );
-    expectProviderDto(composed);
-
-    await db.serverAgentToken.create({
-      data: {
-        workspaceId,
-        localServerId: composed.localServerId,
-        name: "agent-token",
-        tokenHash: randomUUID(),
-        tokenPrefix: "prefix123456",
-        state: "BOUND",
-        boundAt: new Date(),
-      },
-    });
-
-    const result = await serversService.getComposedServer(
-      workspaceId,
-      mockCredentialId,
-      "srv-05",
-    );
-    expect(result?.metrics.state).toBe("waiting");
   });
 
   it("reports live for a fresh snapshot and stale past the 180s threshold", async () => {
@@ -299,26 +274,6 @@ describe("metrics state composition", () => {
     expect(stale?.metrics.state).toBe("stale");
   });
 
-  it("reports revoked once the only bound token is revoked", async () => {
-    const composed = await serversService.getComposedServer(
-      workspaceId,
-      mockCredentialId,
-      "srv-05",
-    );
-    expectProviderDto(composed);
-
-    await db.serverAgentToken.updateMany({
-      where: { localServerId: composed.localServerId, workspaceId },
-      data: { state: "REVOKED", revokedAt: new Date() },
-    });
-
-    const result = await serversService.getComposedServer(
-      workspaceId,
-      mockCredentialId,
-      "srv-05",
-    );
-    expect(result?.metrics.state).toBe("revoked");
-  });
 });
 
 describe("power()", () => {

@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import sys
@@ -122,6 +123,57 @@ class CollectorTests(unittest.TestCase):
             )
 
         self.statvfs_mock.assert_called_with(collector.HOST_ROOT_PROBE)
+
+
+class PushMetricsBoundModeTests(unittest.TestCase):
+    """Steady-state switch trigger (push_metrics): a 2xx response carrying a
+    non-empty localServerId flips _bound_mode, which shortens the request
+    timeout on subsequent pushes. Replaces the retired tokenState == "BOUND"
+    trigger."""
+
+    def setUp(self):
+        self._orig_endpoint = collector.METRICS_ENDPOINT
+        self._orig_token = collector.METRICS_TOKEN
+        self._orig_bound_mode = collector._bound_mode
+        collector.METRICS_ENDPOINT = "https://example.test/api/server-metrics"
+        collector.METRICS_TOKEN = "test-token"
+        collector._bound_mode = False
+
+    def tearDown(self):
+        collector.METRICS_ENDPOINT = self._orig_endpoint
+        collector.METRICS_TOKEN = self._orig_token
+        collector._bound_mode = self._orig_bound_mode
+
+    @staticmethod
+    def _mock_response(status, body):
+        response = mock.MagicMock()
+        response.status = status
+        response.read.return_value = json.dumps(body).encode("utf-8")
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        return response
+
+    def test_2xx_with_non_empty_local_server_id_switches_to_bound_mode(self):
+        response = self._mock_response(200, {"localServerId": "abc"})
+        with mock.patch("collector.urllib.request.urlopen", return_value=response):
+            status = collector.push_metrics({"hostname": "x"}, timeout=5)
+
+        self.assertEqual(status, 200)
+        self.assertTrue(collector._bound_mode)
+
+    def test_2xx_with_empty_body_stays_unbound(self):
+        response = self._mock_response(200, {})
+        with mock.patch("collector.urllib.request.urlopen", return_value=response):
+            collector.push_metrics({"hostname": "x"}, timeout=5)
+
+        self.assertFalse(collector._bound_mode)
+
+    def test_2xx_with_empty_local_server_id_stays_unbound(self):
+        response = self._mock_response(200, {"localServerId": ""})
+        with mock.patch("collector.urllib.request.urlopen", return_value=response):
+            collector.push_metrics({"hostname": "x"}, timeout=5)
+
+        self.assertFalse(collector._bound_mode)
 
 
 if __name__ == "__main__":

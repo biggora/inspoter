@@ -12,6 +12,10 @@ import {
 } from "@/lib/services/outgoingWebhooks";
 import { ServerMetricsError } from "@/lib/services/serverMetrics";
 import { CredentialDeleteConflictError } from "@/lib/services/credentials";
+import {
+  WebhookTokenNotFoundError,
+  WebhookTokenRevokedError,
+} from "@/lib/services/webhookTokens";
 import { jsonResponse } from "@/lib/api/response";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
@@ -49,13 +53,8 @@ export function toErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof ServerMetricsError) {
     const statusMap: Record<string, number> = {
-      UNAUTHORIZED: 401,
-      TOKEN_NOT_FOUND: 404,
-      SERVER_NOT_FOUND: 404,
-      TOKEN_REVOKED: 409,
       SERVER_MATCH_AMBIGUOUS: 409,
       ADDRESS_CONFLICT: 409,
-      TOKEN_ALREADY_BOUND: 409,
       PROVIDER_INVENTORY_UNAVAILABLE: 503,
     };
     return jsonResponse(
@@ -68,6 +67,12 @@ export function toErrorResponse(error: unknown): NextResponse {
       { error: error.code, message: error.message },
       { status: 409 },
     );
+  }
+  if (error instanceof WebhookTokenNotFoundError) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof WebhookTokenRevokedError) {
+    return jsonResponse({ error: error.code }, { status: 409 });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2003") {
