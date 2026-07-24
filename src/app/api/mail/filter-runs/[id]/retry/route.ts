@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
-import { env } from "@/lib/config/env";
 import * as mailFilterRunsService from "@/lib/services/mail-filter-runs";
 import { WorkspaceOwnerRequiredError } from "@/lib/services/workspace-auth";
 
@@ -26,9 +25,6 @@ function serviceErrorResponse(error: unknown) {
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  if (!env.MAIL_LABELS_ENABLED) {
-    return jsonResponse({ error: "Resource not found." }, { status: 404 });
-  }
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );

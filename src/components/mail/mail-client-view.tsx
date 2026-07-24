@@ -132,7 +132,6 @@ function applyRuleLabel<T extends MailListItemDto | MailDetailDto>(
 // swap in place and the sidebar lives in a Sheet.
 export interface MailClientViewProps {
   workspaceId: string;
-  mailLabelsEnabled?: boolean;
   canManageRules?: boolean;
 }
 
@@ -143,7 +142,6 @@ export function MailClientView({ workspaceId, ...props }: MailClientViewProps) {
 type MailClientCoordinatorProps = Omit<MailClientViewProps, "workspaceId">;
 
 function MailClientCoordinator({
-  mailLabelsEnabled = false,
   canManageRules = false,
 }: MailClientCoordinatorProps) {
   const t = useTranslations("mail");
@@ -161,7 +159,7 @@ function MailClientCoordinator({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const [labels, setLabels] = useState<MailLabelDto[]>([]);
-  const [labelsLoading, setLabelsLoading] = useState(mailLabelsEnabled);
+  const [labelsLoading, setLabelsLoading] = useState(true);
   const [labelsError, setLabelsError] = useState<string | null>(null);
   const [labelsReload, setLabelsReload] = useState(0);
   const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
@@ -287,7 +285,6 @@ function MailClientCoordinator({
   }, [accountsReload, t]);
 
   useEffect(() => {
-    if (!mailLabelsEnabled) return;
     if (accounts === null) return;
     if (accounts.length > 0 && !selectedAccountId) return;
     if (selectedAccountId && !selectedFolderId) return;
@@ -315,14 +312,7 @@ function MailClientCoordinator({
     return () => {
       cancelled = true;
     };
-  }, [
-    accounts,
-    labelsReload,
-    mailLabelsEnabled,
-    selectedAccountId,
-    selectedFolderId,
-    t,
-  ]);
+  }, [accounts, labelsReload, selectedAccountId, selectedFolderId, t]);
 
   // Folders per selected account; the account's INBOX becomes the default
   // folder selection.
@@ -845,7 +835,7 @@ function MailClientCoordinator({
 
   const headerActions = (
     <>
-      {mailLabelsEnabled && canManageRules && (
+      {canManageRules && (
         <>
           <Button
             ref={manageLabelsTriggerRef}
@@ -905,7 +895,6 @@ function MailClientCoordinator({
     onRetryFolders: () => setFoldersReload((n) => n + 1),
     selectedFolderId,
     onSelectFolder: handleSelectFolder,
-    mailLabelsEnabled,
     labels,
     labelsLoading,
     labelsError,
@@ -1073,7 +1062,6 @@ function MailClientCoordinator({
             canArchive={canArchive}
             isInTrash={isInTrash}
             isDraft={isDraft}
-            mailLabelsEnabled={mailLabelsEnabled}
             labels={labels}
             labelsLoading={labelsLoading}
             labelsError={labelsError}
@@ -1081,7 +1069,7 @@ function MailClientCoordinator({
             labelMutationError={labelMutationError}
             onRetryLabels={() => setLabelsReload((value) => value + 1)}
             onToggleLabel={handleToggleLabel}
-            canCreateFilter={mailLabelsEnabled && canManageRules}
+            canCreateFilter={canManageRules}
             onCreateFilter={() => setFilterRuleOpen(true)}
             filterTriggerRef={filterRuleTriggerRef}
             replyComposer={

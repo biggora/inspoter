@@ -77,12 +77,6 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000),
-    MAIL_LABELS_ENABLED: z.preprocess((value) => {
-      if (value === undefined || value === "") return false;
-      if (value === "true" || value === "1") return true;
-      if (value === "false" || value === "0") return false;
-      return value;
-    }, z.boolean()),
     // --- Server metrics agent (specs/metrics-script.md §6.5) ---
     SERVER_METRICS_RATE_LIMIT: z.coerce.number().int().positive().default(12),
     SERVER_METRICS_RATE_WINDOW_MS: z.coerce

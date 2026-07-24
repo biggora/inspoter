@@ -88,7 +88,6 @@ export interface MailSidebarProps {
   onRetryFolders: () => void;
   selectedFolderId: string | null;
   onSelectFolder: (id: string) => void;
-  mailLabelsEnabled: boolean;
   labels: MailLabelDto[];
   labelsLoading: boolean;
   labelsError: string | null;
@@ -113,7 +112,6 @@ export function MailSidebar({
   onRetryFolders,
   selectedFolderId,
   onSelectFolder,
-  mailLabelsEnabled,
   labels,
   labelsLoading,
   labelsError,
@@ -262,101 +260,99 @@ export function MailSidebar({
           )}
         </nav>
 
-        {mailLabelsEnabled && (
-          <nav
-            aria-label={t("labelsNavLabel")}
-            className="mt-3 space-y-0.5 border-t border-background-100 pt-3"
+        <nav
+          aria-label={t("labelsNavLabel")}
+          className="mt-3 space-y-0.5 border-t border-background-100 pt-3"
+        >
+          <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-foreground-500 uppercase">
+            {t("labelsSectionTitle")}
+          </h2>
+          <Button
+            type="button"
+            variant={selectedLabelId === null ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => onSelectLabel(null)}
+            aria-current={selectedLabelId === null ? "true" : undefined}
+            className="w-full justify-start"
           >
-            <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-foreground-500 uppercase">
-              {t("labelsSectionTitle")}
-            </h2>
-            <Button
-              type="button"
-              variant={selectedLabelId === null ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => onSelectLabel(null)}
-              aria-current={selectedLabelId === null ? "true" : undefined}
-              className="w-full justify-start"
-            >
-              <Icon
-                name="ri-price-tag-3-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              <span className="min-w-0 flex-1 truncate text-left">
-                {t("allLabelsButton")}
-              </span>
-            </Button>
+            <Icon
+              name="ri-price-tag-3-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {t("allLabelsButton")}
+            </span>
+          </Button>
 
-            {labelsLoading ? (
-              <div
-                className="space-y-1.5 p-1"
-                aria-label={t("loadingLabelsLabel")}
-              >
-                {[1, 2, 3].map((row) => (
-                  <Skeleton key={row} className="h-8 w-full" />
-                ))}
-              </div>
-            ) : labelsError ? (
-              <EmptyState
-                size="xs"
-                align="start"
-                bordered={false}
-                description={labelsError}
-                className="px-2 py-3"
-                action={
-                  <Button type="button" size="sm" onClick={onRetryLabels}>
-                    <Icon
-                      name="ri-refresh-line"
-                      aria-hidden
-                      data-icon="inline-start"
+          {labelsLoading ? (
+            <div
+              className="space-y-1.5 p-1"
+              aria-label={t("loadingLabelsLabel")}
+            >
+              {[1, 2, 3].map((row) => (
+                <Skeleton key={row} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : labelsError ? (
+            <EmptyState
+              size="xs"
+              align="start"
+              bordered={false}
+              description={labelsError}
+              className="px-2 py-3"
+              action={
+                <Button type="button" size="sm" onClick={onRetryLabels}>
+                  <Icon
+                    name="ri-refresh-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  {t("retryButton")}
+                </Button>
+              }
+            />
+          ) : labels.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-muted-foreground">
+              {t("labelsSidebarEmptyDescription")}
+            </p>
+          ) : (
+            labels.map((label) => {
+              const isSelected = label.id === selectedLabelId;
+              const countDescriptionId = `mail-label-${label.id}-count`;
+              return (
+                <Fragment key={label.id}>
+                  <Button
+                    type="button"
+                    variant={isSelected ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => onSelectLabel(label.id)}
+                    aria-current={isSelected ? "true" : undefined}
+                    aria-describedby={countDescriptionId}
+                    className="w-full justify-start overflow-hidden"
+                  >
+                    <LabelChip
+                      label={label}
+                      className="mr-auto max-w-[calc(100%-2.5rem)]"
                     />
-                    {t("retryButton")}
-                  </Button>
-                }
-              />
-            ) : labels.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-muted-foreground">
-                {t("labelsSidebarEmptyDescription")}
-              </p>
-            ) : (
-              labels.map((label) => {
-                const isSelected = label.id === selectedLabelId;
-                const countDescriptionId = `mail-label-${label.id}-count`;
-                return (
-                  <Fragment key={label.id}>
-                    <Button
-                      type="button"
-                      variant={isSelected ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => onSelectLabel(label.id)}
-                      aria-current={isSelected ? "true" : undefined}
-                      aria-describedby={countDescriptionId}
-                      className="w-full justify-start overflow-hidden"
+                    <Badge
+                      variant="outline"
+                      aria-hidden
+                      className="ml-auto min-w-5 px-1.5 tabular-nums"
                     >
-                      <LabelChip
-                        label={label}
-                        className="mr-auto max-w-[calc(100%-2.5rem)]"
-                      />
-                      <Badge
-                        variant="outline"
-                        aria-hidden
-                        className="ml-auto min-w-5 px-1.5 tabular-nums"
-                      >
-                        {label.messageCount ?? 0}
-                      </Badge>
-                    </Button>
-                    <span id={countDescriptionId} className="sr-only">
-                      {t("labelMessageCountAriaLabel", {
-                        count: label.messageCount ?? 0,
-                      })}
-                    </span>
-                  </Fragment>
-                );
-              })
-            )}
-          </nav>
-        )}
+                      {label.messageCount ?? 0}
+                    </Badge>
+                  </Button>
+                  <span id={countDescriptionId} className="sr-only">
+                    {t("labelMessageCountAriaLabel", {
+                      count: label.messageCount ?? 0,
+                    })}
+                  </span>
+                </Fragment>
+              );
+            })
+          )}
+        </nav>
       </div>
 
       <div className="space-y-0.5 border-t border-background-100 p-2">

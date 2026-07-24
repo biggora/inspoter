@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
-import { env } from "@/lib/config/env";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailLabelsService from "@/lib/services/mail-labels";
@@ -11,12 +10,7 @@ import {
   listMailLabelsQuerySchema,
 } from "@/lib/validation/mail";
 
-function disabledResponse() {
-  return jsonResponse({ error: "Resource not found." }, { status: 404 });
-}
-
 export async function GET(request: NextRequest) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
@@ -42,7 +36,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );

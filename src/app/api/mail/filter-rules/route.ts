@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
-import { env } from "@/lib/config/env";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
@@ -10,10 +9,6 @@ import {
   createMailFilterRuleSchema,
   listMailFilterRulesQuerySchema,
 } from "@/lib/validation/mail";
-
-function disabledResponse() {
-  return jsonResponse({ error: "Resource not found." }, { status: 404 });
-}
 
 function serviceErrorResponse(error: unknown) {
   if (error instanceof WorkspaceOwnerRequiredError) {
@@ -39,7 +34,6 @@ function serviceErrorResponse(error: unknown) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );
@@ -65,7 +59,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!env.MAIL_LABELS_ENABLED) return disabledResponse();
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
     (error) => toErrorResponse(error),
   );

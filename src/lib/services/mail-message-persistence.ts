@@ -4,7 +4,6 @@ import {
   type MailItem,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { env } from "@/lib/config/env";
 import { matchingMailFilterLabelIds } from "@/lib/mail-filter-matcher";
 import {
   runMailAccountTransaction,
@@ -48,8 +47,7 @@ export async function persistIncomingMail(
   input: PersistIncomingMailInput,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ): Promise<MailItem> {
-  const eligible =
-    env.MAIL_LABELS_ENABLED && input.folderSpecialUse === "INBOX";
+  const eligible = input.folderSpecialUse === "INBOX";
   const persist = async (tx: Prisma.TransactionClient) => {
     const rules = eligible
       ? await tx.mailFilterRule.findMany({

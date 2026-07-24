@@ -296,39 +296,32 @@ label recovery is permitted only into the same matching Mail/workspace snapshot
 and must restore parents before assignments/runs, then recheck all compound keys,
 workspace checks, unique pairs, and row counts. Never guess missing message ids.
 
-### 5c.3 Deployment and feature exposure
+### 5c.3 Deployment
 
-`MAIL_LABELS_ENABLED` is a server-side deployment flag, default `false`. With the
-flag off, label/rule/run UI is absent, new feature routes return the existing
-non-disclosing 404 contract, incoming evaluation and backfill work are skipped,
-and Mail otherwise behaves as before. Persisted feature data is retained.
+Mail labels, filter rules, and backfill runs are always available. Their schema
+must be migrated before the compatible application starts; there is no runtime
+feature flag or hidden route/UI state.
 
 Deployment order is fixed:
 
 1. maintenance on; backup and tested-restore evidence present;
 2. apply additive migration and inspect checks/indexes/checksums;
-3. deploy compatible binary with `MAIL_LABELS_ENABLED=false`;
-4. run existing Mail smoke plus health, list, detail, sync, and webhook checks;
-5. enable only in a controlled environment, run current phase gate, then expose
-   production after user verification;
-6. maintenance off and monitor error rate, lock wait, Mail ingest/sync latency,
+3. deploy the compatible binary;
+4. run Mail health, label/rule, list, detail, sync, and webhook checks;
+5. maintenance off and monitor error rate, lock wait, Mail ingest/sync latency,
    assignment conflicts, and—when Phase 5 exists—run lease/failure counts.
 
-Each later phase remains dark until its own gate is green. **Apply to existing
-mail** stays absent until Phase 5 and unchecked by default thereafter. No second
-background scheduler or new timer is introduced.
+**Apply to existing mail** remains unchecked by default. No second background
+scheduler or new timer is introduced.
 
 ### 5c.4 Rollback and rehearsal
 
-First response is exposure rollback: set `MAIL_LABELS_ENABLED=false`, which stops
-new evaluation/backfill claims and removes new UI/API exposure without deleting
-assignments. Let in-flight transactions finish or roll back; do not terminate
-them between message and assignment commits.
-
-If application rollback is needed, deploy the last compatible binary against the
-unchanged additive schema. Do not drop label tables, constraints, or columns in
-an incident. If data corruption is proven, keep maintenance enabled and restore
-the verified database snapshot; preserve the failed database for diagnosis.
+If application rollback is needed, enter maintenance and deploy the last
+compatible binary against the unchanged additive schema. Let in-flight
+transactions finish or roll back; do not terminate them between message and
+assignment commits. Do not drop label tables, constraints, or columns in an
+incident. If data corruption is proven, keep maintenance enabled and restore the
+verified database snapshot; preserve the failed database for diagnosis.
 
 Rollback rehearsal must prove accounts, folders, messages, attachments, flags,
 bodies, and existing Mail actions remain intact with the flag off and the prior
