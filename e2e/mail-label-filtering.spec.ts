@@ -911,7 +911,7 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     await ruleRow
       .getByRole("button", { name: "Включить", exact: true })
       .click();
-    await expect(ruleRow.getByText("Включено", { exact: true })).toBeVisible();
+    await expect(ruleRow.getByText("Работает", { exact: true })).toBeVisible();
     await opened.manager
       .getByRole("button", { name: "Закрыть", exact: true })
       .first()

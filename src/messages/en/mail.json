@@ -6,7 +6,6 @@
   "errorLoadMailTitle": "Failed to load mail",
   "retryButton": "Retry",
   "cancelButton": "Cancel",
-
   "errorLoadAccounts": "Failed to load mail accounts. Please try again.",
   "errorLoadFolders": "Failed to load folders. Please try again.",
   "errorLoadMessages": "Failed to load messages. Please try again.",
@@ -18,14 +17,12 @@
   "errorSyncAccount": "Failed to sync account. Please try again.",
   "errorSendMail": "Failed to send message. Please try again.",
   "errorDownloadAttachment": "Failed to download attachment. Please try again.",
-
   "syncCompleteToast": "Sync complete.",
   "syncInProgressToast": "Sync is already in progress.",
   "itemTrashedToast": "Message moved to trash",
   "itemDeletedToast": "Message deleted",
   "itemArchivedToast": "Message moved to archive",
   "sendSuccessToast": "Message sent",
-
   "folderNameInbox": "Inbox",
   "folderNameSent": "Sent",
   "folderNameDrafts": "Drafts",
@@ -35,12 +32,10 @@
   "foldersNavLabel": "Folders",
   "foldersEmptyDescription": "No folders yet. Run a sync to get started.",
   "folderUnreadAriaLabel": "Unread: {count}",
-
   "syncStatusSyncingLabel": "Syncing mail",
   "syncStatusSyncingTitle": "Syncing…",
   "syncStatusErrorFallback": "Sync error",
   "syncStatusErrorAriaLabel": "Sync error: {error}",
-
   "composeButton": "Compose",
   "composeDisabledTitle": "Add an IMAP account to write messages",
   "accountSelectAriaLabel": "Mail account",
@@ -48,7 +43,6 @@
   "webhookAccountBadge": "System",
   "syncButton": "Sync",
   "manageAccountsButton": "Manage accounts",
-
   "sortDesc": "Newest first",
   "sortAsc": "Oldest first",
   "sortOrderAriaLabel": "Sort order",
@@ -66,7 +60,6 @@
   "hasAttachmentsAriaLabel": "Has attachments",
   "unreadAriaLabel": "Unread",
   "messageLabelsAriaLabel": "Labels: {labels}",
-
   "byteUnitMb": "MB",
   "byteUnitKb": "KB",
   "byteUnitB": "B",
@@ -84,7 +77,6 @@
   "markReadButton": "Mark read",
   "downloadingAttachmentAriaLabel": "Downloading attachment",
   "backToListButton": "Back to list",
-
   "quotedMessageTemplate": "\n\n---- Original message ----\n{body}",
   "invalidAddressError": "Invalid address: {address}",
   "toRequiredError": "Add at least one recipient.",
@@ -140,13 +132,11 @@
   "errorDraftAttachmentLimit": "A draft can have at most 10 attachments.",
   "errorDraftAttachmentTooLarge": "The attachment is too large or the 50 MB total limit was exceeded.",
   "editDraftButton": "Edit draft",
-
   "errorAttachmentTooLarge": "Attachment is too large to download",
   "errorAttachmentUnavailable": "The attachment will be available after syncing",
   "errorFolderMismatch": "Destination folder does not belong to this account",
   "errorSendNotAllowed": "Sending messages is only available for IMAP accounts",
   "errorSendRateLimit": "Message sending limit exceeded. Please try again later.",
-
   "appliedLabelsAriaLabel": "Applied labels",
   "labelsNavLabel": "Labels",
   "labelsSectionTitle": "Labels",
@@ -252,15 +242,9 @@
   "filterRulesEmptyTitle": "No filter rules yet",
   "filterRulesEmptyDescription": "Open a message and choose Filter messages like this to create one.",
   "filterRulesListLabel": "Filter rules",
-  "filterRuleActiveState": "Active",
-  "filterRuleInactiveState": "Inactive",
   "filterRuleSenderSummary": "Sender is {sender}",
   "filterRuleSubjectSummary": "subject contains {subject}",
   "filterRuleAndConnector": "and",
-  "filterRunStatusPENDING": "Pending",
-  "filterRunStatusRUNNING": "Running",
-  "filterRunStatusCOMPLETED": "Completed",
-  "filterRunStatusFAILED": "Failed",
   "filterRunCountsSummary": "Processed: {processed}; matched: {matched}",
   "filterRunViewButton": "View progress",
   "filterRunDialogTitle": "Existing mail progress",

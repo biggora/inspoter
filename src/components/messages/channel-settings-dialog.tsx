@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -443,9 +443,9 @@ export function ChannelSettingsDialog({
                             <span className="truncate font-medium text-foreground-900">
                               {webhook.name}
                             </span>
-                            <Badge variant={revoked ? "outline" : "success"}>
-                              {revoked ? t("revokedBadge") : t("activeBadge")}
-                            </Badge>
+                            <StatusIndicator
+                              status={revoked ? "revoked" : "up"}
+                            />
                           </div>
                           <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                             {t("tokenPrefixLabel", {

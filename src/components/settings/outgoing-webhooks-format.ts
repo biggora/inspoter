@@ -1,7 +1,4 @@
-import type {
-  OutgoingWebhookEventValue,
-  WebhookDeliveryStatusValue,
-} from "./outgoing-webhooks-api";
+import type { OutgoingWebhookEventValue } from "./outgoing-webhooks-api";
 
 // Maps enum values to next-intl keys in the "settings" namespace. Shared by
 // the webhooks view and the deliveries dialog.
@@ -20,13 +17,3 @@ export const ALL_EVENTS: OutgoingWebhookEventValue[] = [
   "LOG_CREATED",
   "MAIL_RECEIVED",
 ];
-
-export const DELIVERY_STATUS_LABEL_KEY: Record<
-  WebhookDeliveryStatusValue,
-  string
-> = {
-  PENDING: "deliveryPending",
-  DELIVERING: "deliveryDelivering",
-  DELIVERED: "deliveryDelivered",
-  FAILED: "deliveryFailed",
-};

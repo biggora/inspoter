@@ -15,6 +15,7 @@ import settings from "@/messages/ru/settings.json";
 import workspace from "@/messages/ru/workspace.json";
 import ui from "@/messages/ru/ui.json";
 import metadata from "@/messages/ru/metadata.json";
+import status from "@/messages/ru/status.json";
 import validation from "@/messages/ru/validation.json";
 
 import enShell from "@/messages/en/shell.json";
@@ -34,6 +35,7 @@ import enSettings from "@/messages/en/settings.json";
 import enWorkspace from "@/messages/en/workspace.json";
 import enUi from "@/messages/en/ui.json";
 import enMetadata from "@/messages/en/metadata.json";
+import enStatus from "@/messages/en/status.json";
 import enValidation from "@/messages/en/validation.json";
 
 export const ruMessages = {
@@ -54,6 +56,7 @@ export const ruMessages = {
   workspace,
   ui,
   metadata,
+  status,
   validation,
 };
 
@@ -75,5 +78,6 @@ export const enMessages = {
   workspace: enWorkspace,
   ui: enUi,
   metadata: enMetadata,
+  status: enStatus,
   validation: enValidation,
 };

@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -38,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import {
   Table,
   TableBody,
@@ -46,7 +46,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
   ApiError,
   webhookTokensApi,
@@ -278,15 +277,7 @@ export function WebhookTokensView() {
                     {formatDate(token.lastUsedAt)}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={cn(
-                        isRevoked
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-(--success-bg) text-(--success-text)",
-                      )}
-                    >
-                      {isRevoked ? t("statusRevoked") : t("statusActive")}
-                    </Badge>
+                    <StatusIndicator status={isRevoked ? "revoked" : "up"} />
                   </TableCell>
                   <TableCell className="text-right">
                     {isRevoked ? (

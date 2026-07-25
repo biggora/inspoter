@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import {
   Table,
   TableBody,
@@ -47,7 +48,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
   ApiError,
   outgoingWebhooksApi,
@@ -325,17 +325,9 @@ export function OutgoingWebhooksView() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={cn(
-                      webhook.isActive
-                        ? "bg-(--success-bg) text-(--success-text)"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {webhook.isActive
-                      ? t("webhookActive")
-                      : t("webhookInactive")}
-                  </Badge>
+                  <StatusIndicator
+                    status={webhook.isActive ? "up" : "disabled"}
+                  />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(webhook.createdAt)}

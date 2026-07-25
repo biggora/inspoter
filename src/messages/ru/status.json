@@ -1,0 +1,21 @@
+{
+  "up": "Работает",
+  "down": "Не работает",
+  "stopped": "Остановлен",
+  "suspended": "Приостановлен",
+  "disabled": "Отключён",
+  "revoked": "Отозван",
+  "pending": "Ожидание",
+  "starting": "Запуск…",
+  "stopping": "Остановка…",
+  "restarting": "Перезапуск…",
+  "syncing": "Синхронизация…",
+  "inProgress": "Выполняется",
+  "completed": "Завершено",
+  "error": "Ошибка",
+  "stale": "Устарел",
+  "notConfigured": "Не настроен",
+  "notChecked": "Не проверен",
+  "unknown": "Неизвестно",
+  "system": "Системный"
+}

@@ -1,31 +1,15 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
   StatusIndicator,
-  type StatusIndicatorVariant,
+  type StatusState,
 } from "@/components/ui/status-indicator";
 import type { ServiceStatusValue } from "./api";
 
-const STATUS_CONFIG: Record<
-  ServiceStatusValue,
-  { labelKey: string; variant: StatusIndicatorVariant; pulse: boolean }
-> = {
-  PENDING: {
-    labelKey: "statusPending",
-    variant: "secondary",
-    pulse: false,
-  },
-  UP: {
-    labelKey: "statusUp",
-    variant: "success",
-    pulse: true,
-  },
-  DOWN: {
-    labelKey: "statusDown",
-    variant: "critical",
-    pulse: false,
-  },
+const STATUS_STATE: Record<ServiceStatusValue, StatusState> = {
+  PENDING: "pending",
+  UP: "up",
+  DOWN: "down",
 };
 
 export function ServiceStatusBadge({
@@ -34,17 +18,14 @@ export function ServiceStatusBadge({
   className,
 }: {
   status: ServiceStatusValue;
-  // Historical check rows pass false: they report a past result, not a live state.
-  pulse?: boolean;
+  // The check-history table passes false: those rows report past results.
+  pulse?: false;
   className?: string;
 }) {
-  const t = useTranslations("services");
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
   return (
     <StatusIndicator
-      variant={config.variant}
-      label={t(config.labelKey)}
-      pulse={pulse ?? config.pulse}
+      status={STATUS_STATE[status] ?? "pending"}
+      pulse={pulse}
       className={className}
     />
   );

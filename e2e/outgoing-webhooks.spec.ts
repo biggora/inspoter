@@ -90,7 +90,7 @@ test("desktop operator creates, inspects, and deletes an outgoing webhook", asyn
     await expect(row).toBeVisible();
     await expect(row.getByText("example.com/inspot-e2e")).toBeVisible();
     await expect(row.getByText("Создан алерт", { exact: true })).toBeVisible();
-    await expect(row.getByText("Активен", { exact: true })).toBeVisible();
+    await expect(row.getByText("Работает", { exact: true })).toBeVisible();
 
     // Delivery history opens (empty until the scheduler sends something).
     await row.getByRole("button", { name: "Доставки", exact: true }).click();

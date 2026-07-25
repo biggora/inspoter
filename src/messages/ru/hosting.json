@@ -9,16 +9,10 @@
   "statusUpdateError": "Не удалось обновить статус",
   "suspendSuccessToast": "{name}: аккаунт приостановлен",
   "unsuspendSuccessToast": "{name}: аккаунт возобновлён",
-
   "providerUnavailableTitle": "Провайдер недоступен",
   "providerUnavailableDescription": "Не удалось получить данные о хостинг-аккаунтах. Проверьте подключение или попробуйте позже.",
   "emptyTitle": "Нет хостинг-аккаунтов",
   "emptyDescription": "Подключите провайдера (Hostinger или cPanel) в настройках — аккаунты появятся здесь автоматически.",
-
-  "statusActive": "Активен",
-  "statusSuspended": "Приостановлен",
-  "statusUnknown": "Неизвестно",
-
   "accountCardLabel": "Хостинг-аккаунт «{name}»",
   "planLabel": "Тариф",
   "diskLabel": "Диск",
@@ -31,7 +25,6 @@
   "valueUnlimited": "∞",
   "unitGb": "ГБ",
   "unitMb": "МБ",
-
   "suspendAction": "Приостановить",
   "unsuspendAction": "Возобновить",
   "suspendingLabel": "Приостановка…",
@@ -40,7 +33,6 @@
   "unsuspendConfirmTitle": "Возобновить «{name}»?",
   "suspendConfirmText": "Аккаунт будет приостановлен, сайт станет недоступен.",
   "unsuspendConfirmText": "Аккаунт снова станет активным и доступным.",
-
   "cancelButton": "Отмена",
   "confirmButton": "Подтвердить"
 }

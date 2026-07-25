@@ -8,23 +8,13 @@
   "actionError": "Не удалось выполнить действие",
   "statusUpdateError": "Не удалось обновить статус",
   "actionSuccessToast": "{name}: действие выполнено успешно",
-
   "providerUnavailableTitle": "Hetzner недоступен",
   "providerUnavailableDescription": "Не удалось получить данные о серверах. Проверьте подключение или попробуйте позже.",
   "emptyTitle": "Нет серверов",
   "emptyDescription": "Подключите провайдера в настройках — серверы появятся здесь автоматически.",
-
-  "statusRunning": "Работает",
-  "statusStopped": "Остановлен",
-  "statusStarting": "Запуск…",
-  "statusStopping": "Остановка…",
-  "statusRestarting": "Перезапуск…",
-  "statusUnknown": "Неизвестно",
-
   "pendingStart": "Запускается…",
   "pendingStop": "Останавливается…",
   "pendingRestart": "Перезапускается…",
-
   "startAction": "Запустить",
   "stopAction": "Остановить",
   "restartAction": "Перезапустить",
@@ -34,7 +24,6 @@
   "startConfirmText": "Сервер будет запущен. Это может занять несколько секунд.",
   "stopConfirmText": "Сервер будет остановлен и станет недоступен.",
   "restartConfirmText": "Сервер перезапустится и будет ненадолго недоступен.",
-
   "serverCardLabel": "Сервер «{name}»",
   "diskLabel": "Диск",
   "osLabel": "ОС",
@@ -42,7 +31,6 @@
   "noActionsAvailable": "Нет доступных действий",
   "cancelButton": "Отмена",
   "confirmButton": "Подтвердить",
-
   "metricsLabel": "Метрики",
   "cpuUsageLabel": "CPU",
   "memoryLabel": "Память",
@@ -50,21 +38,13 @@
   "loadLabel": "Нагрузка",
   "uptimeLabel": "Время работы",
   "lastUpdate": "Обновлено {time}",
-
-  "metricsLive": "Активен",
-  "metricsStale": "Устарел",
-  "metricsNotConfigured": "Не настроен",
-
   "agentOnlyBadge": "Агент",
   "providerUnavailableBadge": "Провайдер недоступен",
   "providerMissingBadge": "Отсутствует у провайдера",
-
   "monitoringNotConnected": "Мониторинг не подключён",
   "lastReceivedAt": "Получено: {time}",
-
   "hostnameLabel": "Имя хоста",
   "agentOnlyNotice": "Этот сервер контролируется только агентом, без подключения к провайдеру.",
-
   "setupMonitoring": "Настроить мониторинг",
   "enrollmentDialogTitle": "Подключение агента метрик",
   "enrollmentDialogDescription": "Установите агент на «{name}» и авторизуйте его с помощью API-токена.",

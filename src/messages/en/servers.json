@@ -8,23 +8,13 @@
   "actionError": "Failed to perform action",
   "statusUpdateError": "Failed to update status",
   "actionSuccessToast": "{name}: action completed successfully",
-
   "providerUnavailableTitle": "Hetzner unavailable",
   "providerUnavailableDescription": "Failed to fetch server data. Check your connection or try again later.",
   "emptyTitle": "No servers",
   "emptyDescription": "Connect a provider in settings — servers will appear here automatically.",
-
-  "statusRunning": "Running",
-  "statusStopped": "Stopped",
-  "statusStarting": "Starting…",
-  "statusStopping": "Stopping…",
-  "statusRestarting": "Restarting…",
-  "statusUnknown": "Unknown",
-
   "pendingStart": "Starting…",
   "pendingStop": "Stopping…",
   "pendingRestart": "Restarting…",
-
   "startAction": "Start",
   "stopAction": "Stop",
   "restartAction": "Restart",
@@ -34,7 +24,6 @@
   "startConfirmText": "The server will be started. This may take a few seconds.",
   "stopConfirmText": "The server will be stopped and become unavailable.",
   "restartConfirmText": "The server will restart and be briefly unavailable.",
-
   "serverCardLabel": "Server \"{name}\"",
   "diskLabel": "Disk",
   "osLabel": "OS",
@@ -42,7 +31,6 @@
   "noActionsAvailable": "No actions available",
   "cancelButton": "Cancel",
   "confirmButton": "Confirm",
-
   "metricsLabel": "Metrics",
   "cpuUsageLabel": "CPU",
   "memoryLabel": "Memory",
@@ -50,21 +38,13 @@
   "loadLabel": "Load",
   "uptimeLabel": "Uptime",
   "lastUpdate": "Updated {time}",
-
-  "metricsLive": "Live",
-  "metricsStale": "Stale",
-  "metricsNotConfigured": "Not configured",
-
   "agentOnlyBadge": "Agent",
   "providerUnavailableBadge": "Provider unavailable",
   "providerMissingBadge": "Missing from provider",
-
   "monitoringNotConnected": "Monitoring not connected",
   "lastReceivedAt": "Last received: {time}",
-
   "hostnameLabel": "Hostname",
   "agentOnlyNotice": "This server is monitored only by an agent, without a provider connection.",
-
   "setupMonitoring": "Setup monitoring",
   "enrollmentDialogTitle": "Connect a Metrics Agent",
   "enrollmentDialogDescription": "Install the agent on \"{name}\" and authenticate it with an API token.",

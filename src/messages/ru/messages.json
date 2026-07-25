@@ -10,14 +10,12 @@
   "noCategoriesDescription": "Создайте категорию и канал, чтобы начать общение.",
   "openChannelsButton": "Открыть каналы",
   "channelsSheetTitle": "Категории и каналы",
-
   "composerLabel": "Сообщение в канале #{channelName}",
   "composerPlaceholder": "Написать в #{channelName}...",
   "sendButtonLabel": "Отправить сообщение",
   "composerHelpText": "Enter — новая строка, Ctrl+Enter — отправить",
   "messageSentAnnouncement": "Сообщение отправлено.",
   "sendMessageError": "Не удалось отправить сообщение. Попробуйте снова.",
-
   "justNow": "Только что",
   "minutesAgo": "{count} мин. назад",
   "hoursAgo": "{count} ч. назад",
@@ -32,7 +30,6 @@
   "originOperator": "Оператор",
   "originWebhook": "Внешний источник",
   "originUnknown": "Источник не определён",
-
   "sidebarNavLabel": "Каналы сообщений",
   "channelsHeading": "Каналы",
   "noCategoriesSidebarText": "Категорий пока нет.",
@@ -45,9 +42,7 @@
   "renameMenuItem": "Переименовать",
   "deleteMenuItem": "Удалить",
   "newCategoryButton": "Новая категория",
-
   "channelSettingsAriaLabel": "Настройки канала «{name}»",
-
   "categoryNameRequiredError": "Название категории обязательно.",
   "categoryRenamedToast": "Категория переименована.",
   "categoryCreatedToast": "Категория создана.",
@@ -55,7 +50,6 @@
   "renameCategoryTitle": "Переименовать категорию",
   "newCategoryTitle": "Новая категория",
   "categoryNameLabel": "Название категории",
-
   "channelNameRequiredError": "Название канала обязательно.",
   "channelRenamedToast": "Канал переименован.",
   "channelCreatedToast": "Канал создан.",
@@ -63,26 +57,22 @@
   "renameChannelTitle": "Переименовать канал",
   "newChannelTitle": "Новый канал",
   "channelNameLabel": "Название канала",
-
   "cancelButton": "Отмена",
   "saveButton": "Сохранить",
   "savingButton": "Сохранение…",
   "createButton": "Создать",
   "creatingButton": "Создание…",
   "deletingButton": "Удаление…",
-
   "channelDeletedToast": "Канал удалён.",
   "deleteChannelError": "Не удалось удалить канал. Попробуйте снова.",
   "deleteChannelTitle": "Удалить #{name}?",
   "deleteChannelDescription": "Сообщения этого канала будут удалены. Это действие необратимо.",
   "deleteChannelAction": "Удалить канал",
-
   "categoryDeletedToast": "Категория удалена.",
   "deleteCategoryError": "Не удалось удалить категорию. Попробуйте снова.",
   "deleteCategoryTitle": "Удалить «{name}»?",
   "deleteCategoryDescription": "Каналы этой категории будут удалены. Это действие необратимо.",
   "deleteCategoryAction": "Удалить категорию",
-
   "invalidWebhookUrlError": "Сервер вернул некорректный адрес webhook.",
   "integrationMessagePlaceholder": "Сообщение из интеграции",
   "loadWebhooksError": "Не удалось загрузить вебхуки. Попробуйте снова.",
@@ -116,14 +106,11 @@
   "noWebhooksTitle": "Вебхуков пока нет",
   "noWebhooksDescription": "Создайте webhook, чтобы внешняя система могла отправлять сообщения в этот канал.",
   "webhooksListLabel": "Вебхуки канала",
-  "revokedBadge": "Отозван",
-  "activeBadge": "Активен",
   "tokenPrefixLabel": "Префикс: {tokenPrefix}…",
   "createdUsedLabel": "Создан: {createdAt} · Последнее использование: {lastUsedAt}",
   "revokeButton": "Отозвать",
   "revokeConfirmTitle": "Отозвать webhook «{name}»?",
   "revokeConfirmDescription": "Все запросы с этим адресом будут немедленно отклонены. Это действие нельзя отменить.",
   "revokingButton": "Отзыв…",
-
   "emptyMessageContentError": "Содержание сообщения не может быть пустым."
 }
