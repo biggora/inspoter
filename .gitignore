@@ -60,3 +60,7 @@ next-env.d.ts
 .zcode/
 /tmp/
 /specs/prototype/out/
+
+# python (metrics-agent tests)
+__pycache__/
+*.py[cod]
