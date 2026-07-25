@@ -1009,18 +1009,18 @@ describe("Mail filter-rule lifecycle UI", () => {
     expect(apiMocks.createMailFilterRule).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("combobox", { name: "Поле условия 1" }));
-    await user.click(screen.getByRole("option", { name: "Тема" }));
+    await user.click(await screen.findByRole("option", { name: "Тема" }));
     await user.type(screen.getByLabelText("Тема содержит"), "  Deployment  ");
     await user.click(
       screen.getByRole("combobox", { name: "Статус прочтения" }),
     );
     await user.click(
-      screen.getByRole("option", { name: "Отметить прочитанным" }),
+      await screen.findByRole("option", { name: "Отметить прочитанным" }),
     );
     await user.click(
       screen.getByRole("combobox", { name: "Переместить в папку" }),
     );
-    await user.click(screen.getByRole("option", { name: "Архив" }));
+    await user.click(await screen.findByRole("option", { name: "Архив" }));
     await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(apiMocks.createMailFilterRule).toHaveBeenCalledWith(
