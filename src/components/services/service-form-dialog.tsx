@@ -35,8 +35,21 @@ import type { Service } from "@/generated/prisma/client";
 import { ApiError, servicesApi, type MonitorTypeValue } from "./api";
 import { getMonitorTypeLabel } from "./format";
 
+// `initial` pre-fills the create form — used by the domains views, which
+// derive the probe target from a domain / DNS record
+// (src/components/domains/link-targets.ts).
+export interface ServiceFormInitialValues {
+  name?: string;
+  description?: string;
+  monitorType?: MonitorTypeValue;
+  url?: string;
+  host?: string;
+  port?: number;
+}
+
 export type ServiceFormDialogState =
-  { mode: "create" } | { mode: "edit"; service: Service };
+  | { mode: "create"; initial?: ServiceFormInitialValues }
+  | { mode: "edit"; service: Service };
 
 interface ServiceFormDialogProps {
   state: ServiceFormDialogState | null;
@@ -129,12 +142,13 @@ export function ServiceFormDialog({
       setRetries(String(service.retries));
       setIsActive(service.isActive);
     } else if (state?.mode === "create") {
-      setName("");
-      setDescription("");
-      setMonitorType("HTTP");
-      setUrl("");
-      setHost("");
-      setPort("");
+      const initial = state.initial;
+      setName(initial?.name ?? "");
+      setDescription(initial?.description ?? "");
+      setMonitorType(initial?.monitorType ?? "HTTP");
+      setUrl(initial?.url ?? "");
+      setHost(initial?.host ?? "");
+      setPort(initial?.port !== undefined ? String(initial.port) : "");
       setExpectedStatusCodes("");
       setIntervalSeconds(DEFAULT_INTERVAL_SECONDS);
       setTimeoutMs(DEFAULT_TIMEOUT_MS);

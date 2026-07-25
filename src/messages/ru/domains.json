@@ -17,6 +17,15 @@
   "actionsHeader": "Действия",
   "viewDnsButton": "Просмотр DNS",
 
+  "linkActionsLabel": "Действия для {name}",
+  "addToBookmarksAction": "Добавить в закладки",
+  "addToMonitoringAction": "Добавить в мониторинг",
+  "openInBookmarksAction": "Открыть в закладках",
+  "openInMonitoringAction": "Открыть мониторинг",
+  "bookmarkedBadge": "В закладках",
+  "monitoredBadge": "В мониторинге",
+  "noCategoriesHint": "Сначала создайте категорию закладок",
+
   "loadRecordsError": "Не удалось загрузить DNS-записи. Попробуйте снова.",
   "deleteRecordSuccessToast": "DNS-запись удалена.",
   "deleteRecordError": "Не удалось удалить DNS-запись. Попробуйте снова.",
