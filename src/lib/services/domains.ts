@@ -12,12 +12,36 @@ import type { ProviderResult } from "@/lib/providers/result";
 // per-provider error isolation: a failing/unreachable provider never takes
 // down the whole listing (AC-DOM-003, N-1).
 
+export interface DomainWithRecordCount extends Domain {
+  /** null when this zone's record listing failed — the row shows a dash. */
+  recordCount: number | null;
+}
+
 export interface DomainsByProvider {
   providerId: DnsProvider["id"];
   providerType: DnsProvider["providerType"];
   mode: DnsProvider["mode"];
-  domains: Domain[];
+  domains: DomainWithRecordCount[];
   error: string | null;
+}
+
+// No DNS provider exposes a bulk "records per zone" endpoint, so the count
+// costs one listRecords call per domain. They run in parallel, and a zone
+// whose records can't be read degrades to `null` on its own row rather than
+// failing the whole provider (same isolation rule as listDomains itself).
+async function withRecordCounts(
+  provider: DnsProvider,
+  domains: Domain[],
+): Promise<DomainWithRecordCount[]> {
+  return Promise.all(
+    domains.map(async (domain) => {
+      const result = await provider.listRecords(domain.id).catch(() => null);
+      return {
+        ...domain,
+        recordCount: result?.ok ? result.data.length : null,
+      };
+    }),
+  );
 }
 
 export async function listDomains(
@@ -28,38 +52,40 @@ export async function listDomains(
     providers.map((provider) => provider.listDomains()),
   );
 
-  return settled.map((result, index) => {
-    const provider = providers[index];
-    if (result.status === "rejected") {
+  return Promise.all(
+    settled.map(async (result, index) => {
+      const provider = providers[index];
+      if (result.status === "rejected") {
+        return {
+          providerId: provider.id,
+          providerType: provider.providerType,
+          mode: provider.mode,
+          domains: [],
+          error: String(result.reason),
+        };
+      }
+      const providerResult = result.value;
+      if (!providerResult.ok) {
+        return {
+          providerId: provider.id,
+          providerType: provider.providerType,
+          mode: provider.mode,
+          domains: [],
+          error:
+            providerResult.kind === "error"
+              ? providerResult.message
+              : `Operation not supported: ${providerResult.operation}`,
+        };
+      }
       return {
         providerId: provider.id,
         providerType: provider.providerType,
         mode: provider.mode,
-        domains: [],
-        error: String(result.reason),
+        domains: await withRecordCounts(provider, providerResult.data),
+        error: null,
       };
-    }
-    const providerResult = result.value;
-    if (!providerResult.ok) {
-      return {
-        providerId: provider.id,
-        providerType: provider.providerType,
-        mode: provider.mode,
-        domains: [],
-        error:
-          providerResult.kind === "error"
-            ? providerResult.message
-            : `Operation not supported: ${providerResult.operation}`,
-      };
-    }
-    return {
-      providerId: provider.id,
-      providerType: provider.providerType,
-      mode: provider.mode,
-      domains: providerResult.data,
-      error: null,
-    };
-  });
+    }),
+  );
 }
 
 async function findProvider(

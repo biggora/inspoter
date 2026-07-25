@@ -69,10 +69,48 @@ const PROVIDERS_WITH_DOMAIN: DomainsByProvider[] = [
     providerId: "cred-1",
     providerType: "cloudflare",
     mode: "mock",
-    domains: [{ id: "zone-1", name: "example.com", provider: "cloudflare" }],
+    domains: [
+      {
+        id: "zone-1",
+        name: "example.com",
+        provider: "cloudflare",
+        recordCount: 7,
+      },
+    ],
     error: null,
   },
 ];
+
+describe("DomainsView record counts", () => {
+  it("shows the DNS record count, and a dash when it is unavailable", () => {
+    renderWithIntl(
+      <DomainsView
+        providers={[
+          {
+            ...PROVIDERS_WITH_DOMAIN[0],
+            domains: [
+              ...PROVIDERS_WITH_DOMAIN[0].domains,
+              {
+                id: "zone-2",
+                name: "unreadable.dev",
+                provider: "cloudflare",
+                recordCount: null,
+              },
+            ],
+          },
+        ]}
+        categories={[]}
+        services={[]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "DNS-записи" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
 
 describe("DomainsView bookmark/monitoring actions", () => {
   it("offers to add an unlinked domain to monitoring", async () => {
