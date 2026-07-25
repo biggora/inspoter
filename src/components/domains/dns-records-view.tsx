@@ -35,12 +35,24 @@ import {
   DnsRecordDialog,
   type DnsRecordDialogState,
 } from "./dns-record-dialog";
+import { DomainLinkMenu, LinkedBadges } from "./domain-link-menu";
+import {
+  lookupLinkedState,
+  recordLinkTarget,
+  type LinkedState,
+  type LinkTarget,
+} from "./link-targets";
 
 interface DnsRecordsViewProps {
   providerId: string;
   domainId: string;
   domainName: string;
   onBack: () => void;
+  /** Bookmark/monitoring wiring — owned by the parent DomainsView. */
+  hasCategories: boolean;
+  linkedIndex: Map<string, LinkedState>;
+  onAddBookmark: (target: LinkTarget) => void;
+  onAddMonitor: (target: LinkTarget) => void;
 }
 
 // DNS detail view (design.md §6.1, AC-DOM-004..009) — drill-in from
@@ -52,6 +64,10 @@ export function DnsRecordsView({
   domainId,
   domainName,
   onBack,
+  hasCategories,
+  linkedIndex,
+  onAddBookmark,
+  onAddMonitor,
 }: DnsRecordsViewProps) {
   const t = useTranslations("domains");
   const [records, setRecords] = useState<DnsRecord[]>([]);
@@ -149,39 +165,55 @@ export function DnsRecordsView({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {records.map((record) => (
-              <TableRow key={record.id}>
-                <TableCell>{record.type}</TableCell>
-                <TableCell className="font-mono">{record.name}</TableCell>
-                <TableCell className="font-mono">{record.value}</TableCell>
-                <TableCell className="font-mono">{record.ttl}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setRecordDialog({
-                          mode: "edit",
-                          providerId,
-                          domainId,
-                          record,
-                        })
-                      }
-                    >
-                      {t("editButton")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setDeleteTarget(record)}
-                    >
-                      {t("deleteButton")}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {records.map((record) => {
+              const linkTarget = recordLinkTarget(record, domainName);
+              const linked = lookupLinkedState(linkedIndex, linkTarget);
+              return (
+                <TableRow key={record.id}>
+                  <TableCell>{record.type}</TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono">{record.name}</span>
+                      <LinkedBadges linked={linked} />
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono">{record.value}</TableCell>
+                  <TableCell className="font-mono">{record.ttl}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setRecordDialog({
+                            mode: "edit",
+                            providerId,
+                            domainId,
+                            record,
+                          })
+                        }
+                      >
+                        {t("editButton")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(record)}
+                      >
+                        {t("deleteButton")}
+                      </Button>
+                      <DomainLinkMenu
+                        target={linkTarget}
+                        linked={linked}
+                        hasCategories={hasCategories}
+                        onAddBookmark={() => onAddBookmark(linkTarget)}
+                        onAddMonitor={() => onAddMonitor(linkTarget)}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       ) : null}

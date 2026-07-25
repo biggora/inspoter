@@ -52,6 +52,7 @@ import type { CategoryWithBookmarks } from "@/lib/services/bookmarks";
 import { bookmarksApi, categoriesApi } from "./api";
 import { BookmarkDialog, type BookmarkDialogState } from "./bookmark-dialog";
 import { CategoryDialog, type CategoryDialogState } from "./category-dialog";
+import { flattenCategoryOptions } from "./category-options";
 import { CategorySection } from "./category-section";
 import { DeleteBookmarkDialog } from "./delete-bookmark-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
@@ -206,17 +207,7 @@ export function BookmarksBoard({
     }),
   );
 
-  // Phase 4: a bookmark may be assigned to either a top-level group or a
-  // subcategory with no restriction, so options are the flattened tree;
-  // subcategory labels are prefixed so an operator can tell them apart from
-  // top-level groups in the plain <select>.
-  const categoryOptions = optimisticCategories.flatMap((category) => [
-    { id: category.id, name: category.name },
-    ...category.childCategories.map((sub) => ({
-      id: sub.id,
-      name: `— ${sub.name}`,
-    })),
-  ]);
+  const categoryOptions = flattenCategoryOptions(optimisticCategories);
 
   // Total bookmark count shown next to the page title — always the full
   // library size across every category and subcategory, independent of the

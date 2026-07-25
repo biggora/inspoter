@@ -37,8 +37,22 @@ import { ApiError, bookmarkFaviconApi, bookmarksApi } from "./api";
 import { ColorPicker } from "./color-picker";
 import { isValidHttpUrl } from "./validation";
 
+// `initial` pre-fills the create form — used by the domains views, which
+// open this dialog with a domain / DNS record already resolved to a name and
+// URL (src/components/domains/link-targets.ts).
+export interface BookmarkDialogInitialValues {
+  name?: string;
+  url?: string;
+  description?: string;
+}
+
 export type BookmarkDialogState =
-  { mode: "create"; categoryId: string } | { mode: "edit"; bookmark: Bookmark };
+  | {
+      mode: "create";
+      categoryId: string;
+      initial?: BookmarkDialogInitialValues;
+    }
+  | { mode: "edit"; bookmark: Bookmark };
 
 interface BookmarkDialogProps {
   state: BookmarkDialogState | null;
@@ -96,11 +110,11 @@ export function BookmarkDialog({
       setDescription(bookmark.description ?? "");
       setCategory(bookmark.categoryId);
     } else if (state?.mode === "create") {
-      setName("");
-      setUrl("");
+      setName(state.initial?.name ?? "");
+      setUrl(state.initial?.url ?? "");
       setIcon("");
       setColor(null);
-      setDescription("");
+      setDescription(state.initial?.description ?? "");
       setCategory(state.categoryId);
     }
     setErrors({});

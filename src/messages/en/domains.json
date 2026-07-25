@@ -17,6 +17,15 @@
   "actionsHeader": "Actions",
   "viewDnsButton": "View DNS",
 
+  "linkActionsLabel": "Actions for {name}",
+  "addToBookmarksAction": "Add to Bookmarks",
+  "addToMonitoringAction": "Add to Monitoring",
+  "openInBookmarksAction": "Open in Bookmarks",
+  "openInMonitoringAction": "Open in Monitoring",
+  "bookmarkedBadge": "Bookmarked",
+  "monitoredBadge": "Monitored",
+  "noCategoriesHint": "Create a bookmark category first",
+
   "loadRecordsError": "Failed to load DNS records. Please try again.",
   "deleteRecordSuccessToast": "DNS record deleted.",
   "deleteRecordError": "Failed to delete DNS record. Please try again.",
