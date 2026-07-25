@@ -302,6 +302,7 @@ export function MailSidebar({
 
           {labelsLoading ? (
             <div
+              role="status"
               className="space-y-1.5 p-1"
               aria-label={t("loadingLabelsLabel")}
             >

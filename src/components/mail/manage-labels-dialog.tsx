@@ -329,6 +329,7 @@ export function ManageLabelsDialog({
 
                 {loading ? (
                   <div
+                    role="status"
                     className="space-y-2"
                     aria-label={t("loadingLabelsLabel")}
                   >

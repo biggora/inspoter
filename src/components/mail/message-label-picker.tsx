@@ -171,6 +171,7 @@ export function MessageLabelPicker({
         >
           {loading ? (
             <div
+              role="status"
               aria-label={t("loadingLabelsLabel")}
               className="space-y-1.5 p-1"
             >
