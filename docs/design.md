@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.13
-**Status:** Mail label and filter controls opened to all active-workspace members; awaiting user verification
+**Version:** v2.14
+**Status:** Unified card status indicator with live-state pulse; awaiting user verification
 **Owner:** UI/UX Designer
-**Date:** 2026-07-20
+**Date:** 2026-07-25
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.11, docs/architecture.md v1.8, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -130,9 +130,13 @@ Flat surfaces use shadow-none. Floating layers use only:
 - shadow-modal: 0 12px 32px -8px foreground-950/18%, 0 4px 8px -4px foreground-950/10%.
 - Modal scrim: black at 30%.
 
+Every card status is a single shared indicator (`src/components/ui/status-indicator.tsx`): a badge whose leading 6px dot takes its colour from the badge variant via `bg-current`, followed by the mandatory visible label. Feature components never rebuild this markup and never hardcode the state colour.
+
+Live and transitional states — service `UP`, server `running`/`starting`/`stopping`/`restarting`, hosting `active`, metrics `live`, and any in-flight power or suspend mutation — add a halo that expands from the dot to 2.2× and fades out over `--duration-pulse` (2000ms, ease-out, infinite). Settled states (Down, Stopped, Suspended, Pending, Not configured) and historical records such as the service check-history table stay static. The halo is decorative: the dot wrapper is `aria-hidden`, so the status still reads from text alone, and reduced-motion removes the animation per §2.6.
+
 ### 2.6 Motion, focus, contrast, and keyboard
 
-Motion durations are 150ms fast, 200ms base, 250ms slow, and 500ms chart. Easing is cubic-bezier(0,0,0.2,1) or cubic-bezier(0.4,0,0.2,1). Allowed entrances are fade with 4px rise, scale from 0.95, and 16px right slide. No bounce.
+Motion durations are 150ms fast, 200ms base, 250ms slow, 500ms chart, and 2000ms pulse (looping status halo only). Easing is cubic-bezier(0,0,0.2,1) or cubic-bezier(0.4,0,0.2,1). Allowed entrances are fade with 4px rise, scale from 0.95, and 16px right slide. No bounce.
 
 Reduced-motion mode removes translate, scale, slide, pulse, and shimmer; skeletons become static and all state changes remain understandable.
 
@@ -491,6 +495,15 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.14 — 2026-07-25 (Unified card status indicator)
+
+Replaces the three copied status-badge implementations in Services, Servers, and
+Hosting with one shared indicator (§2.5). Live and transitional states gain a
+looping halo pulse on the dot; settled states and historical check rows stay
+static. Adds the 2000ms pulse duration to §2.6; reduced-motion behaviour and the
+never-colour-only rule are unchanged. The server metrics badge now carries the
+same dot as every other status.
 
 ### v2.13 — 2026-07-24 (Mail labels and rules opened to members)
 

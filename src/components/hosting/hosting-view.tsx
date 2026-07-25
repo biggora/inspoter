@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,7 +33,10 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import {
+  StatusIndicator,
+  type StatusIndicatorVariant,
+} from "@/components/ui/status-indicator";
 import {
   fetchAccounts,
   getAccount,
@@ -56,11 +58,11 @@ type PageState = "loading" | "error" | "empty" | "ready";
 
 const statusConfig: Record<
   string,
-  { labelKey: string; variant: "success" | "secondary" | "warning" }
+  { labelKey: string; variant: StatusIndicatorVariant; pulse: boolean }
 > = {
-  active: { labelKey: "statusActive", variant: "success" },
-  suspended: { labelKey: "statusSuspended", variant: "warning" },
-  unknown: { labelKey: "statusUnknown", variant: "secondary" },
+  active: { labelKey: "statusActive", variant: "success", pulse: true },
+  suspended: { labelKey: "statusSuspended", variant: "warning", pulse: false },
+  unknown: { labelKey: "statusUnknown", variant: "secondary", pulse: false },
 };
 
 export function HostingView() {
@@ -381,16 +383,11 @@ function HostingCard({
           </div>
         </div>
         <CardAction>
-          <Badge variant={config.variant}>
-            <span
-              className={cn(
-                "size-1.5 shrink-0 rounded-full bg-current",
-                busy && "animate-pulse motion-reduce:animate-none",
-              )}
-              aria-hidden="true"
-            />
-            {t(config.labelKey)}
-          </Badge>
+          <StatusIndicator
+            variant={config.variant}
+            label={t(config.labelKey)}
+            pulse={config.pulse || busy}
+          />
         </CardAction>
       </CardHeader>
 
