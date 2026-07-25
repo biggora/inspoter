@@ -245,10 +245,12 @@ export async function setHiddenSections(
   });
 }
 
+// Returns the deleted row so callers can journal the removal (its name is
+// gone from the DB by the time they need it).
 export async function deleteWorkspace(
   id: string,
   operatorId: string,
-): Promise<void> {
+): Promise<Workspace> {
   await findWorkspaceOrThrow(id);
   await requireOwner(id, operatorId);
 
@@ -259,9 +261,9 @@ export async function deleteWorkspace(
     throw new LastWorkspaceError();
   }
 
-  await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     await tx.localServer.deleteMany({ where: { workspaceId: id } });
-    await tx.workspace.delete({ where: { id } });
+    return tx.workspace.delete({ where: { id } });
   });
 }
 

@@ -49,18 +49,24 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     (error) => mapWorkspaceServiceError(error),
   );
   if (authResult instanceof NextResponse) return authResult;
-  const { operator } = authResult;
+  const { operator, workspace } = authResult;
   const { id } = await params;
 
   try {
-    await workspacesService.deleteWorkspace(id, operator.id);
-    recordActivity(id, {
-      operatorId: operator.id,
-      operatorName: operator.username,
-      action: "delete",
-      entityType: "workspace",
-      entityId: id,
-    });
+    const deleted = await workspacesService.deleteWorkspace(id, operator.id);
+    // Journal into the operator's active workspace, never into `id`: an
+    // Activity row FKs to Workspace and would cascade away with the workspace
+    // it describes. Nothing to write to when the active one is what went.
+    if (workspace.id !== id) {
+      recordActivity(workspace.id, {
+        operatorId: operator.id,
+        operatorName: operator.username,
+        action: "delete",
+        entityType: "workspace",
+        entityId: id,
+        entityLabel: deleted.name,
+      });
+    }
     return emptyResponse();
   } catch (error) {
     return mapWorkspaceServiceError(error);
