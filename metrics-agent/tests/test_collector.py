@@ -175,6 +175,20 @@ class PushMetricsBoundModeTests(unittest.TestCase):
 
         self.assertFalse(collector._bound_mode)
 
+    def test_request_sends_own_user_agent(self):
+        """The default "Python-urllib/x.y" is blocked as a bot signature by
+        Cloudflare's Browser Integrity Check (403, error 1010)."""
+        response = self._mock_response(200, {"localServerId": "abc"})
+        with mock.patch(
+            "collector.urllib.request.urlopen", return_value=response
+        ) as urlopen_mock:
+            collector.push_metrics({"hostname": "x"}, timeout=5)
+
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(
+            request.get_header("User-agent"), f"inspoter-metrics-agent/{collector.AGENT_VERSION}"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
