@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import * as servicesService from "@/lib/services/services";
 import { MonitorType, Prisma, ServiceStatus } from "@/generated/prisma/client";
@@ -391,6 +391,54 @@ describe("applyCheckResult(): flip detection and Alert integration", () => {
     expect(checks).toHaveLength(1);
     expect(checks[0].status).toBe(ServiceStatus.UP);
     expect(checks[0].responseTimeMs).toBe(20);
+  });
+
+  // The scheduler only logs a failed check (scheduler.ts checkOneService), so
+  // a flip persisted before its Alert would be lost for good — nothing ever
+  // re-detects it. Writing the Alert first makes the failure retryable.
+  it("leaves the service status untouched when the Alert write fails, so the next check retries the flip", async () => {
+    const serviceName = `${NAME_PREFIX}-alert-write-failure`;
+    const created = await servicesService.create(
+      workspaceId,
+      httpInput(serviceName),
+    );
+    const up = await servicesService.applyCheckResult(created, {
+      ok: true,
+      responseTimeMs: 11,
+    });
+    expect(up.currentStatus).toBe(ServiceStatus.UP);
+
+    const alertCreate = vi
+      .spyOn(db.alert, "create")
+      .mockRejectedValueOnce(new Error("alert write failed"));
+
+    await expect(
+      servicesService.applyCheckResult(up, {
+        ok: false,
+        responseTimeMs: 4,
+        message: "down 1",
+      }),
+    ).rejects.toThrow("alert write failed");
+    alertCreate.mockRestore();
+
+    const afterFailure = await db.service.findUniqueOrThrow({
+      where: { id: created.id, workspaceId },
+    });
+    expect(afterFailure.currentStatus).toBe(ServiceStatus.UP);
+    expect(afterFailure.consecutiveFailures).toBe(0);
+
+    const retried = await servicesService.applyCheckResult(afterFailure, {
+      ok: false,
+      responseTimeMs: 4,
+      message: "down 2",
+    });
+    expect(retried.currentStatus).toBe(ServiceStatus.DOWN);
+
+    const alerts = await db.alert.findMany({
+      where: { workspaceId, source: serviceName },
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].message).toBe("down 2");
   });
 });
 

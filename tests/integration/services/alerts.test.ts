@@ -79,6 +79,41 @@ describe("AC-ALR-007: create() with category auto-upsert", () => {
     const matching = categories.filter((c) => c.name === categoryName);
     expect(matching).toHaveLength(1);
   });
+
+  // The Services scheduler checks up to CHUNK_SIZE services per tick inside a
+  // single Promise.all, so several services flipping at once race on the very
+  // first "Сервисы" category of a workspace. A non-atomic find-then-create
+  // loses every loser of that race to a unique-constraint violation.
+  it("does not lose alerts when concurrent creates race on the same new category", async () => {
+    const categoryName = `${NAME_PREFIX}-concurrent`;
+    // The pg pool opens connections lazily, so without a warm-up the first
+    // create would finish before the rest even have a socket — and the race
+    // this test exists for would never happen.
+    await Promise.all(
+      Array.from({ length: 10 }, () =>
+        db.alertCategory.findFirst({ where: { workspaceId, name: "warmup" } }),
+      ),
+    );
+
+    const created = await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        alertsService.create(workspaceId, {
+          category: categoryName,
+          severity: "critical",
+          source: `racer-${i}`,
+          message: `Concurrent alert ${i}`,
+        }),
+      ),
+    );
+
+    const categories = await alertsService.listCategories(workspaceId);
+    expect(categories.filter((c) => c.name === categoryName)).toHaveLength(1);
+
+    const stored = await db.alert.findMany({
+      where: { id: { in: created.map((a) => a.id) } },
+    });
+    expect(stored).toHaveLength(10);
+  });
 });
 
 describe("AC-ALR-007: create() with explicit timestamp", () => {
@@ -340,6 +375,14 @@ describe("AC-ALR-001/002: createCategory / renameCategory / deleteCategory", () 
     });
     expect(remainingAlert).not.toBeNull();
     expect(remainingAlert?.alertCategoryId).toBeNull();
+
+    // "No orphan" has to hold for the list the UI actually renders, not just
+    // for the row in the table — otherwise deleting a category silently hides
+    // its alerts forever.
+    const { items } = await alertsService.list(workspaceId, {});
+    const listed = items.find((a) => a.id === alert.id);
+    expect(listed).toBeDefined();
+    expect(listed?.alertCategory).toBeNull();
   });
 });
 

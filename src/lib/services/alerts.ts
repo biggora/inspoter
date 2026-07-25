@@ -69,24 +69,24 @@ export async function create(
   workspaceId: string,
   input: CreateAlertInput,
 ): Promise<{ id: string }> {
-  let alertCategoryId: string | null = null;
-  const existing = await db.alertCategory.findFirst({
-    where: { workspaceId, name: input.category },
+  // Atomic get-or-create on @@unique([workspaceId, name]). A find-then-create
+  // pair would lose the race whenever several services flip inside one
+  // scheduler tick (scheduler.ts checks a chunk via Promise.all) on a
+  // workspace that has no such category yet: every loser fails with P2002 and
+  // its alert is dropped. `update` is a no-op write rather than `{}` so the
+  // query compiles to INSERT ... ON CONFLICT DO UPDATE.
+  const category = await db.alertCategory.upsert({
+    where: { workspaceId_name: { workspaceId, name: input.category } },
+    create: { name: input.category, workspaceId },
+    update: { name: input.category },
   });
-  if (existing) {
-    alertCategoryId = existing.id;
-  } else {
-    const created = await db.alertCategory.create({
-      data: { name: input.category, workspaceId },
-    });
-    alertCategoryId = created.id;
-  }
+  const alertCategoryId = category.id;
 
   const entry = await db.alert.create({
     data: {
       workspaceId,
       alertCategoryId,
-      alertCategoryWorkspaceId: alertCategoryId ? workspaceId : null,
+      alertCategoryWorkspaceId: workspaceId,
       severity: input.severity,
       source: input.source,
       message: input.message,
@@ -110,11 +110,13 @@ export async function list(
   const pageSize = params.pageSize ?? env.LIST_PAGE_SIZE;
   const sort = params.sort ?? "desc";
 
-  const where: Prisma.AlertWhereInput = {
-    alertCategory: params.categoryId
-      ? { id: params.categoryId, workspaceId }
-      : { workspaceId },
-  };
+  // Scoped by Alert.workspaceId rather than through the alertCategory
+  // relation: a relation filter is an implicit `is`, which drops every
+  // uncategorized alert (alertCategoryId = null) — the exact rows AC-ALR-002
+  // promises to keep after a category is deleted. Filtering on the model's own
+  // columns also lets the [workspaceId, ...] indexes serve the query.
+  const where: Prisma.AlertWhereInput = { workspaceId };
+  if (params.categoryId) where.alertCategoryId = params.categoryId;
   if (params.severity) where.severity = params.severity;
   if (params.query)
     where.message = { contains: params.query, mode: "insensitive" };

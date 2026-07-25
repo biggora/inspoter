@@ -289,18 +289,11 @@ export async function applyCheckResult(
     },
   });
 
-  const updated = await db.service.update({
-    where: { id: service.id, workspaceId: service.workspaceId },
-    data: {
-      currentStatus: result.status,
-      consecutiveFailures: result.consecutiveFailures,
-      lastCheckedAt: now,
-      lastResponseTimeMs: outcome.responseTimeMs,
-      lastMessage: outcome.message ?? null,
-      nextCheckAt: new Date(now.getTime() + service.intervalSeconds * 1000),
-    },
-  });
-
+  // The Alert is written before the new status is persisted: the scheduler
+  // only logs a failed check, so a flip committed ahead of its Alert would
+  // never be re-detected and the Alert would be lost for good. This way a
+  // failed Alert write leaves the service on its old status and the next
+  // check retries the same flip.
   if (result.flipped) {
     // TODO(i18n): category/message are persisted to the DB as literal Russian text — migrating to translation keys needs a data migration for existing rows, out of scope for Phase C.
     await alertsService.create(service.workspaceId, {
@@ -321,6 +314,18 @@ export async function applyCheckResult(
       message: outcome.message ?? null,
     });
   }
+
+  const updated = await db.service.update({
+    where: { id: service.id, workspaceId: service.workspaceId },
+    data: {
+      currentStatus: result.status,
+      consecutiveFailures: result.consecutiveFailures,
+      lastCheckedAt: now,
+      lastResponseTimeMs: outcome.responseTimeMs,
+      lastMessage: outcome.message ?? null,
+      nextCheckAt: new Date(now.getTime() + service.intervalSeconds * 1000),
+    },
+  });
 
   return updated;
 }
