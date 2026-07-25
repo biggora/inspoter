@@ -327,10 +327,19 @@ export class ImapSmtpMailDriver implements MailDriver {
     folderPath: string,
     uid: bigint,
     targetPath: string,
-  ): Promise<void> {
-    await this.withImap("move", async (client) => {
+  ): Promise<{ moved: boolean; destinationUid: bigint | null }> {
+    return this.withImap("move", async (client) => {
       await client.mailboxOpen(folderPath);
-      await client.messageMove(uid.toString(), targetPath, { uid: true });
+      const result = await client.messageMove(uid.toString(), targetPath, {
+        uid: true,
+      });
+      if (!result) return { moved: false, destinationUid: null };
+      const destinationUid = result.uidMap?.get(Number(uid));
+      return {
+        moved: true,
+        destinationUid:
+          destinationUid === undefined ? null : BigInt(destinationUid),
+      };
     });
   }
 

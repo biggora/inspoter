@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   processRun: vi.fn(),
   recordFailure: vi.fn(),
   renewRun: vi.fn(),
+  claimActionJobs: vi.fn(),
+  processActionJob: vi.fn(),
+  recordActionFailure: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -20,6 +23,11 @@ vi.mock("@/lib/services/mail-filter-runs", () => ({
   processClaimedMailFilterRunBatch: mocks.processRun,
   recordMailFilterRunFailure: mocks.recordFailure,
   renewMailFilterRunLease: mocks.renewRun,
+}));
+vi.mock("@/lib/services/mail-filter-action-jobs", () => ({
+  claimMailFilterActionJobs: mocks.claimActionJobs,
+  processClaimedMailFilterActionJob: mocks.processActionJob,
+  recordMailFilterActionJobFailure: mocks.recordActionFailure,
 }));
 
 import { runMailSchedulerTick } from "@/lib/services/mail-scheduler";
@@ -43,6 +51,34 @@ describe("Mail scheduler filter-run integration", () => {
     });
     mocks.recordFailure.mockResolvedValue(undefined);
     mocks.renewRun.mockResolvedValue(true);
+    mocks.claimActionJobs.mockResolvedValue([]);
+    mocks.processActionJob.mockResolvedValue(undefined);
+    mocks.recordActionFailure.mockResolvedValue(undefined);
+  });
+
+  it("drains bounded transport actions before starting account sync", async () => {
+    const order: string[] = [];
+    mocks.claimActionJobs.mockResolvedValue([
+      { id: "action-1", leaseToken: "action-lease-1" },
+      { id: "action-2", leaseToken: "action-lease-2" },
+    ]);
+    mocks.processActionJob.mockImplementation(async (claim: { id: string }) => {
+      order.push(claim.id);
+      if (claim.id === "action-2") throw new Error("transport failed");
+    });
+    mocks.syncAccount.mockImplementation(async () => {
+      order.push("sync");
+    });
+
+    await runMailSchedulerTick();
+
+    expect(mocks.claimActionJobs).toHaveBeenCalledWith(3);
+    expect(mocks.processActionJob).toHaveBeenCalledTimes(2);
+    expect(mocks.recordActionFailure).toHaveBeenCalledWith(
+      { id: "action-2", leaseToken: "action-lease-2" },
+      expect.any(Error),
+    );
+    expect(order.indexOf("sync")).toBeGreaterThan(order.indexOf("action-1"));
   });
 
   it("runs the IMAP sweep with at most three one-batch run claims", async () => {

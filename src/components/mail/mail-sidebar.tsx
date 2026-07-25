@@ -19,6 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { StatusDot } from "@/components/ui/status-indicator";
+import { cn } from "@/lib/utils";
 import type { MailAccountDto, MailFolderDto, MailLabelDto } from "./api";
 import { LabelChip } from "./label-chip";
 
@@ -44,6 +45,9 @@ const SPECIAL_USE_ICONS: Partial<Record<MailFolderDto["specialUse"], string>> =
     JUNK: "ri-spam-line",
     ARCHIVE: "ri-archive-line",
   };
+
+const SELECTED_NAV_ITEM_CLASS =
+  "dark:bg-secondary-300 dark:hover:bg-secondary-400";
 
 export function folderDisplayName(folder: MailFolderDto, t: Translate): string {
   const key = SPECIAL_USE_NAME_KEYS[folder.specialUse];
@@ -244,7 +248,10 @@ export function MailSidebar({
                   size="sm"
                   onClick={() => onSelectFolder(folder.id)}
                   aria-current={isSelected ? "true" : undefined}
-                  className="w-full justify-start"
+                  className={cn(
+                    "w-full justify-start",
+                    isSelected && SELECTED_NAV_ITEM_CLASS,
+                  )}
                 >
                   <Icon name={iconClass} aria-hidden data-icon="inline-start" />
                   <span className="min-w-0 flex-1 truncate text-left">
@@ -278,7 +285,10 @@ export function MailSidebar({
             size="sm"
             onClick={() => onSelectLabel(null)}
             aria-current={selectedLabelId === null ? "true" : undefined}
-            className="w-full justify-start"
+            className={cn(
+              "w-full justify-start",
+              selectedLabelId === null && SELECTED_NAV_ITEM_CLASS,
+            )}
           >
             <Icon
               name="ri-price-tag-3-line"
@@ -334,7 +344,10 @@ export function MailSidebar({
                     onClick={() => onSelectLabel(label.id)}
                     aria-current={isSelected ? "true" : undefined}
                     aria-describedby={countDescriptionId}
-                    className="w-full justify-start overflow-hidden"
+                    className={cn(
+                      "w-full justify-start overflow-hidden",
+                      isSelected && SELECTED_NAV_ITEM_CLASS,
+                    )}
                   >
                     <LabelChip
                       label={label}

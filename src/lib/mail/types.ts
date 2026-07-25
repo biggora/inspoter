@@ -68,6 +68,11 @@ export interface RemoteMessageFlags {
   isFlagged: boolean;
 }
 
+export interface MailMoveResult {
+  moved: boolean;
+  destinationUid: bigint | null;
+}
+
 // Raw connection settings — built either from a MailAccount DB row (with the
 // decrypted password) or straight from dialog input for /api/mail/accounts/test.
 export interface MailConnectionConfig {
@@ -95,7 +100,11 @@ export interface MailDriver {
     uids: bigint[],
   ): Promise<Map<bigint, RemoteMessageFlags>>;
   setSeen(folderPath: string, uid: bigint, seen: boolean): Promise<void>;
-  move(folderPath: string, uid: bigint, targetPath: string): Promise<void>;
+  move(
+    folderPath: string,
+    uid: bigint,
+    targetPath: string,
+  ): Promise<MailMoveResult>;
   /** Permanent removal: store \Deleted + expunge (no trash detour). */
   deleteMessage(folderPath: string, uid: bigint): Promise<void>;
   downloadAttachment(

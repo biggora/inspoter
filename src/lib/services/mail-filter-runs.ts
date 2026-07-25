@@ -1,8 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { matchesMailFilter } from "@/lib/mail-filter-matcher";
+import {
+  legacyCriteriaToMailFilterConditions,
+  matchesMailFilterRule,
+  parseMailFilterConditionSnapshot,
+  parseMailFilterMatchMode,
+} from "@/lib/mail-filter-matcher";
+import type {
+  MailFilterConditionInput,
+  MailFilterMatchMode,
+} from "@/lib/mail-filter-types";
 import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
+import { enqueueMailFilterActionJobs } from "@/lib/services/mail-filter-action-jobs";
 
 export const MAIL_FILTER_RUN_BATCH_SIZE = 200;
 export const MAIL_FILTER_RUN_LEASE_MS = 5 * 60 * 1000;
@@ -76,6 +86,10 @@ export interface MailFilterRunSnapshot {
   labelId: string;
   fromAddress: string | null;
   subjectContains: string | null;
+  matchMode?: MailFilterMatchMode;
+  conditions?: readonly MailFilterConditionInput[];
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
 }
 
 export interface ClaimedMailFilterRun {
@@ -108,6 +122,15 @@ export async function createMailFilterRunInTransaction(
   rule: MailFilterRunSnapshot,
   now = new Date(),
 ) {
+  const conditions =
+    rule.conditions && rule.conditions.length > 0
+      ? rule.conditions.map(({ field, operator, value, isNegated }) => ({
+          field,
+          operator,
+          value,
+          isNegated,
+        }))
+      : legacyCriteriaToMailFilterConditions(rule);
   const cutoff = await tx.mailItem.findFirst({
     where: {
       workspaceId,
@@ -129,6 +152,10 @@ export async function createMailFilterRunInTransaction(
       snapshotLabelId: rule.labelId,
       snapshotFromAddress: rule.fromAddress,
       snapshotSubjectContains: rule.subjectContains,
+      snapshotMatchMode: rule.matchMode ?? "ALL",
+      snapshotConditions: conditions as unknown as Prisma.InputJsonValue,
+      snapshotSetRead: rule.setRead,
+      snapshotMoveToFolderId: rule.moveToFolderId,
       cutoffCreatedAt: cutoff?.createdAt,
       cutoffId: cutoff?.id,
       status: completed ? "COMPLETED" : "PENDING",
@@ -327,10 +354,15 @@ export async function processMailFilterRunBatchInTransaction(
     },
     select: {
       workspaceId: true,
+      sourceRuleId: true,
       snapshotAccountId: true,
       snapshotLabelId: true,
       snapshotFromAddress: true,
       snapshotSubjectContains: true,
+      snapshotMatchMode: true,
+      snapshotConditions: true,
+      snapshotSetRead: true,
+      snapshotMoveToFolderId: true,
       cutoffCreatedAt: true,
       cutoffId: true,
       cursorCreatedAt: true,
@@ -368,14 +400,28 @@ export async function processMailFilterRunBatchInTransaction(
         upperBound,
       ],
     },
-    select: { id: true, createdAt: true, fromAddress: true, subject: true },
+    select: {
+      id: true,
+      createdAt: true,
+      folderId: true,
+      isRead: true,
+      fromAddress: true,
+      toRecipients: true,
+      ccRecipients: true,
+      bccRecipients: true,
+      subject: true,
+      bodyText: true,
+      hasAttachments: true,
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: MAIL_FILTER_RUN_BATCH_SIZE,
   });
 
   const matched = rows.filter((row) =>
-    matchesMailFilter(
+    matchesMailFilterRule(
       {
+        matchMode: parseMailFilterMatchMode(run.snapshotMatchMode),
+        conditions: parseMailFilterConditionSnapshot(run.snapshotConditions),
         fromAddress: run.snapshotFromAddress,
         subjectContains: run.snapshotSubjectContains,
       },
@@ -393,6 +439,19 @@ export async function processMailFilterRunBatchInTransaction(
       })),
       skipDuplicates: true,
     });
+    for (const row of matched) {
+      await enqueueMailFilterActionJobs(tx, {
+        workspaceId: run.workspaceId,
+        accountId: run.snapshotAccountId,
+        mailItemId: row.id,
+        sourceRuleId: run.sourceRuleId,
+        sourceRunId: claim.id,
+        setRead: run.snapshotSetRead,
+        moveToFolderId: run.snapshotMoveToFolderId,
+        currentIsRead: row.isRead,
+        currentFolderId: row.folderId,
+      });
+    }
   }
 
   const completed = rows.length < MAIL_FILTER_RUN_BATCH_SIZE;

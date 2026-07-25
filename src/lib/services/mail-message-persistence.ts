@@ -4,7 +4,8 @@ import {
   type MailItem,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { matchingMailFilterLabelIds } from "@/lib/mail-filter-matcher";
+import { matchesMailFilterRule } from "@/lib/mail-filter-matcher";
+import { enqueueMailFilterActionJobs } from "@/lib/services/mail-filter-action-jobs";
 import {
   runMailAccountTransaction,
   type MailAccountTransactionRunner,
@@ -57,9 +58,22 @@ export async function persistIncomingMail(
             isActive: true,
           },
           select: {
+            id: true,
             fromAddress: true,
             subjectContains: true,
+            matchMode: true,
+            conditions: {
+              select: {
+                field: true,
+                operator: true,
+                value: true,
+                isNegated: true,
+              },
+              orderBy: [{ position: "asc" }, { id: "asc" }],
+            },
             labelId: true,
+            setRead: true,
+            moveToFolderId: true,
           },
           orderBy: [{ position: "asc" }, { id: "asc" }],
         })
@@ -100,10 +114,19 @@ export async function persistIncomingMail(
       },
     });
 
-    const labelIds = matchingMailFilterLabelIds(rules, {
+    const candidate = {
       fromAddress: input.fromAddress,
+      toRecipients: input.toRecipients,
+      ccRecipients: input.ccRecipients,
+      bccRecipients: input.bccRecipients,
       subject: input.subject,
-    });
+      bodyText: input.bodyText,
+      hasAttachments: attachments.length > 0,
+    };
+    const matchedRules = rules.filter((rule) =>
+      matchesMailFilterRule(rule, candidate),
+    );
+    const labelIds = [...new Set(matchedRules.map((rule) => rule.labelId))];
     if (labelIds.length > 0) {
       await tx.mailItemLabel.createMany({
         data: labelIds.map((labelId) => ({
@@ -114,6 +137,18 @@ export async function persistIncomingMail(
           labelWorkspaceId: input.workspaceId,
         })),
         skipDuplicates: true,
+      });
+    }
+    for (const rule of matchedRules) {
+      await enqueueMailFilterActionJobs(tx, {
+        workspaceId: input.workspaceId,
+        accountId: input.accountId,
+        mailItemId: item.id,
+        sourceRuleId: rule.id,
+        setRead: rule.setRead,
+        moveToFolderId: rule.moveToFolderId,
+        currentIsRead: item.isRead,
+        currentFolderId: item.folderId,
       });
     }
 

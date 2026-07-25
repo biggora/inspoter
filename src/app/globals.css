@@ -161,6 +161,26 @@
   .shell-icon-tile { display: inline-flex; width: 28px; height: 28px; flex: 0 0 28px; align-items: center; justify-content: center; border-radius: var(--radius-md); background: oklch(var(--secondary-100) / .72); color: oklch(var(--secondary-700)); }
   .shell-nav-item[data-active="true"] .shell-icon-tile { background: oklch(var(--primary-100)); color: oklch(var(--primary-700)); }
   .reduced-motion, .reduced-motion * { animation: none !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+
+  /*
+   * HTML email commonly hard-codes dark text for a light canvas. Keep message
+   * copy readable in dark mode while preserving authored action colors.
+   */
+  .dark .mail-body-content,
+  .dark
+    .mail-body-content
+    :where(*):not(
+      :where(
+        a[style*="background" i],
+        a[style*="background" i] *,
+        button,
+        button *,
+        [role="button"],
+        [role="button"] *
+      )
+    ) {
+    color: var(--text-body) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; } }

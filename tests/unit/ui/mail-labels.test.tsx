@@ -165,6 +165,14 @@ const FOLDERS: Record<string, MailFolderDto[]> = {
       position: 0,
       unreadCount: 0,
     },
+    {
+      id: "archive-1",
+      path: "Archive",
+      name: "Архив",
+      specialUse: "ARCHIVE",
+      position: 5,
+      unreadCount: 0,
+    },
   ],
   "account-2": [
     {
@@ -746,11 +754,11 @@ describe("Mail label chips", () => {
         accounts={[]}
         selectedAccountId={null}
         onSelectAccount={vi.fn()}
-        folders={[]}
+        folders={FOLDERS["account-1"]}
         foldersLoading={false}
         foldersError={null}
         onRetryFolders={vi.fn()}
-        selectedFolderId={null}
+        selectedFolderId="folder-1"
         onSelectFolder={vi.fn()}
         labels={ITEM.labels.map((label, index) => ({
           ...label,
@@ -769,10 +777,21 @@ describe("Mail label chips", () => {
 
     const labelsNav = screen.getByRole("navigation", { name: "Метки" });
     const labelsNavQueries = within(labelsNav);
+    const selectedFolder = within(
+      screen.getByRole("navigation", { name: "Папки" }),
+    ).getByRole("button", { name: "Входящие" });
     const selectedLabel = labelsNavQueries.getByRole("button", {
       name: "Production alerts",
     });
+    expect(selectedFolder).toHaveClass(
+      "dark:bg-secondary-300",
+      "dark:hover:bg-secondary-400",
+    );
     expect(selectedLabel).toHaveAttribute("aria-current", "true");
+    expect(selectedLabel).toHaveClass(
+      "dark:bg-secondary-300",
+      "dark:hover:bg-secondary-400",
+    );
     expect(selectedLabel).toHaveAccessibleDescription("12 писем");
     expect(within(selectedLabel).getByText("12")).toBeVisible();
 
@@ -985,19 +1004,40 @@ describe("Mail filter-rule lifecycle UI", () => {
     await user.clear(sender);
     await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
     expect(
-      screen.getByText("Укажите отправителя или текст темы."),
+      screen.getByText("Добавьте хотя бы одно заполненное условие."),
     ).toBeInTheDocument();
     expect(apiMocks.createMailFilterRule).not.toHaveBeenCalled();
 
+    await user.click(screen.getByRole("combobox", { name: "Поле условия 1" }));
+    await user.click(screen.getByRole("option", { name: "Тема" }));
     await user.type(screen.getByLabelText("Тема содержит"), "  Deployment  ");
+    await user.click(
+      screen.getByRole("combobox", { name: "Статус прочтения" }),
+    );
+    await user.click(
+      screen.getByRole("option", { name: "Отметить прочитанным" }),
+    );
+    await user.click(
+      screen.getByRole("combobox", { name: "Переместить в папку" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Архив" }));
     await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(apiMocks.createMailFilterRule).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: DETAIL.accountId,
         labelId: LABEL.id,
-        fromAddress: null,
-        subjectContains: "Deployment",
+        matchMode: "ALL",
+        conditions: [
+          {
+            field: "SUBJECT",
+            operator: "CONTAINS",
+            value: "Deployment",
+            isNegated: false,
+          },
+        ],
+        setRead: true,
+        moveToFolderId: "archive-1",
         applyToExistingMail: false,
       }),
     );
@@ -1049,6 +1089,7 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     const ruleName = screen.getByLabelText("Название правила");
+    await user.click(screen.getByRole("button", { name: "Добавить условие" }));
     const subject = screen.getByLabelText("Тема содержит");
     await user.clear(ruleName);
     await user.type(ruleName, "Preserved rule name");
@@ -1088,7 +1129,6 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     await screen.findByRole("combobox", { name: "Применить метку" });
-    await user.type(screen.getByLabelText("Тема содержит"), "Subject filter");
     await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
     expect(
       await screen.findByText("Текст темы не должен превышать 200 символов."),
@@ -1160,7 +1200,15 @@ describe("Mail filter-rule lifecycle UI", () => {
     await waitFor(() =>
       expect(apiMocks.patchMailFilterRule).toHaveBeenCalledWith(
         "rule-1",
-        expect.objectContaining({ subjectContains: "Release" }),
+        expect.objectContaining({
+          conditions: expect.arrayContaining([
+            expect.objectContaining({
+              field: "SUBJECT",
+              operator: "CONTAINS",
+              value: "Release",
+            }),
+          ]),
+        }),
       ),
     );
 

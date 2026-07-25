@@ -119,8 +119,22 @@ describe("durable Mail filter runs", () => {
       accountId,
       labelId,
       name: `${PREFIX}-batch-rule`,
-      fromAddress: "SENDER@example.com",
-      subjectContains: "alert",
+      matchMode: "ALL",
+      conditions: [
+        {
+          field: "FROM_ADDRESS",
+          operator: "EQUALS",
+          value: "SENDER@example.com",
+          isNegated: false,
+        },
+        {
+          field: "SUBJECT",
+          operator: "CONTAINS",
+          value: "alert",
+          isNegated: false,
+        },
+      ],
+      setRead: true,
       applyToExistingMail: true,
     });
     expect(rule.latestRun?.status).toBe("PENDING");
@@ -168,6 +182,21 @@ describe("durable Mail filter runs", () => {
     expect(
       await db.mailItemLabel.count({
         where: { labelId, mailItemId: postCutoff.id },
+      }),
+    ).toBe(1);
+    expect(
+      await db.mailFilterActionJob.count({
+        where: { sourceRunId: claim.id, type: "SET_READ" },
+      }),
+    ).toBe(101);
+    expect(
+      await db.mailFilterActionJob.count({
+        where: {
+          sourceRunId: null,
+          sourceRuleId: rule.id,
+          mailItemId: postCutoff.id,
+          type: "SET_READ",
+        },
       }),
     ).toBe(1);
   });

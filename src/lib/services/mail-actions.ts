@@ -1,7 +1,12 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import type { Prisma } from "@/generated/prisma/client";
-import { getMailDriver, type MailAddress, type MailDriver } from "@/lib/mail";
+import {
+  getMailDriver,
+  MailTransportError,
+  type MailAddress,
+  type MailDriver,
+} from "@/lib/mail";
 import { buildOutgoingMailContent } from "@/lib/mail-message-content";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { AttachmentUnavailableError } from "@/lib/services/mail-attachments";
@@ -117,8 +122,9 @@ export type DeleteItemResult = { status: "trashed" | "deleted" };
 
 // First delete moves the item into the account's TRASH folder (when one
 // exists); deleting from TRASH — or without a trash folder — is permanent.
-// The locally moved row keeps uid: null until the next sync re-associates it
-// (unique [folderId, uid] ignores NULLs).
+// UIDPLUS-capable servers return the destination UID, which is persisted to
+// avoid a duplicate on the next sync. Servers without UIDPLUS fall back to a
+// null UID and normal reconciliation.
 export async function deleteItem(
   id: string,
   workspaceId: string,
@@ -130,12 +136,21 @@ export async function deleteItem(
       where: { workspaceId, accountId: item.accountId, specialUse: "TRASH" },
     });
     if (trash) {
-      await withItemDriver(item, (driver, uid) =>
-        driver.move(item.folder.path, uid, trash.path),
-      );
+      let destinationUid: bigint | null = null;
+      await withItemDriver(item, async (driver, uid) => {
+        const moved = await driver.move(item.folder.path, uid, trash.path);
+        if (!moved.moved) {
+          throw new MailTransportError("Source message is unavailable.");
+        }
+        destinationUid = moved.destinationUid;
+      });
       await db.mailItem.updateMany({
         where: { id, workspaceId },
-        data: { folderId: trash.id, folderWorkspaceId: workspaceId, uid: null },
+        data: {
+          folderId: trash.id,
+          folderWorkspaceId: workspaceId,
+          uid: destinationUid,
+        },
       });
       return { status: "trashed" };
     }
@@ -162,12 +177,21 @@ export async function moveItem(
   }
   if (target.id === item.folderId) return;
 
-  await withItemDriver(item, (driver, uid) =>
-    driver.move(item.folder.path, uid, target.path),
-  );
+  let destinationUid: bigint | null = null;
+  await withItemDriver(item, async (driver, uid) => {
+    const moved = await driver.move(item.folder.path, uid, target.path);
+    if (!moved.moved) {
+      throw new MailTransportError("Source message is unavailable.");
+    }
+    destinationUid = moved.destinationUid;
+  });
   await db.mailItem.updateMany({
     where: { id, workspaceId },
-    data: { folderId: target.id, folderWorkspaceId: workspaceId, uid: null },
+    data: {
+      folderId: target.id,
+      folderWorkspaceId: workspaceId,
+      uid: destinationUid,
+    },
   });
 }
 

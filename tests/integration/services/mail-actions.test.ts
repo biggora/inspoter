@@ -28,6 +28,12 @@ import {
   setRead,
 } from "@/lib/services/mail-actions";
 import {
+  claimMailFilterActionJobs,
+  enqueueMailFilterActionJobs,
+  processClaimedMailFilterActionJob,
+  recordMailFilterActionJobFailure,
+} from "@/lib/services/mail-filter-action-jobs";
+import {
   MailDraftNotFoundError,
   saveMailDraft,
   uploadMailDraftAttachment,
@@ -115,6 +121,93 @@ beforeEach(() => {
   resetMockMailStore();
 });
 
+describe("mail filter transport action queue", () => {
+  it("deduplicates, serializes, and applies read plus move actions remotely", async () => {
+    const account = await createSyncedAccount("filter-action-queue");
+    const inbox = await folderByPath(account.id, "INBOX");
+    const archive = await folderByPath(account.id, "Archive");
+    const item = await itemByUid(inbox.id, 1n);
+
+    const enqueue = () =>
+      db.$transaction((tx) =>
+        enqueueMailFilterActionJobs(tx, {
+          workspaceId,
+          accountId: account.id,
+          mailItemId: item.id,
+          sourceRuleId: "queue-rule",
+          setRead: true,
+          moveToFolderId: archive.id,
+          currentIsRead: false,
+          currentFolderId: inbox.id,
+        }),
+      );
+
+    expect(await enqueue()).toBe(2);
+    expect(await enqueue()).toBe(0);
+
+    const first = await claimMailFilterActionJobs(5);
+    expect(first).toHaveLength(1);
+    await processClaimedMailFilterActionJob(first[0]);
+
+    const second = await claimMailFilterActionJobs(5);
+    expect(second).toHaveLength(1);
+    await processClaimedMailFilterActionJob(second[0]);
+
+    const stored = await db.mailItem.findUnique({
+      where: { id: item.id },
+      select: { isRead: true, folderId: true, uid: true },
+    });
+    expect(stored).toEqual({
+      isRead: true,
+      folderId: archive.id,
+      uid: 1n,
+    });
+
+    const driver = new MockMailDriver(account.id);
+    expect((await driver.listUidsWithFlags("INBOX", [1n])).size).toBe(0);
+    expect(
+      (await driver.listUidsWithFlags("Archive", [1n])).get(1n)?.isRead,
+    ).toBe(true);
+  });
+
+  it("fails a stale move target permanently without retrying", async () => {
+    const account = await createSyncedAccount("filter-action-bad-target");
+    const inbox = await folderByPath(account.id, "INBOX");
+    const item = await itemByUid(inbox.id, 2n);
+    await db.$transaction((tx) =>
+      enqueueMailFilterActionJobs(tx, {
+        workspaceId,
+        accountId: account.id,
+        mailItemId: item.id,
+        sourceRuleId: "bad-target-rule",
+        moveToFolderId: "missing-folder",
+        currentIsRead: item.isRead,
+        currentFolderId: inbox.id,
+      }),
+    );
+
+    const [claim] = await claimMailFilterActionJobs(1);
+    let failure: unknown;
+    try {
+      await processClaimedMailFilterActionJob(claim);
+    } catch (error) {
+      failure = error;
+    }
+    await recordMailFilterActionJobFailure(claim, failure);
+
+    expect(
+      await db.mailFilterActionJob.findUnique({
+        where: { id: claim.id },
+        select: { status: true, attempts: true, lastError: true },
+      }),
+    ).toEqual({
+      status: "FAILED",
+      attempts: 1,
+      lastError: "Mail action target folder is unavailable.",
+    });
+  });
+});
+
 describe("setRead", () => {
   it("round-trips \\Seen through the driver and updates the DB row", async () => {
     const account = await createSyncedAccount("set-read");
@@ -163,7 +256,7 @@ describe("deleteItem", () => {
     // Local row moved to the trash folder; uid detaches until the next sync.
     const stored = await db.mailItem.findUnique({ where: { id: item.id } });
     expect(stored?.folderId).toBe(trash.id);
-    expect(stored?.uid).toBeNull();
+    expect(stored?.uid).toBe(1n);
 
     // Mock server: gone from INBOX, present in Trash.
     const driver = new MockMailDriver(account.id);
@@ -209,7 +302,7 @@ describe("moveItem", () => {
 
     const stored = await db.mailItem.findUnique({ where: { id: item.id } });
     expect(stored?.folderId).toBe(archive.id);
-    expect(stored?.uid).toBeNull();
+    expect(stored?.uid).toBe(1n);
 
     const driver = new MockMailDriver(account.id);
     expect((await driver.listUidsWithFlags("INBOX", [3n])).size).toBe(0);

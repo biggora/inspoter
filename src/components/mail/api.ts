@@ -14,9 +14,21 @@ import {
 } from "@/components/settings/mail-accounts-api";
 import type { MailSpecialUse } from "@/generated/prisma/client";
 import type { MailLabelColor } from "@/lib/mail-label-color";
+import type {
+  MailFilterConditionDto,
+  MailFilterConditionInput,
+  MailFilterMatchMode,
+} from "@/lib/mail-filter-types";
 
 export { ApiError };
-export type { MailAccountDto, MailLabelColor, MailSpecialUse };
+export type {
+  MailAccountDto,
+  MailFilterConditionDto,
+  MailFilterConditionInput,
+  MailFilterMatchMode,
+  MailLabelColor,
+  MailSpecialUse,
+};
 
 export interface MailFolderDto {
   id: string;
@@ -96,11 +108,16 @@ export interface MailFilterRuleDto {
   name: string;
   fromAddress: string | null;
   subjectContains: string | null;
+  matchMode?: MailFilterMatchMode;
+  conditions?: MailFilterConditionDto[];
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
   isActive: boolean;
   position: number;
   createdAt: string;
   updatedAt: string;
   label: Pick<MailLabelDto, "name" | "color">;
+  moveToFolder?: { name: string } | null;
   latestRun: MailFilterRunDto | null;
 }
 
@@ -298,16 +315,24 @@ export interface CreateMailFilterRuleInput {
   accountId: string;
   labelId: string;
   name: string;
-  fromAddress: string | null;
-  subjectContains: string | null;
+  matchMode?: MailFilterMatchMode;
+  conditions?: MailFilterConditionInput[];
+  fromAddress?: string | null;
+  subjectContains?: string | null;
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
   applyToExistingMail?: boolean;
 }
 
 export interface UpdateMailFilterRuleInput {
   labelId?: string;
   name?: string;
+  matchMode?: MailFilterMatchMode;
+  conditions?: MailFilterConditionInput[];
   fromAddress?: string | null;
   subjectContains?: string | null;
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
   isActive?: boolean;
   position?: number;
 }

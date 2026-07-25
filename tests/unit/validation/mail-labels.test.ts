@@ -175,6 +175,91 @@ describe("Mail filter-rule validation", () => {
     ).toBe(false);
   });
 
+  it("validates and normalizes extensible condition rules", () => {
+    expect(
+      createMailFilterRuleSchema.parse({
+        accountId: "account",
+        labelId: "label",
+        name: "Advanced",
+        matchMode: "ANY",
+        setRead: false,
+        moveToFolderId: "  archive-folder ",
+        conditions: [
+          {
+            field: "FROM_DOMAIN",
+            operator: "EQUALS",
+            value: "  Ｅxample.com ",
+            isNegated: false,
+          },
+          {
+            field: "HAS_ATTACHMENT",
+            operator: "IS",
+            value: "true",
+            isNegated: true,
+          },
+        ],
+      }),
+    ).toEqual({
+      accountId: "account",
+      labelId: "label",
+      name: "Advanced",
+      matchMode: "ANY",
+      setRead: false,
+      moveToFolderId: "archive-folder",
+      conditions: [
+        {
+          field: "FROM_DOMAIN",
+          operator: "EQUALS",
+          value: "Example.com",
+          isNegated: false,
+        },
+        {
+          field: "HAS_ATTACHMENT",
+          operator: "IS",
+          value: "true",
+          isNegated: true,
+        },
+      ],
+    });
+
+    expect(
+      createMailFilterRuleSchema.safeParse({
+        accountId: "account",
+        labelId: "label",
+        name: "Invalid operator",
+        conditions: [
+          {
+            field: "BODY",
+            operator: "EQUALS",
+            value: "value",
+            isNegated: false,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      createMailFilterRuleSchema.safeParse({
+        accountId: "account",
+        labelId: "label",
+        name: "Invalid boolean",
+        conditions: [
+          {
+            field: "HAS_ATTACHMENT",
+            operator: "IS",
+            value: "sometimes",
+            isNegated: false,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      updateMailFilterRuleSchema.parse({
+        setRead: null,
+        moveToFolderId: null,
+      }),
+    ).toEqual({ setRead: null, moveToFolderId: null });
+  });
+
   it("enforces 0/1/200/201 subject boundaries", () => {
     const subjectRule = {
       accountId: "account",
