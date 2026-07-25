@@ -335,6 +335,9 @@ inside both, leaving room for restarts and manual retries.
 - TLS certificate verification is on by default (`ssl.create_default_context()`),
   and a non-HTTPS endpoint is refused at startup.
 - The bearer token and the payload body are never logged.
+- Every request identifies itself as `inspoter-metrics-agent/<version>`. The
+  urllib default (`Python-urllib/x.y`) is a known bot signature and is rejected
+  by Cloudflare's Browser Integrity Check before it reaches the dashboard.
 
 Treat `.env` as a secret file: `chmod 600` it and keep it out of version
 control. If a token leaks, rotate it in **Settings → API Tokens** and update
@@ -397,6 +400,7 @@ with the release tag plus `latest` for non-prereleases.
 | Image pull fails with an empty tag                                | `AGENT_TAG` is unset                                                     | Add `AGENT_TAG=latest` to `.env`                                                                                                |
 | Container fails to start on the probe mount                       | `/var/lib/inspoter-metrics-agent/rootfs-probe` does not exist            | Re-run the `install -d` command from step 1                                                                                     |
 | `metrics push failed (4xx)` right after start                     | Token invalid, revoked, or rotated                                       | Issue or rotate a token in Settings → API Tokens and update `.env`                                                              |
+| Every push fails with `4xx`, but the same payload succeeds via `curl` | A WAF in front of the dashboard blocks the agent's request               | Run an agent built after the `User-Agent` fix; verify with `curl -A "inspoter-metrics-agent/0.1.0" ... -d '{}'` — a `400 INVALID_PAYLOAD` means the request reached the app, a `403` means the WAF is still blocking |
 | Repeated `4xx` with `SERVER_MATCH_AMBIGUOUS`                      | Reported IPs match several servers in the workspace                      | Report only the addresses that belong to this host; resolve duplicates in UI                                                    |
 | `metrics push failed (5xx)` with `PROVIDER_INVENTORY_UNAVAILABLE` | The dashboard could not read provider inventory                          | Check the provider credential in the dashboard; the agent retries next cycle                                                    |
 | `metrics push network error: ...`                                 | No outbound HTTPS, DNS failure, or TLS interception                      | Verify egress and that the dashboard certificate chain is trusted                                                               |
