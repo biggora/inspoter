@@ -8,6 +8,12 @@ import {
   renewMailFilterRunLease,
   type ClaimedMailFilterRun,
 } from "@/lib/services/mail-filter-runs";
+import {
+  claimMailFilterActionJobs,
+  processClaimedMailFilterActionJob,
+  recordMailFilterActionJobFailure,
+  type ClaimedMailFilterActionJob,
+} from "@/lib/services/mail-filter-action-jobs";
 
 // In-process scheduler for mail account syncs (plan §3), a copy of the
 // Services check scheduler pattern in src/lib/services/scheduler.ts: the app
@@ -24,6 +30,7 @@ const globalForMailScheduler = globalThis as unknown as {
 // all at once — IMAP syncs are heavier than HTTP checks, hence 3 (plan §3).
 const CHUNK_SIZE = 3;
 const FILTER_RUNS_PER_TICK = 3;
+const FILTER_ACTION_JOBS_PER_TICK = 3;
 
 // Reentrancy guard: if a tick is still running when the next interval
 // fires (e.g. many due accounts with slow servers), skip that tick
@@ -94,10 +101,37 @@ async function processFilterRuns(): Promise<void> {
   );
 }
 
+async function processOneFilterActionJob(
+  claim: ClaimedMailFilterActionJob,
+): Promise<void> {
+  try {
+    await processClaimedMailFilterActionJob(claim);
+  } catch (error) {
+    try {
+      await recordMailFilterActionJobFailure(claim, error);
+    } catch (recordError) {
+      console.error(
+        `[mail-scheduler] failed to record filter action ${claim.id} failure:`,
+        recordError,
+      );
+    }
+    console.error(`[mail-scheduler] filter action ${claim.id} failed.`);
+  }
+}
+
+async function processFilterActionJobs(): Promise<void> {
+  const claims = await claimMailFilterActionJobs(FILTER_ACTION_JOBS_PER_TICK);
+  await Promise.all(claims.map(processOneFilterActionJob));
+}
+
 export async function runMailSchedulerTick(): Promise<void> {
   if (tickInFlight) return;
   tickInFlight = true;
   try {
+    // Transport actions run before sync so one process never mutates and
+    // reconciles the same mailbox concurrently.
+    await processFilterActionJobs();
+
     // Cross-tenant due sweep, backed by the [isActive, nextSyncAt] index.
     const due = await db.mailAccount.findMany({
       where: { kind: "IMAP", isActive: true, nextSyncAt: { lte: new Date() } },

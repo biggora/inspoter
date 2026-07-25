@@ -7,6 +7,10 @@ import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
 import * as mailLabelsService from "@/lib/services/mail-labels";
 import * as mailLabelAssignmentsService from "@/lib/services/mail-label-assignments";
 import * as mailFilterRulesService from "@/lib/services/mail-filter-rules";
+import {
+  claimMailFilterActionJobs,
+  processClaimedMailFilterActionJob,
+} from "@/lib/services/mail-filter-action-jobs";
 import { WorkspaceMemberRequiredError } from "@/lib/services/workspace-auth";
 
 const PREFIX = `mail-labels-${randomUUID()}`;
@@ -560,6 +564,96 @@ describe("Exact-sender rule service and incoming evaluator", () => {
         select: { labelId: true },
       }),
     ).toEqual([{ labelId: subjectLabel.id }]);
+  });
+
+  it("matches extensible domain, body, and negated attachment conditions", async () => {
+    const label = await mailLabelsService.createLabel(workspaceId, ownerId, {
+      name: "Advanced conditions",
+      color: "BLUE",
+    });
+    const moveTarget = await db.mailFolder.create({
+      data: {
+        workspaceId,
+        accountId: webhookAccountId,
+        accountWorkspaceId: workspaceId,
+        path: `${PREFIX}-processed`,
+        name: "Processed",
+        specialUse: "OTHER",
+      },
+    });
+    const rule = await mailFilterRulesService.createMailFilterRule(
+      workspaceId,
+      ownerId,
+      {
+        accountId: webhookAccountId,
+        labelId: label.id,
+        name: "Advanced conditions",
+        matchMode: "ALL",
+        conditions: [
+          {
+            field: "FROM_DOMAIN",
+            operator: "EQUALS",
+            value: "example.com",
+            isNegated: false,
+          },
+          {
+            field: "BODY",
+            operator: "CONTAINS",
+            value: "deploy",
+            isNegated: false,
+          },
+          {
+            field: "HAS_ATTACHMENT",
+            operator: "IS",
+            value: "true",
+            isNegated: true,
+          },
+        ],
+        setRead: true,
+        moveToFolderId: moveTarget.id,
+      },
+    );
+
+    expect(rule.conditions).toHaveLength(3);
+    expect(rule.matchMode).toBe("ALL");
+    expect(rule.setRead).toBe(true);
+    expect(rule.moveToFolderId).toBe(moveTarget.id);
+
+    const matching = await mailService.create(workspaceId, {
+      sender: "build@example.com",
+      subject: "Status",
+      body: "Deploy completed",
+    });
+    const wrongDomain = await mailService.create(workspaceId, {
+      sender: "build@other.example",
+      subject: "Status",
+      body: "Deploy completed",
+    });
+
+    expect(
+      await db.mailItemLabel.count({
+        where: { mailItemId: matching.id, labelId: label.id },
+      }),
+    ).toBe(1);
+    expect(
+      await db.mailItemLabel.count({
+        where: { mailItemId: wrongDomain.id, labelId: label.id },
+      }),
+    ).toBe(0);
+
+    const firstClaims = await claimMailFilterActionJobs(1);
+    expect(firstClaims).toHaveLength(1);
+    await processClaimedMailFilterActionJob(firstClaims[0]);
+    const secondClaims = await claimMailFilterActionJobs(1);
+    expect(secondClaims).toHaveLength(1);
+    await processClaimedMailFilterActionJob(secondClaims[0]);
+
+    expect(
+      await db.mailItem.findUnique({
+        where: { id: matching.id },
+        select: { isRead: true, folderId: true },
+      }),
+    ).toEqual({ isRead: true, folderId: moveTarget.id });
   });
 
   it("edits, disables, enables, reorders, and deletes without removing assignments", async () => {

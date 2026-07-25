@@ -81,6 +81,7 @@ export type {
   MailAddress,
   MailConnectionConfig,
   MailDriver,
+  MailMoveResult,
   OutgoingMessage,
   OutgoingAttachment,
   RemoteAttachment,

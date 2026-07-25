@@ -13,6 +13,7 @@
   "emptyTitle": "No domains yet",
   "emptyDescription": "Domains will appear automatically once you connect a DNS provider in settings.",
   "domainHeader": "Domain",
+  "recordsHeader": "DNS records",
   "providerHeader": "Provider",
   "actionsHeader": "Actions",
   "viewDnsButton": "View DNS",

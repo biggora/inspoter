@@ -1,6 +1,13 @@
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import {
+  isMailFilterConditionCombinationValid,
+  MAX_MAIL_FILTER_CONDITIONS,
+  type MailFilterConditionInput,
+  type MailFilterMatchMode,
+} from "@/lib/mail-filter-types";
+import { legacyCriteriaToMailFilterConditions } from "@/lib/mail-filter-matcher";
+import {
   runMailAccountTransaction,
   type MailAccountTransactionRunner,
 } from "@/lib/services/mail-locks";
@@ -45,16 +52,24 @@ export interface CreateMailFilterRuleInput {
   accountId: string;
   labelId: string;
   name: string;
+  matchMode?: MailFilterMatchMode;
+  conditions?: readonly MailFilterConditionInput[];
   fromAddress?: string | null;
   subjectContains?: string | null;
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
   applyToExistingMail?: boolean;
 }
 
 export interface UpdateMailFilterRuleInput {
   labelId?: string;
   name?: string;
+  matchMode?: MailFilterMatchMode;
+  conditions?: readonly MailFilterConditionInput[];
   fromAddress?: string | null;
   subjectContains?: string | null;
+  setRead?: boolean | null;
+  moveToFolderId?: string | null;
   isActive?: boolean;
   position?: number;
 }
@@ -66,11 +81,26 @@ const RULE_SELECT = {
   name: true,
   fromAddress: true,
   subjectContains: true,
+  matchMode: true,
+  setRead: true,
+  moveToFolderId: true,
+  conditions: {
+    select: {
+      id: true,
+      field: true,
+      operator: true,
+      value: true,
+      isNegated: true,
+      position: true,
+    },
+    orderBy: [{ position: "asc" as const }, { id: "asc" as const }],
+  },
   isActive: true,
   position: true,
   createdAt: true,
   updatedAt: true,
   label: { select: { name: true, color: true } },
+  moveToFolder: { select: { name: true } },
   filterRuns: {
     select: MAIL_FILTER_RUN_DTO_SELECT,
     orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
@@ -94,12 +124,81 @@ function normalizeCriterion(value: string | null | undefined): string | null {
 }
 
 function requirePredicate(
-  fromAddress: string | null,
-  subjectContains: string | null,
+  conditions: readonly MailFilterConditionInput[],
 ): void {
-  if (!fromAddress && !subjectContains) {
+  if (conditions.length === 0) {
     throw new MailFilterRulePredicateRequiredError();
   }
+}
+
+function normalizeConditions(
+  input: readonly MailFilterConditionInput[],
+): MailFilterConditionInput[] {
+  if (
+    input.length === 0 ||
+    input.length > MAX_MAIL_FILTER_CONDITIONS ||
+    input.some(
+      (condition) =>
+        !isMailFilterConditionCombinationValid(
+          condition.field,
+          condition.operator,
+        ) || !condition.value.normalize("NFKC").trim(),
+    )
+  ) {
+    throw new MailFilterRulePredicateRequiredError();
+  }
+  return input.map((condition) => ({
+    ...condition,
+    value: condition.value.normalize("NFKC").trim(),
+  }));
+}
+
+function conditionsFromInput(input: {
+  conditions?: readonly MailFilterConditionInput[];
+  fromAddress?: string | null;
+  subjectContains?: string | null;
+}): MailFilterConditionInput[] {
+  if (input.conditions !== undefined) {
+    return normalizeConditions(input.conditions);
+  }
+  return legacyCriteriaToMailFilterConditions({
+    fromAddress: normalizeCriterion(input.fromAddress),
+    subjectContains: normalizeCriterion(input.subjectContains),
+  });
+}
+
+function legacyColumnsFromConditions(
+  conditions: readonly MailFilterConditionInput[],
+): { fromAddress: string | null; subjectContains: string | null } {
+  const fromAddress =
+    conditions.find(
+      (condition) =>
+        condition.field === "FROM_ADDRESS" &&
+        condition.operator === "EQUALS" &&
+        !condition.isNegated,
+    )?.value ?? null;
+  const subjectContains =
+    conditions.find(
+      (condition) =>
+        condition.field === "SUBJECT" &&
+        condition.operator === "CONTAINS" &&
+        !condition.isNegated,
+    )?.value ?? null;
+  return { fromAddress, subjectContains };
+}
+
+function conditionCreateData(
+  workspaceId: string,
+  conditions: readonly MailFilterConditionInput[],
+) {
+  return conditions.map((condition, position) => ({
+    workspaceId,
+    field: condition.field,
+    operator: condition.operator,
+    value: condition.value,
+    isNegated: condition.isNegated,
+    position,
+  }));
 }
 
 async function requireRuleInWorkspace(workspaceId: string, id: string) {
@@ -148,11 +247,13 @@ export async function createMailFilterRule(
   input: CreateMailFilterRuleInput,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ) {
-  const fromAddress = normalizeCriterion(input.fromAddress);
-  const subjectContains = normalizeCriterion(input.subjectContains);
-  requirePredicate(fromAddress, subjectContains);
+  const conditions = conditionsFromInput(input);
+  requirePredicate(conditions);
+  const { fromAddress, subjectContains } =
+    legacyColumnsFromConditions(conditions);
+  const matchMode = input.matchMode ?? "ALL";
 
-  const [account, label] = await Promise.all([
+  const [account, label, moveTarget] = await Promise.all([
     db.mailAccount.findFirst({
       where: { id: input.accountId, workspaceId },
       select: { id: true },
@@ -161,13 +262,31 @@ export async function createMailFilterRule(
       where: { id: input.labelId, workspaceId },
       select: { id: true },
     }),
+    input.moveToFolderId
+      ? db.mailFolder.findFirst({
+          where: {
+            id: input.moveToFolderId,
+            workspaceId,
+            accountId: input.accountId,
+          },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
   ]);
-  if (!account || !label) throw new MailFilterRuleResourceNotFoundError();
+  if (
+    !account ||
+    !label ||
+    (input.moveToFolderId !== undefined &&
+      input.moveToFolderId !== null &&
+      !moveTarget)
+  ) {
+    throw new MailFilterRuleResourceNotFoundError();
+  }
   await requireWorkspaceMember(workspaceId, operatorId);
 
   try {
     return await runAccountTransaction(input.accountId, async (tx) => {
-      const [lockedAccount, lockedLabel] = await Promise.all([
+      const [lockedAccount, lockedLabel, lockedMoveTarget] = await Promise.all([
         tx.mailAccount.findFirst({
           where: { id: input.accountId, workspaceId },
           select: { id: true },
@@ -176,8 +295,24 @@ export async function createMailFilterRule(
           where: { id: input.labelId, workspaceId },
           select: { id: true },
         }),
+        input.moveToFolderId
+          ? tx.mailFolder.findFirst({
+              where: {
+                id: input.moveToFolderId,
+                workspaceId,
+                accountId: input.accountId,
+              },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
       ]);
-      if (!lockedAccount || !lockedLabel) {
+      if (
+        !lockedAccount ||
+        !lockedLabel ||
+        (input.moveToFolderId !== undefined &&
+          input.moveToFolderId !== null &&
+          !lockedMoveTarget)
+      ) {
         throw new MailFilterRuleResourceNotFoundError();
       }
 
@@ -202,7 +337,14 @@ export async function createMailFilterRule(
           name: input.name,
           fromAddress,
           subjectContains,
+          matchMode,
+          setRead: input.setRead,
+          moveToFolderId: input.moveToFolderId,
+          moveToFolderWorkspaceId: input.moveToFolderId ? workspaceId : null,
           position: (last._max.position ?? -1) + 1,
+          conditions: {
+            create: conditionCreateData(workspaceId, conditions),
+          },
         },
         select: RULE_SELECT,
       });
@@ -216,6 +358,10 @@ export async function createMailFilterRule(
           labelId: created.labelId,
           fromAddress: created.fromAddress,
           subjectContains: created.subjectContains,
+          matchMode: created.matchMode,
+          conditions: created.conditions,
+          setRead: created.setRead,
+          moveToFolderId: created.moveToFolderId,
         });
       }
       return { ...withLatestRun(created), latestRun };
@@ -246,6 +392,18 @@ export async function updateMailFilterRule(
           labelId: true,
           fromAddress: true,
           subjectContains: true,
+          matchMode: true,
+          setRead: true,
+          moveToFolderId: true,
+          conditions: {
+            select: {
+              field: true,
+              operator: true,
+              value: true,
+              isNegated: true,
+            },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
+          },
           isActive: true,
         },
       });
@@ -259,13 +417,51 @@ export async function updateMailFilterRule(
         if (!label) throw new MailFilterRuleResourceNotFoundError();
       }
 
-      const fromAddress = Object.hasOwn(input, "fromAddress")
-        ? normalizeCriterion(input.fromAddress)
-        : current.fromAddress;
-      const subjectContains = Object.hasOwn(input, "subjectContains")
-        ? normalizeCriterion(input.subjectContains)
-        : current.subjectContains;
-      requirePredicate(fromAddress, subjectContains);
+      if (
+        input.moveToFolderId !== undefined &&
+        input.moveToFolderId !== null &&
+        input.moveToFolderId !== current.moveToFolderId
+      ) {
+        const target = await tx.mailFolder.findFirst({
+          where: {
+            id: input.moveToFolderId,
+            workspaceId,
+            accountId: scopedRule.accountId,
+          },
+          select: { id: true },
+        });
+        if (!target) throw new MailFilterRuleResourceNotFoundError();
+      }
+
+      const legacyConditionsChanged =
+        Object.hasOwn(input, "fromAddress") ||
+        Object.hasOwn(input, "subjectContains");
+      const conditionsChanged =
+        input.conditions !== undefined || legacyConditionsChanged;
+      const conditions = input.conditions
+        ? normalizeConditions(input.conditions)
+        : legacyConditionsChanged
+          ? conditionsFromInput({
+              fromAddress: Object.hasOwn(input, "fromAddress")
+                ? input.fromAddress
+                : current.fromAddress,
+              subjectContains: Object.hasOwn(input, "subjectContains")
+                ? input.subjectContains
+                : current.subjectContains,
+            })
+          : current.conditions.length > 0
+            ? current.conditions
+            : conditionsFromInput({
+                fromAddress: current.fromAddress,
+                subjectContains: current.subjectContains,
+              });
+      requirePredicate(conditions);
+      const legacyColumns = conditionsChanged
+        ? legacyColumnsFromConditions(conditions)
+        : {
+            fromAddress: current.fromAddress,
+            subjectContains: current.subjectContains,
+          };
 
       if (!current.isActive && input.isActive === true) {
         const activeCount = await tx.mailFilterRule.count({
@@ -307,8 +503,28 @@ export async function updateMailFilterRule(
         data: {
           ...(input.labelId !== undefined ? { labelId: input.labelId } : {}),
           ...(input.name !== undefined ? { name: input.name } : {}),
-          fromAddress,
-          subjectContains,
+          fromAddress: legacyColumns.fromAddress,
+          subjectContains: legacyColumns.subjectContains,
+          ...(input.matchMode !== undefined
+            ? { matchMode: input.matchMode }
+            : {}),
+          ...(input.setRead !== undefined ? { setRead: input.setRead } : {}),
+          ...(input.moveToFolderId !== undefined
+            ? {
+                moveToFolderId: input.moveToFolderId,
+                moveToFolderWorkspaceId: input.moveToFolderId
+                  ? workspaceId
+                  : null,
+              }
+            : {}),
+          ...(conditionsChanged
+            ? {
+                conditions: {
+                  deleteMany: {},
+                  create: conditionCreateData(workspaceId, conditions),
+                },
+              }
+            : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
           ...(position !== undefined ? { position } : {}),
         },

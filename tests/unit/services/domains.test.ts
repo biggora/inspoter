@@ -124,6 +124,38 @@ describe("listDomains()", () => {
   });
 });
 
+describe("listDomains() record counts", () => {
+  it("counts each zone's records, matching what listRecords returns", async () => {
+    const results = await domainsService.listDomains(WORKSPACE_ID);
+
+    for (const provider of results) {
+      for (const domain of provider.domains) {
+        const records = await domainsService.listRecords(
+          WORKSPACE_ID,
+          provider.providerId,
+          domain.id,
+        );
+        if (!records.ok) throw new Error("expected ok result");
+        expect(domain.recordCount).toBe(records.data.length);
+      }
+    }
+  });
+
+  it("degrades a zone whose records cannot be read to a null count, not an error", async () => {
+    const spy = vi
+      .spyOn(MockDnsProvider.prototype, "listRecords")
+      .mockRejectedValue(new Error("network unreachable"));
+
+    const results = await domainsService.listDomains(WORKSPACE_ID);
+    spy.mockRestore();
+
+    const domains = results.flatMap((provider) => provider.domains);
+    expect(domains.length).toBeGreaterThan(0);
+    expect(domains.every((domain) => domain.recordCount === null)).toBe(true);
+    expect(results.every((provider) => provider.error === null)).toBe(true);
+  });
+});
+
 describe("unknown provider handling", () => {
   it("listRecords returns an error result for an unknown provider id", async () => {
     const result = await domainsService.listRecords(

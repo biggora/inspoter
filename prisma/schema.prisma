@@ -93,7 +93,9 @@ model Workspace {
   mailLabels        MailLabel[]
   mailItemLabels    MailItemLabel[]
   mailFilterRules   MailFilterRule[]
+  mailFilterConditions MailFilterCondition[]
   mailFilterRuns    MailFilterRun[]
+  mailFilterActionJobs MailFilterActionJob[]
   logEntries        LogEntry[]
   alertCategories   AlertCategory[]
   alerts            Alert[]
@@ -248,6 +250,38 @@ enum MailFilterRunStatus {
   FAILED
 }
 
+enum MailFilterMatchMode {
+  ALL
+  ANY
+}
+
+enum MailFilterConditionField {
+  FROM_ADDRESS
+  FROM_DOMAIN
+  RECIPIENT
+  SUBJECT
+  BODY
+  HAS_ATTACHMENT
+}
+
+enum MailFilterConditionOperator {
+  EQUALS
+  CONTAINS
+  IS
+}
+
+enum MailFilterActionJobType {
+  SET_READ
+  MOVE_TO_FOLDER
+}
+
+enum MailFilterActionJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 model MailAccount {
   id                  String           @id @default(cuid())
   workspaceId         String
@@ -281,6 +315,7 @@ model MailAccount {
   folders             MailFolder[]
   mailItems           MailItem[]
   filterRules         MailFilterRule[]
+  filterActionJobs    MailFilterActionJob[]
 
   // At most one WEBHOOK account per workspace: raw partial unique index in the
   // migration SQL (WHERE "kind" = 'WEBHOOK') — not expressible in Prisma DSL.
@@ -307,6 +342,7 @@ model MailFolder {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   mailItems          MailItem[]
+  filterMoveRules    MailFilterRule[] @relation("MailFilterMoveTarget")
 
   @@unique([id, workspaceId])
   @@unique([accountId, path])
@@ -345,6 +381,7 @@ model MailItem {
   createdAt          DateTime         @default(now())
   attachments        MailAttachment[]
   labels             MailItemLabel[]
+  filterActionJobs   MailFilterActionJob[]
 
   @@unique([id, workspaceId])
   @@unique([folderId, uid]) // idempotent sync upsert; NULL uid (webhook items) never conflicts
@@ -409,26 +446,50 @@ model MailItemLabel {
 }
 
 model MailFilterRule {
-  id                 String          @id @default(cuid())
-  workspaceId        String
-  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  accountId          String
-  accountWorkspaceId String
-  account            MailAccount     @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
-  labelId            String
-  labelWorkspaceId   String
-  label              MailLabel       @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
-  name               String
-  fromAddress        String?
-  subjectContains    String?
-  isActive           Boolean         @default(true)
-  position           Int             @default(0)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  filterRuns         MailFilterRun[]
+  id                      String                @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId               String
+  accountWorkspaceId      String
+  account                 MailAccount           @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId                 String
+  labelWorkspaceId        String
+  label                   MailLabel             @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
+  name                    String
+  fromAddress             String?
+  subjectContains         String?
+  matchMode               MailFilterMatchMode   @default(ALL)
+  setRead                 Boolean?
+  moveToFolderId          String?
+  moveToFolderWorkspaceId String?
+  moveToFolder            MailFolder?           @relation("MailFilterMoveTarget", fields: [moveToFolderId, moveToFolderWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  isActive                Boolean               @default(true)
+  position                Int                   @default(0)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  conditions              MailFilterCondition[]
+  filterRuns              MailFilterRun[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId, accountId, isActive, position, id])
+}
+
+model MailFilterCondition {
+  id              String                      @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ruleId          String
+  ruleWorkspaceId String
+  rule            MailFilterRule              @relation(fields: [ruleId, ruleWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  field           MailFilterConditionField
+  operator        MailFilterConditionOperator
+  value           String
+  isNegated       Boolean                     @default(false)
+  position        Int                         @default(0)
+
+  @@unique([id, workspaceId])
+  @@unique([ruleId, position])
+  @@index([workspaceId, ruleId, position, id])
 }
 
 model MailFilterRun {
@@ -443,6 +504,10 @@ model MailFilterRun {
   snapshotLabelId         String
   snapshotFromAddress     String?
   snapshotSubjectContains String?
+  snapshotMatchMode       MailFilterMatchMode @default(ALL)
+  snapshotConditions      Json                @default("[]")
+  snapshotSetRead         Boolean?
+  snapshotMoveToFolderId  String?
   status                  MailFilterRunStatus @default(PENDING)
   cutoffCreatedAt         DateTime?
   cutoffId                String?
@@ -462,6 +527,40 @@ model MailFilterRun {
   @@unique([id, workspaceId])
   @@index([workspaceId, sourceRuleId, createdAt, id])
   @@index([status, leaseExpiresAt, id])
+}
+
+model MailFilterActionJob {
+  id                  String                    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId           String
+  accountWorkspaceId  String
+  account             MailAccount               @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  mailItemId          String
+  mailItemWorkspaceId String
+  mailItem            MailItem                  @relation(fields: [mailItemId, mailItemWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  sourceRuleId        String
+  sourceRunId         String?
+  type                MailFilterActionJobType
+  readValue           Boolean?
+  targetFolderId      String?
+  idempotencyKey      String                    @unique
+  status              MailFilterActionJobStatus @default(PENDING)
+  attempts            Int                       @default(0)
+  maxAttempts         Int                       @default(3)
+  nextAttemptAt       DateTime                  @default(now())
+  leaseToken          String?
+  leaseExpiresAt      DateTime?
+  lastError           String?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([status, nextAttemptAt, createdAt, id])
+  @@index([accountId, status, createdAt, id])
+  @@index([workspaceId, mailItemId, createdAt, id])
 }
 
 // --- Activity (user action journal) ---

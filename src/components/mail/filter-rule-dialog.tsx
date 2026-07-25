@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -36,16 +36,31 @@ import {
   ApiError,
   createMailFilterRule,
   createMailLabel,
+  fetchFolders,
   fetchMailLabels,
   patchMailFilterRule,
   type MailDetailDto,
+  type MailFilterConditionInput,
+  type MailFilterMatchMode,
   type MailFilterRuleDto,
+  type MailFolderDto,
   type MailLabelColor,
   type MailLabelDto,
 } from "./api";
 import { LabelColorField } from "./label-color-field";
+import {
+  MAIL_FILTER_CONDITION_FIELDS,
+  MAX_MAIL_FILTER_CONDITIONS,
+  defaultMailFilterOperator,
+  mailFilterOperatorsForField,
+  type MailFilterConditionField,
+  type MailFilterConditionOperator,
+} from "@/lib/mail-filter-types";
 
 const CREATE_LABEL_VALUE = "__create_label__";
+const KEEP_FOLDER_VALUE = "__keep_folder__";
+
+type ReadAction = "KEEP" | "READ" | "UNREAD";
 
 const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   LABEL_NAME_REQUIRED: "validationLabelNameRequired",
@@ -54,6 +69,11 @@ const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   RULE_NAME_REQUIRED: "validationRuleNameRequired",
   RULE_NAME_TOO_LONG: "validationRuleNameTooLong",
   RULE_PREDICATE_REQUIRED: "validationRulePredicateRequired",
+  RULE_CONDITION_VALUE_REQUIRED: "validationRuleConditionValueRequired",
+  RULE_CONDITION_VALUE_TOO_LONG: "validationRuleConditionValueTooLong",
+  RULE_CONDITION_VALUE_INVALID: "validationRuleConditionValueInvalid",
+  RULE_CONDITION_OPERATOR_INVALID: "validationRuleConditionOperatorInvalid",
+  RULE_TOO_MANY_CONDITIONS: "validationRuleTooManyConditions",
   RULE_UPDATE_REQUIRED: "validationRuleUpdateRequired",
   SENDER_TOO_LONG: "validationSenderTooLong",
   SUBJECT_TOO_LONG: "validationSubjectTooLong",
@@ -82,6 +102,57 @@ export interface FilterRuleSaveResult {
   applyToExistingMail: boolean;
 }
 
+interface MailFilterConditionDraft extends MailFilterConditionInput {
+  key: string;
+}
+
+function initialConditions(
+  initialRule: MailFilterRuleDto | undefined,
+  defaultFromAddress: string,
+): MailFilterConditionDraft[] {
+  const stored = initialRule?.conditions;
+  if (stored && stored.length > 0) {
+    return stored.map(({ id, field, operator, value, isNegated }) => ({
+      key: id,
+      field,
+      operator,
+      value,
+      isNegated,
+    }));
+  }
+
+  const conditions: MailFilterConditionDraft[] = [];
+  if (initialRule?.fromAddress || defaultFromAddress) {
+    conditions.push({
+      key: "initial-sender",
+      field: "FROM_ADDRESS",
+      operator: "EQUALS",
+      value: initialRule?.fromAddress ?? defaultFromAddress,
+      isNegated: false,
+    });
+  }
+  if (initialRule?.subjectContains) {
+    conditions.push({
+      key: "initial-subject",
+      field: "SUBJECT",
+      operator: "CONTAINS",
+      value: initialRule.subjectContains,
+      isNegated: false,
+    });
+  }
+  return conditions.length > 0
+    ? conditions
+    : [
+        {
+          key: "initial-empty",
+          field: "FROM_ADDRESS",
+          operator: "EQUALS",
+          value: "",
+          isNegated: false,
+        },
+      ];
+}
+
 export function FilterRuleForm({
   accountId,
   accountName,
@@ -95,6 +166,9 @@ export function FilterRuleForm({
   const [labels, setLabels] = useState<MailLabelDto[] | null>(null);
   const [labelsError, setLabelsError] = useState(false);
   const [labelsReload, setLabelsReload] = useState(0);
+  const [folders, setFolders] = useState<MailFolderDto[] | null>(null);
+  const [foldersError, setFoldersError] = useState(false);
+  const [foldersReload, setFoldersReload] = useState(0);
   const [selectedLabelId, setSelectedLabelId] = useState(
     initialRule?.labelId ?? "",
   );
@@ -102,12 +176,23 @@ export function FilterRuleForm({
     initialRule?.name ??
       t("filterRuleDefaultName", { sender: defaultFromAddress }),
   );
-  const [fromAddress, setFromAddress] = useState(
-    initialRule?.fromAddress ?? defaultFromAddress,
+  const [matchMode, setMatchMode] = useState<MailFilterMatchMode>(
+    initialRule?.matchMode ?? "ALL",
   );
-  const [subjectContains, setSubjectContains] = useState(
-    initialRule?.subjectContains ?? "",
+  const [readAction, setReadAction] = useState<ReadAction>(
+    initialRule?.setRead === true
+      ? "READ"
+      : initialRule?.setRead === false
+        ? "UNREAD"
+        : "KEEP",
   );
+  const [moveToFolderId, setMoveToFolderId] = useState(
+    initialRule?.moveToFolderId ?? KEEP_FOLDER_VALUE,
+  );
+  const [conditions, setConditions] = useState<MailFilterConditionDraft[]>(() =>
+    initialConditions(initialRule, defaultFromAddress),
+  );
+  const nextConditionKey = useRef(conditions.length);
   const [applyToExistingMail, setApplyToExistingMail] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState<MailLabelColor>("SLATE");
@@ -140,6 +225,24 @@ export function FilterRuleForm({
     };
   }, [initialRule?.labelId, labelsReload]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setFoldersError(false);
+      try {
+        const result = await fetchFolders(accountId);
+        if (cancelled) return;
+        setFolders(result);
+      } catch {
+        if (!cancelled) setFoldersError(true);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, foldersReload]);
+
   function translatedError(message: string): string {
     const key = ERROR_TRANSLATION_KEYS[message];
     return key ? t(key) : message;
@@ -159,9 +262,13 @@ export function FilterRuleForm({
       return;
     }
 
-    const normalizedFrom = fromAddress.normalize("NFKC").trim();
-    const normalizedSubject = subjectContains.normalize("NFKC").trim();
-    if (!normalizedFrom && !normalizedSubject) {
+    const normalizedConditions = conditions.map((condition) => ({
+      field: condition.field,
+      operator: condition.operator,
+      value: condition.value.normalize("NFKC").trim(),
+      isNegated: condition.isNegated,
+    }));
+    if (normalizedConditions.some((condition) => !condition.value)) {
       setFieldErrors({
         predicate: t("validationRulePredicateRequired"),
       });
@@ -193,8 +300,11 @@ export function FilterRuleForm({
       const input = {
         labelId,
         name: ruleName,
-        fromAddress: normalizedFrom || null,
-        subjectContains: normalizedSubject || null,
+        matchMode,
+        conditions: normalizedConditions,
+        setRead: readAction === "KEEP" ? null : readAction === "READ",
+        moveToFolderId:
+          moveToFolderId === KEEP_FOLDER_VALUE ? null : moveToFolderId,
       };
       let savedRule: MailFilterRuleDto;
       if (initialRule) {
@@ -215,15 +325,24 @@ export function FilterRuleForm({
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.fieldErrors) {
+          const translated = Object.fromEntries(
+            Object.entries(error.fieldErrors).map(([field, message]) => [
+              requestStage === "label" && field === "name"
+                ? "newLabelName"
+                : field,
+              translatedError(message),
+            ]),
+          );
+          const conditionError = Object.entries(translated).find(
+            ([field]) =>
+              field === "fromAddress" ||
+              field === "subjectContains" ||
+              field.startsWith("conditions"),
+          )?.[1];
           setFieldErrors(
-            Object.fromEntries(
-              Object.entries(error.fieldErrors).map(([field, message]) => [
-                requestStage === "label" && field === "name"
-                  ? "newLabelName"
-                  : field,
-                translatedError(message),
-              ]),
-            ),
+            conditionError
+              ? { ...translated, predicate: conditionError }
+              : translated,
           );
         } else {
           toast.error(translatedError(error.message));
@@ -243,6 +362,47 @@ export function FilterRuleForm({
     [CREATE_LABEL_VALUE, t("createLabelOption")],
   ]);
   const creatingLabel = selectedLabelId === CREATE_LABEL_VALUE;
+  const folderItems = Object.fromEntries([
+    [KEEP_FOLDER_VALUE, t("filterRuleMoveKeepOption")],
+    ...(folders ?? []).map((folder) => [folder.id, folder.name] as const),
+  ]);
+
+  function updateCondition(
+    index: number,
+    update:
+      Partial<MailFilterConditionInput> | { field: MailFilterConditionField },
+  ) {
+    setConditions((current) =>
+      current.map((condition, conditionIndex) => {
+        if (conditionIndex !== index) return condition;
+        if (update.field && update.field !== condition.field) {
+          return {
+            ...condition,
+            ...update,
+            operator: defaultMailFilterOperator(update.field),
+            value: update.field === "HAS_ATTACHMENT" ? "true" : "",
+          };
+        }
+        return { ...condition, ...update };
+      }),
+    );
+  }
+
+  function addCondition() {
+    if (conditions.length >= MAX_MAIL_FILTER_CONDITIONS) return;
+    const key = `condition-${nextConditionKey.current}`;
+    nextConditionKey.current += 1;
+    setConditions((current) => [
+      ...current,
+      {
+        key,
+        field: "SUBJECT",
+        operator: "CONTAINS",
+        value: "",
+        isNegated: false,
+      },
+    ]);
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
@@ -270,45 +430,241 @@ export function FilterRuleForm({
             <FieldError>{fieldErrors.name}</FieldError>
           </Field>
 
-          <Field data-invalid={Boolean(fieldErrors.fromAddress)}>
-            <FieldLabel htmlFor="filter-rule-sender">
-              {t("filterRuleSenderLabel")}
-            </FieldLabel>
-            <Input
-              id="filter-rule-sender"
-              value={fromAddress}
-              onChange={(event) => setFromAddress(event.target.value)}
-              aria-invalid={Boolean(fieldErrors.fromAddress)}
-              maxLength={320}
+          <Field>
+            <FieldLabel>{t("filterRuleMatchModeLabel")}</FieldLabel>
+            <Select
+              value={matchMode}
+              onValueChange={(value) =>
+                setMatchMode((value as MailFilterMatchMode | null) ?? "ALL")
+              }
+              items={{
+                ALL: t("filterRuleMatchAllOption"),
+                ANY: t("filterRuleMatchAnyOption"),
+              }}
               disabled={submitting}
-            />
-            <FieldDescription>
-              {t("filterRuleSenderDescription")}
-            </FieldDescription>
-            <FieldError>{fieldErrors.fromAddress}</FieldError>
-          </Field>
-
-          <Field data-invalid={Boolean(fieldErrors.subjectContains)}>
-            <FieldLabel htmlFor="filter-rule-subject">
-              {t("filterRuleSubjectLabel")}
-            </FieldLabel>
-            <Input
-              id="filter-rule-subject"
-              value={subjectContains}
-              onChange={(event) => setSubjectContains(event.target.value)}
-              aria-invalid={Boolean(fieldErrors.subjectContains)}
-              maxLength={200}
-              disabled={submitting}
-            />
-            <FieldDescription>
-              {t("filterRuleSubjectDescription")}
-            </FieldDescription>
-            <FieldError>{fieldErrors.subjectContains}</FieldError>
+            >
+              <SelectTrigger
+                className="w-full"
+                aria-label={t("filterRuleMatchModeLabel")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="ALL">
+                    {t("filterRuleMatchAllOption")}
+                  </SelectItem>
+                  <SelectItem value="ANY">
+                    {t("filterRuleMatchAnyOption")}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field data-invalid={Boolean(fieldErrors.predicate)}>
-            <FieldDescription>{t("filterRuleAndDescription")}</FieldDescription>
-            <FieldError>{fieldErrors.predicate}</FieldError>
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel>{t("filterRuleConditionsLabel")}</FieldLabel>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {conditions.length}/{MAX_MAIL_FILTER_CONDITIONS}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {conditions.map((condition, index) => {
+                const operators = mailFilterOperatorsForField(condition.field);
+                const valueId = `filter-rule-condition-${index}-value`;
+                const negateId = `filter-rule-condition-${index}-negated`;
+                const valueLabel =
+                  condition.field === "FROM_ADDRESS"
+                    ? t("filterRuleSenderLabel")
+                    : condition.field === "SUBJECT"
+                      ? t("filterRuleSubjectLabel")
+                      : t("filterRuleConditionValueLabel", {
+                          number: index + 1,
+                        });
+                return (
+                  <div
+                    key={condition.key}
+                    className="space-y-2 rounded-lg border border-background-200 bg-background-50 p-3"
+                  >
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Select
+                        value={condition.field}
+                        onValueChange={(value) =>
+                          value &&
+                          updateCondition(index, {
+                            field: value as MailFilterConditionField,
+                          })
+                        }
+                        items={Object.fromEntries(
+                          MAIL_FILTER_CONDITION_FIELDS.map((field) => [
+                            field,
+                            t(`filterRuleConditionField${field}`),
+                          ]),
+                        )}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label={t("filterRuleConditionFieldLabel", {
+                            number: index + 1,
+                          })}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {MAIL_FILTER_CONDITION_FIELDS.map((field) => (
+                              <SelectItem key={field} value={field}>
+                                {t(`filterRuleConditionField${field}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={condition.operator}
+                        onValueChange={(value) =>
+                          value &&
+                          updateCondition(index, {
+                            operator: value as MailFilterConditionOperator,
+                          })
+                        }
+                        items={Object.fromEntries(
+                          operators.map((operator) => [
+                            operator,
+                            t(`filterRuleConditionOperator${operator}`),
+                          ]),
+                        )}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label={t("filterRuleConditionOperatorLabel", {
+                            number: index + 1,
+                          })}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {operators.map((operator) => (
+                              <SelectItem key={operator} value={operator}>
+                                {t(`filterRuleConditionOperator${operator}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {condition.field === "HAS_ATTACHMENT" ? (
+                      <Select
+                        value={condition.value}
+                        onValueChange={(value) =>
+                          value && updateCondition(index, { value })
+                        }
+                        items={{
+                          true: t("filterRuleConditionBooleanYes"),
+                          false: t("filterRuleConditionBooleanNo"),
+                        }}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label={valueLabel}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="true">
+                              {t("filterRuleConditionBooleanYes")}
+                            </SelectItem>
+                            <SelectItem value="false">
+                              {t("filterRuleConditionBooleanNo")}
+                            </SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={valueId}
+                        value={condition.value}
+                        onChange={(event) =>
+                          updateCondition(index, {
+                            value: event.target.value,
+                          })
+                        }
+                        aria-label={valueLabel}
+                        maxLength={500}
+                        disabled={submitting}
+                      />
+                    )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <Field orientation="horizontal" className="min-h-8 gap-2">
+                        <Checkbox
+                          id={negateId}
+                          checked={condition.isNegated}
+                          onCheckedChange={(value) =>
+                            updateCondition(index, {
+                              isNegated: value === true,
+                            })
+                          }
+                          disabled={submitting}
+                        />
+                        <FieldLabel
+                          htmlFor={negateId}
+                          className="cursor-pointer font-normal"
+                        >
+                          {t("filterRuleConditionNegateLabel")}
+                        </FieldLabel>
+                      </Field>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={submitting || conditions.length === 1}
+                        aria-label={t("removeFilterRuleConditionButton", {
+                          number: index + 1,
+                        })}
+                        onClick={() =>
+                          setConditions((current) =>
+                            current.filter(
+                              (_condition, conditionIndex) =>
+                                conditionIndex !== index,
+                            ),
+                          )
+                        }
+                      >
+                        <Icon name="ri-delete-bin-line" aria-hidden />
+                        {t("removeButton")}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={
+                submitting || conditions.length >= MAX_MAIL_FILTER_CONDITIONS
+              }
+              onClick={addCondition}
+            >
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
+              {t("addFilterRuleConditionButton")}
+            </Button>
+            <FieldDescription>
+              {t("filterRuleConditionsDescription")}
+            </FieldDescription>
+            <FieldError>
+              {fieldErrors.predicate ?? fieldErrors.conditions}
+            </FieldError>
           </Field>
 
           <Field data-invalid={Boolean(fieldErrors.labelId)}>
@@ -392,6 +748,107 @@ export function FilterRuleForm({
               />
             </>
           )}
+
+          <Field>
+            <FieldLabel>{t("filterRuleReadActionLabel")}</FieldLabel>
+            <Select
+              value={readAction}
+              onValueChange={(value) =>
+                setReadAction((value as ReadAction | null) ?? "KEEP")
+              }
+              items={{
+                KEEP: t("filterRuleReadKeepOption"),
+                READ: t("filterRuleReadOption"),
+                UNREAD: t("filterRuleUnreadOption"),
+              }}
+              disabled={submitting}
+            >
+              <SelectTrigger
+                className="w-full"
+                aria-label={t("filterRuleReadActionLabel")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="KEEP">
+                    {t("filterRuleReadKeepOption")}
+                  </SelectItem>
+                  <SelectItem value="READ">
+                    {t("filterRuleReadOption")}
+                  </SelectItem>
+                  <SelectItem value="UNREAD">
+                    {t("filterRuleUnreadOption")}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              {t("filterRuleReadActionDescription")}
+            </FieldDescription>
+          </Field>
+
+          <Field data-invalid={foldersError}>
+            <FieldLabel>{t("filterRuleMoveActionLabel")}</FieldLabel>
+            {foldersError ? (
+              <div className="space-y-2">
+                <FieldError>{t("errorLoadFolders")}</FieldError>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={submitting}
+                  onClick={() => {
+                    setFolders(null);
+                    setFoldersError(false);
+                    setFoldersReload((value) => value + 1);
+                  }}
+                >
+                  <Icon
+                    name="ri-refresh-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  {t("retryButton")}
+                </Button>
+              </div>
+            ) : folders === null ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner aria-label={t("loadingFoldersLabel")} />
+                {t("loadingFoldersLabel")}
+              </div>
+            ) : (
+              <Select
+                value={moveToFolderId}
+                onValueChange={(value) =>
+                  setMoveToFolderId(value ?? KEEP_FOLDER_VALUE)
+                }
+                items={folderItems}
+                disabled={submitting}
+              >
+                <SelectTrigger
+                  className="w-full"
+                  aria-label={t("filterRuleMoveActionLabel")}
+                  aria-invalid={Boolean(fieldErrors.moveToFolderId)}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Object.entries(folderItems).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
+            <FieldDescription>
+              {t("filterRuleMoveActionDescription")}
+            </FieldDescription>
+            <FieldError>{fieldErrors.moveToFolderId}</FieldError>
+          </Field>
 
           {!initialRule && (
             <Field orientation="horizontal">

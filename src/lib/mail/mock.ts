@@ -241,15 +241,17 @@ export class MockMailDriver implements MailDriver {
     folderPath: string,
     uid: bigint,
     targetPath: string,
-  ): Promise<void> {
+  ): Promise<{ moved: boolean; destinationUid: bigint | null }> {
     const source = this.folder(folderPath);
     const target = this.folder(targetPath);
-    const message = this.message(folderPath, uid);
+    const message = source.messages.find((entry) => entry.uid === uid);
+    if (!message) return { moved: false, destinationUid: null };
     source.messages = source.messages.filter((m) => m.uid !== uid);
     // Target folder assigns its own next UID, like a real IMAP server.
     const nextUid =
       target.messages.reduce((max, m) => (m.uid > max ? m.uid : max), 0n) + 1n;
     target.messages.push({ ...message, uid: nextUid });
+    return { moved: true, destinationUid: nextUid };
   }
 
   async deleteMessage(folderPath: string, uid: bigint): Promise<void> {
