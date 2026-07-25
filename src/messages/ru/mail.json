@@ -6,7 +6,6 @@
   "errorLoadMailTitle": "Не удалось загрузить почту",
   "retryButton": "Повторить",
   "cancelButton": "Отмена",
-
   "errorLoadAccounts": "Не удалось загрузить почтовые аккаунты. Попробуйте снова.",
   "errorLoadFolders": "Не удалось загрузить папки. Попробуйте снова.",
   "errorLoadMessages": "Не удалось загрузить письма. Попробуйте снова.",
@@ -18,14 +17,12 @@
   "errorSyncAccount": "Не удалось синхронизировать аккаунт. Попробуйте снова.",
   "errorSendMail": "Не удалось отправить письмо. Попробуйте снова.",
   "errorDownloadAttachment": "Не удалось скачать вложение. Попробуйте снова.",
-
   "syncCompleteToast": "Синхронизация завершена.",
   "syncInProgressToast": "Синхронизация уже выполняется.",
   "itemTrashedToast": "Письмо перемещено в корзину",
   "itemDeletedToast": "Письмо удалено",
   "itemArchivedToast": "Письмо перемещено в архив",
   "sendSuccessToast": "Письмо отправлено",
-
   "folderNameInbox": "Входящие",
   "folderNameSent": "Отправленные",
   "folderNameDrafts": "Черновики",
@@ -35,12 +32,10 @@
   "foldersNavLabel": "Папки",
   "foldersEmptyDescription": "Папок пока нет. Запустите синхронизацию.",
   "folderUnreadAriaLabel": "Непрочитанных: {count}",
-
   "syncStatusSyncingLabel": "Синхронизация почты",
   "syncStatusSyncingTitle": "Синхронизация…",
   "syncStatusErrorFallback": "Ошибка синхронизации",
   "syncStatusErrorAriaLabel": "Ошибка синхронизации: {error}",
-
   "composeButton": "Написать",
   "composeDisabledTitle": "Добавьте IMAP-аккаунт, чтобы писать письма",
   "accountSelectAriaLabel": "Почтовый аккаунт",
@@ -48,7 +43,6 @@
   "webhookAccountBadge": "Системный",
   "syncButton": "Синхронизировать",
   "manageAccountsButton": "Управление аккаунтами",
-
   "sortDesc": "Сначала новые",
   "sortAsc": "Сначала старые",
   "sortOrderAriaLabel": "Порядок сортировки",
@@ -66,7 +60,6 @@
   "hasAttachmentsAriaLabel": "Есть вложения",
   "unreadAriaLabel": "Непрочитанное",
   "messageLabelsAriaLabel": "Метки: {labels}",
-
   "byteUnitMb": "МБ",
   "byteUnitKb": "КБ",
   "byteUnitB": "Б",
@@ -84,7 +77,6 @@
   "markReadButton": "Прочитано",
   "downloadingAttachmentAriaLabel": "Скачивание вложения",
   "backToListButton": "Назад к списку",
-
   "quotedMessageTemplate": "\n\n---- Исходное письмо ----\n{body}",
   "invalidAddressError": "Некорректный адрес: {address}",
   "toRequiredError": "Укажите хотя бы одного получателя.",
@@ -137,7 +129,6 @@
   "errorUploadAttachment": "Не удалось загрузить вложение.",
   "errorRemoveAttachment": "Не удалось удалить вложение.",
   "editDraftButton": "Редактировать черновик",
-
   "errorAttachmentTooLarge": "Вложение слишком большое для скачивания",
   "errorAttachmentUnavailable": "Вложение станет доступно после синхронизации",
   "errorFolderMismatch": "Папка назначения не принадлежит этому аккаунту",
@@ -146,7 +137,6 @@
   "errorDraftFolderUnavailable": "В этом почтовом аккаунте нет папки черновиков.",
   "errorDraftAttachmentLimit": "К одному черновику можно прикрепить не более 10 файлов.",
   "errorDraftAttachmentTooLarge": "Вложение слишком большое или превышен общий лимит 50 МБ.",
-
   "appliedLabelsAriaLabel": "Применённые метки",
   "labelsNavLabel": "Метки",
   "labelsSectionTitle": "Метки",
@@ -252,15 +242,9 @@
   "filterRulesEmptyTitle": "Правил фильтрации пока нет",
   "filterRulesEmptyDescription": "Откройте письмо и выберите «Фильтровать похожие письма», чтобы создать правило.",
   "filterRulesListLabel": "Правила фильтрации",
-  "filterRuleActiveState": "Включено",
-  "filterRuleInactiveState": "Отключено",
   "filterRuleSenderSummary": "Отправитель — {sender}",
   "filterRuleSubjectSummary": "тема содержит {subject}",
   "filterRuleAndConnector": "и",
-  "filterRunStatusPENDING": "Ожидает обработки",
-  "filterRunStatusRUNNING": "Выполняется",
-  "filterRunStatusCOMPLETED": "Завершено",
-  "filterRunStatusFAILED": "Ошибка",
   "filterRunCountsSummary": "Проверено: {processed}; совпало: {matched}",
   "filterRunViewButton": "Ход обработки",
   "filterRunDialogTitle": "Обработка существующей почты",

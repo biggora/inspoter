@@ -179,6 +179,7 @@ function ServiceCard({
   onDelete: () => void;
 }) {
   const t = useTranslations("services");
+  const tStatus = useTranslations("status");
   const format = useFormatter();
   const monitorIconClass =
     MONITOR_TYPE_ICONS[service.monitorType] ?? "ri-global-line";
@@ -243,7 +244,7 @@ function ServiceCard({
                 <span
                   key={check.id}
                   title={`${formatDateTime(check.checkedAt, format)} — ${
-                    check.status === "UP" ? t("statusUp") : t("statusDown")
+                    check.status === "UP" ? tStatus("up") : tStatus("down")
                   }${
                     check.responseTimeMs !== null
                       ? `, ${t("msValue", { value: check.responseTimeMs })}`

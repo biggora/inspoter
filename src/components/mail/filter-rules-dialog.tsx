@@ -15,7 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+import {
+  StatusIndicator,
+  type StatusState,
+} from "@/components/ui/status-indicator";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -54,13 +57,11 @@ function isActiveRun(run: MailFilterRunDto): boolean {
   return run.status === "PENDING" || run.status === "RUNNING";
 }
 
-function filterRunStatusVariant(
-  status: MailFilterRunDto["status"],
-): "success" | "error" | "info" | "outline" {
-  if (status === "COMPLETED") return "success";
+function filterRunStatusState(status: MailFilterRunDto["status"]): StatusState {
+  if (status === "COMPLETED") return "completed";
   if (status === "FAILED") return "error";
-  if (status === "RUNNING") return "info";
-  return "outline";
+  if (status === "RUNNING") return "inProgress";
+  return "pending";
 }
 
 interface FilterRunDetailsProps {
@@ -183,9 +184,7 @@ function FilterRunDetails({
         >
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {isActiveRun(run) && <Spinner aria-hidden />}
-            <Badge variant={filterRunStatusVariant(run.status)}>
-              {t(`filterRunStatus${run.status}`)}
-            </Badge>
+            <StatusIndicator status={filterRunStatusState(run.status)} />
             <p className="min-w-0 wrap-anywhere text-sm font-medium">
               {ruleName}
             </p>
@@ -538,11 +537,9 @@ export function FilterRulesDialog({
                                 <p className="min-w-0 truncate text-sm font-semibold text-foreground-900">
                                   {rule.name}
                                 </p>
-                                <Badge variant="outline">
-                                  {rule.isActive
-                                    ? t("filterRuleActiveState")
-                                    : t("filterRuleInactiveState")}
-                                </Badge>
+                                <StatusIndicator
+                                  status={rule.isActive ? "up" : "disabled"}
+                                />
                                 <LabelChip
                                   label={{
                                     name: rule.label.name,
@@ -565,15 +562,11 @@ export function FilterRulesDialog({
                               </p>
                               {rule.latestRun && (
                                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                  <Badge
-                                    variant={filterRunStatusVariant(
+                                  <StatusIndicator
+                                    status={filterRunStatusState(
                                       rule.latestRun.status,
                                     )}
-                                  >
-                                    {t(
-                                      `filterRunStatus${rule.latestRun.status}`,
-                                    )}
-                                  </Badge>
+                                  />
                                   <span className="tabular-nums">
                                     {t("filterRunCountsSummary", {
                                       processed: rule.latestRun.processedCount,

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -15,6 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  StatusIndicator,
+  type StatusState,
+} from "@/components/ui/status-indicator";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,17 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
   outgoingWebhooksApi,
   type OutgoingWebhookDto,
   type WebhookDeliveryDto,
   type WebhookDeliveryStatusValue,
 } from "./outgoing-webhooks-api";
-import {
-  DELIVERY_STATUS_LABEL_KEY,
-  EVENT_LABEL_KEY,
-} from "./outgoing-webhooks-format";
+import { EVENT_LABEL_KEY } from "./outgoing-webhooks-format";
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -47,11 +46,12 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
-const STATUS_CLASSES: Record<WebhookDeliveryStatusValue, string> = {
-  DELIVERED: "bg-(--success-bg) text-(--success-text)",
-  FAILED: "bg-destructive/15 text-destructive",
-  PENDING: "bg-muted text-muted-foreground",
-  DELIVERING: "bg-muted text-muted-foreground",
+// Delivery states mapped onto the app-wide status vocabulary.
+const DELIVERY_STATE: Record<WebhookDeliveryStatusValue, StatusState> = {
+  DELIVERED: "completed",
+  FAILED: "error",
+  PENDING: "pending",
+  DELIVERING: "inProgress",
 };
 
 interface OutgoingWebhookDeliveriesProps {
@@ -154,9 +154,9 @@ export function OutgoingWebhookDeliveries({
                       {t(EVENT_LABEL_KEY[delivery.event])}
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn(STATUS_CLASSES[delivery.status])}>
-                        {t(DELIVERY_STATUS_LABEL_KEY[delivery.status])}
-                      </Badge>
+                      <StatusIndicator
+                        status={DELIVERY_STATE[delivery.status]}
+                      />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {delivery.attempts}/{delivery.maxAttempts}

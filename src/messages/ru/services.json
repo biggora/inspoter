@@ -14,7 +14,6 @@
   "disabledLabel": "Отключен",
   "editServiceAria": "Редактировать «{name}»",
   "deleteServiceAria": "Удалить «{name}»",
-
   "loadChecksError": "Не удалось загрузить историю проверок.",
   "backToServices": "Назад к сервисам",
   "editButton": "Редактировать",
@@ -31,9 +30,6 @@
   "checkHistoryTitle": "История проверок",
   "loadingLabel": "Загрузка…",
   "heartbeatAriaLabel": "Полоса последних проверок: зелёный — работает, красный — недоступен",
-  "statusPending": "Ожидание",
-  "statusUp": "Работает",
-  "statusDown": "Недоступен",
   "emptyChecksTitle": "Нет проверок",
   "emptyChecksDescription": "История проверок пока пуста.",
   "tableTimeHeader": "Время",
@@ -41,7 +37,6 @@
   "tableResponseHeader": "Отклик",
   "tableMessageHeader": "Сообщение",
   "loadMoreButton": "Показать ещё",
-
   "nameRequired": "Название обязательно.",
   "urlRequired": "URL обязателен.",
   "urlInvalid": "Введите корректный URL, начинающийся с http:// или https://.",
@@ -66,15 +61,12 @@
   "savingLabel": "Сохранение…",
   "creatingLabel": "Создание…",
   "createButton": "Создать",
-
   "deleteSuccessToast": "Сервис удалён.",
   "deleteErrorToast": "Не удалось удалить сервис. Попробуйте снова.",
   "deleteConfirmTitle": "Удалить «{name}»?",
   "deleteConfirmDescription": "Сервис и вся история его проверок будут удалены без возможности восстановления.",
   "deletingLabel": "Удаление…",
-
   "monitorTypeTcp": "TCP-порт",
-
   "neverChecked": "Ещё не проверялся",
   "justNow": "Только что",
   "minutesAgo": "{count} мин. назад",

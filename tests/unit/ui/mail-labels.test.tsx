@@ -1124,7 +1124,7 @@ describe("Mail filter-rule lifecycle UI", () => {
     expect(
       await screen.findByRole("list", { name: "Правила фильтрации" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Включено", { selector: "span" })).toHaveLength(
+    expect(screen.getAllByText("Работает", { selector: "span" })).toHaveLength(
       2,
     );
     expect(screen.getAllByText(/тема содержит Deployment/)).toHaveLength(2);
@@ -1413,7 +1413,7 @@ describe("Mail filter-rule lifecycle UI", () => {
     await waitFor(() =>
       expect(apiMocks.retryMailFilterRun).toHaveBeenCalledWith("run-failed"),
     );
-    expect(screen.getByText("Ожидает обработки")).toBeInTheDocument();
+    expect(screen.getByText("Ожидание")).toBeInTheDocument();
     expect(screen.getByText("9", { selector: "dd" })).toBeInTheDocument();
     expect(
       screen.getAllByRole("button", {

@@ -130,9 +130,15 @@ Flat surfaces use shadow-none. Floating layers use only:
 - shadow-modal: 0 12px 32px -8px foreground-950/18%, 0 4px 8px -4px foreground-950/10%.
 - Modal scrim: black at 30%.
 
-Every card status is a single shared indicator (`src/components/ui/status-indicator.tsx`): a badge whose leading 6px dot takes its colour from the badge variant via `bg-current`, followed by the mandatory visible label. Feature components never rebuild this markup and never hardcode the state colour.
+**Status indicator.** Every state in the product — on cards, in tables, in dialogs, and in the mail sidebar — is rendered by one component, `src/components/ui/status-indicator.tsx`. A badge carries a leading 6px dot that takes its colour from the badge variant via `bg-current`, followed by the mandatory visible label. Feature components never rebuild this markup, never hardcode a state colour, and never invent their own wording.
 
-Live and transitional states — service `UP`, server `running`/`starting`/`stopping`/`restarting`, hosting `active`, metrics `live`, and any in-flight power or suspend mutation — add a halo that expands from the dot to 2.2× and fades out over `--duration-pulse` (2000ms, ease-out, infinite). Settled states (Down, Stopped, Suspended, Pending, Not configured) and historical records such as the service check-history table stay static. The halo is decorative: the dot wrapper is `aria-hidden`, so the status still reads from text alone, and reduced-motion removes the animation per §2.6.
+The caller passes a canonical state, not a colour and not a label. Colour, pulse, and visible text are all resolved inside the component from the shared `status` message namespace (`src/messages/{ru,en}/status.json`), so the same state cannot read "Up" on one screen and "Running" or "Active" on the next. Each surface maps its own domain enum onto the canonical vocabulary: service `UP`, server `running`, hosting `active`, metrics `live`, an unrevoked token, an enabled webhook, and an enabled filter rule all resolve to `up` — «Работает» / "Up". The remaining states are `down`, `stopped`, `suspended`, `disabled`, `revoked`, `pending`, `starting`, `stopping`, `restarting`, `syncing`, `inProgress`, `completed`, `error`, `stale`, `notConfigured`, `notChecked`, `unknown`, and `system`.
+
+Live and transitional states (`up`, `starting`, `stopping`, `restarting`, `syncing`, `inProgress`) add a halo that expands from the dot to 2.2× and fades out over `--duration-pulse` (2000ms, ease-out, infinite). Settled states stay static, and surfaces listing historical records — the service check-history table — suppress the pulse explicitly. The halo is decorative: the dot wrapper is `aria-hidden`, so the status still reads from text alone, and reduced-motion removes the animation per §2.6.
+
+Two exceptions carry their own wording rather than a canonical state: alert severity (§5.7) and log levels (§5.6) are classifications of past events, so they pass an explicit variant and label and never pulse. Chips that are not states at all — mail labels, provider types, webhook event names, message origin, unread and message counters, and the server `agent only` / provider-availability qualifiers — remain plain badges.
+
+A label-less dot is available for the two places with no room for text (mail sidebar sync state, unread markers); the caller wraps it in a named element (`role="img"` with an accessible name), so colour is never the only carrier.
 
 ### 2.6 Motion, focus, contrast, and keyboard
 
@@ -496,14 +502,18 @@ Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` 
 
 ## Changelog
 
-### v2.14 — 2026-07-25 (Unified card status indicator)
+### v2.14 — 2026-07-25 (One status indicator and one status vocabulary)
 
-Replaces the three copied status-badge implementations in Services, Servers, and
-Hosting with one shared indicator (§2.5). Live and transitional states gain a
-looping halo pulse on the dot; settled states and historical check rows stay
-static. Adds the 2000ms pulse duration to §2.6; reduced-motion behaviour and the
-never-colour-only rule are unchanged. The server metrics badge now carries the
-same dot as every other status.
+Replaces every hand-rolled status badge and status dot in the product with the
+single indicator in §2.5 — Services, Servers (including the metrics badge),
+Hosting, mail accounts, the mail sidebar sync dot, unread markers, mail filter
+rules and runs, outgoing webhooks and their deliveries, webhook tokens, and
+channel webhooks. Introduces the shared `status` message namespace so one state
+has one wording everywhere: the green dot now reads «Работает» / "Up" on all of
+them instead of Up / Running / Active / Connected / Enabled. Live and
+transitional states gain a looping halo pulse; settled states and historical
+check rows stay static. Adds the 2000ms pulse duration to §2.6. Alert severity
+and log levels keep their own wording as documented exceptions.
 
 ### v2.13 — 2026-07-24 (Mail labels and rules opened to members)
 

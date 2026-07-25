@@ -14,7 +14,6 @@
   "disabledLabel": "Disabled",
   "editServiceAria": "Edit \"{name}\"",
   "deleteServiceAria": "Delete \"{name}\"",
-
   "loadChecksError": "Failed to load check history.",
   "backToServices": "Back to services",
   "editButton": "Edit",
@@ -31,9 +30,6 @@
   "checkHistoryTitle": "Check history",
   "loadingLabel": "Loading…",
   "heartbeatAriaLabel": "Recent checks bar: green — up, red — down",
-  "statusPending": "Pending",
-  "statusUp": "Up",
-  "statusDown": "Down",
   "emptyChecksTitle": "No checks",
   "emptyChecksDescription": "The check history is empty for now.",
   "tableTimeHeader": "Time",
@@ -41,7 +37,6 @@
   "tableResponseHeader": "Response",
   "tableMessageHeader": "Message",
   "loadMoreButton": "Load more",
-
   "nameRequired": "Name is required.",
   "urlRequired": "URL is required.",
   "urlInvalid": "Enter a valid URL starting with http:// or https://.",
@@ -66,15 +61,12 @@
   "savingLabel": "Saving…",
   "creatingLabel": "Creating…",
   "createButton": "Create",
-
   "deleteSuccessToast": "Service deleted.",
   "deleteErrorToast": "Failed to delete service. Please try again.",
   "deleteConfirmTitle": "Delete \"{name}\"?",
   "deleteConfirmDescription": "The service and its entire check history will be permanently deleted.",
   "deletingLabel": "Deleting…",
-
   "monitorTypeTcp": "TCP port",
-
   "neverChecked": "Never checked",
   "justNow": "Just now",
   "minutesAgo": "{count} min ago",

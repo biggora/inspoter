@@ -36,7 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
   StatusIndicator,
-  type StatusIndicatorVariant,
+  type StatusState,
 } from "@/components/ui/status-indicator";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
@@ -398,61 +398,21 @@ export function ServersView() {
   );
 }
 
-const statusConfig: Record<
-  ServerStatus,
-  {
-    labelKey: string;
-    variant: StatusIndicatorVariant;
-    pulse: boolean;
-  }
-> = {
-  running: {
-    labelKey: "statusRunning",
-    variant: "success",
-    pulse: true,
-  },
-  stopped: {
-    labelKey: "statusStopped",
-    variant: "secondary",
-    pulse: false,
-  },
-  starting: {
-    labelKey: "statusStarting",
-    variant: "warning",
-    pulse: true,
-  },
-  stopping: {
-    labelKey: "statusStopping",
-    variant: "warning",
-    pulse: true,
-  },
-  restarting: {
-    labelKey: "statusRestarting",
-    variant: "warning",
-    pulse: true,
-  },
-  unknown: {
-    labelKey: "statusUnknown",
-    variant: "secondary",
-    pulse: false,
-  },
+// Provider power states mapped onto the app-wide status vocabulary — the
+// indicator supplies colour, wording, and pulse (ui/status-indicator.tsx).
+const statusState: Record<ServerStatus, StatusState> = {
+  running: "up",
+  stopped: "stopped",
+  starting: "starting",
+  stopping: "stopping",
+  restarting: "restarting",
+  unknown: "unknown",
 };
 
-const metricsStateConfig: Record<
-  MetricsState,
-  {
-    labelKey: string;
-    variant: StatusIndicatorVariant;
-    pulse: boolean;
-  }
-> = {
-  live: { labelKey: "metricsLive", variant: "success", pulse: true },
-  stale: { labelKey: "metricsStale", variant: "warning", pulse: false },
-  not_configured: {
-    labelKey: "metricsNotConfigured",
-    variant: "secondary",
-    pulse: false,
-  },
+const metricsState: Record<MetricsState, StatusState> = {
+  live: "up",
+  stale: "stale",
+  not_configured: "notConfigured",
 };
 
 interface PowerCardAction {
@@ -612,11 +572,10 @@ function ServerCard({
 
   const isProvider = server.origin === "provider";
   const metrics = server.metrics;
-  const metricsConfig =
-    metricsStateConfig[metrics.state] ?? metricsStateConfig.not_configured;
+  const metricsStatus = metricsState[metrics.state] ?? "notConfigured";
 
   const status = isProvider ? (server.status as ServerStatus) : null;
-  const config = status ? (statusConfig[status] ?? statusConfig.unknown) : null;
+  const cardStatus = status ? (statusState[status] ?? "unknown") : null;
   const busy = status ? TRANSITIONAL_STATUSES.includes(status) : false;
   const busyAction = status ? PENDING_ACTION_BY_STATUS[status] : undefined;
   const availableActions = isProvider ? getAvailableActions(server) : [];
@@ -666,18 +625,8 @@ function ServerCard({
         </div>
         <CardAction>
           <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {config && (
-              <StatusIndicator
-                variant={config.variant}
-                label={t(config.labelKey)}
-                pulse={config.pulse || busy}
-              />
-            )}
-            <StatusIndicator
-              variant={metricsConfig.variant}
-              label={t(metricsConfig.labelKey)}
-              pulse={metricsConfig.pulse}
-            />
+            {cardStatus && <StatusIndicator status={cardStatus} />}
+            <StatusIndicator status={metricsStatus} />
             {!isProvider && (
               <Badge variant="secondary">{t("agentOnlyBadge")}</Badge>
             )}

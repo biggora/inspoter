@@ -51,6 +51,7 @@ export function ServiceDetailView({
   initialService: Service;
 }) {
   const t = useTranslations("services");
+  const tStatus = useTranslations("status");
   const format = useFormatter();
   const router = useRouter();
   const service = initialService;
@@ -317,7 +318,7 @@ export function ServiceDetailView({
                   <span
                     key={check.id}
                     title={`${formatDateTime(check.checkedAt, format)} — ${
-                      check.status === "UP" ? t("statusUp") : t("statusDown")
+                      check.status === "UP" ? tStatus("up") : tStatus("down")
                     }${
                       check.responseTimeMs !== null
                         ? `, ${t("msValue", { value: check.responseTimeMs })}`

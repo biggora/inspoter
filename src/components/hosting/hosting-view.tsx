@@ -35,7 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
   StatusIndicator,
-  type StatusIndicatorVariant,
+  type StatusState,
 } from "@/components/ui/status-indicator";
 import {
   fetchAccounts,
@@ -56,13 +56,12 @@ interface Notification {
 
 type PageState = "loading" | "error" | "empty" | "ready";
 
-const statusConfig: Record<
-  string,
-  { labelKey: string; variant: StatusIndicatorVariant; pulse: boolean }
-> = {
-  active: { labelKey: "statusActive", variant: "success", pulse: true },
-  suspended: { labelKey: "statusSuspended", variant: "warning", pulse: false },
-  unknown: { labelKey: "statusUnknown", variant: "secondary", pulse: false },
+// Hosting account states mapped onto the app-wide status vocabulary — the
+// indicator supplies colour, wording, and pulse (ui/status-indicator.tsx).
+const statusState: Record<string, StatusState> = {
+  active: "up",
+  suspended: "suspended",
+  unknown: "unknown",
 };
 
 export function HostingView() {
@@ -343,8 +342,7 @@ function HostingCard({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const confirmingRef = useRef(false);
 
-  const config =
-    statusConfig[account.status as AccountStatus] ?? statusConfig.unknown;
+  const cardStatus = statusState[account.status as AccountStatus] ?? "unknown";
   const none = t("valueNone");
   const unlimited = t("valueUnlimited");
   const isSuspended = account.status === "suspended";
@@ -383,11 +381,7 @@ function HostingCard({
           </div>
         </div>
         <CardAction>
-          <StatusIndicator
-            variant={config.variant}
-            label={t(config.labelKey)}
-            pulse={config.pulse || busy}
-          />
+          <StatusIndicator status={cardStatus} />
         </CardAction>
       </CardHeader>
 

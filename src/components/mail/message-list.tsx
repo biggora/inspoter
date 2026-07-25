@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusDot } from "@/components/ui/status-indicator";
 import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { MailListItemDto } from "./api";
@@ -367,9 +368,12 @@ export function MessageList({
                     </span>
                     {!item.isRead && (
                       <span
+                        role="img"
                         aria-label={t("unreadAriaLabel")}
-                        className="mt-1.5 size-2 shrink-0 rounded-full bg-primary-500"
-                      />
+                        className="mt-1.5 shrink-0 text-primary-500"
+                      >
+                        <StatusDot />
+                      </span>
                     )}
                   </Button>
                 </li>

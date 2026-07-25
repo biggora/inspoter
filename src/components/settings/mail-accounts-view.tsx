@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -22,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import {
   Table,
   TableBody,
@@ -53,21 +53,19 @@ function StatusBadges({ account }: { account: MailAccountDto }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {account.kind === "WEBHOOK" ? (
-        <Badge variant="secondary">{t("statusSystem")}</Badge>
+        <StatusIndicator status="system" />
       ) : account.isValid === true ? (
-        <Badge variant="success">{t("statusConnected")}</Badge>
+        <StatusIndicator status="up" />
       ) : account.isValid === false ? (
-        <Badge variant="error">{t("statusConnectionError")}</Badge>
+        <StatusIndicator status="error" />
       ) : (
-        <Badge variant="outline">{t("statusNotChecked")}</Badge>
+        <StatusIndicator status="notChecked" />
       )}
-      {account.syncStatus === "SYNCING" && (
-        <Badge variant="info">{t("statusSyncing")}</Badge>
-      )}
+      {account.syncStatus === "SYNCING" && <StatusIndicator status="syncing" />}
       {account.syncStatus === "ERROR" && (
-        <Badge variant="warning" title={account.syncError ?? undefined}>
-          {t("statusSyncError")}
-        </Badge>
+        <span title={account.syncError ?? t("statusSyncError")}>
+          <StatusIndicator status="error" />
+        </span>
       )}
     </div>
   );

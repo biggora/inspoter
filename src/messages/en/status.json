@@ -1,0 +1,21 @@
+{
+  "up": "Up",
+  "down": "Down",
+  "stopped": "Stopped",
+  "suspended": "Suspended",
+  "disabled": "Disabled",
+  "revoked": "Revoked",
+  "pending": "Pending",
+  "starting": "Starting…",
+  "stopping": "Stopping…",
+  "restarting": "Restarting…",
+  "syncing": "Syncing…",
+  "inProgress": "In progress",
+  "completed": "Completed",
+  "error": "Error",
+  "stale": "Stale",
+  "notConfigured": "Not configured",
+  "notChecked": "Not checked",
+  "unknown": "Unknown",
+  "system": "System"
+}

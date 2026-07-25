@@ -4,7 +4,6 @@ import { Fragment, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
@@ -22,6 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  StatusIndicator,
+  type StatusIndicatorVariant,
+} from "@/components/ui/status-indicator";
 import {
   Table,
   TableBody,
@@ -48,18 +51,22 @@ const SORT_LABEL_KEYS: Record<string, string> = {
 
 // §2.5 severity scale (design.md) — unmapped level strings fall back to the
 // muted tier rather than guessing; critical stays distinct from error.
-const LEVEL_STYLES: Record<string, string> = {
-  info: "border-(--info-border) bg-(--info-bg) text-(--info-text)",
-  warning: "border-(--warning-border) bg-(--warning-bg) text-(--warning-text)",
-  error: "border-(--error-border) bg-(--error-bg) text-(--error-text)",
-  critical:
-    "border-(--critical-border) bg-(--critical-bg) text-(--critical-text)",
+const LEVEL_VARIANTS: Record<string, StatusIndicatorVariant> = {
+  info: "info",
+  warning: "warning",
+  error: "error",
+  critical: "critical",
 };
 
 function LevelBadge({ level }: { level: string }) {
   const normalized = level.toLowerCase();
-  const style = LEVEL_STYLES[normalized] ?? "bg-muted text-muted-foreground";
-  return <Badge className={cn("uppercase", style)}>{level}</Badge>;
+  return (
+    <StatusIndicator
+      variant={LEVEL_VARIANTS[normalized] ?? "secondary"}
+      label={level}
+      className="uppercase"
+    />
+  );
 }
 
 function formatTimestamp(iso: string): string {

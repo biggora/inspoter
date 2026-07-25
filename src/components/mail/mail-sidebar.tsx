@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { StatusDot } from "@/components/ui/status-indicator";
 import type { MailAccountDto, MailFolderDto, MailLabelDto } from "./api";
 import { LabelChip } from "./label-chip";
 
@@ -59,9 +60,11 @@ function SyncStatusDot({ account }: { account: MailAccountDto }) {
       <span
         role="img"
         aria-label={t("syncStatusSyncingLabel")}
-        className="size-2 shrink-0 animate-pulse rounded-full bg-[var(--info-text)]"
+        className="shrink-0 text-[var(--info-text)]"
         title={t("syncStatusSyncingTitle")}
-      />
+      >
+        <StatusDot pulse />
+      </span>
     );
   }
   if (account.syncStatus === "ERROR") {
@@ -70,9 +73,11 @@ function SyncStatusDot({ account }: { account: MailAccountDto }) {
       <span
         role="img"
         aria-label={t("syncStatusErrorAriaLabel", { error: errorText })}
-        className="size-2 shrink-0 rounded-full bg-[var(--error-text)]"
+        className="shrink-0 text-[var(--error-text)]"
         title={errorText}
-      />
+      >
+        <StatusDot />
+      </span>
     );
   }
   return null;
