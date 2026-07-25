@@ -115,7 +115,7 @@ export class ImapSmtpMailDriver implements MailDriver {
   }
 
   private createImapClient(): ImapFlow {
-    return new ImapFlow({
+    const client = new ImapFlow({
       host: this.config.imapHost,
       port: this.config.imapPort,
       secure: this.config.imapSecurity === "SSL",
@@ -125,6 +125,23 @@ export class ImapSmtpMailDriver implements MailDriver {
       socketTimeout: TIMEOUT_MS,
       logger: false,
     });
+    client.on("error", (error) => this.handleConnectionError(client, error));
+    return client;
+  }
+
+  // ImapFlow is an EventEmitter, and a socket failure after connect (ETIMEOUT
+  // on a slow or idle connection, ECONNRESET) arrives as an 'error' event —
+  // not as a rejection of the awaited operation, which withImap already
+  // handles. Without a listener Node turns that event into a process-level
+  // uncaughtException, so one unreachable mailbox takes the whole server down
+  // instead of just failing its own sync. imapflow only destroys the socket on
+  // the next tick (closeAfter → setImmediate), so `usable` is still true here:
+  // drop the cached connection explicitly and let the next call reconnect.
+  private handleConnectionError(client: ImapFlow, error: unknown): void {
+    if (this.client === client) this.client = null;
+    console.error(
+      `[mail] IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${errorMessage(error)}`,
+    );
   }
 
   private getTransporter(): Transporter {
