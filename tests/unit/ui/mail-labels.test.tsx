@@ -746,11 +746,11 @@ describe("Mail label chips", () => {
         accounts={[]}
         selectedAccountId={null}
         onSelectAccount={vi.fn()}
-        folders={[]}
+        folders={FOLDERS["account-1"]}
         foldersLoading={false}
         foldersError={null}
         onRetryFolders={vi.fn()}
-        selectedFolderId={null}
+        selectedFolderId="folder-1"
         onSelectFolder={vi.fn()}
         labels={ITEM.labels.map((label, index) => ({
           ...label,
@@ -769,10 +769,21 @@ describe("Mail label chips", () => {
 
     const labelsNav = screen.getByRole("navigation", { name: "Метки" });
     const labelsNavQueries = within(labelsNav);
+    const selectedFolder = within(
+      screen.getByRole("navigation", { name: "Папки" }),
+    ).getByRole("button", { name: "Входящие" });
     const selectedLabel = labelsNavQueries.getByRole("button", {
       name: "Production alerts",
     });
+    expect(selectedFolder).toHaveClass(
+      "dark:bg-secondary-300",
+      "dark:hover:bg-secondary-400",
+    );
     expect(selectedLabel).toHaveAttribute("aria-current", "true");
+    expect(selectedLabel).toHaveClass(
+      "dark:bg-secondary-300",
+      "dark:hover:bg-secondary-400",
+    );
     expect(selectedLabel).toHaveAccessibleDescription("12 писем");
     expect(within(selectedLabel).getByText("12")).toBeVisible();
 
