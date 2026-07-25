@@ -202,9 +202,12 @@ address is not recognised as the same machine. Migrate in three steps:
 1. Add the new address next to the old one and restart the container:
    `SERVER_IPS=203.0.113.20,203.0.113.99`.
 2. Wait out at least two push intervals (two minutes with the default
-   `METRICS_INTERVAL`), then **reload** the Servers page twice, a minute apart,
-   and watch the card's **Updated** age. Across the two reloads it must fall
-   back down — `Updated 1m ago` then `Updated 15s ago` — instead of climbing.
+   `METRICS_INTERVAL`), then **reload** the Servers page and check the card's
+   **Updated** age. It must be under the dashboard's 180-second staleness
+   threshold. A single higher reading is not a verdict — one dropped push is
+   ordinary, since a failed push is simply skipped until the next interval — so
+   reload once or twice more, an interval apart, and treat the check as passed
+   as soon as a reading comes back under the threshold.
 3. Only then drop the old address and restart again.
 
 The push in step 1 is matched through the still-claimed old address and records
@@ -216,13 +219,18 @@ Two details make step 2 work the way it is written:
   fetched when the page loaded. Staring at an open tab proves nothing; reload
   it.
 - **Updated** is relative (`Updated 12s ago`, `Updated 4m ago`), so it cannot be
-  compared against the restart time directly — and a single reading proves
-  nothing either. A healthy agent's age sits anywhere between zero and one push
-  interval, so `Updated 1m ago` is perfectly normal with the default interval.
-  What distinguishes an accepted stream is that the age **drops back** on a
-  later reload, because each stored snapshot resets it. A refused snapshot
-  updates neither the receive time nor the addresses, so its age only climbs —
-  and once it passes 180 seconds the dashboard marks the server stale.
+  compared against the restart time directly, and no single reading is a
+  verdict. A healthy agent's age wanders between zero and one push interval, and
+  a dropped push or a slow one pushes a reading higher without anything being
+  wrong — `Updated 1m ago`, or `2m ago` after one failure, is normal with the
+  default interval. What separates an accepted stream from a refused one is that
+  the accepted one keeps coming back under the threshold, while a refused
+  snapshot updates neither the receive time nor the addresses and therefore
+  climbs without limit.
+
+If you raised `METRICS_INTERVAL` above 60 seconds, the dashboard will report the
+server as stale between pushes anyway; in that case judge the age against your
+own interval and look for unbounded growth across several of them.
 
 Do not use the agent log as the gate. It records only the status class, so
 `metrics push succeeded (2xx)` is printed both when the snapshot was stored and
