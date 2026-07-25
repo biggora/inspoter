@@ -24,7 +24,10 @@ function metricsResponse(
 }
 
 function rateLimitedResponse(check: { retryAfterMs?: number }): NextResponse {
-  const retryAfter = Math.max(1, Math.ceil((check.retryAfterMs ?? 1000) / 1000));
+  const retryAfter = Math.max(
+    1,
+    Math.ceil((check.retryAfterMs ?? 1000) / 1000),
+  );
   const resp = metricsResponse(
     { error: "RATE_LIMITED", message: "Token submission limit exceeded" },
     429,

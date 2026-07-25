@@ -103,7 +103,9 @@ export default function BackupsPage() {
   const [serverFilter, setServerFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   // Dropdowns
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);

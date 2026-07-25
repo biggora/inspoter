@@ -191,9 +191,7 @@ describe("standardized form contracts", () => {
     await user.type(screen.getByLabelText("Пароль"), "secret");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith("/bookmarks"),
-    );
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/bookmarks"));
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 

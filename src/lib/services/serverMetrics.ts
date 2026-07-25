@@ -389,7 +389,12 @@ async function enrollProviderServer(
       // PROVIDER-sourced rows, or AGENT-sourced rows from a prior ingest)
       // -- use the update-style upsert so the [workspaceId, localServerId,
       // address, source] unique constraint is never hit.
-      await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
+      await updateAddressObservations(
+        tx,
+        serverId,
+        workspaceId,
+        payload.addresses,
+      );
 
       return { status: 200, code: "SNAPSHOT_UPDATED", localServerId: serverId };
     }
@@ -411,7 +416,12 @@ async function enrollProviderServer(
     const serverId = row.id;
 
     await applySnapshot(tx, serverId, workspaceId, payload);
-    await updateAddressObservations(tx, serverId, workspaceId, payload.addresses);
+    await updateAddressObservations(
+      tx,
+      serverId,
+      workspaceId,
+      payload.addresses,
+    );
 
     return { status: 201, code: "AGENT_ENROLLED", localServerId: serverId };
   });
@@ -542,7 +552,9 @@ async function createAddressObservations(
 ): Promise<void> {
   for (const addr of addresses) {
     const isClaimEligible =
-      addr.family === "IPV4" && addr.scope === "GLOBAL" && addr.matchKey !== null;
+      addr.family === "IPV4" &&
+      addr.scope === "GLOBAL" &&
+      addr.matchKey !== null;
 
     await tx.localServerAddress.create({
       data: {
@@ -605,7 +617,9 @@ async function updateAddressObservations(
     }
 
     const isClaimEligible =
-      addr.family === "IPV4" && addr.scope === "GLOBAL" && addr.matchKey !== null;
+      addr.family === "IPV4" &&
+      addr.scope === "GLOBAL" &&
+      addr.matchKey !== null;
 
     let hasConflict = false;
     if (isClaimEligible) {

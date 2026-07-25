@@ -471,12 +471,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
           variant === "dialog" ? "flex-1" : "gap-3",
         )}
       >
-        <div
-          className={cn(
-            "space-y-3",
-            variant === "dialog" && "px-5 py-4",
-          )}
-        >
+        <div className={cn("space-y-3", variant === "dialog" && "px-5 py-4")}>
           <div className="flex items-end gap-2">
             <div className="min-w-0 flex-1">
               {renderAddressField(

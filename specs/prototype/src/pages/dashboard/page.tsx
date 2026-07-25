@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { mockServers } from "@/mocks/servers";
 import { mockDomains } from "@/mocks/domains";
 import { mockAlerts } from "@/mocks/alerts";

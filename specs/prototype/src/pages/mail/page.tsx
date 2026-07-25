@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import { mockEmails } from "@/mocks/emails";
 import type { Email } from "@/mocks/emails";
 
@@ -70,7 +70,9 @@ export default function MailPage() {
 
   // Debounced search input
   const [searchInput, setSearchInput] = useState(query);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (notification) {

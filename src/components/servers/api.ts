@@ -102,4 +102,3 @@ export async function powerAction(
   }
   return res.json();
 }
-

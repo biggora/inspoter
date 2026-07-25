@@ -398,9 +398,7 @@ export async function setDefaultWorkspace(
   });
 }
 
-export async function clearDefaultWorkspace(
-  operatorId: string,
-): Promise<void> {
+export async function clearDefaultWorkspace(operatorId: string): Promise<void> {
   await db.operator.update({
     where: { id: operatorId },
     data: { defaultWorkspaceId: null },

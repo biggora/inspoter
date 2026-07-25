@@ -50,7 +50,9 @@ export default function LogsPage() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const [levelDropdownOpen, setLevelDropdownOpen] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const levelRef = useRef<HTMLDivElement>(null);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 import { mockDomains, mockDnsRecords } from "@/mocks/domains";
 import type { Domain, DnsRecord, DnsRecordType } from "@/mocks/domains";
 import Modal from "@/components/base/Modal";

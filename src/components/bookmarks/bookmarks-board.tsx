@@ -492,7 +492,10 @@ export function BookmarksBoard({
               onValueChange={(value) => setCategoryFilter(value as string)}
               items={categoryFilterItems}
             >
-              <SelectTrigger size="sm" aria-label={t("categoryFilterAriaLabel")}>
+              <SelectTrigger
+                size="sm"
+                aria-label={t("categoryFilterAriaLabel")}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

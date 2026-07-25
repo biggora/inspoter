@@ -50,7 +50,9 @@ export default function AlertsPage() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const sourceRef = useRef<HTMLDivElement>(null);
 

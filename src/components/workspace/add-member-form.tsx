@@ -127,9 +127,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
               className="flex-1"
               data-invalid={!!errors.username || undefined}
             >
-              <FieldLabel htmlFor={usernameId}>
-                {t("usernameLabel")}
-              </FieldLabel>
+              <FieldLabel htmlFor={usernameId}>{t("usernameLabel")}</FieldLabel>
               <Input
                 id={usernameId}
                 value={username}
@@ -144,9 +142,7 @@ export function AddMemberForm({ workspaceId }: { workspaceId: string }) {
               className="flex-1"
               data-invalid={!!errors.password || undefined}
             >
-              <FieldLabel htmlFor={passwordId}>
-                {t("passwordLabel")}
-              </FieldLabel>
+              <FieldLabel htmlFor={passwordId}>{t("passwordLabel")}</FieldLabel>
               <Input
                 id={passwordId}
                 type="password"

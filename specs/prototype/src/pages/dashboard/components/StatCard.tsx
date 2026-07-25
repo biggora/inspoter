@@ -3,7 +3,7 @@ import { type ReactNode } from "react";
 interface StatCardProps {
   icon: string;
   label: string;
-  value: string | number;
+  value: ReactNode;
   subtitle?: string;
   accent?: "primary" | "accent" | "secondary" | "amber" | "red";
   progress?: number;

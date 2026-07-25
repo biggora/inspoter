@@ -562,7 +562,6 @@ export default function MonitoringPage() {
               />
               <XAxis
                 dataKey="timestamp"
-                data={filteredServers[0]?.networkHistory || []}
                 tickFormatter={(v: string) => formatTime(v, timeRange)}
                 tick={{ fontSize: 11, fill: "oklch(var(--foreground-400))" }}
                 axisLine={false}

@@ -166,12 +166,14 @@ describe("rotate()", () => {
     );
     const rotated = await webhookTokensService.rotate(created.id, workspaceId);
 
-    const context =
-      await serverMetricsService.authenticateMetricsToken(rotated.token);
+    const context = await serverMetricsService.authenticateMetricsToken(
+      rotated.token,
+    );
     expect(context).toEqual({ tokenId: rotated.id, workspaceId });
 
-    const oldContext =
-      await serverMetricsService.authenticateMetricsToken(created.token);
+    const oldContext = await serverMetricsService.authenticateMetricsToken(
+      created.token,
+    );
     expect(oldContext).toBeNull();
   });
 

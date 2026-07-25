@@ -61,16 +61,12 @@ export async function GET(request: NextRequest) {
     // external URI to match what was sent in the authorization request.
     const callbackUrl = new URL(env.AUTHENTIK_REDIRECT_URI!);
     callbackUrl.search = new URL(request.url).search;
-    const tokens = await client.authorizationCodeGrant(
-      config,
-      callbackUrl,
-      {
-        pkceCodeVerifier: txn.codeVerifier,
-        expectedState: txn.state,
-        expectedNonce: txn.nonce,
-        idTokenExpected: true,
-      },
-    );
+    const tokens = await client.authorizationCodeGrant(config, callbackUrl, {
+      pkceCodeVerifier: txn.codeVerifier,
+      expectedState: txn.state,
+      expectedNonce: txn.nonce,
+      idTokenExpected: true,
+    });
     const claims = tokens.claims();
 
     if (!claims?.sub) {

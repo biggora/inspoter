@@ -9,7 +9,10 @@ export async function PUT(request: NextRequest) {
     const { operator } = await requireAuth();
     const body = await request.json().catch(() => null);
     if (!body?.workspaceId || typeof body.workspaceId !== "string") {
-      return jsonResponse({ error: "workspaceId is required" }, { status: 400 });
+      return jsonResponse(
+        { error: "workspaceId is required" },
+        { status: 400 },
+      );
     }
     await workspacesService.setDefaultWorkspace(operator.id, body.workspaceId);
     return jsonResponse({ ok: true });

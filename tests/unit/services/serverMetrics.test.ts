@@ -49,7 +49,9 @@ function buildRawPayload(overrides: {
   };
 }
 
-function parsePayload(overrides: Parameters<typeof buildRawPayload>[0] = {}): ParsedMetricsPayload {
+function parsePayload(
+  overrides: Parameters<typeof buildRawPayload>[0] = {},
+): ParsedMetricsPayload {
   const result = validateMetricsPayload(buildRawPayload(overrides));
   if (!result.success) {
     throw new Error(`invalid test payload: ${result.error.message}`);
@@ -124,10 +126,9 @@ describe("authenticateMetricsToken()", () => {
   });
 
   it("rejects an unknown secret", async () => {
-    const context =
-      await serverMetricsService.authenticateMetricsToken(
-        `unknown-secret-${randomUUID()}`,
-      );
+    const context = await serverMetricsService.authenticateMetricsToken(
+      `unknown-secret-${randomUUID()}`,
+    );
     expect(context).toBeNull();
   });
 });

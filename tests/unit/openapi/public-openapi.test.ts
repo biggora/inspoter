@@ -83,7 +83,16 @@ const responseStatuses = ["200", "201", "400", "401", "413", "429", "500"];
 const metricsPath = "/api/server-metrics";
 const metrics = spec.paths[metricsPath].post;
 const metricsResponseStatuses = [
-  "200", "201", "400", "401", "409", "413", "422", "429", "500", "503",
+  "200",
+  "201",
+  "400",
+  "401",
+  "409",
+  "413",
+  "422",
+  "429",
+  "500",
+  "503",
 ];
 
 function resolveRef<T>(value: T & { $ref?: string }): T {
@@ -370,9 +379,7 @@ describe("public OpenAPI contract", () => {
   });
 
   it("sets Cache-Control and Retry-After headers on metrics responses", () => {
-    const handledStatuses = metricsResponseStatuses.filter(
-      (s) => s !== "500",
-    );
+    const handledStatuses = metricsResponseStatuses.filter((s) => s !== "500");
     for (const status of handledStatuses) {
       expect(
         metrics.responses?.[status]?.headers?.["Cache-Control"],
@@ -380,12 +387,8 @@ describe("public OpenAPI contract", () => {
     }
     expect(metrics.responses?.["500"]?.headers).toBeUndefined();
 
-    expect(
-      metrics.responses?.["429"]?.headers?.["Retry-After"],
-    ).toBeTruthy();
-    for (const status of metricsResponseStatuses.filter(
-      (s) => s !== "429",
-    )) {
+    expect(metrics.responses?.["429"]?.headers?.["Retry-After"]).toBeTruthy();
+    for (const status of metricsResponseStatuses.filter((s) => s !== "429")) {
       expect(
         metrics.responses?.[status]?.headers?.["Retry-After"],
       ).toBeUndefined();

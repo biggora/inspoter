@@ -58,9 +58,7 @@ async function activeWorkspace(page: Page) {
     const data = (await response.json()) as {
       workspaces: Array<{ id: string; name: string }>;
     };
-    return (
-      data.workspaces.find((item) => item.id === workspace)?.name ?? ""
-    );
+    return data.workspaces.find((item) => item.id === workspace)?.name ?? "";
   }, workspaceId);
   if (!workspaceName) {
     throw new Error("An active workspace name is required for this E2E test.");

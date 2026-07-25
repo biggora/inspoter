@@ -232,7 +232,10 @@ export function ActivityView() {
   };
 
   const hasActiveFilters =
-    query !== "" || action !== "all" || entityType !== "all" || operator !== "all";
+    query !== "" ||
+    action !== "all" ||
+    entityType !== "all" ||
+    operator !== "all";
 
   return (
     <PageBody>

@@ -24,7 +24,10 @@ function bookmarkArticle(page: Page, bookmarkName: string) {
 // with a digit — unlike the empty-state title ("Нет закладок") or the
 // search live-region's "Найдено N закладок", which don't.
 function totalCountText(page: Page) {
-  return page.locator("p").filter({ hasText: /^\d+\s/ }).first();
+  return page
+    .locator("p")
+    .filter({ hasText: /^\d+\s/ })
+    .first();
 }
 
 // DOM order of bookmark `<article aria-label>`s within a category section —
@@ -674,12 +677,16 @@ test("the category filter dropdown shows only the selected category, and resetti
   await createCategory(page, categoryA, testData.registerCategory);
   await createBookmark(page, categoryA, {
     name: bookmarkA,
-    url: testData.localUrl(`/settings?bookmark=cat-filter-a-${testData.suffix}`),
+    url: testData.localUrl(
+      `/settings?bookmark=cat-filter-a-${testData.suffix}`,
+    ),
   });
   await createCategory(page, categoryB, testData.registerCategory);
   await createBookmark(page, categoryB, {
     name: bookmarkB,
-    url: testData.localUrl(`/settings?bookmark=cat-filter-b-${testData.suffix}`),
+    url: testData.localUrl(
+      `/settings?bookmark=cat-filter-b-${testData.suffix}`,
+    ),
   });
 
   await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
@@ -691,7 +698,9 @@ test("the category filter dropdown shows only the selected category, and resetti
   await expect(bookmarkArticle(page, bookmarkB)).toHaveCount(0);
 
   await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
-  await page.getByRole("option", { name: "Все категории", exact: true }).click();
+  await page
+    .getByRole("option", { name: "Все категории", exact: true })
+    .click();
 
   await expect(categorySection(page, categoryA)).toBeVisible();
   await expect(categorySection(page, categoryB)).toBeVisible();

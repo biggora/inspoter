@@ -218,7 +218,13 @@ check(
 );
 
 const webhookExpectedResponses = [
-  "200", "201", "400", "401", "413", "429", "500",
+  "200",
+  "201",
+  "400",
+  "401",
+  "413",
+  "429",
+  "500",
 ];
 for (const [label, operation] of [
   [typedPath, typed],
@@ -236,7 +242,16 @@ for (const [label, operation] of [
 }
 
 const metricsExpectedResponses = [
-  "200", "201", "400", "401", "409", "413", "422", "429", "500", "503",
+  "200",
+  "201",
+  "400",
+  "401",
+  "409",
+  "413",
+  "422",
+  "429",
+  "500",
+  "503",
 ];
 {
   const responses = Object.keys(metrics?.responses ?? {});

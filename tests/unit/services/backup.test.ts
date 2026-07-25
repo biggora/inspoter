@@ -128,22 +128,19 @@ beforeAll(async () => {
   });
 
   // --- mail: IMAP MailAccount (real encrypted password) + folder + item + attachment ---
-  const account = await mailAccountsService.createAccount(
-    workspaceA.id,
-    {
-      name: `Mail Account ${RUN_ID}`,
-      email: `mail-${RUN_ID}@example.com`,
-      imapHost: "imap.example.com",
-      imapPort: 993,
-      imapSecurity: "SSL",
-      smtpHost: "smtp.example.com",
-      smtpPort: 465,
-      smtpSecurity: "SSL",
-      username: `mail-${RUN_ID}@example.com`,
-      password: "imap-app-password-value",
-      mode: "MOCK",
-    },
-  );
+  const account = await mailAccountsService.createAccount(workspaceA.id, {
+    name: `Mail Account ${RUN_ID}`,
+    email: `mail-${RUN_ID}@example.com`,
+    imapHost: "imap.example.com",
+    imapPort: 993,
+    imapSecurity: "SSL",
+    smtpHost: "smtp.example.com",
+    smtpPort: 465,
+    smtpSecurity: "SSL",
+    username: `mail-${RUN_ID}@example.com`,
+    password: "imap-app-password-value",
+    mode: "MOCK",
+  });
   // Simulate a stuck sync so the "reset to IDLE on import" assertion is
   // meaningful rather than trivially true.
   await db.mailAccount.update({

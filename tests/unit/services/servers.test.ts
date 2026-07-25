@@ -273,7 +273,6 @@ describe("metrics state composition", () => {
     );
     expect(stale?.metrics.state).toBe("stale");
   });
-
 });
 
 describe("power()", () => {
