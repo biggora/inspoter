@@ -13,6 +13,7 @@
   "emptyTitle": "Доменов пока нет",
   "emptyDescription": "Домены появятся автоматически при подключении DNS-провайдера в настройках.",
   "domainHeader": "Домен",
+  "recordsHeader": "DNS-записи",
   "providerHeader": "Провайдер",
   "actionsHeader": "Действия",
   "viewDnsButton": "Просмотр DNS",

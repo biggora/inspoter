@@ -222,6 +222,7 @@ export function DomainsView({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("domainHeader")}</TableHead>
+                  <TableHead>{t("recordsHeader")}</TableHead>
                   <TableHead>{t("providerHeader")}</TableHead>
                   <TableHead className="text-right">
                     {t("actionsHeader")}
@@ -239,6 +240,9 @@ export function DomainsView({
                           <span className="font-mono">{domain.name}</span>
                           <LinkedBadges linked={linked} />
                         </span>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-foreground-500">
+                        {domain.recordCount ?? "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
