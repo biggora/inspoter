@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { isMailLabelColor, type MailLabelColor } from "@/lib/mail-label-color";
+import {
+  MAIL_FILTER_CONDITION_FIELDS,
+  MAIL_FILTER_CONDITION_OPERATORS,
+  MAIL_FILTER_MATCH_MODES,
+  MAX_MAIL_FILTER_CONDITIONS,
+  MAX_MAIL_FILTER_CONDITION_VALUE_LENGTH,
+  isMailFilterConditionCombinationValid,
+} from "@/lib/mail-filter-types";
 import { VALIDATION_RU } from "@/lib/validation/error-map";
 import { normalizeMailLabelDisplayName } from "@/lib/mail-label-normalization";
 
@@ -272,17 +280,73 @@ const mailFilterSubjectSchema = z
 function hasMailFilterPredicate(input: {
   fromAddress?: string | null;
   subjectContains?: string | null;
+  conditions?: readonly unknown[];
 }): boolean {
-  return Boolean(input.fromAddress || input.subjectContains);
+  return Boolean(
+    input.conditions?.length || input.fromAddress || input.subjectContains,
+  );
 }
+
+export const mailFilterConditionSchema = z
+  .object({
+    field: z.enum(MAIL_FILTER_CONDITION_FIELDS),
+    operator: z.enum(MAIL_FILTER_CONDITION_OPERATORS),
+    value: z
+      .string()
+      .transform((value) => value.normalize("NFKC").trim())
+      .pipe(
+        z
+          .string()
+          .min(1, { error: "RULE_CONDITION_VALUE_REQUIRED" })
+          .max(MAX_MAIL_FILTER_CONDITION_VALUE_LENGTH, {
+            error: "RULE_CONDITION_VALUE_TOO_LONG",
+          }),
+      ),
+    isNegated: z.boolean(),
+  })
+  .strict()
+  .superRefine((condition, context) => {
+    if (
+      !isMailFilterConditionCombinationValid(
+        condition.field,
+        condition.operator,
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["operator"],
+        message: "RULE_CONDITION_OPERATOR_INVALID",
+      });
+    }
+    if (
+      condition.field === "HAS_ATTACHMENT" &&
+      condition.value.toLocaleLowerCase("en-US") !== "true" &&
+      condition.value.toLocaleLowerCase("en-US") !== "false"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["value"],
+        message: "RULE_CONDITION_VALUE_INVALID",
+      });
+    }
+  });
+
+const mailFilterConditionsSchema = z
+  .array(mailFilterConditionSchema)
+  .min(1, { error: "RULE_PREDICATE_REQUIRED" })
+  .max(MAX_MAIL_FILTER_CONDITIONS, { error: "RULE_TOO_MANY_CONDITIONS" });
 
 export const createMailFilterRuleSchema = z
   .object({
     accountId: z.string().trim().min(1, { error: "ACCOUNT_REQUIRED" }),
     labelId: z.string().trim().min(1, { error: "LABEL_REQUIRED" }),
     name: mailFilterRuleNameSchema,
+    matchMode: z.enum(MAIL_FILTER_MATCH_MODES).optional(),
+    conditions: mailFilterConditionsSchema.optional(),
     fromAddress: mailFilterSenderSchema.optional(),
     subjectContains: mailFilterSubjectSchema.optional(),
+    setRead: z.boolean().nullable().optional(),
+    moveToFolderId: z.string().trim().min(1).nullable().optional(),
     applyToExistingMail: z.boolean().optional(),
   })
   .strict()
@@ -302,8 +366,12 @@ export const updateMailFilterRuleSchema = z
   .object({
     labelId: z.string().trim().min(1, { error: "LABEL_REQUIRED" }).optional(),
     name: mailFilterRuleNameSchema.optional(),
+    matchMode: z.enum(MAIL_FILTER_MATCH_MODES).optional(),
+    conditions: mailFilterConditionsSchema.optional(),
     fromAddress: mailFilterSenderSchema.optional(),
     subjectContains: mailFilterSubjectSchema.optional(),
+    setRead: z.boolean().nullable().optional(),
+    moveToFolderId: z.string().trim().min(1).nullable().optional(),
     isActive: z.boolean().optional(),
     position: z
       .number({ error: "RULE_POSITION_REQUIRED" })

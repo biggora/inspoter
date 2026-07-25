@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   matchingMailFilterLabelIds,
   matchesMailFilter,
+  matchesMailFilterRule,
   matchesExactSenderMailFilter,
   normalizeMailMatchText,
 } from "@/lib/mail-filter-matcher";
@@ -78,6 +79,80 @@ describe("mail filter canonical matcher", () => {
         candidate,
       ),
     ).toBe(false);
+  });
+
+  it("supports ALL/ANY matching across sender, recipient, body, and attachments", () => {
+    const conditions = [
+      {
+        field: "FROM_DOMAIN" as const,
+        operator: "EQUALS" as const,
+        value: "example.com",
+        isNegated: false,
+      },
+      {
+        field: "RECIPIENT" as const,
+        operator: "CONTAINS" as const,
+        value: "@inspot.local",
+        isNegated: false,
+      },
+      {
+        field: "BODY" as const,
+        operator: "CONTAINS" as const,
+        value: "production",
+        isNegated: false,
+      },
+      {
+        field: "HAS_ATTACHMENT" as const,
+        operator: "IS" as const,
+        value: "true",
+        isNegated: false,
+      },
+    ];
+    const candidate = {
+      fromAddress: "Build@example.com",
+      toRecipients: [{ address: "ops@inspot.local" }],
+      subject: "Deployment report",
+      bodyText: "Production deployment finished.",
+      hasAttachments: true,
+    };
+
+    expect(
+      matchesMailFilterRule({ matchMode: "ALL", conditions }, candidate),
+    ).toBe(true);
+    expect(
+      matchesMailFilterRule(
+        {
+          matchMode: "ANY",
+          conditions: [
+            { ...conditions[0], value: "other.example" },
+            conditions[2],
+          ],
+        },
+        candidate,
+      ),
+    ).toBe(true);
+  });
+
+  it("negates individual conditions before applying match mode", () => {
+    expect(
+      matchesMailFilterRule(
+        {
+          matchMode: "ALL",
+          conditions: [
+            {
+              field: "SUBJECT",
+              operator: "CONTAINS",
+              value: "spam",
+              isNegated: true,
+            },
+          ],
+        },
+        {
+          fromAddress: "sender@example.com",
+          subject: "Build completed",
+        },
+      ),
+    ).toBe(true);
   });
 
   it.each(MAIL_FILTER_MATCH_CONTRACT_CASES)(

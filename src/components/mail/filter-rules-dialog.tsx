@@ -64,6 +64,70 @@ function filterRunStatusState(status: MailFilterRunDto["status"]): StatusState {
   return "pending";
 }
 
+function FilterRuleSummary({ rule }: { rule: MailFilterRuleDto }) {
+  const t = useTranslations("mail");
+  const conditions = rule.conditions ?? [];
+
+  if (conditions.length === 0) {
+    return (
+      <>
+        {rule.fromAddress &&
+          t("filterRuleSenderSummary", { sender: rule.fromAddress })}
+        {rule.fromAddress && rule.subjectContains
+          ? ` ${t("filterRuleAndConnector")} `
+          : ""}
+        {rule.subjectContains &&
+          t("filterRuleSubjectSummary", {
+            subject: rule.subjectContains,
+          })}
+      </>
+    );
+  }
+
+  const connector =
+    rule.matchMode === "ANY"
+      ? t("filterRuleOrConnector")
+      : t("filterRuleAndConnector");
+
+  return conditions.map((condition, index) => {
+    const value =
+      condition.field === "HAS_ATTACHMENT"
+        ? condition.value === "true"
+          ? t("filterRuleConditionBooleanYes")
+          : t("filterRuleConditionBooleanNo")
+        : condition.value;
+    return (
+      <span key={condition.id}>
+        {index > 0 ? ` ${connector} ` : ""}
+        {condition.isNegated ? `${t("filterRuleNotConnector")} ` : ""}
+        {t(`filterRuleConditionField${condition.field}`)}{" "}
+        {t(`filterRuleConditionOperator${condition.operator}`).toLowerCase()}{" "}
+        {value}
+      </span>
+    );
+  });
+}
+
+function FilterRuleActionSummary({ rule }: { rule: MailFilterRuleDto }) {
+  const t = useTranslations("mail");
+  const actions = [
+    t("filterRuleApplyLabelSummary", { label: rule.label.name }),
+    ...(rule.setRead === true
+      ? [t("filterRuleMarkReadSummary")]
+      : rule.setRead === false
+        ? [t("filterRuleMarkUnreadSummary")]
+        : []),
+    ...(rule.moveToFolder
+      ? [
+          t("filterRuleMoveSummary", {
+            folder: rule.moveToFolder.name,
+          }),
+        ]
+      : []),
+  ];
+  return <>{actions.join(` ${t("filterRuleAndConnector")} `)}</>;
+}
+
 interface FilterRunDetailsProps {
   initialRun: MailFilterRunDto;
   ruleName: string;
@@ -548,17 +612,10 @@ export function FilterRulesDialog({
                                 />
                               </div>
                               <p className="break-words text-xs text-muted-foreground">
-                                {rule.fromAddress &&
-                                  t("filterRuleSenderSummary", {
-                                    sender: rule.fromAddress,
-                                  })}
-                                {rule.fromAddress && rule.subjectContains
-                                  ? ` ${t("filterRuleAndConnector")} `
-                                  : ""}
-                                {rule.subjectContains &&
-                                  t("filterRuleSubjectSummary", {
-                                    subject: rule.subjectContains,
-                                  })}
+                                <FilterRuleSummary rule={rule} />
+                              </p>
+                              <p className="break-words text-xs text-muted-foreground">
+                                <FilterRuleActionSummary rule={rule} />
                               </p>
                               {rule.latestRun && (
                                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
