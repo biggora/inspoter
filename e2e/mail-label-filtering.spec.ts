@@ -1183,7 +1183,26 @@ test("manual labels, combined browsing, keyboard and member access", async ({
         .getByRole("option", { name: new RegExp(switchAccountName) })
         .click();
       await expect(accountSelect).toContainText(switchAccountName);
-      await expect(page.getByText("Страница 1", { exact: true })).toBeVisible();
+      // Wait for the destination mailbox to settle — the list is cleared
+      // during the switch, so asserting on pagination while the request is
+      // still in flight would pass vacuously. The active search/unread
+      // filters carry over, so the mock account may legitimately resolve to
+      // the filtered empty state instead of a row.
+      const mailboxSettled = list
+        .getByRole("listitem")
+        .first()
+        .or(
+          page.getByRole("heading", {
+            name: "Ничего не найдено",
+            exact: true,
+          }),
+        );
+      await expect(mailboxSettled.first()).toBeVisible();
+      // The mock mailbox holds 30 messages against a 50-item page, so the
+      // single-page result renders no pagination control. Paging reset on
+      // account switch is covered by the unit test "resets paging to the first
+      // page when the account changes".
+      await expect(page.locator('[data-slot="pagination"]')).toHaveCount(0);
       await expect(
         page.getByRole("heading", { name: targetSubject, exact: true }),
       ).toHaveCount(0);
@@ -1249,7 +1268,10 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       await expect(
         page.getByRole("combobox", { name: "Порядок сортировки" }),
       ).toContainText("Сначала новые");
-      await expect(page.getByText("Страница 1", { exact: true })).toBeVisible();
+      // Same as above: assert only once the restored workspace's mailbox has
+      // rendered, otherwise the empty in-flight list would satisfy this.
+      await expect(mailboxSettled.first()).toBeVisible();
+      await expect(page.locator('[data-slot="pagination"]')).toHaveCount(0);
       labelsNavigation = await getLabelsNavigation(page, false);
       await expect(
         labelsNavigation.getByRole("button", {

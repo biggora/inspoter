@@ -240,6 +240,51 @@ describe("Mail client state boundaries", () => {
     await waitFor(() => expect(apiMocks.fetchMail).toHaveBeenCalledTimes(2));
   });
 
+  it("resets paging to the first page when the account changes", async () => {
+    const user = userEvent.setup();
+    const secondPageItem = {
+      ...ITEM,
+      id: "message-2",
+      subject: "Second page message",
+    };
+
+    apiMocks.fetchMailAccounts.mockResolvedValue(ACCOUNTS);
+    apiMocks.fetchFolders.mockImplementation(async (accountId: string) =>
+      accountId === "account-2" ? FOLDERS["account-2"] : FOLDERS["account-1"],
+    );
+    apiMocks.fetchMail.mockImplementation(
+      async ({ cursor }: { cursor?: string }) =>
+        cursor === "cursor-page-2"
+          ? { items: [secondPageItem], nextCursor: null }
+          : { items: [ITEM], nextCursor: "cursor-page-2" },
+    );
+
+    renderWithIntl(<MailClientView workspaceId="workspace-1" />);
+
+    await screen.findByRole("button", { name: /Deployment complete/ });
+    expect(screen.getByText("Страница 1")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Далее" }));
+    await screen.findByRole("button", { name: /Second page message/ });
+    expect(screen.getByText("Страница 2")).toBeInTheDocument();
+    expect(apiMocks.fetchMail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: "cursor-page-2" }),
+    );
+
+    await user.click(
+      await screen.findByRole("combobox", { name: "Почтовый аккаунт" }),
+    );
+    await user.click(
+      await screen.findByRole("option", { name: /Second inbox/ }),
+    );
+
+    await screen.findByRole("button", { name: /Deployment complete/ });
+    expect(screen.getByText("Страница 1")).toBeInTheDocument();
+    expect(apiMocks.fetchMail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ accountId: "account-2", cursor: undefined }),
+    );
+  });
+
   it("evicts a message when its active filter label is removed", async () => {
     const user = userEvent.setup();
     const label = ITEM.labels[0];
