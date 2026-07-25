@@ -57,6 +57,21 @@ This empty directory is mounted into the container and is the target of
 `os.statvfs()`. It exists so the agent can measure the host root filesystem
 **without mounting `/` into the container**. It must stay empty.
 
+> **The probe directory must live on the root filesystem.** `statvfs` reports
+> the filesystem that actually holds the directory, but the payload always
+> declares `"mount": "/"`. On a host where `/var` (or `/var/lib`) is a separate
+> partition or dataset, the default path measures that partition and the
+> dashboard shows the wrong disk capacity. Verify before starting the agent:
+>
+> ```bash
+> findmnt -no SOURCE --target /var/lib/inspoter-metrics-agent/rootfs-probe
+> findmnt -no SOURCE --target /
+> ```
+>
+> If the two sources differ, put the probe directory somewhere on the root
+> filesystem instead — for example `/opt/inspoter-metrics-agent/rootfs-probe` —
+> and update the left-hand side of the probe volume in `compose.yml` to match.
+
 ### 2. Place `compose.yml` on the host
 
 Copy [`compose.yml`](./compose.yml) from this repository into a working
@@ -151,14 +166,81 @@ identity from the reported global IPv4 addresses, in this order:
    configured providers (45-second deadline). Exactly one match → the server is
    linked and the claim recorded.
 3. **Agent-only server** — no provider match → a new agent-only server entry is
-   created. A NAT-only host that reports no global IPv4 reuses a previous
-   agent-only entry with the same hostname instead of creating duplicates.
+   created. A host that reports no global IPv4 at all (NAT-only) instead reuses
+   the oldest existing agent-only entry with the same hostname.
 
 More than one eligible match fails closed with `409 SERVER_MATCH_AMBIGUOUS`; no
 data is written. The same happens with `409 ADDRESS_CONFLICT` if a reported
 address is already claimed by a different server.
 
-Because identity follows the IPs, one token can safely serve many hosts.
+One token can serve many hosts, because identity comes from the reported
+addresses rather than from the token. The consequences are worth reading before
+you roll the agent out widely.
+
+### Each host must report only its own addresses
+
+Never copy an `.env` between hosts without editing `SERVER_IPS`. Two agents
+reporting the same global IPv4 write into the same server entry, each snapshot
+overwriting the previous one — the dashboard shows a single server flipping
+between two machines. The same happens with a stale entry: if your provider
+reassigns an address to a different VPS and `SERVER_IPS` still lists it, your
+metrics land on that other server.
+
+### NAT-only hosts are deduplicated by hostname
+
+A host whose `SERVER_IPS` contains no global IPv4 cannot be matched by address,
+so it reuses the oldest agent-only entry with the same hostname in the
+workspace. Stock image hostnames collide easily — several machines named
+`ubuntu`, `debian` or `localhost` all collapse into one entry. Give each host a
+unique hostname, or list a global IPv4 in `SERVER_IPS`.
+
+### Renumbering: add the new address before removing the old one
+
+Identity is resolved per push, so a host that suddenly reports only an unknown
+address is not recognised as the same machine. Migrate in three steps:
+
+1. Add the new address next to the old one and restart the container:
+   `SERVER_IPS=203.0.113.20,203.0.113.99`.
+2. Wait out at least two push intervals (two minutes with the default
+   `METRICS_INTERVAL`), then **reload** the Servers page twice, a minute apart,
+   and watch the card's **Updated** age. Across the two reloads it must fall
+   back down — `Updated 1m ago` then `Updated 15s ago` — instead of climbing.
+3. Only then drop the old address and restart again.
+
+The push in step 1 is matched through the still-claimed old address and records
+the new one for the same server; step 3 retires the old claim.
+
+Two details make step 2 work the way it is written:
+
+- The Servers page does not poll metrics on its own — it renders what was
+  fetched when the page loaded. Staring at an open tab proves nothing; reload
+  it.
+- **Updated** is relative (`Updated 12s ago`, `Updated 4m ago`), so it cannot be
+  compared against the restart time directly — and a single reading proves
+  nothing either. A healthy agent's age sits anywhere between zero and one push
+  interval, so `Updated 1m ago` is perfectly normal with the default interval.
+  What distinguishes an accepted stream is that the age **drops back** on a
+  later reload, because each stored snapshot resets it. A refused snapshot
+  updates neither the receive time nor the addresses, so its age only climbs —
+  and once it passes 180 seconds the dashboard marks the server stale.
+
+Do not use the agent log as the gate. It records only the status class, so
+`metrics push succeeded (2xx)` is printed both when the snapshot was stored and
+when the dashboard ignored it as out of order — and an ignored push does **not**
+record the new address.
+
+Replacing the address in a single step is only safe for a provider-managed
+server, and only once the provider's inventory reports the new address — the
+match then comes from provider discovery. An **agent-only** server handled that
+way gets a **second, duplicate entry**, while the original entry keeps the old
+claim and goes stale.
+
+> This version of the dashboard has no way to delete or merge server entries, so
+> a duplicate stays on the Servers page until someone removes it from the
+> database directly. Do **not** try to reunite the two entries by listing the old
+> and the new address together afterwards: the reported addresses then resolve to
+> two different servers, and every push fails with
+> `409 SERVER_MATCH_AMBIGUOUS` until you narrow the list again.
 
 ## Payload
 
@@ -276,6 +358,12 @@ RUN_ONCE=1 \
 python -u collector.py
 ```
 
+This sends a real request against the given endpoint. CPU, memory, load and
+uptime come from the fixtures, while `HOST_ROOT_PROBE=.` measures whatever
+filesystem the checkout sits on — the disk figures are development noise, not
+host capacity. Requires a POSIX `os.statvfs`, so run it on Linux or macOS
+(WSL on Windows).
+
 CI ([`.github/workflows/metrics-agent-ci.yml`](../.github/workflows/metrics-agent-ci.yml))
 runs the same test command, builds the image, asserts the image user is `agent`,
 and validates `compose.yml`.
@@ -293,19 +381,22 @@ with the release tag plus `latest` for non-prereleases.
 
 ## Troubleshooting
 
-| Symptom                                                           | Cause                                                         | Fix                                                                          |
-| ----------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `configuration error: Invalid IP literal` / `Rejected ... IP`     | A `SERVER_IPS` entry is malformed or in a rejected class      | List only real host addresses; drop loopback/link-local/multicast entries    |
-| `configuration error: METRICS_ENDPOINT must be an HTTPS URL`      | Endpoint uses `http://`                                       | Use HTTPS; the agent refuses plaintext                                       |
-| `configuration error: METRICS_TOKEN is required`                  | `.env` not loaded or variable empty                           | Check `.env` sits next to `compose.yml` and the values are unquoted          |
-| Image pull fails with an empty tag                                | `AGENT_TAG` is unset                                          | Add `AGENT_TAG=latest` to `.env`                                             |
-| Container fails to start on the probe mount                       | `/var/lib/inspoter-metrics-agent/rootfs-probe` does not exist | Re-run the `install -d` command from step 1                                  |
-| `metrics push failed (4xx)` right after start                     | Token invalid, revoked, or rotated                            | Issue or rotate a token in Settings → API Tokens and update `.env`           |
-| Repeated `4xx` with `SERVER_MATCH_AMBIGUOUS`                      | Reported IPs match several servers in the workspace           | Report only the addresses that belong to this host; resolve duplicates in UI |
-| `metrics push failed (5xx)` with `PROVIDER_INVENTORY_UNAVAILABLE` | The dashboard could not read provider inventory               | Check the provider credential in the dashboard; the agent retries next cycle |
-| `metrics push network error: ...`                                 | No outbound HTTPS, DNS failure, or TLS interception           | Verify egress and that the dashboard certificate chain is trusted            |
-| Server shows `stale` in the dashboard                             | No snapshot received for more than 180 seconds                | `docker compose logs` on the host; check the container is running            |
-| Metrics look like container values, not host values               | `/proc` mounts missing or overridden                          | Use the bundled `compose.yml` mounts; do not change `HOST_PROC` in Docker    |
+| Symptom                                                           | Cause                                                                    | Fix                                                                                                                             |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `configuration error: Invalid IP literal` / `Rejected ... IP`     | A `SERVER_IPS` entry is malformed or in a rejected class                 | List only real host addresses; drop loopback/link-local/multicast entries                                                       |
+| `configuration error: METRICS_ENDPOINT must be an HTTPS URL`      | Endpoint uses `http://`                                                  | Use HTTPS; the agent refuses plaintext                                                                                          |
+| `configuration error: METRICS_TOKEN is required`                  | `.env` not loaded or variable empty                                      | Check `.env` sits next to `compose.yml` and the values are unquoted                                                             |
+| Image pull fails with an empty tag                                | `AGENT_TAG` is unset                                                     | Add `AGENT_TAG=latest` to `.env`                                                                                                |
+| Container fails to start on the probe mount                       | `/var/lib/inspoter-metrics-agent/rootfs-probe` does not exist            | Re-run the `install -d` command from step 1                                                                                     |
+| `metrics push failed (4xx)` right after start                     | Token invalid, revoked, or rotated                                       | Issue or rotate a token in Settings → API Tokens and update `.env`                                                              |
+| Repeated `4xx` with `SERVER_MATCH_AMBIGUOUS`                      | Reported IPs match several servers in the workspace                      | Report only the addresses that belong to this host; resolve duplicates in UI                                                    |
+| `metrics push failed (5xx)` with `PROVIDER_INVENTORY_UNAVAILABLE` | The dashboard could not read provider inventory                          | Check the provider credential in the dashboard; the agent retries next cycle                                                    |
+| `metrics push network error: ...`                                 | No outbound HTTPS, DNS failure, or TLS interception                      | Verify egress and that the dashboard certificate chain is trusted                                                               |
+| Server shows `stale` in the dashboard                             | No snapshot received for more than 180 seconds                           | `docker compose logs` on the host; check the container is running                                                               |
+| Metrics look like container values, not host values               | `/proc` mounts missing or overridden                                     | Use the bundled `compose.yml` mounts; do not change `HOST_PROC` in Docker                                                       |
+| Disk total/available do not match `df /` on the host              | The probe directory sits on a separate partition, not `/`                | Compare `findmnt --target` for the probe path and `/`; move the probe directory onto the root filesystem                        |
+| Two hosts share one server entry, metrics keep flipping           | Identical `SERVER_IPS`, or NAT-only hosts with equal hostname            | Give each host its own `SERVER_IPS`; give NAT-only hosts distinct hostnames                                                     |
+| A duplicate server entry appeared after an IP change              | The new address was reported without the old one, so the host looked new | Keep using the new entry — the old one cannot be removed from the UI; next time add the new address before removing the old one |
 
 ## Related documentation
 
