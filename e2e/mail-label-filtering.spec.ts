@@ -823,6 +823,11 @@ test("rule edit, disable, enable, and delete change only future behavior", async
       name: "Фильтровать похожие письма",
     });
     await createDialog.getByLabel("Название правила").fill(ruleName);
+    // The dialog seeds a single sender condition; a new one defaults to
+    // subject-contains, which is what this rule keys on.
+    await createDialog
+      .getByRole("button", { name: "Добавить условие", exact: true })
+      .click();
     await createDialog.getByLabel("Тема содержит").fill(firstCriterion);
     await createDialog
       .getByRole("combobox", { name: "Применить метку" })
@@ -890,7 +895,7 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     await ruleRow
       .getByRole("button", { name: "Отключить", exact: true })
       .click();
-    await expect(ruleRow.getByText("Отключено", { exact: true })).toBeVisible();
+    await expect(ruleRow.getByText("Отключён", { exact: true })).toBeVisible();
     await opened.manager
       .getByRole("button", { name: "Закрыть", exact: true })
       .first()
