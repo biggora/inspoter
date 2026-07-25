@@ -364,7 +364,10 @@ export function ServiceDetailView({
                         {formatDateTime(check.checkedAt, format)}
                       </TableCell>
                       <TableCell>
-                        <ServiceStatusBadge status={check.status} />
+                        <ServiceStatusBadge
+                          status={check.status}
+                          pulse={false}
+                        />
                       </TableCell>
                       <TableCell className="font-mono">
                         {formatResponseTime(check.responseTimeMs, t)}

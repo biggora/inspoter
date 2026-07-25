@@ -34,7 +34,10 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import {
+  StatusIndicator,
+  type StatusIndicatorVariant,
+} from "@/components/ui/status-indicator";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
 import {
@@ -399,32 +402,39 @@ const statusConfig: Record<
   ServerStatus,
   {
     labelKey: string;
-    variant: "success" | "secondary" | "warning";
+    variant: StatusIndicatorVariant;
+    pulse: boolean;
   }
 > = {
   running: {
     labelKey: "statusRunning",
     variant: "success",
+    pulse: true,
   },
   stopped: {
     labelKey: "statusStopped",
     variant: "secondary",
+    pulse: false,
   },
   starting: {
     labelKey: "statusStarting",
     variant: "warning",
+    pulse: true,
   },
   stopping: {
     labelKey: "statusStopping",
     variant: "warning",
+    pulse: true,
   },
   restarting: {
     labelKey: "statusRestarting",
     variant: "warning",
+    pulse: true,
   },
   unknown: {
     labelKey: "statusUnknown",
     variant: "secondary",
+    pulse: false,
   },
 };
 
@@ -432,12 +442,17 @@ const metricsStateConfig: Record<
   MetricsState,
   {
     labelKey: string;
-    variant: "success" | "secondary" | "warning" | "destructive";
+    variant: StatusIndicatorVariant;
+    pulse: boolean;
   }
 > = {
-  live: { labelKey: "metricsLive", variant: "success" },
-  stale: { labelKey: "metricsStale", variant: "warning" },
-  not_configured: { labelKey: "metricsNotConfigured", variant: "secondary" },
+  live: { labelKey: "metricsLive", variant: "success", pulse: true },
+  stale: { labelKey: "metricsStale", variant: "warning", pulse: false },
+  not_configured: {
+    labelKey: "metricsNotConfigured",
+    variant: "secondary",
+    pulse: false,
+  },
 };
 
 interface PowerCardAction {
@@ -652,20 +667,17 @@ function ServerCard({
         <CardAction>
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {config && (
-              <Badge variant={config.variant}>
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full bg-current",
-                    busy && "animate-pulse motion-reduce:animate-none",
-                  )}
-                  aria-hidden="true"
-                />
-                {t(config.labelKey)}
-              </Badge>
+              <StatusIndicator
+                variant={config.variant}
+                label={t(config.labelKey)}
+                pulse={config.pulse || busy}
+              />
             )}
-            <Badge variant={metricsConfig.variant}>
-              {t(metricsConfig.labelKey)}
-            </Badge>
+            <StatusIndicator
+              variant={metricsConfig.variant}
+              label={t(metricsConfig.labelKey)}
+              pulse={metricsConfig.pulse}
+            />
             {!isProvider && (
               <Badge variant="secondary">{t("agentOnlyBadge")}</Badge>
             )}

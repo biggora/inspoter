@@ -130,6 +130,7 @@
 @keyframes slideInRight { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes statusPing { 0% { transform: scale(1); opacity: 0.55; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
@@ -226,5 +227,6 @@
   .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
   .animate-slide-in-right { animation: slideInRight 0.25s ease-out forwards; }
   .animate-scale-in { animation: scaleIn 0.2s ease-out forwards; }
+  .animate-status-ping { animation: statusPing var(--duration-pulse) var(--ease-out) infinite; }
   .animate-skeleton { background: linear-gradient(90deg, oklch(var(--background-200) / 0.6) 25%, oklch(var(--background-100) / 0.5) 50%, oklch(var(--background-200) / 0.6) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 }
