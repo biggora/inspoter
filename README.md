@@ -184,7 +184,9 @@ pnpm format           # форматирование Prettier
 pnpm format:check     # проверка форматирования Prettier
 pnpm openapi:check    # lint и проверка публичного OpenAPI-контракта
 
-pnpm test:unit        # unit- и integration-тесты (Vitest)
+pnpm test             # все Vitest-тесты (unit + integration)
+pnpm test:unit        # чистые unit-тесты — без БД, без Docker
+pnpm test:integration # интеграционные тесты с БД (нужен test Postgres на 3833)
 pnpm test:e2e         # e2e-тесты (Playwright)
 pnpm test:ci          # полный CI-профиль
 ```

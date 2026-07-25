@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Inspoter is a Next.js 16, React 19, TypeScript app for self-hosted infrastructure management. Main code lives in `src/`: routes in `src/app`, feature UI in `src/components`, shared logic in `src/lib`, hooks in `src/hooks`, i18n helpers in `src/i18n`, and messages in `src/messages/en` and `src/messages/ru`. Prisma schema, migrations, and seeds live in `prisma/`; generated Prisma client code under `src/generated` is not edited manually. Unit tests live in `tests/unit`, Playwright tests in `e2e`, and static assets in `public`.
+Inspoter is a Next.js 16, React 19, TypeScript app for self-hosted infrastructure management. Main code lives in `src/`: routes in `src/app`, feature UI in `src/components`, shared logic in `src/lib`, hooks in `src/hooks`, i18n helpers in `src/i18n`, and messages in `src/messages/en` and `src/messages/ru`. Prisma schema, migrations, and seeds live in `prisma/`; generated Prisma client code under `src/generated` is not edited manually. Unit tests live in `tests/unit` (no external dependencies), DB-backed integration tests live in `tests/integration` (require the test Postgres on port 3833), Playwright tests in `e2e`, and static assets in `public`.
 
 ## Build, Test, and Development Commands
 
@@ -13,7 +13,9 @@ Use pnpm 11.12.0 via Corepack.
 - `pnpm start`: run the built production app.
 - `pnpm lint`: run ESLint plus the native-control checker.
 - `pnpm typecheck`: run TypeScript with `--noEmit`.
-- `pnpm test` or `pnpm test:unit`: run Vitest unit tests.
+- `pnpm test`: run the full Vitest suite (both projects below).
+- `pnpm test:unit`: run pure unit tests in `tests/unit/` — no database, no Docker.
+- `pnpm test:integration`: run DB-backed integration tests in `tests/integration/`. Requires the test Postgres; run `pnpm test:db:up && pnpm test:db:prepare` first (with `ALLOW_TEST_DB_RESET=1` and `TEST_DATABASE_MARKER=inspoter-e2e`). Fails fast with a clear message if the database is unreachable.
 - `pnpm test:e2e`: run Playwright through the CI profile wrapper.
 - `pnpm test:db:prepare`: prepare the test PostgreSQL database.
 - `pnpm db:migrate` and `pnpm db:seed`: apply production migrations and seed baseline data.
@@ -24,7 +26,7 @@ Prettier is authoritative: 2 spaces, semicolons, double quotes, trailing commas,
 
 ## Testing Guidelines
 
-Vitest uses globals, `tests/setup.ts`, single-worker execution, and files matching `tests/**/*.test.ts(x)`. Keep unit tests close to changed behavior and cover workspace isolation, validation, auth, providers, and service logic when touched. Use Playwright specs in `e2e/*.spec.ts` for UI flows, accessibility, and responsive behavior. Database-backed tests must target the test DB helpers.
+Vitest is configured as two projects. The `unit` project (files under `tests/unit/**`, setup `tests/setup.unit.ts`) runs in parallel with no external dependencies. The `integration` project (files under `tests/integration/**`, setup `tests/setup.integration.ts`, global setup `tests/integration/db-global-setup.ts`) runs serialized against the test Postgres and fails fast if the database is unreachable. Keep pure tests (validation, mappers, mocked UI, mocked services) under `tests/unit/`, and DB-backed tests (real Prisma queries, workspace-isolation, auth session flows) under `tests/integration/`. Use Playwright specs in `e2e/*.spec.ts` for UI flows, accessibility, and responsive behavior.
 
 ## Commit & Pull Request Guidelines
 

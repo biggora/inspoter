@@ -6,7 +6,7 @@ import * as mailService from "@/lib/services/mail";
 import { getOrCreateWebhookAccount } from "@/lib/services/mail-accounts";
 import { createMailFilterRule } from "@/lib/services/mail-filter-rules";
 import { syncAccount } from "@/lib/services/mail-sync";
-import { MAIL_FILTER_MATCH_CONTRACT_CASES } from "../mail/filter-matcher-contract";
+import { MAIL_FILTER_MATCH_CONTRACT_CASES } from "../../unit/mail/filter-matcher-contract";
 
 const PREFIX = `mail-filter-parity-${randomUUID()}`;
 let workspaceId: string;

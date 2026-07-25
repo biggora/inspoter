@@ -159,7 +159,9 @@ describe("deterministic CI profile runner", () => {
         environment: validLifecycleEnvironment(),
         runStep: async (step: string) => {
           calls.push(step);
-          if (step === "test:unit") throw primaryError;
+          // Fail on a step that runs after test:db:up has armed cleanup, so
+          // the finally block is expected to run test:db:down exactly once.
+          if (step === "test:integration") throw primaryError;
           if (step === "test:db:down") throw cleanupError;
         },
       });

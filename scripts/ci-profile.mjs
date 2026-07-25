@@ -59,10 +59,14 @@ export const PROFILE_STEPS = Object.freeze({
   full: Object.freeze([
     "lint",
     "typecheck",
+    // Pure unit tests need no Docker — run them first so a real code bug
+    // fails the profile before we pay for bringing up the test database.
+    "test:unit",
     "test:db:up",
     "test:db:guard",
     "test:db:prepare",
-    "test:unit",
+    // DB-integration tests require the prepared test Postgres above.
+    "test:integration",
     "build",
     "test:db:prepare",
     "test:e2e:raw",
