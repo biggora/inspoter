@@ -26,6 +26,11 @@ from datetime import datetime, timezone
 AGENT_VERSION = "0.1.0"
 SCHEMA_VERSION = 1
 
+# Sent on every push. urllib's default ("Python-urllib/x.y") is a well-known
+# bot signature: a dashboard behind Cloudflare answers it with 403 (error 1010,
+# Browser Integrity Check) before the request ever reaches the app.
+USER_AGENT = f"inspoter-metrics-agent/{AGENT_VERSION}"
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -340,6 +345,7 @@ def push_metrics(payload: dict, timeout: int):
         headers={
             "Authorization": f"Bearer {METRICS_TOKEN}",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         },
     )
     context = ssl.create_default_context()
