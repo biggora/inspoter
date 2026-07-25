@@ -201,13 +201,12 @@ address is not recognised as the same machine. Migrate in three steps:
 
 1. Add the new address next to the old one and restart the container:
    `SERVER_IPS=203.0.113.20,203.0.113.99`.
-2. Wait out at least two push intervals (two minutes with the default
-   `METRICS_INTERVAL`), then **reload** the Servers page and check the card's
-   **Updated** age. It must be under the dashboard's 180-second staleness
-   threshold. A single higher reading is not a verdict — one dropped push is
-   ordinary, since a failed push is simply skipped until the next interval — so
-   reload once or twice more, an interval apart, and treat the check as passed
-   as soon as a reading comes back under the threshold.
+2. Note the wall-clock time of that restart. Wait out at least two push
+   intervals (two minutes with the default `METRICS_INTERVAL`), then **reload**
+   the Servers page and compare the card's **Updated** age with the time elapsed
+   since the restart. The check passes only when the age is clearly _smaller_
+   than that elapsed time — three minutes after the restart, `Updated 20s ago`
+   passes, `Updated 3m ago` does not.
 3. Only then drop the old address and restart again.
 
 The push in step 1 is matched through the still-claimed old address and records
@@ -218,19 +217,20 @@ Two details make step 2 work the way it is written:
 - The Servers page does not poll metrics on its own — it renders what was
   fetched when the page loaded. Staring at an open tab proves nothing; reload
   it.
-- **Updated** is relative (`Updated 12s ago`, `Updated 4m ago`), so it cannot be
-  compared against the restart time directly, and no single reading is a
-  verdict. A healthy agent's age wanders between zero and one push interval, and
-  a dropped push or a slow one pushes a reading higher without anything being
-  wrong — `Updated 1m ago`, or `2m ago` after one failure, is normal with the
-  default interval. What separates an accepted stream from a refused one is that
-  the accepted one keeps coming back under the threshold, while a refused
-  snapshot updates neither the receive time nor the addresses and therefore
-  climbs without limit.
+- A fresh-looking card is not enough on its own. **Updated** shows only a
+  relative age (`Updated 12s ago`, `Updated 4m ago`), and the snapshot behind it
+  may well predate the restart: two minutes after you restarted the container,
+  `Updated 2m ago` is exactly what you would see if not a single push had been
+  accepted since. Comparing the age against the elapsed time is what rules that
+  out — an age shorter than the elapsed time can only come from a snapshot
+  stored after the restart, and a stored snapshot is precisely what records the
+  new address.
 
-If you raised `METRICS_INTERVAL` above 60 seconds, the dashboard will report the
-server as stale between pushes anyway; in that case judge the age against your
-own interval and look for unbounded growth across several of them.
+A reading that fails the comparison is not a verdict either: a failed push is
+skipped until the next interval, so one network blip delays the proof. Reload
+again an interval later. If no reading ever comes in below the elapsed time,
+the pushes are not being applied — keep the old address in `SERVER_IPS` and
+investigate before going further.
 
 Do not use the agent log as the gate. It records only the status class, so
 `metrics push succeeded (2xx)` is printed both when the snapshot was stored and
@@ -335,6 +335,9 @@ inside both, leaving room for restarts and manual retries.
 - TLS certificate verification is on by default (`ssl.create_default_context()`),
   and a non-HTTPS endpoint is refused at startup.
 - The bearer token and the payload body are never logged.
+- Every request identifies itself as `inspoter-metrics-agent/<version>`. The
+  urllib default (`Python-urllib/x.y`) is a known bot signature and is rejected
+  by Cloudflare's Browser Integrity Check before it reaches the dashboard.
 
 Treat `.env` as a secret file: `chmod 600` it and keep it out of version
 control. If a token leaks, rotate it in **Settings → API Tokens** and update
@@ -397,6 +400,7 @@ with the release tag plus `latest` for non-prereleases.
 | Image pull fails with an empty tag                                | `AGENT_TAG` is unset                                                     | Add `AGENT_TAG=latest` to `.env`                                                                                                |
 | Container fails to start on the probe mount                       | `/var/lib/inspoter-metrics-agent/rootfs-probe` does not exist            | Re-run the `install -d` command from step 1                                                                                     |
 | `metrics push failed (4xx)` right after start                     | Token invalid, revoked, or rotated                                       | Issue or rotate a token in Settings → API Tokens and update `.env`                                                              |
+| Every push fails with `4xx`, but the same payload succeeds via `curl` | A WAF in front of the dashboard blocks the agent's request               | Run an agent built after the `User-Agent` fix; verify with `curl -A "inspoter-metrics-agent/0.1.0" ... -d '{}'` — a `400 INVALID_PAYLOAD` means the request reached the app, a `403` means the WAF is still blocking |
 | Repeated `4xx` with `SERVER_MATCH_AMBIGUOUS`                      | Reported IPs match several servers in the workspace                      | Report only the addresses that belong to this host; resolve duplicates in UI                                                    |
 | `metrics push failed (5xx)` with `PROVIDER_INVENTORY_UNAVAILABLE` | The dashboard could not read provider inventory                          | Check the provider credential in the dashboard; the agent retries next cycle                                                    |
 | `metrics push network error: ...`                                 | No outbound HTTPS, DNS failure, or TLS interception                      | Verify egress and that the dashboard certificate chain is trusted                                                               |
