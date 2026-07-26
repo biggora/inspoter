@@ -38,6 +38,7 @@ import {
   StatusIndicator,
   type StatusState,
 } from "@/components/ui/status-indicator";
+import { UsageMeter } from "@/components/ui/usage-meter";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
 import {
@@ -47,7 +48,6 @@ import {
   type MetricsState,
   type ProviderServerDto,
   type ServerDto,
-  type ServerMetricsDto,
 } from "./api";
 
 type PowerActionType = "start" | "stop" | "restart";
@@ -65,15 +65,29 @@ const TRANSITIONAL_STATUSES: ServerStatus[] = [
   "restarting",
 ];
 
-function formatBytes(bytes: bigint): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
+const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+// Index of the unit a value reads best in, so a used/total pair can be printed
+// in one shared unit instead of "28.0 GB / 74.8 GB".
+function byteUnitIndex(bytes: bigint): number {
   let value = Number(bytes);
   let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
+  while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {
     value /= 1024;
     unitIndex++;
   }
-  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  return unitIndex;
+}
+
+function formatBytesIn(bytes: bigint, unitIndex: number): string {
+  const value = Number(bytes) / 1024 ** unitIndex;
+  return value.toFixed(unitIndex === 0 ? 0 : 1);
+}
+
+// "28.0 / 74.8 GB" — the unit is taken from the total and printed once.
+function formatBytesPair(used: bigint, total: bigint): string {
+  const unitIndex = byteUnitIndex(total);
+  return `${formatBytesIn(used, unitIndex)} / ${formatBytesIn(total, unitIndex)} ${BYTE_UNITS[unitIndex]}`;
 }
 
 function formatUptime(seconds: bigint): string {
@@ -84,6 +98,30 @@ function formatUptime(seconds: bigint): string {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
+}
+
+interface ResourceUsage {
+  // Whole percent: the meter has ten cells, so extra precision would only make
+  // the value harder to read and the markup noisier.
+  percent: number;
+  // "1.8 / 3.7 GB · 48%" — absolute figures for precision, percentage for the
+  // instant read of how full the resource is.
+  text: string;
+}
+
+function usageFromTotals(
+  total: string | null,
+  available: string | null,
+): ResourceUsage | null {
+  if (!total || !available) return null;
+  const totalBytes = BigInt(total);
+  if (totalBytes <= 0n) return null;
+  const usedBytes = totalBytes - BigInt(available);
+  const percent = Math.round((Number(usedBytes) / Number(totalBytes)) * 100);
+  return {
+    percent,
+    text: `${formatBytesPair(usedBytes, totalBytes)} · ${percent}%`,
+  };
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -478,75 +516,29 @@ function getAvailableActions(server: ProviderServerDto): PowerCardAction[] {
   }));
 }
 
-function MetricsSection({ metrics }: { metrics: ServerMetricsDto }) {
-  const t = useTranslations("servers");
-
+// One labelled row of the card's single resource section. Rows that describe a
+// bounded resource also carry a meter; the rest keep the same geometry through
+// a flexible spacer so every value still ends flush right.
+function MetricRow({
+  label,
+  value,
+  usagePercent,
+}: {
+  label: string;
+  value: string;
+  usagePercent?: number;
+}) {
   return (
-    <div className="border-t pt-2 mt-2">
-      <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-foreground-500 font-medium">
-          {t("metricsLabel")}
-        </span>
-        <span className="text-foreground-400 text-[10px]">
-          {metrics.receivedAt
-            ? t("lastUpdate", { time: formatRelativeTime(metrics.receivedAt) })
-            : ""}
-        </span>
-      </div>
-
-      {metrics.cpuUsagePercent !== null && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">{t("cpuUsageLabel")}</span>
-          <span className="text-foreground-800 font-medium">
-            {metrics.cpuUsagePercent.toFixed(1)}%
-          </span>
-        </div>
+    <div className="flex items-center gap-2 text-xs">
+      <span className="text-foreground-500 shrink-0">{label}</span>
+      {usagePercent === undefined ? (
+        <span className="flex-1" />
+      ) : (
+        <UsageMeter value={usagePercent} className="flex-1" />
       )}
-
-      {metrics.memoryTotalBytes && metrics.memoryAvailableBytes && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">{t("memoryLabel")}</span>
-          <span className="text-foreground-800 font-medium">
-            {formatBytes(
-              BigInt(metrics.memoryTotalBytes) -
-                BigInt(metrics.memoryAvailableBytes),
-            )}{" "}
-            / {formatBytes(BigInt(metrics.memoryTotalBytes))}
-          </span>
-        </div>
-      )}
-
-      {metrics.filesystemTotalBytes && metrics.filesystemAvailableBytes && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">{t("diskUsageLabel")}</span>
-          <span className="text-foreground-800 font-medium">
-            {formatBytes(
-              BigInt(metrics.filesystemTotalBytes) -
-                BigInt(metrics.filesystemAvailableBytes),
-            )}{" "}
-            / {formatBytes(BigInt(metrics.filesystemTotalBytes))}
-          </span>
-        </div>
-      )}
-
-      {metrics.load1 !== null && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">{t("loadLabel")}</span>
-          <span className="text-foreground-800 font-medium">
-            {metrics.load1.toFixed(2)} / {metrics.load5?.toFixed(2)} /{" "}
-            {metrics.load15?.toFixed(2)}
-          </span>
-        </div>
-      )}
-
-      {metrics.uptimeSeconds && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground-500">{t("uptimeLabel")}</span>
-          <span className="text-foreground-800 font-medium">
-            {formatUptime(BigInt(metrics.uptimeSeconds))}
-          </span>
-        </div>
-      )}
+      <span className="text-foreground-800 shrink-0 font-medium tabular-nums">
+        {value}
+      </span>
     </div>
   );
 }
@@ -580,8 +572,27 @@ function ServerCard({
   const busyAction = status ? PENDING_ACTION_BY_STATUS[status] : undefined;
   const availableActions = isProvider ? getAvailableActions(server) : [];
 
-  const showMetricsSection =
-    metrics.state === "live" || metrics.state === "stale";
+  // One resource section per card: the agent's live utilisation and the
+  // provider's capacity are the same three facts, so they share three rows.
+  // Where the agent reports a real total (memory, mounted filesystem) it wins
+  // over the plan's nominal figure — that is the number the operator acts on.
+  const cpuPercent = metrics.cpuUsagePercent;
+  const memory = usageFromTotals(
+    metrics.memoryTotalBytes,
+    metrics.memoryAvailableBytes,
+  );
+  const disk = usageFromTotals(
+    metrics.filesystemTotalBytes,
+    metrics.filesystemAvailableBytes,
+  );
+
+  const cpuCapacity = isProvider ? server.cpu : null;
+  const cpuValue =
+    cpuPercent !== null
+      ? [`${cpuPercent.toFixed(1)}%`, cpuCapacity].filter(Boolean).join(" · ")
+      : cpuCapacity;
+  const memoryValue = memory?.text ?? (isProvider ? server.ram : null);
+  const diskValue = disk?.text ?? (isProvider ? server.disk : null);
 
   useEffect(() => {
     if (pendingAction === null && confirmingRef.current) {
@@ -641,55 +652,57 @@ function ServerCard({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-1.5">
-        {isProvider ? (
-          <>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">CPU</span>
-              <span className="text-foreground-800 font-medium">
-                {server.cpu}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">RAM</span>
-              <span className="text-foreground-800 font-medium">
-                {server.ram}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">{t("diskLabel")}</span>
-              <span className="text-foreground-800 font-medium">
-                {server.disk}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">{t("osLabel")}</span>
-              <span className="text-foreground-800 font-medium">
-                {server.os}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-foreground-500">{t("locationLabel")}</span>
-              <span className="text-foreground-800 font-medium">
-                {server.location}
-              </span>
-            </div>
-          </>
-        ) : (
+        {!isProvider && (
           <>
             <p className="text-xs text-foreground-400">
               {t("agentOnlyNotice")}
             </p>
             {server.hostname && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-foreground-500">
-                  {t("hostnameLabel")}
-                </span>
-                <span className="text-foreground-800 font-medium">
-                  {server.hostname}
-                </span>
-              </div>
+              <MetricRow label={t("hostnameLabel")} value={server.hostname} />
             )}
           </>
+        )}
+
+        {cpuValue && (
+          <MetricRow
+            label={t("cpuUsageLabel")}
+            value={cpuValue}
+            usagePercent={cpuPercent ?? undefined}
+          />
+        )}
+        {memoryValue && (
+          <MetricRow
+            label={t("memoryLabel")}
+            value={memoryValue}
+            usagePercent={memory?.percent}
+          />
+        )}
+        {diskValue && (
+          <MetricRow
+            label={t("diskLabel")}
+            value={diskValue}
+            usagePercent={disk?.percent}
+          />
+        )}
+
+        {isProvider && (
+          <>
+            <MetricRow label={t("osLabel")} value={server.os} />
+            <MetricRow label={t("locationLabel")} value={server.location} />
+          </>
+        )}
+
+        {metrics.load1 !== null && (
+          <MetricRow
+            label={t("loadLabel")}
+            value={`${metrics.load1.toFixed(2)} / ${metrics.load5?.toFixed(2)} / ${metrics.load15?.toFixed(2)}`}
+          />
+        )}
+        {metrics.uptimeSeconds && (
+          <MetricRow
+            label={t("uptimeLabel")}
+            value={formatUptime(BigInt(metrics.uptimeSeconds))}
+          />
         )}
 
         {metrics.state === "not_configured" && (
@@ -697,7 +710,11 @@ function ServerCard({
             {t("monitoringNotConnected")}
           </p>
         )}
-        {showMetricsSection && <MetricsSection metrics={metrics} />}
+        {metrics.receivedAt && (
+          <p className="text-[10px] text-foreground-400 text-right">
+            {t("lastUpdate", { time: formatRelativeTime(metrics.receivedAt) })}
+          </p>
+        )}
 
         {error && (
           <Alert variant="error" className="mt-1 animate-fade-in">

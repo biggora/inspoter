@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.14
-**Status:** Unified card status indicator with live-state pulse; awaiting user verification
+**Version:** v2.15
+**Status:** One resource section per server card with segmented utilisation meters; awaiting user verification
 **Owner:** UI/UX Designer
-**Date:** 2026-07-25
+**Date:** 2026-07-26
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.11, docs/architecture.md v1.8, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -140,6 +140,12 @@ Two exceptions carry their own wording rather than a canonical state: alert seve
 
 A label-less dot is available for the two places with no room for text (mail sidebar sync state, unread markers); the caller wraps it in a named element (`role="img"` with an accessible name), so colour is never the only carrier.
 
+**Utilisation meter.** A bounded resource whose fill level matters — CPU, memory, filesystem — is metered by one component, `src/components/ui/usage-meter.tsx`. It keeps the design system's meter contract (`specs/inspot-design/components/data-display/ProgressBar.jsx`): 6px high, and a tone derived from the value rather than chosen by the caller — healthy below 60%, warning from 60% to 85%, danger at 85% and above, resolved through `--status-ok`, `--status-warn`, and `--status-danger`. Unfilled area uses `--surface-sunken`, so both halves of the ratio are legible in either theme.
+
+It diverges from that component in one respect, approved by the operator on 2026-07-26: the fill is **segmented into ten discrete cells** rather than continuous, because counting cells answers "how much is taken, how much is left" faster than judging the length of a smooth bar. One cell is 10%; any non-zero value lights at least one cell, so a barely-loaded resource never reads as empty.
+
+The meter is decorative and `aria-hidden`. Every caller renders the same figure as adjacent text — a percentage, or a used/total pair with its percentage — so the value is announced exactly once and colour is never its only carrier. Feature components never rebuild this markup and never pick a tone.
+
 ### 2.6 Motion, focus, contrast, and keyboard
 
 Motion durations are 150ms fast, 200ms base, 250ms slow, 500ms chart, and 2000ms pulse (looping status halo only). Easing is cubic-bezier(0,0,0.2,1) or cubic-bezier(0.4,0,0.2,1). Allowed entrances are fade with 4px rise, scale from 0.95, and 16px right slide. No bounce.
@@ -271,6 +277,14 @@ A category may optionally act as a group containing one level of subcategories (
 **Route and scope:** /servers; exclusive local provider-resource bindings owned by the active workspace. Selected server detail and pending state are keyed to that workspace. Trace: AC-SRV-001..008, AC-PROV-001..003, AC-WS-010..011, D-21/Q-13.
 
 **Layout/content:** compact summary followed by a responsive grid showing only servers bound to the active workspace. Each card shows name, Hetzner Cloud provider, VPS type/configuration, IP, power status, and only information returned by the provider. Use semantic status tokens and Russian labels.
+
+A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right.
+
+- With metrics (`live` or `stale`), CPU reads "21.1% · 2 vCPU" — utilisation plus the provider's core count as a capacity tail — while memory and disk read "1.8 / 3.7 GB · 48%". Totals come from the agent, not from the plan's nominal figures, because the mounted filesystem and usable memory are the numbers an operator acts on; this also removes the contradiction of showing both 80 GB and 74.8 GB for one disk.
+- Without metrics (`not_configured`) the same three rows show provider capacity alone, with no meter, alongside the existing "Мониторинг не подключён" hint and the setup action.
+- An agent-only server shows its hostname row and the same metered rows; CPU omits the capacity tail, since the agent does not report a core count.
+
+Metrics freshness stays in the header's status indicator; there is no separate "Метрики" heading, divider, or nested block.
 
 **Actions:** start a stopped server; stop or restart a running server; refresh inventory. Every power action opens a real modal confirmation with action, server name, consequence, cancel, and confirm. Only the affected card enters pending/polling state.
 
@@ -501,6 +515,19 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.15 — 2026-07-26 (One resource section per server card)
+
+Collapses the server card's two overlapping blocks — provider capacity and the
+agent's "Метрики" section — into a single resource section (§5.3), so CPU,
+memory, and disk each state capacity, utilisation, and fill level on one line
+instead of twice in two places. Adds the segmented utilisation meter to §2.5 as
+the one component for bounded-resource fill, records its approved divergence
+from the design system's continuous bar, and keeps its tone on the shared
+`--status-ok`/`--status-warn`/`--status-danger` tokens with the value always
+present as adjacent text. Agent totals now supersede the provider's nominal RAM
+and disk figures, which removes the 80 GB / 74.8 GB contradiction on one disk.
+Retires the `metricsLabel` and `diskUsageLabel` strings.
 
 ### v2.14 — 2026-07-25 (One status indicator and one status vocabulary)
 

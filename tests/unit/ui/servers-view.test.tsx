@@ -201,6 +201,73 @@ describe("ServersView destructive actions", () => {
     },
   );
 
+  it("keeps provider capacity without meters while monitoring is not connected", async () => {
+    renderWithIntl(<ServersView />);
+
+    const card = await screen.findByRole("group", {
+      name: "Сервер «web-prod-01»",
+    });
+    expect(card.querySelectorAll("[data-slot='usage-meter']")).toHaveLength(0);
+    expect(screen.getByText("2 vCPU")).toBeInTheDocument();
+    expect(screen.getByText("4 GB")).toBeInTheDocument();
+    expect(screen.getByText("40 GB")).toBeInTheDocument();
+    expect(screen.getByText("Мониторинг не подключён")).toBeInTheDocument();
+  });
+
+  it("merges live metrics into one metered resource section", async () => {
+    apiMocks.fetchServers.mockResolvedValueOnce({
+      servers: [
+        {
+          ...runningServer,
+          metrics: {
+            ...defaultMetrics,
+            state: "live" as const,
+            receivedAt: new Date(Date.now() - 19_000).toISOString(),
+            cpuUsagePercent: 21.1,
+            load1: 1.33,
+            load5: 1.39,
+            load15: 1.67,
+            // 3.7 GB total, 48% of it in use.
+            memoryTotalBytes: "3972844748",
+            memoryAvailableBytes: "2065879269",
+            // 74.8 GB total, 28.0 GB in use.
+            filesystemTotalBytes: "80315888435",
+            filesystemAvailableBytes: "50251117363",
+            uptimeSeconds: "7466400",
+          },
+        },
+      ],
+      providerErrors: [],
+    });
+
+    renderWithIntl(<ServersView />);
+
+    const card = await screen.findByRole("group", {
+      name: "Сервер «web-prod-01»",
+    });
+
+    // One resource section, not a provider block plus a "Метрики" block.
+    expect(screen.queryByText("Метрики")).not.toBeInTheDocument();
+    expect(screen.getByText("21.1% · 2 vCPU")).toBeInTheDocument();
+    expect(screen.getByText("1.8 / 3.7 GB · 48%")).toBeInTheDocument();
+    expect(screen.getByText("28.0 / 74.8 GB · 37%")).toBeInTheDocument();
+    expect(screen.getByText("1.33 / 1.39 / 1.67")).toBeInTheDocument();
+    expect(screen.getByText("86d 10h")).toBeInTheDocument();
+    expect(screen.getByText(/^Обновлено \d+s ago$/)).toBeInTheDocument();
+
+    // The provider's nominal RAM and disk figures no longer duplicate the
+    // agent's real totals.
+    expect(screen.queryByText("4 GB")).not.toBeInTheDocument();
+    expect(screen.queryByText("40 GB")).not.toBeInTheDocument();
+
+    const meters = card.querySelectorAll("[data-slot='usage-meter']");
+    expect(
+      Array.from(meters).map((meter) => meter.getAttribute("data-value")),
+    ).toEqual(["21.1", "48", "37"]);
+    // Value text carries the number, so the meter itself stays decorative.
+    expect(meters[0].getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("invokes the same load callback when retrying an initial failure", async () => {
     apiMocks.fetchServers
       .mockReset()
