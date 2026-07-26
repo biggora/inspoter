@@ -384,6 +384,10 @@ async function getLabelsNavigation(page: Page, narrow: boolean) {
     await page
       .getByRole("button", { name: "Аккаунты и папки", exact: true })
       .click();
+    await expect(page.locator('[data-slot="sheet-content"]')).toHaveCSS(
+      "opacity",
+      "1",
+    );
   }
   const navigation = page.getByRole("navigation", { name: "Метки" });
   await expect(navigation).toBeVisible();
