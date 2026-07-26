@@ -4,6 +4,7 @@ import type {
   HostingProvider,
 } from "@/lib/providers/hosting/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { logError } from "@/lib/services/logs";
 
 // Hosting service — aggregates all hosting-account providers with
 // per-provider error isolation: a failing/unreachable provider never takes
@@ -35,17 +36,23 @@ export async function listAccounts(
       mode: provider.mode,
     };
     if (result.status === "rejected") {
+      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        String(result.reason),
+        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
       return { ...base, accounts: [], error: String(result.reason) };
     }
     const providerResult = result.value;
     if (!providerResult.ok) {
+      const errorMsg = providerResult.kind === "error"
+        ? providerResult.message
+        : `Operation not supported: ${providerResult.operation}`;
+      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        errorMsg,
+        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
       return {
         ...base,
         accounts: [],
-        error:
-          providerResult.kind === "error"
-            ? providerResult.message
-            : `Operation not supported: ${providerResult.operation}`,
+        error: errorMsg,
       };
     }
     return { ...base, accounts: providerResult.data, error: null };
@@ -86,5 +93,11 @@ export async function setSuspended(
 ): Promise<ProviderResult<void>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unknownProviderResult(providerId);
-  return provider.setSuspended(id, suspended);
+  const result = await provider.setSuspended(id, suspended);
+  if (!result.ok) {
+    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "setSuspended", accountId: id, suspended }));
+  }
+  return result;
 }

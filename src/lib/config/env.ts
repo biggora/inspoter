@@ -63,6 +63,13 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000), // hourly — a cleanup sweep, not latency sensitive
+    // --- Log retention ---
+    LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+    LOG_RETENTION_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000), // hourly
     // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
     MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
     MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),

@@ -5,6 +5,7 @@ import {
   deliverClaimed,
   type ClaimedDelivery,
 } from "@/lib/services/outgoingWebhooks";
+import { logError } from "@/lib/services/logs";
 
 // In-process scheduler that drains the outgoing-webhook delivery queue, a copy
 // of the mail/service scheduler pattern (src/lib/services/scheduler.ts): the
@@ -46,6 +47,12 @@ async function sendOne(claimed: ClaimedDelivery): Promise<void> {
     console.error(
       `[webhook-scheduler] delivery failed for ${claimed.delivery.id}:`,
       error,
+    );
+    logError(
+      claimed.delivery.workspaceId,
+      "scheduler:webhook",
+      `Webhook delivery failed: ${error instanceof Error ? error.message : String(error)}`,
+      JSON.stringify({ deliveryId: claimed.delivery.id }),
     );
   }
 }

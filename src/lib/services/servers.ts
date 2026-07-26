@@ -3,6 +3,7 @@ import type { ServerMetricSnapshot } from "@/generated/prisma/client";
 import { getServerProvidersForWorkspace } from "@/lib/providers/servers";
 import type { Server, ServerProvider } from "@/lib/providers/servers/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { logError } from "@/lib/services/logs";
 
 // Servers service — aggregates all hosting providers with per-provider
 // error isolation: a failing/unreachable provider never takes down the
@@ -254,18 +255,24 @@ export async function listServers(
         label: provider.label,
         error: String(result.reason),
       });
+      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        String(result.reason),
+        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
       return;
     }
     const providerResult = result.value;
     if (!providerResult.ok) {
+      const errorMsg = providerResult.kind === "error"
+        ? providerResult.message
+        : `Operation not supported: ${providerResult.operation}`;
       failedProviders.push({
         providerId: provider.id,
         label: provider.label,
-        error:
-          providerResult.kind === "error"
-            ? providerResult.message
-            : `Operation not supported: ${providerResult.operation}`,
+        error: errorMsg,
       });
+      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        errorMsg,
+        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
       return;
     }
     successfulProviders.set(provider.id, providerResult.data);
@@ -435,5 +442,11 @@ export async function power(
 ): Promise<ProviderResult<void>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.power(id, action);
+  const result = await provider.power(id, action);
+  if (!result.ok) {
+    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "power", action, serverId: id }));
+  }
+  return result;
 }
