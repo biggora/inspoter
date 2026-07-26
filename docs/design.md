@@ -337,8 +337,12 @@ Metrics freshness stays in the header's status indicator; there is no separate "
   truncation priority. The 375px list must not create page-body overflow.
 - Chips use flat, border-defined small-label styling from the Inspot design
   system. `SLATE`, `RED`, `AMBER`, `GREEN`, `BLUE`, and `VIOLET` map to restrained
-  tint/border variants; visible label text is always present, so color never
-  carries identity alone.
+  tint/border variants derived from the product color tokens rather than default
+  Tailwind hues: `RED` is `--action-primary` (the same red as primary buttons),
+  `AMBER` the amber status hue, `GREEN` the teal accent (shown as «Бирюзовый» /
+  “Teal”), `SLATE` the neutral foreground ink; `BLUE` and `VIOLET` have no token
+  of their own and sit on the same lightness/chroma band. Visible label text is
+  always present, so color never carries identity alone.
 - A **Labels** section appears below folders in both desktop sidebar and existing
   mobile Mail sheet. Selecting one label preserves current account, folder,
   unread, query, and sort facets. **All labels** clears only `labelId`. Any label

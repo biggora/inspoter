@@ -127,7 +127,7 @@ export function LabelColorField({
               onFocus={() => selectCustomColor(hexDraft)}
               disabled={disabled}
               maxLength={7}
-              placeholder="#64748B"
+              placeholder={DEFAULT_MAIL_LABEL_CUSTOM_COLOR}
               autoComplete="off"
               spellCheck={false}
               aria-invalid={customSelected && !hexValid}

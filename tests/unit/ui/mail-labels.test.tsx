@@ -454,11 +454,11 @@ describe("Mail label chips", () => {
     const redSwatch = redOption.querySelector('[aria-hidden="true"]');
     const chip = screen.getByLabelText("Urgent");
 
-    expect(redSwatch).toHaveStyle({ backgroundColor: "#EF4444" });
+    expect(redSwatch).toHaveStyle({ backgroundColor: "#D33C2C" });
     expect(chip).toHaveStyle({
-      backgroundColor: "#EF4444",
-      borderColor: "#EF4444",
-      color: "#000000",
+      backgroundColor: "#D33C2C",
+      borderColor: "#D33C2C",
+      color: "#FFFFFF",
     });
   });
 
@@ -497,7 +497,7 @@ describe("Mail label chips", () => {
 
     await user.click(screen.getByRole("button", { name: "Создать метку" }));
     await user.type(screen.getByLabelText("Название метки"), "Build alerts");
-    await user.click(screen.getByRole("button", { name: "Зелёный" }));
+    await user.click(screen.getByRole("button", { name: "Бирюзовый" }));
     await user.click(screen.getByRole("button", { name: "Создать метку" }));
 
     await waitFor(() =>

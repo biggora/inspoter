@@ -429,7 +429,7 @@ test("owner creates a standalone label with a chosen color", async ({
       .getByRole("button", { name: "Создать метку", exact: true })
       .click();
     await dialog.getByLabel("Название метки").fill(labelName);
-    await dialog.getByRole("button", { name: "Зелёный" }).click();
+    await dialog.getByRole("button", { name: "Бирюзовый" }).click();
 
     const [createResponse] = await Promise.all([
       page.waitForResponse(
