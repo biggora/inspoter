@@ -11,19 +11,24 @@ export type MailLabelPresetColor = (typeof MAIL_LABEL_PRESET_COLORS)[number];
 export type MailLabelHexColor = `#${string}`;
 export type MailLabelColor = MailLabelPresetColor | MailLabelHexColor;
 
+// Derived from the Inspot design tokens in src/app/inspot-tokens.css so label
+// chips read as one family with the rest of the product: SLATE is the neutral
+// foreground ink, RED is --action-primary (the button red), AMBER is the amber
+// status hue, GREEN carries the teal accent hue. BLUE and VIOLET have no token
+// of their own and sit on the same lightness/chroma band as GREEN.
 export const MAIL_LABEL_PRESET_HEX: Record<
   MailLabelPresetColor,
   MailLabelHexColor
 > = {
-  SLATE: "#64748B",
-  RED: "#EF4444",
-  AMBER: "#F59E0B",
-  GREEN: "#22C55E",
-  BLUE: "#3B82F6",
-  VIOLET: "#8B5CF6",
+  SLATE: "#616367",
+  RED: "#D33C2C",
+  AMBER: "#F49F1E",
+  GREEN: "#1F9B82",
+  BLUE: "#488ACB",
+  VIOLET: "#9A6EC9",
 };
 
-export const DEFAULT_MAIL_LABEL_CUSTOM_COLOR: MailLabelHexColor = "#64748B";
+export const DEFAULT_MAIL_LABEL_CUSTOM_COLOR: MailLabelHexColor = "#616367";
 
 const MAIL_LABEL_HEX_PATTERN = /^#[0-9A-F]{6}$/;
 
