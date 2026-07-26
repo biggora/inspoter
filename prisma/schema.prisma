@@ -865,10 +865,13 @@ model ProviderCredential {
   authTag       String
   maskedHint    String
   allowInsecure Boolean      @default(false)
-  isValid       Boolean?
-  lastCheckedAt DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  isValid         Boolean?
+  lastCheckedAt   DateTime?
+  lastSyncError   String?
+  lastSyncErrorAt DateTime?
+  lastSyncOkAt    DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   localServers LocalServer[]
 
@@ -915,6 +918,7 @@ model LocalServer {
   providerRemoteId              String?
   providerLastSeenAt            DateTime?
   providerMissingAt             DateTime?
+  metricsAlertState             String?
   createdAt                     DateTime             @default(now())
   updatedAt                     DateTime             @updatedAt
   addresses                     LocalServerAddress[]

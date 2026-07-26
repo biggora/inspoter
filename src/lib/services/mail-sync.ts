@@ -15,6 +15,7 @@ import {
 } from "@/lib/mail";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
+import * as alertsService from "./alerts";
 
 // IMAP sync engine (plan §3 «Движок синхронизации»): lease-locked per-account
 // sync — folder list reconciliation, initial/incremental message fetch,
@@ -345,6 +346,17 @@ export async function syncAccount(
         ),
       },
     });
+    if (account.syncStatus === "ERROR") {
+      // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
+      alertsService
+        .create(account.workspaceId, {
+          category: "Почта",
+          severity: "info",
+          source: account.email,
+          message: "Синхронизация восстановлена",
+        })
+        .catch(() => {});
+    }
     return {
       status: "synced",
       folders: remoteFolders.length,
@@ -365,6 +377,17 @@ export async function syncAccount(
         ),
       },
     });
+    if (account.syncStatus !== "ERROR") {
+      // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
+      alertsService
+        .create(account.workspaceId, {
+          category: "Почта",
+          severity: "critical",
+          source: account.email,
+          message: `Ошибка синхронизации: ${message.slice(0, 200)}`,
+        })
+        .catch(() => {});
+    }
     return { status: "error", error: message };
   }
 }

@@ -7,6 +7,7 @@ import type {
   DnsRecordPatch,
 } from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { updateProviderHealth } from "./provider-health";
 
 // Domains service (architecture.md §4.4) — aggregates all DNS providers with
 // per-provider error isolation: a failing/unreachable provider never takes
@@ -123,6 +124,18 @@ export async function listDomains(
         error: null,
       };
     }),
+  );
+
+  await Promise.all(
+    groups.map((g) =>
+      updateProviderHealth(
+        workspaceId,
+        g.providerId,
+        "DNS",
+        g.providerType,
+        g.error,
+      ).catch(() => {}),
+    ),
   );
 
   return dedupeZones(groups);

@@ -84,6 +84,11 @@ const envSchema = z
       .int()
       .positive()
       .default(60_000),
+    METRICS_STALENESS_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(180_000),
     // --- Backup import limits ---
     BACKUP_MAX_IMPORT_BYTES: z.coerce
       .number()
