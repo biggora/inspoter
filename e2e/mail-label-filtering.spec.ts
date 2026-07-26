@@ -18,6 +18,24 @@ async function getWorkspaceId(page: Page): Promise<string> {
   return workspaceId;
 }
 
+async function getWorkspaceIdAndName(
+  page: Page,
+): Promise<{ id: string; name: string }> {
+  const workspace = page.locator("button[data-workspace-id]").first();
+  if ((await workspace.count()) === 0) {
+    await page
+      .getByRole("button", { name: "Переключить навигацию", exact: true })
+      .click();
+    await expect(workspace).toBeVisible();
+  }
+  const id = (await workspace.getAttribute("data-workspace-id")) ?? "";
+  expect(id).not.toBe("");
+  const name = ((await workspace.textContent()) ?? "").trim();
+  expect(name).not.toBe("");
+  await page.keyboard.press("Escape");
+  return { id, name };
+}
+
 async function createWebhookToken(
   page: Page,
   workspaceId: string,
@@ -989,14 +1007,8 @@ test("manual labels, combined browsing, keyboard and member access", async ({
   test.setTimeout(120_000);
   if (!baseURL) throw new Error("Playwright baseURL is required.");
 
-  const originalWorkspaceId = await getWorkspaceId(page);
-  const originalWorkspaceName = (
-    (await page
-      .locator(`button[data-workspace-id="${originalWorkspaceId}"]`)
-      .first()
-      .textContent()) ?? ""
-  ).trim();
-  expect(originalWorkspaceName).not.toBe("");
+  const { id: originalWorkspaceId, name: originalWorkspaceName } =
+    await getWorkspaceIdAndName(page);
   const initialWidth = page.viewportSize()?.width ?? 1440;
   const narrow = initialWidth < 1024;
   const runId = `${testData.suffix}-${initialWidth}`;
