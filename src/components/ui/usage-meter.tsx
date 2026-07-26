@@ -1,52 +1,57 @@
 import { cn } from "@/lib/utils";
 
-// Segmented utilisation meter for CPU/memory/disk load (design.md §2.5).
+// Segmented utilisation meter for a bounded resource — CPU, memory, disk, a
+// hosting quota (design.md §2.5).
 //
-// It carries over the thresholds, height, and semantics of the design system's
-// ProgressBar (specs/inspot-design/components/data-display/ProgressBar.jsx) but
-// fills in discrete cells instead of a continuous bar, so "how much is taken"
-// can be counted at a glance. Feature components render this instead of
-// assembling their own bar, and they never pick the colour: the tone comes from
-// the value through the shared semantic tokens.
+// It speaks the segmented-strip language the product already uses for service
+// heartbeats (services-view.tsx, service-detail-view.tsx): flex cells with a
+// 2px step and a 2px radius, terracotta against teal. Only the height differs,
+// because a heartbeat is a block of its own while this sits inside a dense
+// metric row.
 //
-// The meter is decorative. Every caller shows the same number as text beside
-// it, so the value is never colour-only and assistive technology reads it once.
+// Both halves of the ratio are coloured: taken is terracotta, free is teal. A
+// meter that leaves the free part in the card's own background reads as a bar
+// that simply stops, which answers "how much is used" but never "how much is
+// left". There are no severity thresholds here — the meter states capacity,
+// and a nearly full disk is reported by the number beside it, not by a colour
+// change that would make every card shout.
+//
+// The meter is decorative: every caller prints the same figure as text next to
+// it, so the value is announced once and colour is never its only carrier.
 
-const SEGMENTS = 10;
-
-function toneClass(value: number): string {
-  if (value >= 85) return "bg-[var(--status-danger)]";
-  if (value >= 60) return "bg-[var(--status-warn)]";
-  return "bg-[var(--status-ok)]";
-}
+const DEFAULT_SEGMENTS = 20;
 
 export function UsageMeter({
   value,
+  segments = DEFAULT_SEGMENTS,
   className,
 }: {
   // Percentage 0–100; values outside the range are clamped.
   value: number;
+  segments?: number;
   className?: string;
 }) {
   const clamped = Math.min(100, Math.max(0, value));
-  // Any non-zero load lights at least one cell — a barely-used resource must
-  // still read as used rather than as empty.
-  const filled = clamped === 0 ? 0 : Math.max(1, Math.round(clamped / 10));
-  const fill = toneClass(clamped);
+
+  // Rounding must not swallow the two states an operator reacts to: any load
+  // at all lights a cell, and a resource with room left keeps one free.
+  let used = Math.round((clamped / 100) * segments);
+  if (clamped > 0) used = Math.max(1, used);
+  if (clamped < 100) used = Math.min(segments - 1, used);
 
   return (
     <span
       data-slot="usage-meter"
       data-value={clamped}
       aria-hidden="true"
-      className={cn("flex h-1.5 items-stretch gap-px", className)}
+      className={cn("flex h-2 items-center gap-0.5", className)}
     >
-      {Array.from({ length: SEGMENTS }, (_, index) => (
+      {Array.from({ length: segments }, (_, index) => (
         <span
           key={index}
           className={cn(
-            "flex-1 rounded-sm",
-            index < filled ? fill : "bg-[var(--surface-sunken)]",
+            "h-full min-w-0 flex-1 rounded-[2px]",
+            index < used ? "bg-primary-500" : "bg-accent-500",
           )}
         />
       ))}

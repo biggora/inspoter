@@ -32,6 +32,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -101,7 +102,7 @@ function formatUptime(seconds: bigint): string {
 }
 
 interface ResourceUsage {
-  // Whole percent: the meter has ten cells, so extra precision would only make
+  // Whole percent: the meter is segmented, so extra precision would only make
   // the value harder to read and the markup noisier.
   percent: number;
   // "1.8 / 3.7 GB · 48%" — absolute figures for precision, percentage for the
@@ -516,33 +517,6 @@ function getAvailableActions(server: ProviderServerDto): PowerCardAction[] {
   }));
 }
 
-// One labelled row of the card's single resource section. Rows that describe a
-// bounded resource also carry a meter; the rest keep the same geometry through
-// a flexible spacer so every value still ends flush right.
-function MetricRow({
-  label,
-  value,
-  usagePercent,
-}: {
-  label: string;
-  value: string;
-  usagePercent?: number;
-}) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-foreground-500 shrink-0">{label}</span>
-      {usagePercent === undefined ? (
-        <span className="flex-1" />
-      ) : (
-        <UsageMeter value={usagePercent} className="flex-1" />
-      )}
-      <span className="text-foreground-800 shrink-0 font-medium tabular-nums">
-        {value}
-      </span>
-    </div>
-  );
-}
-
 function ServerCard({
   server,
   onPowerAction,
@@ -653,57 +627,60 @@ function ServerCard({
 
       <CardContent className="flex flex-col gap-1.5">
         {!isProvider && (
-          <>
-            <p className="text-xs text-foreground-400">
-              {t("agentOnlyNotice")}
-            </p>
-            {server.hostname && (
-              <MetricRow label={t("hostnameLabel")} value={server.hostname} />
-            )}
-          </>
+          <p className="text-xs text-foreground-400">{t("agentOnlyNotice")}</p>
         )}
 
-        {cpuValue && (
-          <MetricRow
-            label={t("cpuUsageLabel")}
-            value={cpuValue}
-            usagePercent={cpuPercent ?? undefined}
-          />
-        )}
-        {memoryValue && (
-          <MetricRow
-            label={t("memoryLabel")}
-            value={memoryValue}
-            usagePercent={memory?.percent}
-          />
-        )}
-        {diskValue && (
-          <MetricRow
-            label={t("diskLabel")}
-            value={diskValue}
-            usagePercent={disk?.percent}
-          />
-        )}
+        <MetricRows>
+          {!isProvider && server.hostname && (
+            <MetricRow label={t("hostnameLabel")} value={server.hostname} />
+          )}
 
-        {isProvider && (
-          <>
-            <MetricRow label={t("osLabel")} value={server.os} />
-            <MetricRow label={t("locationLabel")} value={server.location} />
-          </>
-        )}
+          {cpuValue && (
+            <MetricRow
+              label={t("cpuUsageLabel")}
+              value={cpuValue}
+              meter={
+                cpuPercent === null ? undefined : (
+                  <UsageMeter value={cpuPercent} />
+                )
+              }
+            />
+          )}
+          {memoryValue && (
+            <MetricRow
+              label={t("memoryLabel")}
+              value={memoryValue}
+              meter={memory && <UsageMeter value={memory.percent} />}
+            />
+          )}
+          {diskValue && (
+            <MetricRow
+              label={t("diskLabel")}
+              value={diskValue}
+              meter={disk && <UsageMeter value={disk.percent} />}
+            />
+          )}
 
-        {metrics.load1 !== null && (
-          <MetricRow
-            label={t("loadLabel")}
-            value={`${metrics.load1.toFixed(2)} / ${metrics.load5?.toFixed(2)} / ${metrics.load15?.toFixed(2)}`}
-          />
-        )}
-        {metrics.uptimeSeconds && (
-          <MetricRow
-            label={t("uptimeLabel")}
-            value={formatUptime(BigInt(metrics.uptimeSeconds))}
-          />
-        )}
+          {isProvider && (
+            <>
+              <MetricRow label={t("osLabel")} value={server.os} />
+              <MetricRow label={t("locationLabel")} value={server.location} />
+            </>
+          )}
+
+          {metrics.load1 !== null && (
+            <MetricRow
+              label={t("loadLabel")}
+              value={`${metrics.load1.toFixed(2)} / ${metrics.load5?.toFixed(2)} / ${metrics.load15?.toFixed(2)}`}
+            />
+          )}
+          {metrics.uptimeSeconds && (
+            <MetricRow
+              label={t("uptimeLabel")}
+              value={formatUptime(BigInt(metrics.uptimeSeconds))}
+            />
+          )}
+        </MetricRows>
 
         {metrics.state === "not_configured" && (
           <p className="text-xs text-foreground-400">

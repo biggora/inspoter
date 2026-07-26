@@ -1,7 +1,7 @@
 # Design Specification — inspoter
 
-**Version:** v2.16
-**Status:** One entry per real resource across servers, domains, and mail accounts; awaiting user verification
+**Version:** v2.17
+**Status:** Utilisation meter unified with the service heartbeat strips; awaiting user verification
 **Owner:** UI/UX Designer
 **Date:** 2026-07-26
 **Source of truth for:** frontend implementor and test engineer
@@ -140,9 +140,11 @@ Two exceptions carry their own wording rather than a canonical state: alert seve
 
 A label-less dot is available for the two places with no room for text (mail sidebar sync state, unread markers); the caller wraps it in a named element (`role="img"` with an accessible name), so colour is never the only carrier.
 
-**Utilisation meter.** A bounded resource whose fill level matters — CPU, memory, filesystem — is metered by one component, `src/components/ui/usage-meter.tsx`. It keeps the design system's meter contract (`specs/inspot-design/components/data-display/ProgressBar.jsx`): 6px high, and a tone derived from the value rather than chosen by the caller — healthy below 60%, warning from 60% to 85%, danger at 85% and above, resolved through `--status-ok`, `--status-warn`, and `--status-danger`. Unfilled area uses `--surface-sunken`, so both halves of the ratio are legible in either theme.
+**Utilisation meter.** A bounded resource whose fill level matters — CPU, memory, filesystem, a hosting quota — is metered by one component, `src/components/ui/usage-meter.tsx`. It continues the segmented-strip language the product already uses for service heartbeats (`services-view.tsx`, `service-detail-view.tsx`): flex cells with a 2px step and a 2px radius, `primary-500` against `accent-500`. Only the height differs — 8px against the heartbeat's 12px — because a heartbeat is a block of its own while the meter sits inside a dense metric row. The fill is twenty cells, one per 5%.
 
-It diverges from that component in one respect, approved by the operator on 2026-07-26: the fill is **segmented into ten discrete cells** rather than continuous, because counting cells answers "how much is taken, how much is left" faster than judging the length of a smooth bar. One cell is 10%; any non-zero value lights at least one cell, so a barely-loaded resource never reads as empty.
+**Both halves of the ratio carry colour**: taken is terracotta, free is teal. A meter that leaves the free part in the card's own background reads as a bar that simply stops — it answers "how much is used" and never "how much is left", which is the question the meter exists for. There are no severity thresholds: the meter states capacity, and a nearly full disk is reported by the figure beside it, not by a colour change that would make every card shout. Rounding never swallows the two states an operator reacts to — any load at all lights one cell, and a resource with room left keeps one free.
+
+**Rows align as columns.** Every metric row of a section lives in one grid (`src/components/ui/metric-row.tsx`), not in a flex line of its own, so the meters all begin after the widest label and end before the widest value. Starts and ends line up vertically down the card instead of drifting row by row.
 
 The meter is decorative and `aria-hidden`. Every caller renders the same figure as adjacent text — a percentage, or a used/total pair with its percentage — so the value is announced exactly once and colour is never its only carrier. Feature components never rebuild this markup and never pick a tone.
 
@@ -292,7 +294,7 @@ A zone appears once, in the first credential that listed it (§4.5). Because onl
 
 **Layout/content:** compact summary followed by a responsive grid showing only servers bound to the active workspace. Each card shows name, Hetzner Cloud provider, VPS type/configuration, IP, power status, and only information returned by the provider. Use semantic status tokens and Russian labels.
 
-One machine is one card, whichever credential surfaced it (§4.5). A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right.
+One machine is one card, whichever credential surfaced it (§4.5). A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right — all rows share the section's grid, so every meter starts and ends on the same vertical lines. Hosting account cards use the same row and meter for their disk and bandwidth quotas; a quota the plan does not cap has no fill level and keeps its text alone.
 
 - With metrics (`live` or `stale`), CPU reads "21.1% · 2 vCPU" — utilisation plus the provider's core count as a capacity tail — while memory and disk read "1.8 / 3.7 GB · 48%". Totals come from the agent, not from the plan's nominal figures, because the mounted filesystem and usable memory are the numbers an operator acts on; this also removes the contradiction of showing both 80 GB and 74.8 GB for one disk.
 - Without metrics (`not_configured`) the same three rows show provider capacity alone, with no meter, alongside the existing "Мониторинг не подключён" hint and the setup action.
@@ -533,6 +535,19 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.17 — 2026-07-26 (Utilisation meter aligned with the heartbeat strips)
+
+Rebuilds the §2.5 meter on the segmented-strip language the product already had
+for service heartbeats — same 2px step, same 2px radius, same `primary-500` /
+`accent-500` pair — instead of inventing a parallel one. Both halves of the
+ratio now carry colour (taken terracotta, free teal) and the severity
+thresholds are gone: the meter states capacity, not alarm, and a free part left
+in the card's own background was invisible, which defeated the point. Twenty
+cells replace ten. Adds `src/components/ui/metric-row.tsx` so a section's rows
+share one grid and every meter starts and ends on the same vertical lines,
+replacing the row implementation that servers and hosting each had a copy of.
+Hosting disk and bandwidth quotas gain the meter.
 
 ### v2.16 — 2026-07-26 (One resource, one entry)
 

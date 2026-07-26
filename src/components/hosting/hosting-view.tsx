@@ -31,8 +31,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { UsageMeter } from "@/components/ui/usage-meter";
 import {
   StatusIndicator,
   type StatusState,
@@ -325,6 +327,25 @@ function formatCount(value: number | null, none: string): string {
   return value === null ? none : String(value);
 }
 
+// A quota is meterable only when the plan actually caps it and the provider
+// reports both numbers; an unlimited or unreported quota has no fill level, so
+// the row keeps its text alone. Where the ratio is known, the value carries the
+// percentage too — the same wording the server cards use.
+function quotaUsage(
+  used: number | null,
+  limit: number | null,
+  none: string,
+  unlimited: string,
+  t: ReturnType<typeof useTranslations>,
+): { text: string; percent: number | null } {
+  const text = formatUsage(used, limit, none, unlimited, t);
+  if (used === null || limit === null || limit <= 0) {
+    return { text, percent: null };
+  }
+  const percent = Math.round((used / limit) * 100);
+  return { text: `${text} · ${percent}%`, percent };
+}
+
 function HostingCard({
   account,
   busy,
@@ -346,6 +367,21 @@ function HostingCard({
   const none = t("valueNone");
   const unlimited = t("valueUnlimited");
   const isSuspended = account.status === "suspended";
+
+  const disk = quotaUsage(
+    account.diskUsedMb,
+    account.diskLimitMb,
+    none,
+    unlimited,
+    t,
+  );
+  const bandwidth = quotaUsage(
+    account.bandwidthUsedMb,
+    account.bandwidthLimitMb,
+    none,
+    unlimited,
+    t,
+  );
 
   const handleConfirm = () => {
     if (confirmingRef.current) return;
@@ -386,44 +422,44 @@ function HostingCard({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-1.5">
-        {account.plan && (
-          <MetricRow label={t("planLabel")} value={account.plan} />
-        )}
-        <MetricRow
-          label={t("diskLabel")}
-          value={formatUsage(
-            account.diskUsedMb,
-            account.diskLimitMb,
-            none,
-            unlimited,
-            t,
+        <MetricRows>
+          {account.plan && (
+            <MetricRow label={t("planLabel")} value={account.plan} />
           )}
-        />
-        <MetricRow
-          label={t("bandwidthLabel")}
-          value={formatUsage(
-            account.bandwidthUsedMb,
-            account.bandwidthLimitMb,
-            none,
-            unlimited,
-            t,
-          )}
-        />
-        <MetricRow
-          label={t("databasesLabel")}
-          value={formatCount(account.databases, none)}
-        />
-        <MetricRow
-          label={t("emailLabel")}
-          value={formatCount(account.emailAccounts, none)}
-        />
-        {account.ip && <MetricRow label={t("ipLabel")} value={account.ip} />}
-        {account.expiresAt && (
           <MetricRow
-            label={t("expiresLabel")}
-            value={new Date(account.expiresAt).toLocaleDateString("ru-RU")}
+            label={t("diskLabel")}
+            value={disk.text}
+            meter={
+              disk.percent === null ? undefined : (
+                <UsageMeter value={disk.percent} />
+              )
+            }
           />
-        )}
+          <MetricRow
+            label={t("bandwidthLabel")}
+            value={bandwidth.text}
+            meter={
+              bandwidth.percent === null ? undefined : (
+                <UsageMeter value={bandwidth.percent} />
+              )
+            }
+          />
+          <MetricRow
+            label={t("databasesLabel")}
+            value={formatCount(account.databases, none)}
+          />
+          <MetricRow
+            label={t("emailLabel")}
+            value={formatCount(account.emailAccounts, none)}
+          />
+          {account.ip && <MetricRow label={t("ipLabel")} value={account.ip} />}
+          {account.expiresAt && (
+            <MetricRow
+              label={t("expiresLabel")}
+              value={new Date(account.expiresAt).toLocaleDateString("ru-RU")}
+            />
+          )}
+        </MetricRows>
         {error && (
           <Alert variant="error" className="mt-1 animate-fade-in">
             <Icon name="ri-alert-line" aria-hidden />
@@ -502,16 +538,5 @@ function HostingCard({
         </CardFooter>
       )}
     </Card>
-  );
-}
-
-function MetricRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-foreground-500">{label}</span>
-      <span className="text-foreground-800 font-medium truncate max-w-[60%] text-right">
-        {value}
-      </span>
-    </div>
   );
 }

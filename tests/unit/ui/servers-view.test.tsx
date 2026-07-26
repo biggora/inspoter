@@ -266,6 +266,17 @@ describe("ServersView destructive actions", () => {
     ).toEqual(["21.1", "48", "37"]);
     // Value text carries the number, so the meter itself stays decorative.
     expect(meters[0].getAttribute("aria-hidden")).toBe("true");
+
+    // Both halves of the ratio are coloured: 21.1% of twenty cells is four
+    // taken, and the sixteen that are left read as free rather than as blank.
+    const cpuCells = Array.from(meters[0].querySelectorAll("span"));
+    expect(cpuCells).toHaveLength(20);
+    expect(
+      cpuCells.filter((cell) => cell.className.includes("bg-primary-500")),
+    ).toHaveLength(4);
+    expect(
+      cpuCells.filter((cell) => cell.className.includes("bg-accent-500")),
+    ).toHaveLength(16);
   });
 
   it("invokes the same load callback when retrying an initial failure", async () => {
