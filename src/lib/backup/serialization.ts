@@ -185,6 +185,7 @@ const logEntrySchema = z.object({
   level: z.string(),
   source: z.string(),
   message: z.string(),
+  details: z.string().nullable().optional(),
   timestamp: isoDate,
   createdAt: isoDate,
 });

@@ -323,6 +323,7 @@ function toLogEntryRecord(row: LogEntry): BackupLogEntryRecord {
     level: row.level,
     source: row.source,
     message: row.message,
+    details: row.details,
     timestamp: iso(row.timestamp),
     createdAt: iso(row.createdAt),
   };
@@ -1184,6 +1185,7 @@ export async function importWorkspace(
           level: row.level,
           source: row.source,
           message: row.message,
+          details: row.details ?? null,
           timestamp: row.timestamp,
           createdAt: row.createdAt,
         }));
