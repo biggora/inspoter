@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.12 (2026-07-26):** records two field-verified corrections in §7C. The agent now sends `User-Agent: inspoter-metrics-agent/<version>`: urllib's default is a bot signature that Cloudflare's Browser Integrity Check answers with 403 (`error code: 1010`), so every push failed while the identical payload succeeded via `curl`. Hetzner server cards now report `primary_disk_size` (the VM's own disk) instead of `server_type.disk` (the plan's nominal disk), which diverge permanently after a keep-disk rescale. Updates §7C.3 and §7C.4.
 - **v1.11 (2026-07-24):** replaces the per-server `ServerAgentToken` state machine with universal API tokens. Migration `20260724100000_universal_api_tokens` drops the `ServerAgentToken` model and enum; workspace-level `WebhookToken` rows (`channelId: null`) now authenticate both webhook ingestion and `POST /api/server-metrics`, with member-level list/create/revoke/rotate lifecycle in Settings (new `POST /api/webhook-tokens/[id]/rotate`). Server identity is resolved per ingest from reported global IPv4 claims (claim match → provider discovery → agent-only auto-create), metrics states reduce to `not_configured`/`live`/`stale`, the ingestion response body is `{ code, localServerId }`, and the rate-limit key becomes `${tokenId}:${clientIp}`. Rewrites §7C.1–7C.3 and corrects the §4.1 model inventory (33 models).
 - **v1.10 (2026-07-21):** reconciles Q-15 with the implemented schema, services, routes, UI, shared live/backfill matcher, one existing Mail scheduler, bounded historical batches, durable leases, retry API, and bounded status polling. Records verified migration, performance, encrypted restore, prior-runtime rollback, restart recovery, regression, and independent-review evidence.
 - **v1.9 (2026-07-21):** documents the VPS Metrics Agent system as CURRENT: LocalServer/LocalServerAddress/ServerAgentToken/ServerMetricSnapshot models (4 new, 27 total), SHA-256 token enrollment with IPv4 provider matching, public `POST /api/server-metrics` ingestion endpoint with per-token rate limiting, provider reconciliation with discriminated union DTOs and metrics state composition, ordered credential/workspace deletion, Hetzner pagination, Python 3.12 Docker agent, and `ipaddr.js` IP validation. New section §7C.
@@ -765,9 +766,15 @@ The success body is `{ code, localServerId }` — there is no `tokenState` field
 
 BigInt fields (`memoryTotalBytes`, `uptimeSeconds`, etc.) are serialized as decimal strings in JSON responses.
 
+**Capacity fields come from the provider, not from the agent** (`src/lib/providers/servers/hetzner.ts`). CPU, RAM, OS and disk on a server card describe the account's inventory; the metrics block underneath describes the machine. The disk field reads `primary_disk_size` — the disk the VM actually has — and falls back to `server_type.disk` only when the API omits it. The two are not interchangeable: a keep-disk rescale (CPU/RAM upgraded, disk left untouched so the type can still be downgraded) moves `server_type.disk` to the new plan while the VM keeps its original disk, and reading the plan's value then advertises capacity that does not exist. Observed 2026-07-25 on `inspot-store-core`: card 160 GB, host `sda 76.3G`, agent `df /` 66.3 / 74.8 GB.
+
 ### 7C.4 Metrics agent (`metrics-agent/`)
 
 Python 3.12-slim Docker container, stdlib only (no pip). Collects from `/host/proc/stat` (CPU delta), `/host/proc/meminfo`, `/host/proc/loadavg`, `/host/proc/uptime`, `os.statvfs("/host/rootfs-probe")`, and hostname. Pushes via `urllib.request` with Bearer token every 60 seconds. Non-root, read-only filesystem, `cap_drop: ALL`.
+
+Every push carries `User-Agent: inspoter-metrics-agent/<version>`. This is load-bearing, not cosmetic: urllib's default `Python-urllib/x.y` is a known bot signature, and a dashboard behind Cloudflare with Browser Integrity Check enabled answers it with **403, `error code: 1010`** before the request reaches the app. Because the agent logs only the status class (`4xx`), the failure is indistinguishable from an invalid token in its own logs — diagnose by replaying the payload with `curl` from the same host, where a `400 INVALID_PAYLOAD` proves the request arrived. Verified 2026-07-25 from a host pushing to a Cloudflare-fronted dashboard, over both IPv4 and IPv6.
+
+Because the agent version is compiled into the published image, a fix like the one above only reaches hosts through a **published GitHub release** — `release-metrics-agent.yml` has no `workflow_dispatch` trigger, so re-running a deployment against the old `latest` changes nothing.
 
 ### 7C.5 Ordered deletion (`src/lib/services/credentials.ts`, `src/lib/services/workspaces.ts`)
 
