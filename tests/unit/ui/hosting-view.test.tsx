@@ -27,7 +27,11 @@ const account: HostingAccountDto = {
   bandwidthUsedMb: null,
   bandwidthLimitMb: null,
   databases: 3,
+  databaseDiskUsedMb: null,
   emailAccounts: 5,
+  emailAccountsLimit: null,
+  phpVersion: null,
+  wordpressVersion: null,
   expiresAt: null,
   supportsSuspend: true,
 };
@@ -87,5 +91,49 @@ describe("HostingView quota meters", () => {
       name: "Хостинг-аккаунт «example.ru»",
     });
     expect(card.querySelectorAll("[data-slot='usage-meter']")).toHaveLength(0);
+  });
+});
+
+describe("HostingView provider-specific rows", () => {
+  beforeEach(() => {
+    apiMocks.fetchAccounts.mockReset();
+    apiMocks.getAccount.mockReset();
+    apiMocks.setSuspended.mockReset();
+  });
+
+  it("omits the PHP and WordPress rows when the provider reports neither", async () => {
+    respondWith();
+    renderWithIntl(<HostingView />);
+
+    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    expect(screen.queryByText("PHP")).not.toBeInTheDocument();
+    expect(screen.queryByText("WordPress")).not.toBeInTheDocument();
+  });
+
+  it("renders the PHP and WordPress rows once the versions are known", async () => {
+    respondWith({ phpVersion: "8.3", wordpressVersion: "6.8.1" });
+    renderWithIntl(<HostingView />);
+
+    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    expect(screen.getByText("PHP")).toBeInTheDocument();
+    expect(screen.getByText("8.3")).toBeInTheDocument();
+    expect(screen.getByText("WordPress")).toBeInTheDocument();
+    expect(screen.getByText("6.8.1")).toBeInTheDocument();
+  });
+
+  it("states mailboxes against the seats the plan pays for", async () => {
+    respondWith({ emailAccounts: 3, emailAccountsLimit: 5 });
+    renderWithIntl(<HostingView />);
+
+    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    expect(screen.getByText("3 / 5")).toBeInTheDocument();
+  });
+
+  it("carries the database size in the database count row", async () => {
+    respondWith({ databases: 2, databaseDiskUsedMb: 48 });
+    renderWithIntl(<HostingView />);
+
+    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    expect(screen.getByText("2 · 48 МБ")).toBeInTheDocument();
   });
 });

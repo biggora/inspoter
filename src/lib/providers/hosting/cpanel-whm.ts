@@ -46,7 +46,11 @@ function toAccount(acct: WhmAccount): HostingAccount {
     // listaccts exposes plan limits, not current DB/email counts, so these
     // stay null to avoid presenting a quota as a usage count.
     databases: null,
+    databaseDiskUsedMb: null,
     emailAccounts: null,
+    emailAccountsLimit: null,
+    phpVersion: null,
+    wordpressVersion: null,
     expiresAt: null,
     supportsSuspend: true,
   };

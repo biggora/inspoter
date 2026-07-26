@@ -19,6 +19,8 @@
   "bandwidthLabel": "Трафик",
   "databasesLabel": "Базы данных",
   "emailLabel": "Почта",
+  "phpLabel": "PHP",
+  "wordpressLabel": "WordPress",
   "ipLabel": "IP",
   "expiresLabel": "Действует до",
   "valueNone": "—",

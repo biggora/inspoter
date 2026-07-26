@@ -323,8 +323,28 @@ function formatUsage(
   return `${usedText} / ${limitText}`;
 }
 
-function formatCount(value: number | null, none: string): string {
-  return value === null ? none : String(value);
+// A count the plan caps reads "3 / 5". The cap alone says nothing useful
+// without the count, so an unknown count keeps the dash and drops the limit.
+function formatCountOfLimit(
+  value: number | null,
+  limit: number | null,
+  none: string,
+): string {
+  if (value === null) return none;
+  return limit === null ? String(value) : `${value} / ${limit}`;
+}
+
+// Databases are a count first and a size second: the size is a detail of the
+// same fact, so it rides in the same row rather than claiming one of its own.
+function formatDatabases(
+  count: number | null,
+  diskUsedMb: number | null,
+  none: string,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  if (count === null) return none;
+  if (diskUsedMb === null) return String(count);
+  return `${count} · ${formatSize(diskUsedMb, t)}`;
 }
 
 // A quota is meterable only when the plan actually caps it and the provider
@@ -446,12 +466,30 @@ function HostingCard({
           />
           <MetricRow
             label={t("databasesLabel")}
-            value={formatCount(account.databases, none)}
+            value={formatDatabases(
+              account.databases,
+              account.databaseDiskUsedMb,
+              none,
+              t,
+            )}
           />
           <MetricRow
             label={t("emailLabel")}
-            value={formatCount(account.emailAccounts, none)}
+            value={formatCountOfLimit(
+              account.emailAccounts,
+              account.emailAccountsLimit,
+              none,
+            )}
           />
+          {account.phpVersion && (
+            <MetricRow label={t("phpLabel")} value={account.phpVersion} />
+          )}
+          {account.wordpressVersion && (
+            <MetricRow
+              label={t("wordpressLabel")}
+              value={account.wordpressVersion}
+            />
+          )}
           {account.ip && <MetricRow label={t("ipLabel")} value={account.ip} />}
           {account.expiresAt && (
             <MetricRow

@@ -1,7 +1,7 @@
 # Design Specification — inspoter
 
-**Version:** v2.17
-**Status:** Utilisation meter unified with the service heartbeat strips; awaiting user verification
+**Version:** v2.18
+**Status:** Hosting card row contract recorded and Hostinger cards enriched; awaiting user verification
 **Owner:** UI/UX Designer
 **Date:** 2026-07-26
 **Source of truth for:** frontend implementor and test engineer
@@ -296,6 +296,8 @@ A zone appears once, in the first credential that listed it (§4.5). Because onl
 
 One machine is one card, whichever credential surfaced it (§4.5). A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right — all rows share the section's grid, so every meter starts and ends on the same vertical lines. Hosting account cards use the same row and meter for their disk and bandwidth quotas; a quota the plan does not cap has no fill level and keeps its text alone.
 
+A hosting card states what its provider actually knows, and the row set is the same everywhere so the two provider families stay comparable. Row order is plan, disk, bandwidth, databases, email, PHP, WordPress, IP, expiry; PHP, WordPress, IP, and expiry appear only once a value exists, while disk, bandwidth, databases, and email always hold their place and show "—" when the provider is silent. Databases carry their size in the same row ("2 · 48 МБ") because the size is a detail of that count, not a separate fact, and email states its cap the same way ("3 / 5"). A dash and a zero are different claims: "—" means the number is unknown, "0" means the account has none. Hostinger cannot report filesystem usage, bandwidth, or an account IP for shared hosting — the whole API exposes those only for VPS — so those rows stay dashed there by necessity, not by omission.
+
 - With metrics (`live` or `stale`), CPU reads "21.1% · 2 vCPU" — utilisation plus the provider's core count as a capacity tail — while memory and disk read "1.8 / 3.7 GB · 48%". Totals come from the agent, not from the plan's nominal figures, because the mounted filesystem and usable memory are the numbers an operator acts on; this also removes the contradiction of showing both 80 GB and 74.8 GB for one disk.
 - Without metrics (`not_configured`) the same three rows show provider capacity alone, with no meter, alongside the existing "Мониторинг не подключён" hint and the setup action.
 - An agent-only server shows its hostname row and the same metered rows; CPU omits the capacity tail, since the agent does not report a core count.
@@ -535,6 +537,17 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.18 — 2026-07-26 (Hosting cards state what the provider knows)
+
+Records the hosting card's row contract in §5.3: a fixed order, rows that hold
+their place versus rows that appear only with a value, the database size riding
+in the database count row, the mailbox cap riding in the email row, and the
+distinction between a dash (unknown) and a zero (none). Names the provider
+limit behind the dashes on Hostinger cards — its API has no filesystem usage,
+no bandwidth, and no account IP for shared hosting — so the empty rows read as
+a documented boundary rather than an unfinished integration. Adds the PHP and
+WordPress rows, fed by the enriched Hostinger listing.
 
 ### v2.17 — 2026-07-26 (Utilisation meter aligned with the heartbeat strips)
 

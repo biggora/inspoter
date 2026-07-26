@@ -3,8 +3,10 @@ import type { ProviderResult } from "@/lib/providers/result";
 export type HostingAccountStatus = "active" | "suspended" | "unknown";
 
 // Normalized hosting account (website) across providers. Metric fields are
-// nullable because not every provider exposes usage data (e.g. Hostinger's
-// public API does not report disk/bandwidth for shared hosting).
+// nullable because not every provider exposes usage data: Hostinger's public
+// API has no filesystem quota, no bandwidth, and no account IP for shared
+// hosting anywhere in its specification, while cPanel reports those but not
+// the plan's expiry, PHP version, or WordPress core.
 export interface HostingAccount {
   id: string; // cPanel username | Hostinger domain/subscription id
   domain: string; // primary domain / account name
@@ -17,7 +19,11 @@ export interface HostingAccount {
   bandwidthUsedMb: number | null;
   bandwidthLimitMb: number | null;
   databases: number | null;
+  databaseDiskUsedMb: number | null; // sum of the account's database sizes
   emailAccounts: number | null;
+  emailAccountsLimit: number | null; // mailbox seats the plan pays for
+  phpVersion: string | null;
+  wordpressVersion: string | null;
   expiresAt: string | null; // ISO date, Hostinger subscription/domain
   supportsSuspend: boolean; // true only where the provider can suspend
 }

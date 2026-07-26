@@ -17,7 +17,11 @@ export interface HostingAccountDto {
   bandwidthUsedMb: number | null;
   bandwidthLimitMb: number | null;
   databases: number | null;
+  databaseDiskUsedMb: number | null;
   emailAccounts: number | null;
+  emailAccountsLimit: number | null;
+  phpVersion: string | null;
+  wordpressVersion: string | null;
   expiresAt: string | null;
   supportsSuspend: boolean;
 }

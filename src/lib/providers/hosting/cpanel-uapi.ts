@@ -98,7 +98,11 @@ export class CpanelUapiProvider implements HostingProvider {
       bandwidthUsedMb: parseCpanelMb(bandwidth?.usage),
       bandwidthLimitMb: parseCpanelMb(bandwidth?.maximum),
       databases: parseCpanelCount(databases?.usage),
+      databaseDiskUsedMb: null,
       emailAccounts: parseCpanelCount(email?.usage),
+      emailAccountsLimit: parseCpanelCount(email?.maximum),
+      phpVersion: null,
+      wordpressVersion: null,
       expiresAt: null,
       supportsSuspend: false,
     };

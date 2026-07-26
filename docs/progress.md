@@ -219,6 +219,23 @@ PRD v3.0 остаётся утверждённой базовой версией
 
 Документация: architecture.md v1.11 (§4.1, §7C), README (раздел «Метрики серверов»), test-plan.md §11 (superseded-строки), notice в `specs/metrics-script.md`.
 
+## Веха Hostinger card enrichment (2026-07-26)
+
+Карточка Hostinger в разделе «Хостинги» строилась на единственном вызове `GET /api/hosting/v1/websites`, поэтому показывала прочерки в строках «Диск», «Трафик», «Базы данных», «Почта», а в «Тариф» выводила `vhost_type` (`main`/`addon`) — тип виртуального хоста, а не тариф. Разбор спецификации Hostinger (`hostinger/api`, OpenAPI v1.20.0) показал, что часть данных в API отсутствует принципиально, а остальное просто не запрашивалось.
+
+**Что реализовано:**
+
+- `listAccounts` для Hostinger соединяет сайты с `hosting/v1/orders` и `billing/v1/subscriptions` (настоящее имя тарифа и дата окончания), `accounts/{username}/databases` (число баз и суммарный `disk_usage_mb`), `mail/v1/orders` + `mailboxes` (ящиков занято/куплено), `hosting/v1/wordpress/installations` + `wordpress/{software}/version` и `websites/{domain}/php/details`.
+- Критичен только вызов `websites`: любой обогащающий запрос при неудаче даёт `null`, а не ошибку раздела — токен может не иметь scope на billing или mail, и частичная карточка лучше пустого раздела. Пустой список и провал вызова различаются: `0` баз и «—» — разные утверждения.
+- Пагинация по всем спискам (`per_page=100`, потолок 10 страниц); пер-сайтовые вызовы идут чанками по 5, чтобы не ловить rate limit.
+- Базы без привязки к домену (`domain: null`) относятся к сайту с `vhost_type: "main"` того же аккаунта — иначе они не видны ни на одной карточке.
+- `HostingAccount` расширен полями `databaseDiskUsedMb`, `emailAccountsLimit`, `phpVersion`, `wordpressVersion`; у cPanel UAPI лимит ящиков берётся из уже загружаемого `email.maximum`.
+- Карточка: «Базы данных» читается как `2 · 48 МБ`, «Почта» — как `3 / 5`, строки «PHP» и «WordPress» появляются только при известной версии.
+
+**Ограничение провайдера:** дисковая квота и использование файлов на shared-хостинге, трафик и IP аккаунта отсутствуют во всей спецификации Hostinger (свойства `disk*`/`bandwidth*` есть только у `VPS.V1.VirtualMachine` и у `Hosting.V1.Databases.DatabaseResource`). Эти строки остаются прочерками осознанно.
+
+Документация: design.md v2.18 (§5.3).
+
 ## Decisions log
 
 - 2026-07-12 — Стек: Next.js fullstack (один деплой, self-hosted панель уровня Homarr); БД: PostgreSQL + Prisma; объём запуска: docs + tracer bullet. Решение пользователя.

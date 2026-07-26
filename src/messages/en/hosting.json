@@ -19,6 +19,8 @@
   "bandwidthLabel": "Bandwidth",
   "databasesLabel": "Databases",
   "emailLabel": "Email",
+  "phpLabel": "PHP",
+  "wordpressLabel": "WordPress",
   "ipLabel": "IP",
   "expiresLabel": "Expires",
   "valueNone": "—",
