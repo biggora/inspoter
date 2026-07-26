@@ -1,7 +1,7 @@
 # Design Specification — inspoter
 
-**Version:** v2.15
-**Status:** One resource section per server card with segmented utilisation meters; awaiting user verification
+**Version:** v2.16
+**Status:** One entry per real resource across servers, domains, and mail accounts; awaiting user verification
 **Owner:** UI/UX Designer
 **Date:** 2026-07-26
 **Source of truth for:** frontend implementor and test engineer
@@ -216,6 +216,18 @@ Every data surface implements:
 - Disabled: visible reason when non-obvious.
 - Pagination: bounded server page, current-page semantics, disabled ends, and Russian count/position text.
 
+### 4.5 One resource, one entry
+
+A workspace may hold several credentials that reach the same real resource: two tokens for one Hetzner project, a second Cloudflare token for an account that already has one, the same mailbox connected twice. Credentials are deliberately not deduplicated by their secret — two different tokens can legitimately reach the same resource, and the same token can be reissued — so identity is the resource itself, never the credential that surfaced it.
+
+Every listing therefore shows one entry per resource:
+
+- **Servers** (§5.3): identity is the provider-reported primary IPv4, falling back to provider type plus remote id while the address is unknown. Two entries would offer two power buttons for one machine, and acting through one would leave the other reporting a stale status. Of several rows for one machine, the one carrying the metrics agent's snapshot survives, so collapsing never hides live metrics; otherwise the oldest row stays.
+- **Domains** (§5.2): identity is provider type plus zone name. The surviving row states how many further credentials hold the zone, because only one of two accounts is authoritative and the operator must know where an edit lands.
+- **Mail accounts** (§5.4): one mailbox is one account, so connecting an address that already exists on the same IMAP host is refused at the source rather than collapsed on read — two accounts would sync every message twice and then drift.
+
+Where duplicates are collapsed on read, the underlying bindings are untouched: removing a credential is an explicit operator action, never a side effect of opening a list.
+
 ## 5. Product-section specifications
 
 Each following chapter is complete and normative. Its acceptance checks supplement, and never replace, the cited PRD ACs.
@@ -260,6 +272,8 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Layout/content:** provider-aware inventory showing only domains bound to the active workspace, with domain name and Cloudflare, Hetzner DNS, or GoDaddy source. Selecting a domain opens that binding's DNS records with type, name, value, and TTL. Provider identity and mode/error are visible without exposing credentials.
 
+A zone appears once, in the first credential that listed it (§4.5). Because only one of two accounts holding the same zone is authoritative, the collapse is never silent: the row carries a badge naming how many further credentials also expose it, so an operator can see that records edited here reach this row's credential and that another account holds a copy. The rule stops at the provider boundary — the same domain in Cloudflare and in GoDaddy stays two rows, since mid-migration each is managed separately and hiding one would remove all access to it.
+
 **Actions:** select domain; refresh one provider; create/edit/delete a DNS record with confirmation for delete. Validate type-specific name/value and TTL before provider submission. Refresh and mutation errors are provider-local.
 
 **States:** inventory skeleton; no configured/returned domains; DNS empty state; per-provider error with Повторить; healthy-provider content retained; record form pending/error; provider-rejected mutations retain confirmed state.
@@ -278,7 +292,7 @@ A category may optionally act as a group containing one level of subcategories (
 
 **Layout/content:** compact summary followed by a responsive grid showing only servers bound to the active workspace. Each card shows name, Hetzner Cloud provider, VPS type/configuration, IP, power status, and only information returned by the provider. Use semantic status tokens and Russian labels.
 
-A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right.
+One machine is one card, whichever credential surfaced it (§4.5). A card carries exactly **one** resource section — provider capacity and agent-reported utilisation are the same three facts, so they never occupy two separate blocks. Row order is CPU, memory, disk, OS, location, load average, uptime, followed by a single muted right-aligned "Обновлено {time}" line when metrics have been received. Each row is one line: label, then the §2.5 utilisation meter, then the value flush right.
 
 - With metrics (`live` or `stale`), CPU reads "21.1% · 2 vCPU" — utilisation plus the provider's core count as a capacity tail — while memory and disk read "1.8 / 3.7 GB · 48%". Totals come from the agent, not from the plan's nominal figures, because the mounted filesystem and usable memory are the numbers an operator acts on; this also removes the contradiction of showing both 80 GB and 74.8 GB for one disk.
 - Without metrics (`not_configured`) the same three rows show provider capacity alone, with no meter, alongside the existing "Мониторинг не подключён" hint and the setup action.
@@ -317,7 +331,7 @@ Metrics freshness stays in the header's status indicator; there is no separate "
 - Compose dialog (по образцу provider-credential-dialog): titles «Новое письмо» / «Ответить» / «Переслать письмо»; fields Кому (chips, placeholder «адрес@example.ru, адрес2@example.ru»), Копия, Скрытая копия, Тема, Текст письма (plain-text textarea); validation «Укажите хотя бы одного получателя.», «Тема обязательна.», «Текст письма обязателен.»; submit «Отправить»; success toast «Письмо отправлено», failure «Не удалось отправить письмо. Попробуйте снова.». Reply prefills Re: + цитату, forward — Fwd: + цитату.
 - Action/sync toasts: «Синхронизация завершена.», «Синхронизация уже выполняется.», «Письмо перемещено в корзину», «Письмо удалено», «Письмо перемещено в архив», and matching «Не удалось …. Попробуйте снова.» failures for load/read/move/delete/sync.
 
-**/settings/mail (owner-only mutations):** card on /settings («Почтовые аккаунты»); page header «Почтовые аккаунты» with «Назад к настройкам»; accounts table (name, email, host, status, last sync) with Изменить/Удалить (confirm «Удалить»/«Удаление…»); dialog «Добавить аккаунт» with Название, Рабочая почта, IMAP/SMTP servers and Порт fields (validation «Порт должен быть в диапазоне 1–65535.»), Логин, password (edit placeholder «Оставьте пустым, чтобы не менять»), the hint «Используйте пароль приложения, а не основной пароль почты.», «Проверить подключение» (per-protocol errors «Не удалось подключиться к IMAP-серверу.» / «Не удалось подключиться к SMTP-серверу.»), and «Сохранить» with toasts «Аккаунт сохранён.» / «Аккаунт удалён.». Empty state: «Нет почтовых аккаунтов» + «Подключите IMAP/SMTP-ящик, чтобы получать и отправлять почту из панели.». Trace: AC-MAIL-007..011.
+**/settings/mail (owner-only mutations):** card on /settings («Почтовые аккаунты»); page header «Почтовые аккаунты» with «Назад к настройкам»; accounts table (name, email, host, status, last sync) with Изменить/Удалить (confirm «Удалить»/«Удаление…»); dialog «Добавить аккаунт» with Название, Рабочая почта, IMAP/SMTP servers and Порт fields (validation «Порт должен быть в диапазоне 1–65535.»), Логин, password (edit placeholder «Оставьте пустым, чтобы не менять»), the hint «Используйте пароль приложения, а не основной пароль почты.», «Проверить подключение» (per-protocol errors «Не удалось подключиться к IMAP-серверу.» / «Не удалось подключиться к SMTP-серверу.»), and «Сохранить» with toasts «Аккаунт сохранён.» / «Аккаунт удалён.». Empty state: «Нет почтовых аккаунтов» + «Подключите IMAP/SMTP-ящик, чтобы получать и отправлять почту из панели.». One mailbox is one account (§4.5): saving an address that another account already holds on the same IMAP host — regardless of display name, app password, or letter case — is refused with «Этот ящик уже подключён. Измените существующий аккаунт, а не добавляйте его второй раз.» beside the form, and the same rule guards moving an existing account onto a taken mailbox. Trace: AC-MAIL-007..011.
 
 **States:** skeletons for sidebar/list/pane; empty webhook mailbox with a webhook curl hint («Входящая почта пока отсутствует» / «Отправьте первое письмо через webhook:»); empty folder («Нет писем» / «В этой папке пока пусто.»); no filter results («Ничего не найдено» / «Нет писем, соответствующих текущим фильтрам.»); load errors with Повторить («Не удалось загрузить почту», «Не удалось загрузить письма. Попробуйте снова.», «Не удалось загрузить папки. Попробуйте снова.», «Не удалось загрузить почтовые аккаунты. Попробуйте снова.»); sync busy → 409 toast; pagination boundaries.
 
@@ -519,6 +533,18 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.16 — 2026-07-26 (One resource, one entry)
+
+Adds §4.5: a workspace may hold several credentials reaching the same real
+resource, so every listing shows one entry per resource and identity is the
+resource, never the credential's secret — two different tokens can legitimately
+reach one machine. Servers collapse by primary IPv4 (the row with the metrics
+snapshot wins), domains by provider type plus zone name with a visible badge
+naming how many further credentials hold the zone, and mail refuses a second
+account for a mailbox already connected instead of collapsing on read. Cross-
+provider zones stay separate rows: the same domain in Cloudflare and GoDaddy is
+two zones managed separately. Collapsing never touches the stored bindings.
 
 ### v2.15 — 2026-07-26 (One resource section per server card)
 

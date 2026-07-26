@@ -15,6 +15,14 @@ import type { ProviderResult } from "@/lib/providers/result";
 export interface DomainWithRecordCount extends Domain {
   /** null when this zone's record listing failed — the row shows a dash. */
   recordCount: number | null;
+  /**
+   * How many further credentials of the same provider expose this same zone.
+   * 0 in the ordinary case. The listing keeps one row per zone, and this count
+   * is what the row shows so the collapse is never silent: only one of those
+   * accounts is the authoritative one, and DNS edits go to the credential of
+   * the row that survived.
+   */
+  duplicateCredentialCount: number;
 }
 
 export interface DomainsByProvider {
@@ -39,9 +47,39 @@ async function withRecordCounts(
       return {
         ...domain,
         recordCount: result?.ok ? result.data.length : null,
+        duplicateCredentialCount: 0,
       };
     }),
   );
+}
+
+// Two credentials of one DNS provider can expose the same zone — a second token
+// for the same account, or two accounts that both hold the domain — and the
+// listing would then show it twice, with no way to tell which row's records an
+// edit reaches. One row per zone survives, in the first credential that listed
+// it, and it carries the number of further credentials so the operator can see
+// there is more than one place to look.
+//
+// Identity is provider type plus zone name. It deliberately stops at the
+// provider boundary: the same domain in Cloudflare and in GoDaddy is two
+// separate zones an operator manages separately — typically mid-migration —
+// and collapsing those would hide one of them outright.
+function dedupeZones(groups: DomainsByProvider[]): DomainsByProvider[] {
+  const firstRowByZone = new Map<string, DomainWithRecordCount>();
+
+  return groups.map((group) => ({
+    ...group,
+    domains: group.domains.filter((domain) => {
+      const zone = `${group.providerType}:${domain.name.trim().toLowerCase().replace(/\.$/, "")}`;
+      const kept = firstRowByZone.get(zone);
+      if (!kept) {
+        firstRowByZone.set(zone, domain);
+        return true;
+      }
+      kept.duplicateCredentialCount += 1;
+      return false;
+    }),
+  }));
 }
 
 export async function listDomains(
@@ -52,7 +90,7 @@ export async function listDomains(
     providers.map((provider) => provider.listDomains()),
   );
 
-  return Promise.all(
+  const groups = await Promise.all(
     settled.map(async (result, index) => {
       const provider = providers[index];
       if (result.status === "rejected") {
@@ -86,6 +124,8 @@ export async function listDomains(
       };
     }),
   );
+
+  return dedupeZones(groups);
 }
 
 async function findProvider(

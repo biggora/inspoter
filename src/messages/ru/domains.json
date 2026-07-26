@@ -15,6 +15,7 @@
   "domainHeader": "Домен",
   "recordsHeader": "DNS-записи",
   "providerHeader": "Провайдер",
+  "duplicateCredentials": "{count, plural, one {Ещё в # подключении} few {Ещё в # подключениях} many {Ещё в # подключениях} other {Ещё в # подключениях}}",
   "actionsHeader": "Действия",
   "viewDnsButton": "Просмотр DNS",
 

@@ -15,6 +15,7 @@
   "domainHeader": "Domain",
   "recordsHeader": "DNS records",
   "providerHeader": "Provider",
+  "duplicateCredentials": "{count, plural, one {Also in # other connection} other {Also in # other connections}}",
   "actionsHeader": "Actions",
   "viewDnsButton": "View DNS",
 

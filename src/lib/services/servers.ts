@@ -172,6 +172,64 @@ async function reconcileProviderServers(
   });
 }
 
+// One machine can be reachable through more than one credential — two tokens
+// may legitimately see the same VM — and LocalServer's unique key is scoped to
+// a credential, so each credential owns its own row for that machine. The
+// listing must still show one entry per machine: two entries would mean two
+// power buttons for one server, and stopping it through one would leave the
+// other reporting the stale status until the next refresh.
+//
+// Identity is the provider-reported primary IPv4. Only when the address is
+// unknown — the provider is unreachable, or no longer reports the server — does
+// it fall back to provider type plus remote id; in that window neither row
+// carries any data to tell the two apart anyway.
+function machineIdentity(dto: ProviderServerDto, providerType: string): string {
+  return dto.ip
+    ? `ip:${dto.ip}`
+    : `remote:${providerType}:${dto.remoteServerId}`;
+}
+
+// Of several rows describing one machine, the one carrying the agent's snapshot
+// wins, so collapsing them never hides live metrics; otherwise the first — and
+// therefore oldest, since the query orders by createdAt — stays. Agent-only
+// rows are left alone: an agent that matches a provider server is bound to that
+// server's row upstream, in the metrics ingest claim logic.
+function dedupeByMachine(
+  dtos: ComposedServerDto[],
+  providerTypeByCredentialId: Map<string, string>,
+): ComposedServerDto[] {
+  const kept: ComposedServerDto[] = [];
+  const indexByIdentity = new Map<string, number>();
+
+  for (const dto of dtos) {
+    if (dto.origin !== "provider") {
+      kept.push(dto);
+      continue;
+    }
+
+    const identity = machineIdentity(
+      dto,
+      providerTypeByCredentialId.get(dto.providerCredentialId) ?? "",
+    );
+    const index = indexByIdentity.get(identity);
+
+    if (index === undefined) {
+      indexByIdentity.set(identity, kept.length);
+      kept.push(dto);
+      continue;
+    }
+
+    if (
+      kept[index].metrics.state === "not_configured" &&
+      dto.metrics.state !== "not_configured"
+    ) {
+      kept[index] = dto;
+    }
+  }
+
+  return kept;
+}
+
 export async function listServers(
   workspaceId: string,
 ): Promise<ComposedServersResponse> {
@@ -285,7 +343,14 @@ export async function listServers(
     return dto;
   });
 
-  return { servers, providerErrors: failedProviders };
+  const providerTypeByCredentialId = new Map(
+    providers.map((provider) => [provider.id, provider.providerType]),
+  );
+
+  return {
+    servers: dedupeByMachine(servers, providerTypeByCredentialId),
+    providerErrors: failedProviders,
+  };
 }
 
 export async function getComposedServer(

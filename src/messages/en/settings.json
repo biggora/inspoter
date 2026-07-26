@@ -65,6 +65,7 @@
   "testConnectionError": "Failed to test the connection. Please try again.",
   "accountSavedToast": "Account saved.",
   "saveAccountError": "Failed to save account. Please try again.",
+  "mailboxAlreadyConnectedError": "This mailbox is already connected. Edit the existing account instead of adding it a second time.",
   "emailLabel": "E-mail",
   "imapHostLabel": "IMAP server",
   "portLabel": "Port",

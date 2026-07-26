@@ -21,16 +21,20 @@ let memberId: string;
 function accountInput(
   overrides: Partial<mailAccountsService.CreateMailAccountData> = {},
 ): mailAccountsService.CreateMailAccountData {
+  const name = overrides.name ?? `${NAME_PREFIX}-account`;
+  // One mailbox is one account, so each fixture needs its own address —
+  // otherwise every account after the first would be a duplicate of it.
+  const email = overrides.email ?? `${name}@example.ru`;
   return {
-    name: `${NAME_PREFIX}-account`,
-    email: "user@example.ru",
+    name,
+    email,
     imapHost: "imap.example.ru",
     imapPort: 993,
     imapSecurity: "SSL",
     smtpHost: "smtp.example.ru",
     smtpPort: 465,
     smtpSecurity: "SSL",
-    username: "user@example.ru",
+    username: email,
     password: "app-password-secret",
     mode: "MOCK",
     ...overrides,
@@ -109,6 +113,53 @@ describe("createAccount", () => {
       accountInput({ name: `${NAME_PREFIX}-member-allowed` }),
     );
     expect(summary.kind).toBe("IMAP");
+  });
+
+  it("refuses a second account for a mailbox already connected", async () => {
+    const first = accountInput({
+      name: `${NAME_PREFIX}-mailbox-owner`,
+      email: `${NAME_PREFIX}-shared@example.ru`,
+    });
+    await mailAccountsService.createAccount(workspaceId, first);
+
+    // Another display name, another app password, casing that differs: still
+    // the same mailbox.
+    await expect(
+      mailAccountsService.createAccount(
+        workspaceId,
+        accountInput({
+          name: `${NAME_PREFIX}-mailbox-copy`,
+          email: first.email.toUpperCase(),
+          imapHost: "IMAP.example.ru",
+          password: "another-app-password",
+        }),
+      ),
+    ).rejects.toBeInstanceOf(mailAccountsService.DuplicateMailboxError);
+
+    const stored = await db.mailAccount.findMany({
+      where: {
+        workspaceId,
+        email: { in: [first.email, first.email.toUpperCase()] },
+      },
+    });
+    expect(stored).toHaveLength(1);
+  });
+
+  it("accepts the same address on a different IMAP host", async () => {
+    const address = `${NAME_PREFIX}-two-hosts@example.ru`;
+    await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-host-a`, email: address }),
+    );
+    const second = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({
+        name: `${NAME_PREFIX}-host-b`,
+        email: address,
+        imapHost: "imap.other.ru",
+      }),
+    );
+    expect(second.imapHost).toBe("imap.other.ru");
   });
 });
 
@@ -201,6 +252,31 @@ describe("updateAccount", () => {
       { name: "Webhook" },
     );
     expect(renamed.name).toBe("Webhook");
+  });
+
+  it("refuses to point an account at a mailbox another account already holds", async () => {
+    const taken = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-taken` }),
+    );
+    const mover = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-mover` }),
+    );
+
+    await expect(
+      mailAccountsService.updateAccount(workspaceId, mover.id, {
+        email: taken.email,
+      }),
+    ).rejects.toBeInstanceOf(mailAccountsService.DuplicateMailboxError);
+
+    // Editing an account without moving it stays allowed.
+    const renamed = await mailAccountsService.updateAccount(
+      workspaceId,
+      mover.id,
+      { name: `${NAME_PREFIX}-mover-renamed`, email: mover.email },
+    );
+    expect(renamed.name).toBe(`${NAME_PREFIX}-mover-renamed`);
   });
 });
 

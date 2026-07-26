@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import * as serversService from "@/lib/services/servers";
 import * as credentialsService from "@/lib/services/credentials";
 import { MockServerProvider } from "@/lib/providers/servers/mock";
-import type { ServerProvider } from "@/lib/providers/servers/types";
+import type { Server, ServerProvider } from "@/lib/providers/servers/types";
 import type { ProviderResult } from "@/lib/providers/result";
 
 // Servers service (architecture.md §4.4, AC-SRV-*) — Slice 2 composes
@@ -41,6 +41,29 @@ class FailingServerProvider implements ServerProvider {
   }
   async power(): Promise<ProviderResult<void>> {
     return { ok: false, kind: "error", message: "boom" };
+  }
+}
+
+// Two credentials can legitimately see the same machine (different tokens,
+// same VM), which is what makes the listing collapse rows by address.
+class MirrorServerProvider implements ServerProvider {
+  readonly providerType = "hetzner";
+  readonly label = "Mirror Provider";
+  readonly mode = "mock" as const;
+
+  constructor(
+    readonly id: string,
+    private readonly server: Server,
+  ) {}
+
+  async listServers(): Promise<ProviderResult<Server[]>> {
+    return { ok: true, data: [this.server] };
+  }
+  async getServer(): Promise<ProviderResult<Server>> {
+    return { ok: true, data: this.server };
+  }
+  async power(): Promise<ProviderResult<void>> {
+    return { ok: true, data: undefined };
   }
 }
 
@@ -179,6 +202,91 @@ describe("listServers()", () => {
       where: { id: orphan.id },
     });
     expect(refreshed.providerMissingAt).not.toBeNull();
+  });
+
+  it("shows one entry per machine when two credentials expose the same server", async () => {
+    const mirrorCredential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${WORKSPACE_NAME_PREFIX}-hetzner-mirror`,
+      { type: "HETZNER_CLOUD", apiToken: "mock-token-mirror" },
+    );
+    // Same address as srv-01, different remote id: identity is the machine,
+    // not the provider's numbering.
+    const mirror = new MirrorServerProvider(mirrorCredential.id, {
+      id: "mirror-01",
+      name: "web-prod-01",
+      type: "cx41 · 4vCPU / 16GB",
+      status: "running",
+      cpu: "4 vCPU (AMD EPYC)",
+      ram: "16 GB",
+      disk: "160 GB NVMe",
+      ip: "49.12.34.56",
+      location: "Nuremberg, DE",
+      os: "Ubuntu 24.04 LTS",
+    });
+    mockState.providers = [mockProvider, mirror];
+
+    try {
+      const result = await serversService.listServers(workspaceId);
+      const sharedAddress = result.servers.filter(
+        (s) => s.origin === "provider" && s.ip === "49.12.34.56",
+      );
+      expect(sharedAddress).toHaveLength(1);
+      // Collapsing is a listing concern: both bindings stay in the database.
+      const rows = await db.localServer.findMany({
+        where: {
+          workspaceId,
+          providerRemoteId: { in: ["srv-01", "mirror-01"] },
+        },
+      });
+      expect(rows).toHaveLength(2);
+
+      // The row an agent reports through must survive the collapse, whichever
+      // credential reconciled it first.
+      const mirrorRow = rows.find((r) => r.providerRemoteId === "mirror-01")!;
+      await db.serverMetricSnapshot.create({
+        data: {
+          localServerId: mirrorRow.id,
+          workspaceId,
+          schemaVersion: 1,
+          agentVersion: "1.0.0",
+          hostname: "web-prod-01",
+          capturedAt: new Date(),
+          receivedAt: new Date(),
+          cpuUsagePercent: 21.1,
+          load1: 0.1,
+          load5: 0.2,
+          load15: 0.3,
+          memoryTotalBytes: 1000n,
+          memoryAvailableBytes: 500n,
+          swapTotalBytes: 0n,
+          swapFreeBytes: 0n,
+          filesystemTotalBytes: 2000n,
+          filesystemAvailableBytes: 1000n,
+          uptimeSeconds: 3600n,
+        },
+      });
+
+      const withMetrics = await serversService.listServers(workspaceId);
+      const kept = withMetrics.servers.filter(
+        (s) => s.origin === "provider" && s.ip === "49.12.34.56",
+      );
+      expect(kept).toHaveLength(1);
+      expect(kept[0].localServerId).toBe(mirrorRow.id);
+      expect(kept[0].metrics.state).toBe("live");
+    } finally {
+      mockState.providers = [mockProvider];
+      // Drop the snapshot first: deleteCredential detaches a row that still has
+      // one into an agent-only server instead of removing it.
+      await db.serverMetricSnapshot.deleteMany({
+        where: { localServer: { providerCredentialId: mirrorCredential.id } },
+      });
+      await credentialsService.deleteCredential(
+        mirrorCredential.id,
+        workspaceId,
+      );
+    }
   });
 });
 

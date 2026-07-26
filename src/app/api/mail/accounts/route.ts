@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
     if (error instanceof EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }
+    if (error instanceof mailAccountsService.DuplicateMailboxError) {
+      return jsonResponse({ error: error.code }, { status: 409 });
+    }
     if (error instanceof MailTransportError) {
       return jsonResponse({ error: error.message }, { status: 502 });
     }

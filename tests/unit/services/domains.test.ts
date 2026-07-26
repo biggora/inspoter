@@ -8,14 +8,21 @@ import { MockDnsProvider } from "@/lib/providers/dns/mock";
 // credentials), so the factory is mocked here to return the deterministic
 // mock providers.
 
+// `providers` overrides the default trio for the tests that need a specific
+// credential set (two credentials of one provider, for instance).
+const mockState = vi.hoisted(() => ({
+  providers: null as unknown[] | null,
+}));
+
 vi.mock("@/lib/providers/dns", async () => {
   const { MockDnsProvider } = await import("@/lib/providers/dns/mock");
+  const defaults = [
+    new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
+    new MockDnsProvider("mock-hetzner", "hetzner", "Hetzner DNS Mock"),
+    new MockDnsProvider("mock-godaddy", "godaddy", "GoDaddy Mock"),
+  ];
   return {
-    getDnsProvidersForWorkspace: async () => [
-      new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
-      new MockDnsProvider("mock-hetzner", "hetzner", "Hetzner DNS Mock"),
-      new MockDnsProvider("mock-godaddy", "godaddy", "GoDaddy Mock"),
-    ],
+    getDnsProvidersForWorkspace: async () => mockState.providers ?? defaults,
   };
 });
 
@@ -153,6 +160,74 @@ describe("listDomains() record counts", () => {
     expect(domains.length).toBeGreaterThan(0);
     expect(domains.every((domain) => domain.recordCount === null)).toBe(true);
     expect(results.every((provider) => provider.error === null)).toBe(true);
+  });
+});
+
+describe("listDomains() duplicate zones", () => {
+  it("keeps one row per zone when two credentials of one provider expose it", async () => {
+    mockState.providers = [
+      new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
+      new MockDnsProvider(
+        "mock-cloudflare-second",
+        "cloudflare",
+        "Second Cloudflare",
+      ),
+      new MockDnsProvider("mock-godaddy", "godaddy", "GoDaddy Mock"),
+    ];
+
+    try {
+      const results = await domainsService.listDomains(WORKSPACE_ID);
+      const byProvider = Object.fromEntries(
+        results.map((r) => [r.providerId, r]),
+      );
+
+      // The zone survives in the credential that listed it first, and says how
+      // many other credentials also hold it.
+      const example = byProvider["mock-cloudflare"].domains.find(
+        (d) => d.name === "example.com",
+      );
+      expect(example?.duplicateCredentialCount).toBe(1);
+      expect(byProvider["mock-cloudflare-second"].domains).toEqual([]);
+      expect(
+        results
+          .flatMap((provider) => provider.domains)
+          .filter((domain) => domain.name === "example.com"),
+      ).toHaveLength(1);
+    } finally {
+      mockState.providers = null;
+    }
+  });
+
+  it("keeps the same domain listed by two different providers as two zones", async () => {
+    const godaddy = new MockDnsProvider(
+      "mock-godaddy",
+      "godaddy",
+      "GoDaddy Mock",
+    );
+    vi.spyOn(godaddy, "listDomains").mockResolvedValue({
+      ok: true,
+      data: [
+        { id: "gd-example-com", name: "example.com", provider: "godaddy" },
+      ],
+    });
+    mockState.providers = [
+      new MockDnsProvider("mock-cloudflare", "cloudflare", "Cloudflare Mock"),
+      godaddy,
+    ];
+
+    try {
+      const results = await domainsService.listDomains(WORKSPACE_ID);
+      const shared = results
+        .flatMap((provider) => provider.domains)
+        .filter((domain) => domain.name === "example.com");
+
+      // Nothing collapses across provider types: mid-migration a domain
+      // legitimately lives in two DNS services, each managed on its own.
+      expect(shared).toHaveLength(2);
+      expect(shared.every((d) => d.duplicateCredentialCount === 0)).toBe(true);
+    } finally {
+      mockState.providers = null;
+    }
   });
 });
 

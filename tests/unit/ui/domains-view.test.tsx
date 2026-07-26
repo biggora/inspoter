@@ -75,6 +75,7 @@ const PROVIDERS_WITH_DOMAIN: DomainsByProvider[] = [
         name: "example.com",
         provider: "cloudflare",
         recordCount: 7,
+        duplicateCredentialCount: 0,
       },
     ],
     error: null,
@@ -95,6 +96,7 @@ describe("DomainsView record counts", () => {
                 name: "unreadable.dev",
                 provider: "cloudflare",
                 recordCount: null,
+                duplicateCredentialCount: 0,
               },
             ],
           },
@@ -109,6 +111,42 @@ describe("DomainsView record counts", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+describe("DomainsView shared zones", () => {
+  it("marks a zone that more than one credential exposes", () => {
+    renderWithIntl(
+      <DomainsView
+        providers={[
+          {
+            ...PROVIDERS_WITH_DOMAIN[0],
+            domains: [
+              {
+                ...PROVIDERS_WITH_DOMAIN[0].domains[0],
+                duplicateCredentialCount: 1,
+              },
+            ],
+          },
+        ]}
+        categories={[]}
+        services={[]}
+      />,
+    );
+
+    expect(screen.getByText("Ещё в 1 подключении")).toBeInTheDocument();
+  });
+
+  it("leaves an ordinary zone unmarked", () => {
+    renderWithIntl(
+      <DomainsView
+        providers={PROVIDERS_WITH_DOMAIN}
+        categories={[]}
+        services={[]}
+      />,
+    );
+
+    expect(screen.queryByText(/Ещё в/)).not.toBeInTheDocument();
   });
 });
 

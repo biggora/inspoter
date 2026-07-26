@@ -46,6 +46,12 @@ const SECURITY_ITEMS = [
   { label: "STARTTLS", value: "STARTTLS" },
 ];
 
+// Codes the API answers with instead of prose, so the operator reads them in
+// their own language (same convention as manage-labels-dialog.tsx).
+const ERROR_TRANSLATION_KEYS: Record<string, string> = {
+  MAILBOX_ALREADY_CONNECTED: "mailboxAlreadyConnectedError",
+};
+
 interface MailAccountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,6 +73,12 @@ export function MailAccountDialog({
 }: MailAccountDialogProps) {
   const t = useTranslations("settings");
   const isWebhook = existing?.kind === "WEBHOOK";
+
+  function saveErrorMessage(err: unknown): string {
+    if (!(err instanceof ApiError)) return t("saveAccountError");
+    const key = ERROR_TRANSLATION_KEYS[err.message];
+    return key ? t(key) : err.message;
+  }
 
   // Rendered only while a dialog is open (see mail-accounts-view.tsx's
   // guard), so it fully remounts on each open — these initial values don't
@@ -188,9 +200,7 @@ export function MailAccountDialog({
         onOpenChange(false);
         onSaved();
       } catch (err) {
-        setErrors({
-          global: err instanceof ApiError ? err.message : t("saveAccountError"),
-        });
+        setErrors({ global: saveErrorMessage(err) });
       } finally {
         setSubmitting(false);
       }
@@ -225,10 +235,7 @@ export function MailAccountDialog({
           err.fieldErrors &&
           Object.keys(err.fieldErrors).length > 0
           ? err.fieldErrors
-          : {
-              global:
-                err instanceof ApiError ? err.message : t("saveAccountError"),
-            },
+          : { global: saveErrorMessage(err) },
       );
     } finally {
       setSubmitting(false);

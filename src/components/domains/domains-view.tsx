@@ -245,9 +245,20 @@ export function DomainsView({
                         {domain.recordCount ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {providerLabel(domain.providerType)}
-                        </Badge>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <Badge variant="outline">
+                            {providerLabel(domain.providerType)}
+                          </Badge>
+                          {/* The zone is exposed by more than one credential;
+                              records below belong to this row's credential. */}
+                          {domain.duplicateCredentialCount > 0 && (
+                            <Badge variant="secondary">
+                              {t("duplicateCredentials", {
+                                count: domain.duplicateCredentialCount,
+                              })}
+                            </Badge>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

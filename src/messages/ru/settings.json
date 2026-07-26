@@ -65,6 +65,7 @@
   "testConnectionError": "Не удалось проверить подключение. Попробуйте снова.",
   "accountSavedToast": "Аккаунт сохранён.",
   "saveAccountError": "Не удалось сохранить аккаунт. Попробуйте снова.",
+  "mailboxAlreadyConnectedError": "Этот ящик уже подключён. Измените существующий аккаунт, а не добавляйте его второй раз.",
   "emailLabel": "E-mail",
   "imapHostLabel": "IMAP-сервер",
   "portLabel": "Порт",
