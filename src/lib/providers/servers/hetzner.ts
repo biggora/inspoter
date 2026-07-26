@@ -17,6 +17,11 @@ interface HetznerServer {
   id: number;
   name: string;
   server_type: HetznerServerType;
+  // Size of the disk this VM actually has, in GB. It diverges from
+  // server_type.disk after a "keep disk" rescale (CPU/RAM upgraded, disk left
+  // untouched so the type can still be downgraded): the plan then advertises
+  // the larger nominal disk while the machine keeps the original one.
+  primary_disk_size?: number;
   status: string;
   public_net: { ipv4: { ip: string } | null };
   datacenter: { name: string };
@@ -61,7 +66,7 @@ function toServer(server: HetznerServer): Server {
     ip: server.public_net?.ipv4?.ip ?? "",
     cpu: `${server.server_type?.cores ?? "?"} vCPU`,
     ram: `${server.server_type?.memory ?? "?"} GB`,
-    disk: `${server.server_type?.disk ?? "?"} GB`,
+    disk: `${server.primary_disk_size ?? server.server_type?.disk ?? "?"} GB`,
     os: server.image?.description ?? "Unknown",
     location: server.datacenter?.name ?? "",
   };

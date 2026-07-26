@@ -23,6 +23,7 @@ const rawServer = {
     description: "CX22",
   },
   status: "running",
+  primary_disk_size: 40,
   public_net: { ipv4: { ip: "49.12.34.56" } },
   datacenter: { name: "nbg1-dc3" },
   image: { description: "Ubuntu 24.04" },
@@ -103,6 +104,51 @@ describe("HetznerServerProvider", () => {
       expect.anything(),
     );
     expect(result).toEqual({ ok: true, data: mappedServer });
+  });
+
+  it("reports the VM's own disk, not the plan's, after a keep-disk rescale", async () => {
+    // CPU/RAM upgraded with "keep disk" so the type can still be downgraded:
+    // server_type.disk jumps to the new plan while the machine keeps its
+    // original disk. Reporting server_type.disk shows capacity that does not
+    // exist — the agent's df of / then contradicts the card.
+    const rescaled = {
+      ...rawServer,
+      server_type: { ...rawServer.server_type, disk: 160, description: "CPX31" },
+      primary_disk_size: 80,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { servers: [rescaled] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const result = await provider.listServers();
+
+    expect(result).toMatchObject({ ok: true, data: [{ disk: "80 GB" }] });
+  });
+
+  it("falls back to the plan disk when primary_disk_size is absent", async () => {
+    const withoutPrimaryDisk: Partial<typeof rawServer> = { ...rawServer };
+    delete withoutPrimaryDisk.primary_disk_size;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { servers: [withoutPrimaryDisk] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HetznerServerProvider(
+      "test-id",
+      "Test Hetzner Cloud",
+      "test-token",
+    );
+    const result = await provider.listServers();
+
+    expect(result).toMatchObject({ ok: true, data: [{ disk: "40 GB" }] });
   });
 
   it("maps unknown Hetzner statuses to 'unknown'", async () => {
