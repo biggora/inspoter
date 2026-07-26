@@ -33,5 +33,9 @@ export async function register() {
     const { startMetricsStalenessScheduler } =
       await import("@/lib/services/metrics-staleness-scheduler");
     startMetricsStalenessScheduler();
+
+    const { startLogRetentionScheduler } =
+      await import("@/lib/services/log-retention-scheduler");
+    startLogRetentionScheduler();
   }
 }

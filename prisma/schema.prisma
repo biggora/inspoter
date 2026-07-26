@@ -592,6 +592,7 @@ model LogEntry {
   level       String // e.g. info|warn|error (validated by zod, stored as string)
   source      String
   message     String
+  details     String?
   timestamp   DateTime  @default(now())
   createdAt   DateTime  @default(now())
 

@@ -13,6 +13,7 @@ export interface LogEntryDto {
   level: string;
   source: string;
   message: string;
+  details: string | null;
   timestamp: string;
 }
 

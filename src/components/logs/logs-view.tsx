@@ -349,6 +349,11 @@ export function LogsView() {
                         className="font-mono text-sm whitespace-pre-wrap"
                       >
                         {entry.message}
+                        {entry.details && (
+                          <div className="mt-2 rounded-md bg-background-100 p-3 text-xs text-muted-foreground">
+                            {entry.details}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   )}

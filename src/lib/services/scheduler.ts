@@ -2,6 +2,7 @@ import { env } from "@/lib/config/env";
 import type { Service } from "@/generated/prisma/client";
 import { runCheck } from "./monitor-checks";
 import { listDueForCheck, applyCheckResult } from "./services";
+import { logError } from "@/lib/services/logs";
 
 // In-process scheduler for Services checks (plan.md "Планировщик
 // проверок"). The app is deployed as a single long-lived Node process
@@ -45,6 +46,12 @@ async function checkOneService(service: Service): Promise<void> {
     console.error(
       `[service-scheduler] check failed for service ${service.id}:`,
       error,
+    );
+    logError(
+      service.workspaceId,
+      "scheduler:service",
+      `Service check failed: ${error instanceof Error ? error.message : String(error)}`,
+      JSON.stringify({ serviceId: service.id }),
     );
   }
 }

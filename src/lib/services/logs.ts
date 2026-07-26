@@ -64,6 +64,28 @@ function decodeCursor(cursor: string): Cursor | null {
   }
 }
 
+// Fire-and-forget internal error logger — mirrors recordActivity()
+// (src/lib/services/activity.ts): a logging failure must never block or
+// roll back the domain action that triggered it. Intentionally skips
+// emitWebhookEvent to avoid feedback loops when the webhook delivery
+// pipeline itself fails.
+export function logError(
+  workspaceId: string,
+  source: string,
+  message: string,
+  details?: string | null,
+): void {
+  void (async () => {
+    try {
+      await db.logEntry.create({
+        data: { workspaceId, level: "error", source, message, details },
+      });
+    } catch (err) {
+      console.error("[logError] failed to persist log entry:", err);
+    }
+  })();
+}
+
 export async function create(
   workspaceId: string,
   input: CreateLogInput,

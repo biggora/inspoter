@@ -1,6 +1,7 @@
 import { env } from "@/lib/config/env";
 import { db } from "@/lib/db";
 import { syncAccount } from "@/lib/services/mail-sync";
+import { logError } from "@/lib/services/logs";
 import {
   claimMailFilterRuns,
   processClaimedMailFilterRunBatch,
@@ -61,6 +62,12 @@ async function syncOneAccount(account: {
     console.error(
       `[mail-scheduler] sync failed for account ${account.id}:`,
       error,
+    );
+    logError(
+      account.workspaceId,
+      "scheduler:mail",
+      `Mail sync failed: ${error instanceof Error ? error.message : String(error)}`,
+      JSON.stringify({ accountId: account.id }),
     );
   }
 }

@@ -7,6 +7,7 @@ import type {
   DnsRecordPatch,
 } from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { logError } from "@/lib/services/logs";
 import { updateProviderHealth } from "./provider-health";
 
 // Domains service (architecture.md §4.4) — aggregates all DNS providers with
@@ -95,6 +96,9 @@ export async function listDomains(
     settled.map(async (result, index) => {
       const provider = providers[index];
       if (result.status === "rejected") {
+        logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+          String(result.reason),
+          JSON.stringify({ operation: "listDomains", credentialId: provider.id }));
         return {
           providerId: provider.id,
           providerType: provider.providerType,
@@ -105,15 +109,18 @@ export async function listDomains(
       }
       const providerResult = result.value;
       if (!providerResult.ok) {
+        const errorMsg = providerResult.kind === "error"
+          ? providerResult.message
+          : `Operation not supported: ${providerResult.operation}`;
+        logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+          errorMsg,
+          JSON.stringify({ operation: "listDomains", credentialId: provider.id }));
         return {
           providerId: provider.id,
           providerType: provider.providerType,
           mode: provider.mode,
           domains: [],
-          error:
-            providerResult.kind === "error"
-              ? providerResult.message
-              : `Operation not supported: ${providerResult.operation}`,
+          error: errorMsg,
         };
       }
       return {
@@ -175,7 +182,13 @@ export async function createRecord(
 ): Promise<ProviderResult<DnsRecord>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.createRecord(domainId, input);
+  const result = await provider.createRecord(domainId, input);
+  if (!result.ok) {
+    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "createRecord", domainId }));
+  }
+  return result;
 }
 
 export async function updateRecord(
@@ -187,7 +200,13 @@ export async function updateRecord(
 ): Promise<ProviderResult<DnsRecord>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.updateRecord(domainId, recordId, input);
+  const result = await provider.updateRecord(domainId, recordId, input);
+  if (!result.ok) {
+    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "updateRecord", domainId, recordId }));
+  }
+  return result;
 }
 
 export async function deleteRecord(
@@ -198,5 +217,11 @@ export async function deleteRecord(
 ): Promise<ProviderResult<void>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.deleteRecord(domainId, recordId);
+  const result = await provider.deleteRecord(domainId, recordId);
+  if (!result.ok) {
+    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "deleteRecord", domainId, recordId }));
+  }
+  return result;
 }
