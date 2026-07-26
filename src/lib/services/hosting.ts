@@ -4,6 +4,7 @@ import type {
   HostingProvider,
 } from "@/lib/providers/hosting/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { updateProviderHealth } from "./provider-health";
 
 // Hosting service — aggregates all hosting-account providers with
 // per-provider error isolation: a failing/unreachable provider never takes
@@ -26,7 +27,7 @@ export async function listAccounts(
     providers.map((provider) => provider.listAccounts()),
   );
 
-  return settled.map((result, index) => {
+  const result = settled.map((result, index) => {
     const provider = providers[index];
     const base = {
       providerId: provider.id,
@@ -50,6 +51,20 @@ export async function listAccounts(
     }
     return { ...base, accounts: providerResult.data, error: null };
   });
+
+  await Promise.all(
+    result.map((r) =>
+      updateProviderHealth(
+        workspaceId,
+        r.providerId,
+        "Хостинг",
+        r.providerType,
+        r.error,
+      ).catch(() => {}),
+    ),
+  );
+
+  return result;
 }
 
 async function findProvider(

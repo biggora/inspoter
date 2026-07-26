@@ -6,6 +6,7 @@ import type {
   ParsedMetricsPayload,
   ClassifiedAddress,
 } from "@/lib/validation/server-metrics";
+import * as alertsService from "./alerts";
 
 // Universal API tokens (WebhookToken, tokenId not bound to any one server):
 // each ingest resolves server identity from the reported addresses instead
@@ -141,6 +142,30 @@ function selectCandidate(
   return { kind: "ambiguous" };
 }
 
+async function alertOnMetricsError(
+  workspaceId: string,
+  code: string,
+  message: string,
+  hostname: string,
+): Promise<void> {
+  const recent = await db.alert.findFirst({
+    where: {
+      workspaceId,
+      source: hostname,
+      message: { startsWith: `[${code}]` },
+      timestamp: { gte: new Date(Date.now() - 30 * 60 * 1000) },
+    },
+  });
+  if (recent) return;
+  // TODO(i18n)
+  await alertsService.create(workspaceId, {
+    category: "Серверы",
+    severity: code === "SERVER_MATCH_AMBIGUOUS" ? "warning" : "error",
+    source: hostname,
+    message: `[${code}] ${message.slice(0, 300)}`,
+  });
+}
+
 export async function processMetricsIngestion(
   ctx: MetricsTokenContext,
   payload: ParsedMetricsPayload,
@@ -185,15 +210,30 @@ export async function processMetricsIngestion(
 
     return await matchOrEnroll(ctx, payload, reportedGlobalIpv4s);
   } catch (error) {
-    if (error instanceof ServerMetricsError) throw error;
+    if (error instanceof ServerMetricsError) {
+      alertOnMetricsError(
+        ctx.workspaceId,
+        error.code,
+        error.message,
+        payload.hostname,
+      ).catch(() => {});
+      throw error;
+    }
     if (isPrismaUniqueConstraintError(error)) {
       // A concurrent request claimed the same reported global IPv4
       // (local_server_address_one_current_ipv4_claim) between our
       // pre-check and this transaction's insert/update.
-      throw new ServerMetricsError(
+      const metricsError = new ServerMetricsError(
         "ADDRESS_CONFLICT",
         "Reported IPv4 address was claimed by a concurrent enrollment",
       );
+      alertOnMetricsError(
+        ctx.workspaceId,
+        metricsError.code,
+        metricsError.message,
+        payload.hostname,
+      ).catch(() => {});
+      throw metricsError;
     }
     throw error;
   }
@@ -287,7 +327,7 @@ async function applySteadyState(
 
   await tx.localServer.update({
     where: { id: serverId },
-    data: { hostname: payload.hostname },
+    data: { hostname: payload.hostname, metricsAlertState: "live" },
   });
 
   return true;
@@ -382,7 +422,11 @@ async function enrollProviderServer(
 
       await tx.localServer.update({
         where: { id: serverId },
-        data: { hostname: payload.hostname, providerLastSeenAt: new Date() },
+        data: {
+          hostname: payload.hostname,
+          providerLastSeenAt: new Date(),
+          metricsAlertState: "live",
+        },
       });
 
       // Address rows for this server may already exist (pre-existing

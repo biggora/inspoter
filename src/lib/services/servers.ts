@@ -3,6 +3,7 @@ import type { ServerMetricSnapshot } from "@/generated/prisma/client";
 import { getServerProvidersForWorkspace } from "@/lib/providers/servers";
 import type { Server, ServerProvider } from "@/lib/providers/servers/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { updateProviderHealth } from "./provider-health";
 
 // Servers service — aggregates all hosting providers with per-provider
 // error isolation: a failing/unreachable provider never takes down the
@@ -273,6 +274,19 @@ export async function listServers(
       providerServerMap.set(`${provider.id}:${server.id}`, server);
     }
   });
+
+  await Promise.all(
+    providers.map((p) => {
+      const failed = failedProviders.find((f) => f.providerId === p.id);
+      return updateProviderHealth(
+        workspaceId,
+        p.id,
+        "Серверы",
+        p.label,
+        failed?.error ?? null,
+      ).catch(() => {});
+    }),
+  );
 
   for (const [credentialId, servers] of successfulProviders) {
     await db.$transaction((tx) =>
