@@ -37,19 +37,32 @@ export async function listAccounts(
       mode: provider.mode,
     };
     if (result.status === "rejected") {
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
         String(result.reason),
-        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
+        JSON.stringify({
+          operation: "listAccounts",
+          credentialId: provider.id,
+        }),
+      );
       return { ...base, accounts: [], error: String(result.reason) };
     }
     const providerResult = result.value;
     if (!providerResult.ok) {
-      const errorMsg = providerResult.kind === "error"
-        ? providerResult.message
-        : `Operation not supported: ${providerResult.operation}`;
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      const errorMsg =
+        providerResult.kind === "error"
+          ? providerResult.message
+          : `Operation not supported: ${providerResult.operation}`;
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
         errorMsg,
-        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
+        JSON.stringify({
+          operation: "listAccounts",
+          credentialId: provider.id,
+        }),
+      );
       return {
         ...base,
         accounts: [],
@@ -67,7 +80,20 @@ export async function listAccounts(
         "Хостинг",
         r.providerType,
         r.error,
-      ).catch(() => {}),
+      ).catch((err) => {
+        // Runs inside Promise.all alongside sibling providers — must not
+        // reject, or one provider's health-write failure would take down
+        // the whole listing.
+        logError(
+          workspaceId,
+          "provider-health",
+          String(err),
+          JSON.stringify({
+            operation: "updateProviderHealth",
+            credentialId: r.providerId,
+          }),
+        );
+      }),
     ),
   );
 
@@ -97,7 +123,18 @@ export async function getAccount(
 ): Promise<ProviderResult<HostingAccount>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unknownProviderResult(providerId);
-  return provider.getAccount(id);
+  const result = await provider.getAccount(id);
+  if (!result.ok) {
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "getAccount", accountId: id }),
+    );
+  }
+  return result;
 }
 
 export async function setSuspended(
@@ -110,9 +147,14 @@ export async function setSuspended(
   if (!provider) return unknownProviderResult(providerId);
   const result = await provider.setSuspended(id, suspended);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "setSuspended", accountId: id, suspended }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "setSuspended", accountId: id, suspended }),
+    );
   }
   return result;
 }

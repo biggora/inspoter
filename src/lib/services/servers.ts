@@ -256,24 +256,31 @@ export async function listServers(
         label: provider.label,
         error: String(result.reason),
       });
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
         String(result.reason),
-        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
+        JSON.stringify({ operation: "listServers", credentialId: provider.id }),
+      );
       return;
     }
     const providerResult = result.value;
     if (!providerResult.ok) {
-      const errorMsg = providerResult.kind === "error"
-        ? providerResult.message
-        : `Operation not supported: ${providerResult.operation}`;
+      const errorMsg =
+        providerResult.kind === "error"
+          ? providerResult.message
+          : `Operation not supported: ${providerResult.operation}`;
       failedProviders.push({
         providerId: provider.id,
         label: provider.label,
         error: errorMsg,
       });
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
         errorMsg,
-        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
+        JSON.stringify({ operation: "listServers", credentialId: provider.id }),
+      );
       return;
     }
     successfulProviders.set(provider.id, providerResult.data);
@@ -291,7 +298,20 @@ export async function listServers(
         "Серверы",
         p.label,
         failed?.error ?? null,
-      ).catch(() => {});
+      ).catch((err) => {
+        // Runs inside Promise.all alongside sibling providers — must not
+        // reject, or one provider's health-write failure would take down
+        // the whole listing.
+        logError(
+          workspaceId,
+          "provider-health",
+          String(err),
+          JSON.stringify({
+            operation: "updateProviderHealth",
+            credentialId: p.id,
+          }),
+        );
+      });
     }),
   );
 
@@ -403,6 +423,14 @@ export async function getComposedServer(
       providerServer = result.data;
       providerAvailability = "present";
     } else {
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
+        result.kind === "error"
+          ? result.message
+          : `Unsupported: ${result.operation}`,
+        JSON.stringify({ operation: "getServer", remoteServerId }),
+      );
       providerAvailability = "unavailable";
     }
   }
@@ -458,9 +486,14 @@ export async function power(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.power(id, action);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "power", action, serverId: id }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "power", action, serverId: id }),
+    );
   }
   return result;
 }

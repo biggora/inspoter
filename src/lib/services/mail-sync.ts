@@ -14,6 +14,7 @@ import {
   type RemoteMessage,
 } from "@/lib/mail";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import { logError } from "@/lib/services/logs";
 import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
 import * as alertsService from "./alerts";
 
@@ -355,7 +356,20 @@ export async function syncAccount(
           source: account.email,
           message: "Синхронизация восстановлена",
         })
-        .catch(() => {});
+        .catch((err) => {
+          // Alert write failed — record it so the lost "sync recovered"
+          // notification isn't silently invisible.
+          logError(
+            account.workspaceId,
+            "alerts",
+            "Failed to create mail-sync-recovered alert",
+            JSON.stringify({
+              accountId: account.id,
+              transition: "sync_recovered",
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        });
     }
     return {
       status: "synced",
@@ -386,7 +400,21 @@ export async function syncAccount(
           source: account.email,
           message: `Ошибка синхронизации: ${message.slice(0, 200)}`,
         })
-        .catch(() => {});
+        .catch((err) => {
+          // Alert write failed — record it so the lost "sync failed"
+          // notification isn't silently invisible.
+          logError(
+            account.workspaceId,
+            "alerts",
+            "Failed to create mail-sync-failed alert",
+            JSON.stringify({
+              accountId: account.id,
+              transition: "sync_failed",
+              syncError: message.slice(0, 200),
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        });
     }
     return { status: "error", error: message };
   }

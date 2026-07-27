@@ -40,12 +40,31 @@ export interface DomainsByProvider {
 // whose records can't be read degrades to `null` on its own row rather than
 // failing the whole provider (same isolation rule as listDomains itself).
 async function withRecordCounts(
+  workspaceId: string,
   provider: DnsProvider,
   domains: Domain[],
 ): Promise<DomainWithRecordCount[]> {
   return Promise.all(
     domains.map(async (domain) => {
-      const result = await provider.listRecords(domain.id).catch(() => null);
+      const result = await provider.listRecords(domain.id).catch((err) => {
+        logError(
+          workspaceId,
+          `provider:${provider.providerType.toLowerCase()}`,
+          String(err),
+          JSON.stringify({ operation: "listRecords", domainId: domain.id }),
+        );
+        return null;
+      });
+      if (result && !result.ok) {
+        logError(
+          workspaceId,
+          `provider:${provider.providerType.toLowerCase()}`,
+          result.kind === "error"
+            ? result.message
+            : `Unsupported: ${result.operation}`,
+          JSON.stringify({ operation: "listRecords", domainId: domain.id }),
+        );
+      }
       return {
         ...domain,
         recordCount: result?.ok ? result.data.length : null,
@@ -96,9 +115,15 @@ export async function listDomains(
     settled.map(async (result, index) => {
       const provider = providers[index];
       if (result.status === "rejected") {
-        logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        logError(
+          workspaceId,
+          `provider:${provider.providerType.toLowerCase()}`,
           String(result.reason),
-          JSON.stringify({ operation: "listDomains", credentialId: provider.id }));
+          JSON.stringify({
+            operation: "listDomains",
+            credentialId: provider.id,
+          }),
+        );
         return {
           providerId: provider.id,
           providerType: provider.providerType,
@@ -109,12 +134,19 @@ export async function listDomains(
       }
       const providerResult = result.value;
       if (!providerResult.ok) {
-        const errorMsg = providerResult.kind === "error"
-          ? providerResult.message
-          : `Operation not supported: ${providerResult.operation}`;
-        logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
+        const errorMsg =
+          providerResult.kind === "error"
+            ? providerResult.message
+            : `Operation not supported: ${providerResult.operation}`;
+        logError(
+          workspaceId,
+          `provider:${provider.providerType.toLowerCase()}`,
           errorMsg,
-          JSON.stringify({ operation: "listDomains", credentialId: provider.id }));
+          JSON.stringify({
+            operation: "listDomains",
+            credentialId: provider.id,
+          }),
+        );
         return {
           providerId: provider.id,
           providerType: provider.providerType,
@@ -127,7 +159,11 @@ export async function listDomains(
         providerId: provider.id,
         providerType: provider.providerType,
         mode: provider.mode,
-        domains: await withRecordCounts(provider, providerResult.data),
+        domains: await withRecordCounts(
+          workspaceId,
+          provider,
+          providerResult.data,
+        ),
         error: null,
       };
     }),
@@ -141,7 +177,20 @@ export async function listDomains(
         "DNS",
         g.providerType,
         g.error,
-      ).catch(() => {}),
+      ).catch((err) => {
+        // Runs inside Promise.all alongside sibling providers — must not
+        // reject, or one provider's health-write failure would take down
+        // the whole listing.
+        logError(
+          workspaceId,
+          "provider-health",
+          String(err),
+          JSON.stringify({
+            operation: "updateProviderHealth",
+            credentialId: g.providerId,
+          }),
+        );
+      }),
     ),
   );
 
@@ -171,7 +220,18 @@ export async function listRecords(
 ): Promise<ProviderResult<DnsRecord[]>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.listRecords(domainId);
+  const result = await provider.listRecords(domainId);
+  if (!result.ok) {
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "listRecords", domainId }),
+    );
+  }
+  return result;
 }
 
 export async function createRecord(
@@ -184,9 +244,14 @@ export async function createRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.createRecord(domainId, input);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "createRecord", domainId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "createRecord", domainId }),
+    );
   }
   return result;
 }
@@ -202,9 +267,14 @@ export async function updateRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.updateRecord(domainId, recordId, input);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "updateRecord", domainId, recordId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "updateRecord", domainId, recordId }),
+    );
   }
   return result;
 }
@@ -219,9 +289,14 @@ export async function deleteRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.deleteRecord(domainId, recordId);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "deleteRecord", domainId, recordId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "deleteRecord", domainId, recordId }),
+    );
   }
   return result;
 }

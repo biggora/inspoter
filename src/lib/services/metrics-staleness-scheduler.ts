@@ -1,5 +1,6 @@
 import { env } from "@/lib/config/env";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/services/logs";
 import * as alertsService from "./alerts";
 
 const STALE_THRESHOLD_MS = 180_000;
@@ -35,7 +36,20 @@ async function tick(): Promise<void> {
           source: server.displayName,
           message: "Метрики агента не поступают",
         })
-        .catch(() => {});
+        .catch((err) => {
+          // Alert write failed — record it so the lost "agent went stale"
+          // notification isn't silently invisible.
+          logError(
+            server.workspaceId,
+            "alerts",
+            "Failed to create stale-metrics alert",
+            JSON.stringify({
+              serverId: server.id,
+              transition: "live_to_stale",
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        });
       await db.localServer.update({
         where: { id: server.id },
         data: { metricsAlertState: "stale" },
@@ -60,7 +74,20 @@ async function tick(): Promise<void> {
           source: server.displayName,
           message: "Метрики агента восстановлены",
         })
-        .catch(() => {});
+        .catch((err) => {
+          // Alert write failed — record it so the lost "agent recovered"
+          // notification isn't silently invisible.
+          logError(
+            server.workspaceId,
+            "alerts",
+            "Failed to create metrics-recovered alert",
+            JSON.stringify({
+              serverId: server.id,
+              transition: "stale_to_live",
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        });
       await db.localServer.update({
         where: { id: server.id },
         data: { metricsAlertState: "live" },
