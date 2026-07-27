@@ -8,6 +8,7 @@ import {
   type MailConnectionConfig,
   type MailDriver,
 } from "@/lib/mail/types";
+import { logError } from "@/lib/services/logs";
 
 // Driver factory (plan §2, patterned after src/lib/providers/dns/index.ts):
 // MOCK accounts get the deterministic in-memory driver, REAL accounts get
@@ -58,6 +59,8 @@ export async function getMailDriver(account: MailAccount): Promise<MailDriver> {
     username: account.username,
     imapPassword: credential.imapPassword,
     smtpPassword: credential.smtpPassword,
+    onTransportError: (message, details) =>
+      logError(account.workspaceId, "mail:imap", message, details),
   });
 }
 

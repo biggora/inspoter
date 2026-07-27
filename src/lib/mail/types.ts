@@ -86,6 +86,12 @@ export interface MailConnectionConfig {
   username: string;
   imapPassword: string;
   smtpPassword?: string;
+  /**
+   * Called when a connection-level failure arrives on the ImapFlow 'error'
+   * event channel, which bypasses the awaited call's catch block. Injected by
+   * getMailDriver() so the transport layer stays free of DB imports.
+   */
+  onTransportError?: (message: string, details: string) => void;
 }
 
 export interface MailDriver {
