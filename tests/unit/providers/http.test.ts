@@ -50,7 +50,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Invalid response from provider",
+      message: "Invalid response from provider: <html>not json</html>",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -67,7 +67,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 401)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(result)).not.toContain("super-secret-token");
@@ -83,7 +83,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 403)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -102,7 +102,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Rate limited",
+      message: "Rate limited (HTTP 429, 3 attempts)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -138,7 +138,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider error",
+      message: "Provider error (HTTP 503, 3 attempts)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -153,7 +153,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider error",
+      message: "Provider error (HTTP 400): {}",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -170,7 +170,24 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider unreachable",
+      message: "Provider unreachable: fetch failed",
+    });
+  });
+
+  it("prefers the wrapped cause over the top-level message on a network error", async () => {
+    const cause = new Error("getaddrinfo ENOTFOUND example.invalid");
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed", { cause }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createProviderHttpClient();
+    const result = await client.request({ path: "/things" });
+
+    expect(result).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Provider unreachable: getaddrinfo ENOTFOUND example.invalid",
     });
   });
 
@@ -188,7 +205,7 @@ describe("createProviderHttpClient().request()", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider unreachable",
+      message: "Provider unreachable: The operation was aborted.",
     });
   });
 
