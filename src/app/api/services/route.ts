@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { serviceCreateSchema } from "@/lib/validation/services";
 import * as servicesService from "@/lib/services/services";
+import { ServiceLabelNotFoundError } from "@/lib/services/service-labels";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { recordActivity } from "@/lib/services/activity";
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(service, { status: 201 });
   } catch (error) {
+    if (error instanceof ServiceLabelNotFoundError) {
+      return jsonResponse({ error: "Resource not found." }, { status: 404 });
+    }
     return toErrorResponse(error, workspace.id);
   }
 }

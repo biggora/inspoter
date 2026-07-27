@@ -8,6 +8,7 @@ import {
   getActiveWorkspaceId,
   WORKSPACE_HEADER_NAME,
 } from "@/lib/client/active-workspace";
+import type { LabelColor } from "@/lib/label-color";
 
 export class ApiError extends Error {
   fieldErrors?: Record<string, string>;
@@ -93,6 +94,25 @@ export interface ServiceDto {
   updatedAt: string;
 }
 
+export interface ServiceLabelDto {
+  id: string;
+  name: string;
+  color: LabelColor;
+}
+
+export interface ServiceLabelListItemDto extends ServiceLabelDto {
+  serviceCount: number;
+}
+
+export type ServiceWithLabelsDto = ServiceDto & {
+  labels: ServiceLabelDto[];
+};
+
+export interface ServiceLabelInput {
+  name: string;
+  color: LabelColor;
+}
+
 export interface ServiceCheckDto {
   id: string;
   workspaceId: string;
@@ -117,6 +137,7 @@ export interface ServiceInput {
   timeoutMs?: number;
   retries?: number;
   isActive?: boolean;
+  labelIds?: string[];
 }
 
 export interface ListServiceChecksResult {
@@ -125,14 +146,15 @@ export interface ListServiceChecksResult {
 }
 
 export const servicesApi = {
-  list: (): Promise<ServiceDto[]> => request("/api/services"),
-  get: (id: string): Promise<ServiceDto> => request(`/api/services/${id}`),
-  create: (input: ServiceInput): Promise<ServiceDto> =>
+  list: (): Promise<ServiceWithLabelsDto[]> => request("/api/services"),
+  get: (id: string): Promise<ServiceWithLabelsDto> =>
+    request(`/api/services/${id}`),
+  create: (input: ServiceInput): Promise<ServiceWithLabelsDto> =>
     request("/api/services", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  update: (id: string, input: ServiceInput): Promise<ServiceDto> =>
+  update: (id: string, input: ServiceInput): Promise<ServiceWithLabelsDto> =>
     request(`/api/services/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -151,4 +173,26 @@ export const servicesApi = {
     const qs = search.toString();
     return request(`/api/services/${id}/checks${qs ? `?${qs}` : ""}`);
   },
+};
+
+export const serviceLabelsApi = {
+  list: (): Promise<ServiceLabelListItemDto[]> =>
+    request("/api/services/labels"),
+  create: (input: ServiceLabelInput): Promise<ServiceLabelDto> =>
+    request("/api/services/labels", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (
+    id: string,
+    input: Partial<ServiceLabelInput>,
+  ): Promise<ServiceLabelDto> =>
+    request(`/api/services/labels/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string): Promise<void> =>
+    request(`/api/services/labels/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
 };

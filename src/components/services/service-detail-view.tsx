@@ -19,9 +19,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { LabelChip } from "@/components/ui/label-chip";
 import type { Service } from "@/generated/prisma/client";
+import type { ServiceWithLabels } from "@/lib/services/services";
 import { cn } from "@/lib/utils";
-import { servicesApi, type ServiceCheckDto } from "./api";
+import {
+  servicesApi,
+  type ServiceCheckDto,
+  type ServiceLabelListItemDto,
+} from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
 import {
   formatDateTime,
@@ -47,8 +53,10 @@ const HEARTBEAT_BAR_COUNT = 50;
 // state that a server re-render alone can't provide.
 export function ServiceDetailView({
   initialService,
+  labels,
 }: {
-  initialService: Service;
+  initialService: ServiceWithLabels;
+  labels: ServiceLabelListItemDto[];
 }) {
   const t = useTranslations("services");
   const tStatus = useTranslations("status");
@@ -202,6 +210,16 @@ export function ServiceDetailView({
       />
 
       <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
+        {service.labels.length > 0 && (
+          <div
+            className="flex flex-wrap gap-1"
+            aria-label={t("serviceLabelsAriaLabel", { name: service.name })}
+          >
+            {service.labels.map((label) => (
+              <LabelChip key={label.id} label={label} />
+            ))}
+          </div>
+        )}
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
             <dt className="text-xs text-foreground-500">
@@ -406,6 +424,7 @@ export function ServiceDetailView({
 
       <ServiceFormDialog
         state={formState}
+        labels={labels}
         onOpenChange={(open) => !open && setFormState(null)}
         onSaved={() => {
           setFormState(null);

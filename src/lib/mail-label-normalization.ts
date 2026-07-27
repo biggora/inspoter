@@ -1,7 +1,10 @@
-export function normalizeMailLabelDisplayName(value: string): string {
-  return value.normalize("NFKC").trim().replace(/\s+/gu, " ");
-}
+// Shared with service labels — see @/lib/label-normalization. This module
+// stays as the Mail-facing alias.
 
-export function normalizeMailLabelName(value: string): string {
-  return normalizeMailLabelDisplayName(value).toLocaleLowerCase("en-US");
-}
+import {
+  normalizeLabelDisplayName,
+  normalizeLabelName,
+} from "@/lib/label-normalization";
+
+export const normalizeMailLabelDisplayName = normalizeLabelDisplayName;
+export const normalizeMailLabelName = normalizeLabelName;
