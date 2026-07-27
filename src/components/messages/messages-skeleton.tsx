@@ -20,7 +20,7 @@ export function MessagesSkeleton({ header }: { header?: ReactNode }) {
         {header ?? <PageHeaderSkeleton />}
       </div>
       <LoadingRegion className="flex min-h-0 flex-1">
-        <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
+        <div className="flex w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 max-lg:hidden">
           <div className="flex flex-col gap-4 px-3 py-4">
             {[0, 1, 2].map((group) => (
               <div key={group} className="flex flex-col gap-2">

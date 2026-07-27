@@ -311,7 +311,7 @@ function MessagesCoordinator() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
+        <div className="flex w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 max-lg:hidden">
           <ChannelSidebar {...sidebarProps} />
         </div>
 
@@ -444,7 +444,7 @@ function MessagesLoading() {
         </span>
       </div>
       <div className="flex min-h-0 flex-1" aria-busy="true">
-        <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
+        <div className="flex w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 max-lg:hidden">
           <div className="space-y-4 px-3 py-4">
             {[1, 2, 3].map((item) => (
               <div key={item} className="space-y-2">

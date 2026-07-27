@@ -21,7 +21,7 @@ export function MailSkeleton({ header }: { header?: ReactNode }) {
         {header ?? <PageHeaderSkeleton actions={2} />}
       </div>
       <LoadingRegion className="flex min-h-0 flex-1">
-        <div className="hidden w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 lg:flex">
+        <div className="flex w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 max-lg:hidden">
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
           {[0, 1, 2, 3].map((folder) => (
@@ -35,7 +35,7 @@ export function MailSkeleton({ header }: { header?: ReactNode }) {
           </div>
           <ListSkeleton rows={6} avatar dividers trailing />
         </div>
-        <div className="hidden flex-1 flex-col gap-4 bg-background-50 p-8 lg:flex">
+        <div className="flex flex-1 flex-col gap-4 bg-background-50 p-8 max-lg:hidden">
           <Skeleton className="h-6 w-3/4" />
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 shrink-0 rounded-full" />

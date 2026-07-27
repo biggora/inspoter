@@ -31,7 +31,7 @@ export function OperatorMenu({ username }: { username: string }) {
             {initial}
           </span>
         </span>
-        <span className="hidden font-medium sm:inline">{username}</span>
+        <span className="inline font-medium max-sm:hidden">{username}</span>
         <Icon
           name="ri-arrow-down-s-line"
           aria-hidden
