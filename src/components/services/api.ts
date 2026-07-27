@@ -163,6 +163,15 @@ export const servicesApi = {
     request(`/api/services/${id}`, { method: "DELETE" }),
   checkNow: (id: string): Promise<ServiceDto> =>
     request(`/api/services/${id}/check-now`, { method: "POST" }),
+  // Pause/resume the scheduled checks. Its own method rather than update():
+  // ServiceInput requires name and monitorType, and the whole point here is
+  // to send isActive on its own — serviceUpdateSchema accepts the partial
+  // payload and services.ts's update() leaves every other column alone.
+  setActive: (id: string, isActive: boolean): Promise<ServiceWithLabelsDto> =>
+    request(`/api/services/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive }),
+    }),
   listChecks: (
     id: string,
     params?: { cursor?: string; pageSize?: number },

@@ -226,6 +226,10 @@ test("service cards preserve actions and heading hierarchy across tablet and des
       );
       await expectInsideHorizontally(
         card,
+        card.getByRole("button", { name: "Приостановить", exact: true }),
+      );
+      await expectInsideHorizontally(
+        card,
         card.getByRole("button", {
           name: `Редактировать «${name}»`,
           exact: true,
@@ -441,6 +445,73 @@ test("labels can be created, assigned in the form, and used to filter the list",
   } finally {
     if (labelId) await deleteServiceLabelViaApi(page, labelId);
     for (const id of serviceIds) await deleteServiceViaApi(page, id);
+  }
+});
+
+test("pausing a service from its card stops the scheduled checks and reports it as suspended", async ({
+  page,
+  testData,
+}) => {
+  const name = testData.name("Pausable Service");
+  const url = testData.localUrl("/login");
+  let id: string | undefined;
+  try {
+    await page.goto("/services");
+    id = await createHttpService(page, { name, url });
+    const card = serviceCard(page, name);
+
+    const pausePromise = page.waitForResponse((response) => {
+      const respUrl = new URL(response.url());
+      return (
+        respUrl.pathname === `/api/services/${id}` &&
+        response.request().method() === "PATCH"
+      );
+    });
+    await card
+      .getByRole("button", { name: "Приостановить", exact: true })
+      .click();
+    const pauseResponse = await pausePromise;
+    expect(pauseResponse.status()).toBe(200);
+
+    const paused: unknown = await pauseResponse.json();
+    if (
+      typeof paused !== "object" ||
+      paused === null ||
+      !("isActive" in paused)
+    ) {
+      throw new Error("PATCH response must include isActive.");
+    }
+    expect(paused.isActive).toBe(false);
+
+    // The card must stop claiming the last known result once nothing is
+    // refreshing it.
+    await expect(
+      card.getByText("Приостановлен", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "Возобновить", exact: true }),
+    ).toBeVisible();
+
+    const resumePromise = page.waitForResponse((response) => {
+      const respUrl = new URL(response.url());
+      return (
+        respUrl.pathname === `/api/services/${id}` &&
+        response.request().method() === "PATCH"
+      );
+    });
+    await card
+      .getByRole("button", { name: "Возобновить", exact: true })
+      .click();
+    expect((await resumePromise).status()).toBe(200);
+
+    await expect(
+      card.getByRole("button", { name: "Приостановить", exact: true }),
+    ).toBeVisible();
+    await expect(card.getByText("Приостановлен", { exact: true })).toHaveCount(
+      0,
+    );
+  } finally {
+    if (id) await deleteServiceViaApi(page, id);
   }
 });
 

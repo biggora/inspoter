@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -74,7 +75,8 @@ export function ServicesView({
   );
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set());
-  const [checkErrors, setCheckErrors] = useState<Record<string, string>>({});
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -105,20 +107,24 @@ export function ServicesView({
     return () => clearInterval(interval);
   }, [router]);
 
+  const clearCardError = useCallback((id: string) => {
+    setCardErrors((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
   const handleCheckNow = useCallback(
     async (service: Service) => {
       setCheckingIds((prev) => new Set(prev).add(service.id));
-      setCheckErrors((prev) => {
-        if (!(service.id in prev)) return prev;
-        const next = { ...prev };
-        delete next[service.id];
-        return next;
-      });
+      clearCardError(service.id);
       try {
         await servicesApi.checkNow(service.id);
         router.refresh();
       } catch (err) {
-        setCheckErrors((prev) => ({
+        setCardErrors((prev) => ({
           ...prev,
           [service.id]: err instanceof Error ? err.message : t("checkNowError"),
         }));
@@ -130,7 +136,33 @@ export function ServicesView({
         });
       }
     },
-    [router, t],
+    [clearCardError, router, t],
+  );
+
+  const handleToggleActive = useCallback(
+    async (service: Service) => {
+      const nextActive = !service.isActive;
+      setTogglingIds((prev) => new Set(prev).add(service.id));
+      clearCardError(service.id);
+      try {
+        await servicesApi.setActive(service.id, nextActive);
+        toast.success(t(nextActive ? "resumedToast" : "pausedToast"));
+        router.refresh();
+      } catch (err) {
+        setCardErrors((prev) => ({
+          ...prev,
+          [service.id]:
+            err instanceof Error ? err.message : t("toggleActiveError"),
+        }));
+      } finally {
+        setTogglingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(service.id);
+          return next;
+        });
+      }
+    },
+    [clearCardError, router, t],
   );
 
   return (
@@ -221,8 +253,10 @@ export function ServicesView({
               key={service.id}
               service={service}
               checking={checkingIds.has(service.id)}
-              error={checkErrors[service.id]}
+              toggling={togglingIds.has(service.id)}
+              error={cardErrors[service.id]}
               onCheckNow={() => handleCheckNow(service)}
+              onToggleActive={() => handleToggleActive(service)}
               onEdit={() => setFormState({ mode: "edit", service })}
               onDelete={() => setDeleteTarget(service)}
             />
@@ -267,15 +301,19 @@ export function ServicesView({
 function ServiceCard({
   service,
   checking,
+  toggling,
   error,
   onCheckNow,
+  onToggleActive,
   onEdit,
   onDelete,
 }: {
   service: ServiceOverviewItem;
   checking: boolean;
+  toggling: boolean;
   error?: string;
   onCheckNow: () => void;
+  onToggleActive: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -313,6 +351,7 @@ function ServiceCard({
         <CardAction>
           <ServiceStatusBadge
             status={service.currentStatus}
+            isActive={service.isActive}
             className="shrink-0"
           />
         </CardAction>
@@ -373,16 +412,6 @@ function ServiceCard({
             </span>
           )}
         </div>
-        {!service.isActive && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground-500">
-              {t("monitoringStatusLabel")}
-            </span>
-            <span className="text-foreground-800 font-medium">
-              {t("disabledLabel")}
-            </span>
-          </div>
-        )}
         {service.lastMessage && service.currentStatus === "DOWN" && (
           <p
             className="text-xs text-(--error-text) truncate"
@@ -399,13 +428,14 @@ function ServiceCard({
         )}
       </CardContent>
 
-      <CardFooter className="gap-1">
+      {/* flex-wrap: four controls do not fit the 288px minimum card width,
+          and CardFooter is a plain non-wrapping flex row. */}
+      <CardFooter className="gap-1 flex-wrap gap-y-2">
         <Button
           variant="outline"
           size="sm"
           onClick={onCheckNow}
           disabled={checking}
-          className="mr-auto"
         >
           {checking ? (
             <Spinner aria-hidden data-icon="inline-start" />
@@ -413,6 +443,30 @@ function ServiceCard({
             <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
           )}
           {t("checkNowButton")}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToggleActive}
+          disabled={toggling}
+          className="mr-auto"
+        >
+          {toggling ? (
+            <Spinner aria-hidden data-icon="inline-start" />
+          ) : (
+            <Icon
+              name={
+                service.isActive
+                  ? "ri-pause-circle-line"
+                  : "ri-play-circle-line"
+              }
+              aria-hidden
+              data-icon="inline-start"
+            />
+          )}
+          {toggling
+            ? t(service.isActive ? "pausingLabel" : "resumingLabel")
+            : t(service.isActive ? "pauseAction" : "resumeAction")}
         </Button>
         <Button
           variant="ghost"

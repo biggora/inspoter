@@ -2,6 +2,7 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { useRouter } from "@/i18n/navigation";
 import { PageBody } from "@/components/shell/page-body";
@@ -69,7 +70,8 @@ export function ServiceDetailView({
   );
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [checking, setChecking] = useState(false);
-  const [checkError, setCheckError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [checks, setChecks] = useState<ServiceCheckDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -155,15 +157,32 @@ export function ServiceDetailView({
 
   async function handleCheckNow() {
     setChecking(true);
-    setCheckError(null);
+    setActionError(null);
     try {
       await servicesApi.checkNow(service.id);
       router.refresh();
       loadFirstPage();
     } catch (err) {
-      setCheckError(err instanceof Error ? err.message : t("checkNowError"));
+      setActionError(err instanceof Error ? err.message : t("checkNowError"));
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function handleToggleActive() {
+    const nextActive = !service.isActive;
+    setToggling(true);
+    setActionError(null);
+    try {
+      await servicesApi.setActive(service.id, nextActive);
+      toast.success(t(nextActive ? "resumedToast" : "pausedToast"));
+      router.refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : t("toggleActiveError"),
+      );
+    } finally {
+      setToggling(false);
     }
   }
 
@@ -177,7 +196,10 @@ export function ServiceDetailView({
         description={service.description}
         actions={
           <>
-            <ServiceStatusBadge status={service.currentStatus} />
+            <ServiceStatusBadge
+              status={service.currentStatus}
+              isActive={service.isActive}
+            />
             <Button onClick={handleCheckNow} disabled={checking}>
               {checking ? (
                 <Spinner aria-hidden data-icon="inline-start" />
@@ -189,6 +211,28 @@ export function ServiceDetailView({
                 />
               )}
               {t("checkNowButton")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleToggleActive}
+              disabled={toggling}
+            >
+              {toggling ? (
+                <Spinner aria-hidden data-icon="inline-start" />
+              ) : (
+                <Icon
+                  name={
+                    service.isActive
+                      ? "ri-pause-circle-line"
+                      : "ri-play-circle-line"
+                  }
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+              )}
+              {toggling
+                ? t(service.isActive ? "pausingLabel" : "resumingLabel")
+                : t(service.isActive ? "pauseAction" : "resumeAction")}
             </Button>
             <Button
               variant="outline"
@@ -271,14 +315,6 @@ export function ServiceDetailView({
               {formatResponseTime(service.lastResponseTimeMs, t)}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-foreground-500">
-              {t("monitoringLabel")}
-            </dt>
-            <dd className="font-medium text-foreground-800">
-              {service.isActive ? t("enabledLabel") : t("disabledLabel")}
-            </dd>
-          </div>
           {service.monitorType === "HTTP" && service.expectedStatusCodes && (
             <div>
               <dt className="text-xs text-foreground-500">
@@ -304,9 +340,9 @@ export function ServiceDetailView({
           </p>
         )}
 
-        {checkError && (
+        {actionError && (
           <Alert variant="error">
-            <AlertDescription>{checkError}</AlertDescription>
+            <AlertDescription>{actionError}</AlertDescription>
           </Alert>
         )}
       </div>

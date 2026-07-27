@@ -512,6 +512,61 @@ describe("update(): resets consecutiveFailures and pulls nextCheckAt forward on 
   });
 });
 
+// The pause control on the service card PATCHes isActive on its own, with no
+// other field in the payload — this is the service-layer half of that.
+describe("update(): pausing and resuming the scheduled checks", () => {
+  it("an isActive-only update leaves the check target intact and moves the service out of (and back into) the scheduler sweep", async () => {
+    const created = await servicesService.create(
+      workspaceId,
+      httpInput(`${NAME_PREFIX}-pause-toggle`, {
+        expectedStatusCodes: "200-204",
+      }),
+    );
+
+    const paused = await servicesService.update(created.id, workspaceId, {
+      isActive: false,
+    });
+
+    expect(paused.isActive).toBe(false);
+    expect(paused.monitorType).toBe(created.monitorType);
+    expect(paused.url).toBe(created.url);
+    expect(paused.expectedStatusCodes).toBe("200-204");
+    expect(paused.intervalSeconds).toBe(created.intervalSeconds);
+    expect(
+      (await servicesService.listDueForCheck(new Date())).map((s) => s.id),
+    ).not.toContain(created.id);
+
+    const resumed = await servicesService.update(created.id, workspaceId, {
+      isActive: true,
+    });
+
+    expect(resumed.isActive).toBe(true);
+    expect(resumed.url).toBe(created.url);
+    expect(
+      (await servicesService.listDueForCheck(new Date())).map((s) => s.id),
+    ).toContain(created.id);
+  });
+
+  it("pausing keeps the accumulated failure count and check schedule frozen rather than resetting them", async () => {
+    const created = await servicesService.create(
+      workspaceId,
+      httpInput(`${NAME_PREFIX}-pause-freezes-state`),
+    );
+    const farFuture = new Date(Date.now() + 3600_000);
+    await db.service.update({
+      where: { id: created.id, workspaceId },
+      data: { consecutiveFailures: 2, nextCheckAt: farFuture },
+    });
+
+    const paused = await servicesService.update(created.id, workspaceId, {
+      isActive: false,
+    });
+
+    expect(paused.consecutiveFailures).toBe(2);
+    expect(paused.nextCheckAt.getTime()).toBe(farFuture.getTime());
+  });
+});
+
 describe("listDueForCheck()", () => {
   it("returns active services whose nextCheckAt has passed, across workspaces (deliberately not workspace-scoped)", async () => {
     const dueA = await servicesService.create(
