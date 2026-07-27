@@ -55,6 +55,7 @@
   "emptyFilteredDescription": "No messages match the current filters.",
   "webhookEmptyTitle": "No incoming mail yet",
   "webhookEmptyDescription": "Send your first message via webhook:",
+  "webhookExampleLabel": "Example request",
   "emptyTitle": "No messages",
   "emptyDescription": "This folder is empty for now.",
   "messageListAriaLabel": "Message list",

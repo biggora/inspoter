@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { MailBody } from "@/components/mail/mail-body";
+import { renderWithIntl } from "../../test-utils";
 
 describe("MailBody", () => {
   it("preserves authored colors for branded email controls", () => {
-    const { container } = render(
+    const { container } = renderWithIntl(
       <MailBody
         bodyText="Fallback"
         bodyHtml={
@@ -37,7 +38,7 @@ describe("MailBody", () => {
   });
 
   it("uses theme-aware text for plain-text messages", () => {
-    render(<MailBody bodyText="Plain message" bodyHtml={null} />);
+    renderWithIntl(<MailBody bodyText="Plain message" bodyHtml={null} />);
 
     expect(screen.getByText("Plain message")).toHaveClass(
       "text-foreground-800",

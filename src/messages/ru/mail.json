@@ -55,6 +55,7 @@
   "emptyFilteredDescription": "Нет писем, соответствующих текущим фильтрам.",
   "webhookEmptyTitle": "Входящая почта пока отсутствует",
   "webhookEmptyDescription": "Отправьте первое письмо через webhook:",
+  "webhookExampleLabel": "Пример запроса",
   "emptyTitle": "Нет писем",
   "emptyDescription": "В этой папке пока пусто.",
   "messageListAriaLabel": "Список писем",

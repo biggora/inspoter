@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 
 interface MailBodyProps {
@@ -39,6 +40,7 @@ function subscribeNoop() {
 }
 
 export function MailBody({ bodyText, bodyHtml }: MailBodyProps) {
+  const t = useTranslations("mail");
   const isHydrated = useSyncExternalStore(
     subscribeNoop,
     () => true,
@@ -60,7 +62,12 @@ export function MailBody({ bodyText, bodyHtml }: MailBodyProps) {
   }
 
   return (
-    <pre className="font-sans text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800">
+    <pre
+      className="font-sans text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800"
+      tabIndex={0}
+      role="region"
+      aria-label={t("bodyLabel")}
+    >
       {bodyText}
     </pre>
   );
