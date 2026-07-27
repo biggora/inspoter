@@ -46,7 +46,9 @@ export function DomainLinkMenu({
       >
         <Icon name="ri-more-2-line" aria-hidden data-icon="inline-start" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      {/* The trigger is an icon button, so the default anchor-width popup would
+          wrap every label onto two lines — size to the content instead. */}
+      <DropdownMenuContent align="end" className="w-auto whitespace-nowrap">
         <DropdownMenuGroup>
           {target.bookmark ? (
             linked.bookmarkId ? (
