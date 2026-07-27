@@ -82,7 +82,7 @@ function PaginationPrevious({
       {...props}
     >
       <Icon name="ri-arrow-left-s-line" data-icon="inline-start" />
-      <span className="hidden sm:block">
+      <span className="block max-sm:hidden">
         {text ?? t("paginationPreviousText")}
       </span>
     </PaginationLink>
@@ -103,7 +103,7 @@ function PaginationNext({
       className={cn("pr-1.5!", className)}
       {...props}
     >
-      <span className="hidden sm:block">{text ?? t("paginationNextText")}</span>
+      <span className="block max-sm:hidden">{text ?? t("paginationNextText")}</span>
       <Icon name="ri-arrow-right-s-line" data-icon="inline-end" />
     </PaginationLink>
   );

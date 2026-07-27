@@ -916,7 +916,7 @@ function MailClientCoordinator() {
           <PageHeader title={t("pageTitle")} actions={headerActions} />
         </div>
         <div className="flex min-h-0 flex-1" aria-busy="true">
-          <div className="hidden w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 lg:flex">
+          <div className="flex w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 max-lg:hidden">
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
             {[1, 2, 3, 4].map((row) => (
@@ -941,7 +941,7 @@ function MailClientCoordinator() {
               </div>
             ))}
           </div>
-          <div className="hidden flex-1 items-center justify-center bg-background-50 p-8 lg:flex">
+          <div className="flex flex-1 items-center justify-center bg-background-50 p-8 max-lg:hidden">
             <p
               role="status"
               className="animate-pulse text-sm text-foreground-400"
@@ -997,7 +997,7 @@ function MailClientCoordinator() {
 
       <div className="flex min-h-0 flex-1">
         {/* Sidebar: persistent rail from lg upward, Sheet below. */}
-        <div className="hidden w-[220px] shrink-0 border-r border-background-200 bg-background-50 lg:flex lg:flex-col">
+        <div className="flex w-[220px] shrink-0 flex-col border-r border-background-200 bg-background-50 max-lg:hidden">
           <MailSidebar {...sidebarProps} />
         </div>
 
@@ -1005,7 +1005,7 @@ function MailClientCoordinator() {
         <div
           className={cn(
             "w-full min-w-0 flex-col border-r border-background-200 bg-background-50 lg:flex lg:w-[420px] lg:shrink-0",
-            selectedMessageId ? "hidden lg:flex" : "flex",
+            selectedMessageId ? "flex max-lg:hidden" : "flex",
           )}
         >
           <MessageList
@@ -1037,7 +1037,7 @@ function MailClientCoordinator() {
         <div
           className={cn(
             "min-w-0 flex-1 flex-col bg-background-50",
-            selectedMessageId ? "flex" : "hidden lg:flex",
+            selectedMessageId ? "flex" : "flex max-lg:hidden",
           )}
         >
           <MessagePane

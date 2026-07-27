@@ -325,7 +325,7 @@ export function MessageList({
                         {item.labels[1] && (
                           <LabelChip
                             label={item.labels[1]}
-                            className="hidden lg:inline-flex"
+                            className="inline-flex max-lg:hidden"
                           />
                         )}
                         {item.labels.length > 1 && (
@@ -340,7 +340,7 @@ export function MessageList({
                         )}
                         {item.labels.length > 2 && (
                           <span
-                            className="hidden shrink-0 text-xs text-muted-foreground lg:inline"
+                            className="inline shrink-0 text-xs text-muted-foreground max-lg:hidden"
                             aria-label={t("moreLabelsAriaLabel", {
                               count: item.labels.length - 2,
                             })}
