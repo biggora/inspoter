@@ -176,7 +176,11 @@ export function DnsRecordsView({
                       <LinkedBadges linked={linked} />
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono">{record.value}</TableCell>
+                  <TableCell className="max-w-md font-mono">
+                    <span className="line-clamp-2 whitespace-normal wrap-anywhere">
+                      {record.value}
+                    </span>
+                  </TableCell>
                   <TableCell className="font-mono">{record.ttl}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
