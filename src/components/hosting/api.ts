@@ -45,6 +45,18 @@ export async function fetchAccounts(): Promise<AccountsByProviderDto[]> {
   return res.json();
 }
 
+// GET /api/hosting serves the cached listing, so the Refresh button has to
+// ask for a live fan-out explicitly or it would only re-render the same
+// snapshot.
+export async function refreshAccounts(): Promise<AccountsByProviderDto[]> {
+  const res = await fetch("/api/hosting/refresh", {
+    method: "POST",
+    headers: workspaceHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to refresh hosting accounts");
+  return res.json();
+}
+
 export async function getAccount(
   providerId: string,
   id: string,

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/dal";
 import * as servicesService from "@/lib/services/services";
+import * as serviceLabelsService from "@/lib/services/service-labels";
 import { ServiceDetailView } from "@/components/services/service-detail-view";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,10 @@ export default async function ServiceDetailPage({
 }: ServiceDetailPageProps) {
   const { workspace } = await requireAuth();
   const { id } = await params;
-  const service = await servicesService.get(id, workspace.id);
+  const [service, labels] = await Promise.all([
+    servicesService.get(id, workspace.id),
+    serviceLabelsService.listLabels(workspace.id),
+  ]);
   if (!service) notFound();
-  return <ServiceDetailView initialService={service} />;
+  return <ServiceDetailView initialService={service} labels={labels} />;
 }

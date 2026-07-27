@@ -45,6 +45,7 @@ import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
 import {
   fetchServers,
+  refreshServers,
   getServer,
   powerAction,
   type MetricsState,
@@ -168,22 +169,30 @@ export function ServersView() {
     [],
   );
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetchServers();
-      setServers(response.servers);
+  // `force` asks the server for a live provider fan-out instead of the cached
+  // inventory — the Refresh and Retry buttons need it, since a plain fetch
+  // would just replay the same snapshot.
+  const load = useCallback(
+    async (force = false) => {
+      setLoading(true);
+      try {
+        const response = force ? await refreshServers() : await fetchServers();
+        setServers(response.servers);
 
-      const errors = response.providerErrors.map(
-        (e) => `${e.label}: ${e.error}`,
-      );
-      setLoadError(errors.length ? errors.join("; ") : null);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : t("loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+        const errors = response.providerErrors.map(
+          (e) => `${e.label}: ${e.error}`,
+        );
+        setLoadError(errors.length ? errors.join("; ") : null);
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : t("loadError"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
+
+  const reload = useCallback(() => load(true), [load]);
 
   useEffect(() => {
     load();
@@ -318,7 +327,7 @@ export function ServersView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={load} disabled={loading}>
+              <Button variant="outline" onClick={reload} disabled={loading}>
                 <Icon
                   name="ri-refresh-line"
                   aria-hidden
@@ -344,7 +353,7 @@ export function ServersView() {
           title={t("providerUnavailableTitle")}
           description={loadError ?? t("providerUnavailableDescription")}
           action={
-            <Button onClick={load}>
+            <Button onClick={reload}>
               <Icon
                 name="ri-refresh-line"
                 aria-hidden
@@ -400,7 +409,7 @@ export function ServersView() {
           onOpenChange={setIsCreateProviderOpen}
           mode="create"
           existing={null}
-          onSaved={load}
+          onSaved={reload}
         />
       )}
 

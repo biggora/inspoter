@@ -1,5 +1,8 @@
 // DNS provider DTOs (architecture.md §4.1, ADR-004) — Domain/DnsRecord are
-// read-through provider types, never persisted in Prisma.
+// read-through provider types. The zone listing is persisted in
+// ProviderSnapshot, but only as a non-authoritative display cache: the
+// provider stays the source of truth and every mutation below goes straight
+// to its API, never through the cache.
 
 import type { ProviderResult } from "@/lib/providers/result";
 

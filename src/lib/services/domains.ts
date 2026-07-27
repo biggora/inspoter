@@ -7,12 +7,21 @@ import type {
   DnsRecordPatch,
 } from "@/lib/providers/dns/types";
 import type { ProviderResult } from "@/lib/providers/result";
+import { db } from "@/lib/db";
 import { logError } from "@/lib/services/logs";
-import { updateProviderHealth } from "./provider-health";
+import * as snapshots from "@/lib/services/provider-snapshots";
+import { recordSyncOutcomes, type SyncOutcome } from "./provider-health";
 
 // Domains service (architecture.md §4.4) — aggregates all DNS providers with
 // per-provider error isolation: a failing/unreachable provider never takes
 // down the whole listing (AC-DOM-003, N-1).
+//
+// The provider fan-out runs in refreshDnsSnapshots() and its result is cached
+// in ProviderSnapshot (ADR-004 amendment); listDomains() reads that cache, so
+// opening the section costs a couple of indexed queries instead of one
+// provider call per credential plus one per zone.
+
+const KIND = "DNS_ZONES" as const;
 
 export interface DomainWithRecordCount extends Domain {
   /** null when this zone's record listing failed — the row shows a dash. */
@@ -39,30 +48,41 @@ export interface DomainsByProvider {
 // costs one listRecords call per domain. They run in parallel, and a zone
 // whose records can't be read degrades to `null` on its own row rather than
 // failing the whole provider (same isolation rule as listDomains itself).
+// This is the N+1 the snapshot cache exists to keep off the render path.
+//
+// `previouslyFailed` holds the zones that already had no count in the last
+// snapshot: their failure is logged once, when it starts, not on every
+// background pass.
 async function withRecordCounts(
   workspaceId: string,
   provider: DnsProvider,
   domains: Domain[],
+  previouslyFailed: Set<string>,
 ): Promise<DomainWithRecordCount[]> {
+  const source = `provider:${provider.providerType.toLowerCase()}`;
+
+  function logZoneFailure(domainId: string, message: string): void {
+    if (previouslyFailed.has(zoneKey(provider.id, domainId))) return;
+    logError(
+      workspaceId,
+      source,
+      message,
+      JSON.stringify({ operation: "listRecords", domainId }),
+    );
+  }
+
   return Promise.all(
     domains.map(async (domain) => {
       const result = await provider.listRecords(domain.id).catch((err) => {
-        logError(
-          workspaceId,
-          `provider:${provider.providerType.toLowerCase()}`,
-          String(err),
-          JSON.stringify({ operation: "listRecords", domainId: domain.id }),
-        );
+        logZoneFailure(domain.id, String(err));
         return null;
       });
       if (result && !result.ok) {
-        logError(
-          workspaceId,
-          `provider:${provider.providerType.toLowerCase()}`,
+        logZoneFailure(
+          domain.id,
           result.kind === "error"
             ? result.message
             : `Unsupported: ${result.operation}`,
-          JSON.stringify({ operation: "listRecords", domainId: domain.id }),
         );
       }
       return {
@@ -72,6 +92,31 @@ async function withRecordCounts(
       };
     }),
   );
+}
+
+function zoneKey(credentialId: string, domainId: string): string {
+  return `${credentialId}:${domainId}`;
+}
+
+// Zones whose record count was already missing in the stored snapshot.
+async function failedZoneIds(
+  workspaceId: string,
+  providers: DnsProvider[],
+): Promise<Set<string>> {
+  const failed = new Set<string>();
+  const wanted = new Set(providers.map((provider) => provider.id));
+  const rows = await snapshots.readSnapshots(workspaceId, KIND).catch(() => []);
+
+  for (const row of rows) {
+    if (!wanted.has(row.credentialId)) continue;
+    const group = row.payload as DomainsByProvider | null;
+    for (const domain of group?.domains ?? []) {
+      if (domain.recordCount === null) {
+        failed.add(zoneKey(row.credentialId, domain.id));
+      }
+    }
+  }
+  return failed;
 }
 
 // Two credentials of one DNS provider can expose the same zone — a second token
@@ -85,6 +130,9 @@ async function withRecordCounts(
 // provider boundary: the same domain in Cloudflare and in GoDaddy is two
 // separate zones an operator manages separately — typically mid-migration —
 // and collapsing those would hide one of them outright.
+//
+// Runs on read, not on refresh: it spans every credential at once, while a
+// snapshot only ever holds one credential's zones.
 function dedupeZones(groups: DomainsByProvider[]): DomainsByProvider[] {
   const firstRowByZone = new Map<string, DomainWithRecordCount>();
 
@@ -103,98 +151,140 @@ function dedupeZones(groups: DomainsByProvider[]): DomainsByProvider[] {
   }));
 }
 
-export async function listDomains(
+async function fetchGroup(
   workspaceId: string,
-): Promise<DomainsByProvider[]> {
-  const providers = await getDnsProvidersForWorkspace(workspaceId);
+  provider: DnsProvider,
+  result: PromiseSettledResult<ProviderResult<Domain[]>>,
+  previouslyFailedZones: Set<string>,
+): Promise<DomainsByProvider> {
+  const base = {
+    providerId: provider.id,
+    providerType: provider.providerType,
+    mode: provider.mode,
+  };
+  if (result.status === "rejected") {
+    return { ...base, domains: [], error: String(result.reason) };
+  }
+  const providerResult = result.value;
+  if (!providerResult.ok) {
+    return {
+      ...base,
+      domains: [],
+      error:
+        providerResult.kind === "error"
+          ? providerResult.message
+          : `Operation not supported: ${providerResult.operation}`,
+    };
+  }
+  return {
+    ...base,
+    domains: await withRecordCounts(
+      workspaceId,
+      provider,
+      providerResult.data,
+      previouslyFailedZones,
+    ),
+    error: null,
+  };
+}
+
+/**
+ * Fans out to the DNS providers and persists one snapshot per credential.
+ * Called by the background scheduler, by the manual-refresh route, and by
+ * listDomains() for credentials that have no snapshot yet.
+ *
+ * `credentialIds` narrows the pass to specific credentials; omitted, every
+ * DNS credential in the workspace is refreshed.
+ */
+export async function refreshDnsSnapshots(
+  workspaceId: string,
+  credentialIds?: string[],
+): Promise<void> {
+  const all = await getDnsProvidersForWorkspace(workspaceId);
+  const wanted = credentialIds ? new Set(credentialIds) : null;
+  const providers = wanted
+    ? all.filter((provider) => wanted.has(provider.id))
+    : all;
+  if (providers.length === 0) return;
+
   const settled = await Promise.allSettled(
     providers.map((provider) => provider.listDomains()),
   );
 
-  const groups = await Promise.all(
-    settled.map(async (result, index) => {
-      const provider = providers[index];
-      if (result.status === "rejected") {
-        logError(
-          workspaceId,
-          `provider:${provider.providerType.toLowerCase()}`,
-          String(result.reason),
-          JSON.stringify({
-            operation: "listDomains",
-            credentialId: provider.id,
-          }),
-        );
-        return {
-          providerId: provider.id,
-          providerType: provider.providerType,
-          mode: provider.mode,
-          domains: [],
-          error: String(result.reason),
-        };
-      }
-      const providerResult = result.value;
-      if (!providerResult.ok) {
-        const errorMsg =
-          providerResult.kind === "error"
-            ? providerResult.message
-            : `Operation not supported: ${providerResult.operation}`;
-        logError(
-          workspaceId,
-          `provider:${provider.providerType.toLowerCase()}`,
-          errorMsg,
-          JSON.stringify({
-            operation: "listDomains",
-            credentialId: provider.id,
-          }),
-        );
-        return {
-          providerId: provider.id,
-          providerType: provider.providerType,
-          mode: provider.mode,
-          domains: [],
-          error: errorMsg,
-        };
-      }
-      return {
-        providerId: provider.id,
-        providerType: provider.providerType,
-        mode: provider.mode,
-        domains: await withRecordCounts(
-          workspaceId,
-          provider,
-          providerResult.data,
-        ),
-        error: null,
-      };
-    }),
-  );
+  // Which zones already failed their record count last time. A zone that
+  // stays broken is polled every tick, so logging it each pass would bury the
+  // Logs section — same reason provider-level errors are transition-gated in
+  // recordSyncOutcomes.
+  const previouslyFailedZones = await failedZoneIds(workspaceId, providers);
 
-  await Promise.all(
-    groups.map((g) =>
-      updateProviderHealth(
-        workspaceId,
-        g.providerId,
-        "DNS",
-        g.providerType,
-        g.error,
-      ).catch((err) => {
-        // Runs inside Promise.all alongside sibling providers — must not
-        // reject, or one provider's health-write failure would take down
-        // the whole listing.
-        logError(
-          workspaceId,
-          "provider-health",
-          String(err),
-          JSON.stringify({
-            operation: "updateProviderHealth",
-            credentialId: g.providerId,
-          }),
-        );
-      }),
+  const groups = await Promise.all(
+    settled.map((result, index) =>
+      fetchGroup(workspaceId, providers[index], result, previouslyFailedZones),
     ),
   );
 
+  await Promise.all(
+    groups.map((group) =>
+      snapshots.writeSnapshot(
+        workspaceId,
+        group.providerId,
+        KIND,
+        group,
+        group.error,
+      ),
+    ),
+  );
+
+  const outcomes: SyncOutcome[] = groups.map((group) => ({
+    credentialId: group.providerId,
+    providerType: group.providerType,
+    error: group.error,
+  }));
+  await recordSyncOutcomes(workspaceId, "DNS", "listDomains", outcomes);
+}
+
+export async function listDomains(
+  workspaceId: string,
+): Promise<DomainsByProvider[]> {
+  const rows = await snapshots.readCachedListing(
+    workspaceId,
+    KIND,
+    refreshDnsSnapshots,
+  );
+  // duplicateCredentialCount is stored as 0 and recomputed here, because
+  // dedupeZones mutates the rows it keeps.
+  const groups = rows.map((row) => row.payload as DomainsByProvider);
   return dedupeZones(groups);
+}
+
+// A create or delete shifts the zone's cached record count by exactly one, so
+// the listing can be corrected without going back to the provider. If the
+// arithmetic ever drifts, the next background refresh overwrites it.
+async function shiftCachedRecordCount(
+  workspaceId: string,
+  credentialId: string,
+  domainId: string,
+  delta: number,
+): Promise<void> {
+  try {
+    const row = await db.providerSnapshot.findUnique({
+      where: { credentialId_kind: { credentialId, kind: KIND } },
+      select: { workspaceId: true, payload: true },
+    });
+    if (!row || row.workspaceId !== workspaceId) return;
+
+    const group = row.payload as unknown as DomainsByProvider;
+    const domain = group.domains?.find((entry) => entry.id === domainId);
+    if (!domain || domain.recordCount === null) return;
+
+    domain.recordCount = Math.max(0, domain.recordCount + delta);
+    await db.providerSnapshot.update({
+      where: { credentialId_kind: { credentialId, kind: KIND } },
+      data: { payload: group as never },
+    });
+  } catch {
+    // The count is cosmetic and self-healing; never fail the DNS edit for it.
+  }
 }
 
 async function findProvider(
@@ -213,6 +303,8 @@ function unsupportedProviderResult<T>(providerId: string): ProviderResult<T> {
   };
 }
 
+// Deliberately uncached: this is the authoritative editing view for one zone,
+// it costs a single call, and stale records here would be dangerous.
 export async function listRecords(
   workspaceId: string,
   providerId: string,
@@ -252,6 +344,8 @@ export async function createRecord(
         : `Unsupported: ${result.operation}`,
       JSON.stringify({ operation: "createRecord", domainId }),
     );
+  } else {
+    await shiftCachedRecordCount(workspaceId, providerId, domainId, 1);
   }
   return result;
 }
@@ -276,6 +370,8 @@ export async function updateRecord(
       JSON.stringify({ operation: "updateRecord", domainId, recordId }),
     );
   }
+  // An edit changes a record's contents, never how many there are — the
+  // cached count stays correct.
   return result;
 }
 
@@ -297,6 +393,8 @@ export async function deleteRecord(
         : `Unsupported: ${result.operation}`,
       JSON.stringify({ operation: "deleteRecord", domainId, recordId }),
     );
+  } else {
+    await shiftCachedRecordCount(workspaceId, providerId, domainId, -1);
   }
   return result;
 }

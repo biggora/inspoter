@@ -9,6 +9,10 @@ import { ServersView } from "@/components/servers/servers-view";
 
 const apiMocks = vi.hoisted(() => ({
   fetchServers: vi.fn(),
+  // The listing is served from a cached snapshot, so every operator-initiated
+  // reload (Refresh, Retry, after saving a credential) goes through the
+  // forced-refresh endpoint instead of the plain fetch.
+  refreshServers: vi.fn(),
   getServer: vi.fn(),
   powerAction: vi.fn(),
 }));
@@ -69,6 +73,7 @@ const composedResponse = {
 describe("ServersView destructive actions", () => {
   beforeEach(() => {
     apiMocks.fetchServers.mockReset().mockResolvedValue(composedResponse);
+    apiMocks.refreshServers.mockReset().mockResolvedValue(composedResponse);
     apiMocks.getServer.mockReset().mockResolvedValue(runningServer);
     apiMocks.powerAction.mockReset().mockResolvedValue({});
     credentialsMocks.create.mockReset().mockResolvedValue({});
@@ -113,7 +118,9 @@ describe("ServersView destructive actions", () => {
       label: "Основной Hetzner",
       apiToken: "token-value",
     });
-    await waitFor(() => expect(apiMocks.fetchServers).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(apiMocks.refreshServers).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("cancels by button or Escape without an API call and restores trigger focus", async () => {
@@ -279,11 +286,11 @@ describe("ServersView destructive actions", () => {
     ).toHaveLength(16);
   });
 
-  it("invokes the same load callback when retrying an initial failure", async () => {
-    apiMocks.fetchServers
-      .mockReset()
-      .mockRejectedValueOnce(new Error("offline"))
-      .mockResolvedValueOnce(composedResponse);
+  it("forces a live provider fetch when retrying an initial failure", async () => {
+    // Retrying against the cache would only replay the failed snapshot, so the
+    // button has to reach the forced-refresh endpoint.
+    apiMocks.fetchServers.mockReset().mockRejectedValue(new Error("offline"));
+    apiMocks.refreshServers.mockReset().mockResolvedValue(composedResponse);
 
     const user = userEvent.setup();
     renderWithIntl(<ServersView />);
@@ -291,6 +298,6 @@ describe("ServersView destructive actions", () => {
     await user.click(await screen.findByRole("button", { name: "Повторить" }));
 
     expect(await screen.findByText("web-prod-01")).toBeInTheDocument();
-    expect(apiMocks.fetchServers).toHaveBeenCalledTimes(2);
+    expect(apiMocks.refreshServers).toHaveBeenCalledTimes(1);
   });
 });

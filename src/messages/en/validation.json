@@ -74,7 +74,8 @@
     "urlRequiredForHttp": "URL is required for HTTP monitors",
     "hostRequiredForTcp": "Host is required for TCP monitors",
     "portRequiredForTcp": "Port is required for TCP monitors",
-    "hostRequiredForPing": "Host is required for PING monitors"
+    "hostRequiredForPing": "Host is required for PING monitors",
+    "labelIdsInvalid": "Invalid label selection"
   },
   "webhookToken": {
     "nameRequired": "Name is required"

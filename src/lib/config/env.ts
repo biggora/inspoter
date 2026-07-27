@@ -96,6 +96,20 @@ const envSchema = z
       .int()
       .positive()
       .default(180_000),
+    // --- Provider listing cache (provider-snapshots.ts) ---
+    // How long a cached listing is served without a refresh. The scheduler
+    // ticks more often than the TTL so a snapshot is never much older than
+    // TTL + one tick.
+    PROVIDER_SNAPSHOT_TTL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300_000), // 5 minutes
+    PROVIDER_SNAPSHOT_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60_000),
     // --- Backup import limits ---
     BACKUP_MAX_IMPORT_BYTES: z.coerce
       .number()

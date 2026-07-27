@@ -20,6 +20,21 @@ export const updateSectionVisibilitySchema = z.object({
     ]),
 });
 
+// Section-wide kill switch for the background provider-listing refresh.
+// Same sanitising shape as section visibility above: unknown or repeated
+// kinds are dropped rather than rejected.
+export const AUTO_REFRESH_KINDS = [
+  "DNS_ZONES",
+  "HOSTING_ACCOUNTS",
+  "SERVERS",
+] as const;
+
+export const updateAutoRefreshSchema = z.object({
+  disabledKinds: z
+    .array(z.enum(AUTO_REFRESH_KINDS))
+    .transform((kinds) => [...new Set(kinds)]),
+});
+
 export const addMemberSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(6).optional(),

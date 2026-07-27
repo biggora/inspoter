@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as domainsService from "@/lib/services/domains";
 import { MockDnsProvider } from "@/lib/providers/dns/mock";
 
@@ -26,7 +26,26 @@ vi.mock("@/lib/providers/dns", async () => {
   };
 });
 
+// listDomains() reads the ProviderSnapshot cache rather than calling the
+// providers directly. Swapping that cache for an in-memory one keeps these
+// tests database-free while still exercising the whole fan-out: a workspace
+// with no snapshot yet refreshes synchronously, which is every test here.
+vi.mock("@/lib/services/provider-snapshots", async () => {
+  const { createSnapshotsMemoryMock } = await import(
+    "./provider-snapshots-memory"
+  );
+  const { getDnsProvidersForWorkspace } = await import("@/lib/providers/dns");
+  return createSnapshotsMemoryMock(() => getDnsProvidersForWorkspace(""));
+});
+
 const WORKSPACE_ID = "test-workspace";
+
+// Each test starts from a cold cache, so one test's zones can never leak into
+// the next one's listing.
+beforeEach(async () => {
+  const snapshots = await import("@/lib/services/provider-snapshots");
+  (snapshots as unknown as { __store: Map<string, unknown> }).__store.clear();
+});
 
 describe("listDomains()", () => {
   it("AC-DOM-002: returns deterministic mock domains grouped by provider with mode 'mock' and no error", async () => {

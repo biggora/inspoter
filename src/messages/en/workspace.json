@@ -8,6 +8,11 @@
   "sectionsSavedToast": "Section visibility updated.",
   "sectionsSaveError": "Failed to save section visibility.",
 
+  "autoRefreshCardTitle": "Provider Auto Refresh",
+  "autoRefreshCardDescription": "Domains, Hosting and Servers render from a cached listing that refreshes in the background. Clear a checkbox to freeze that section; its Refresh button and the very first fetch keep working.",
+  "autoRefreshSavedToast": "Auto refresh settings saved.",
+  "autoRefreshSaveError": "Failed to save auto refresh settings.",
+
   "membersCardTitle": "Members",
   "membersCardDescription": "Operators with access to this workspace.",
   "createCardTitle": "Create New Workspace",

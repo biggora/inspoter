@@ -79,6 +79,9 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   hiddenSections String[] @default([])
+  // Section-wide kill switch for the background snapshot refresh, mirroring
+  // hiddenSections above. Empty = every section refreshes automatically.
+  autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
 
   members             WorkspaceMember[]
   defaultForOperators Operator[]         @relation("DefaultWorkspace")
@@ -105,6 +108,8 @@ model Workspace {
   credentials       ProviderCredential[]
   services          Service[]
   serviceChecks     ServiceCheck[]
+  serviceLabels     ServiceLabel[]
+  serviceLabelAssignments ServiceLabelAssignment[]
   outgoingWebhooks  OutgoingWebhook[]
   webhookDeliveries WebhookDelivery[]
   localServers      LocalServer[]
@@ -672,10 +677,47 @@ model Service {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   checks              ServiceCheck[]
+  labels              ServiceLabelAssignment[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId, name])
   @@index([isActive, nextCheckAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
+}
+
+// Workspace-scoped service labels, modeled on MailLabel/MailItemLabel above.
+// Two deliberate simplifications versus the mail cluster: no `position`
+// column (labels are ordered by normalizedName, there is no reorder UI) and
+// no restrictive foreign key (nothing references a service label the way
+// MailFilterRule references a MailLabel, so deletion just cascades).
+model ServiceLabel {
+  id             String                   @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String // preset name ("SLATE"…) or #RRGGBB, same encoding as MailLabel.color
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  services       ServiceLabelAssignment[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model ServiceLabelAssignment {
+  workspaceId        String
+  workspace          Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  serviceId          String
+  serviceWorkspaceId String
+  service            Service      @relation(fields: [serviceId, serviceWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId            String
+  labelWorkspaceId   String
+  label              ServiceLabel @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt          DateTime     @default(now())
+
+  @@unique([serviceId, labelId])
+  @@index([workspaceId, labelId, serviceId])
 }
 
 model ServiceCheck {
@@ -871,14 +913,52 @@ model ProviderCredential {
   lastSyncError   String?
   lastSyncErrorAt DateTime?
   lastSyncOkAt    DateTime?
+  // Per-credential kill switch for the background snapshot refresh
+  // (provider-snapshot-scheduler.ts). Manual refresh and the very first
+  // fetch ignore it — turning it off freezes the data, it never empties
+  // the section.
+  autoRefreshEnabled Boolean   @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   localServers LocalServer[]
+  snapshots    ProviderSnapshot[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId, provider])
   @@index([workspaceId])
+}
+
+// --- Provider listing cache (ADR-004 amendment) ---
+// A non-authoritative read cache of one credential's listing, so a page
+// render costs a constant number of SQL queries instead of an N+1 fan-out
+// to the provider on every visit. The provider stays the source of truth:
+// every mutation goes straight to its API and never reads or writes this
+// table as data. Dropping the whole table is safe — it rebuilds itself,
+// which is also why it is excluded from backup/restore (same as
+// ServerMetricSnapshot).
+enum ProviderSnapshotKind {
+  DNS_ZONES
+  HOSTING_ACCOUNTS
+  SERVERS
+}
+
+model ProviderSnapshot {
+  workspaceId  String
+  credentialId String
+  kind         ProviderSnapshotKind
+  // The finished per-credential group DTO, so reading is a parse and not a
+  // reassembly: DomainsByProvider / AccountsByProvider / ServersByProvider.
+  payload      Json
+  // Provider error as of this snapshot; payload then holds an empty listing.
+  error        String?
+  fetchedAt    DateTime             @default(now())
+
+  credential ProviderCredential @relation(fields: [credentialId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+
+  @@id([credentialId, kind])
+  @@index([workspaceId, kind])
+  @@index([kind, fetchedAt]) // scheduler due-scan; cross-tenant by design
 }
 
 // --- Server metrics agent (FR-SRV-003, specs/metrics-script.md §8) ---

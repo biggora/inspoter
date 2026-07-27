@@ -40,6 +40,7 @@ export interface CredentialSummary {
   allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: Date | null;
+  autoRefreshEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +58,7 @@ interface CredentialRecord {
   allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: Date | null;
+  autoRefreshEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +72,7 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
     allowInsecure: credential.allowInsecure,
     isValid: credential.isValid,
     lastCheckedAt: credential.lastCheckedAt,
+    autoRefreshEnabled: credential.autoRefreshEnabled,
     createdAt: credential.createdAt,
     updatedAt: credential.updatedAt,
   };
@@ -209,6 +212,29 @@ export async function updateCredential(
     },
   });
 
+  return toSummary(credential);
+}
+
+// Per-credential kill switch for the background listing refresh
+// (provider-snapshot-scheduler.ts). Kept apart from updateCredential above,
+// which demands the full secret payload — flipping a toggle must not require
+// re-entering an API token.
+export async function setAutoRefreshEnabled(
+  id: string,
+  workspaceId: string,
+  enabled: boolean,
+): Promise<CredentialSummary> {
+  const existing = await db.providerCredential.findFirst({
+    where: { id, workspaceId },
+  });
+  if (!existing) {
+    throw new CredentialNotFoundError(id);
+  }
+
+  const credential = await db.providerCredential.update({
+    where: { id },
+    data: { autoRefreshEnabled: enabled },
+  });
   return toSummary(credential);
 }
 

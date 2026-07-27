@@ -32,6 +32,7 @@ import {
   type ServiceFormDialogState,
 } from "@/components/services/service-form-dialog";
 import { ProviderCredentialDialog } from "@/components/settings/provider-credential-dialog";
+import { refreshDomains } from "./api";
 import { DnsRecordsView } from "./dns-records-view";
 import { DomainLinkMenu, LinkedBadges } from "./domain-link-menu";
 import {
@@ -143,8 +144,15 @@ export function DomainsView({
     })),
   );
 
+  // The page renders from a cached snapshot, so a bare router.refresh() would
+  // replay the same provider error. Force a live fan-out first, then re-render
+  // the server component to pick up the new snapshot.
   function handleRetry() {
-    startTransition(() => {
+    startTransition(async () => {
+      await refreshDomains().catch(() => {
+        // The re-render below still shows the cached error banner, which is
+        // the right outcome when the provider is still failing.
+      });
       router.refresh();
     });
   }

@@ -37,5 +37,9 @@ export async function register() {
     const { startLogRetentionScheduler } =
       await import("@/lib/services/log-retention-scheduler");
     startLogRetentionScheduler();
+
+    const { startProviderSnapshotScheduler } =
+      await import("@/lib/services/provider-snapshot-scheduler");
+    startProviderSnapshotScheduler();
   }
 }

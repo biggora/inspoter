@@ -4,6 +4,13 @@ import type { CredentialData } from "@/lib/crypto/credentials";
 // Zod schemas for the provider credentials API — single source of input
 // validation, shared by the /api/credentials route handlers.
 
+// Per-credential automatic-refresh toggle. Deliberately its own schema:
+// upsertCredentialSchema below requires the full secret payload, and flipping
+// a switch must not mean re-entering an API token.
+export const updateCredentialAutoRefreshSchema = z.object({
+  enabled: z.boolean(),
+});
+
 export const upsertCredentialSchema = z.discriminatedUnion("provider", [
   z.object({
     provider: z.literal("CLOUDFLARE_DNS"),

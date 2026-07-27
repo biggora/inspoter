@@ -77,7 +77,7 @@ async function createHttpService(
   return body.id;
 }
 
-async function deleteServiceViaApi(page: Page, id: string) {
+async function deleteViaApi(page: Page, path: string, what: string) {
   const wsEl = page.locator("[data-workspace-id]").first();
   const wsId =
     (await wsEl.count()) > 0
@@ -92,13 +92,74 @@ async function deleteServiceViaApi(page: Page, id: string) {
           headers: { "x-inspoter-workspace": workspaceId },
         })
       ).status,
-    [`/api/services/${encodeURIComponent(id)}`, wsId] as const,
+    [path, wsId] as const,
   );
   if (status !== 204 && status !== 404) {
     throw new Error(
-      `Service cleanup failed for ${id}: expected 204/404, received ${status}.`,
+      `${what} cleanup failed: expected 204/404, received ${status}.`,
     );
   }
+}
+
+async function deleteServiceViaApi(page: Page, id: string) {
+  await deleteViaApi(
+    page,
+    `/api/services/${encodeURIComponent(id)}`,
+    `Service ${id}`,
+  );
+}
+
+async function deleteServiceLabelViaApi(page: Page, id: string) {
+  await deleteViaApi(
+    page,
+    `/api/services/labels/${encodeURIComponent(id)}`,
+    `Service label ${id}`,
+  );
+}
+
+// Creates a label through the "Управление метками" dialog and returns its id.
+async function createLabel(page: Page, name: string) {
+  await page
+    .getByRole("button", { name: "Управление метками", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("button", { name: "Создать метку", exact: true })
+    .click();
+  await dialog.getByLabel("Название метки", { exact: true }).fill(name);
+
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === "/api/services/labels" &&
+      response.request().method() === "POST"
+    );
+  });
+  await dialog
+    .getByRole("button", { name: "Создать метку", exact: true })
+    .click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(201);
+
+  const body: unknown = await response.json();
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("id" in body) ||
+    typeof body.id !== "string"
+  ) {
+    throw new Error("Label POST response must contain a string id.");
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  return body.id;
+}
+
+// Toggles a label inside an already-open label picker popover.
+async function toggleLabelOption(page: Page, name: string) {
+  await page.getByRole("option", { name: new RegExp(name) }).click();
+  await page.keyboard.press("Escape");
 }
 
 test("creating an HTTP service persists it and it appears in the list without a full reload", async ({
@@ -308,6 +369,78 @@ test("'Проверить сейчас' on the detail page triggers the check-no
     expect(typeof body.lastCheckedAt).toBe("string");
   } finally {
     if (id) await deleteServiceViaApi(page, id);
+  }
+});
+
+test("labels can be created, assigned in the form, and used to filter the list", async ({
+  page,
+  testData,
+}) => {
+  const labelName = testData.name("Prod");
+  const labeledName = testData.name("Labeled Service");
+  const plainName = testData.name("Plain Service");
+  const url = testData.localUrl("/login");
+  const serviceIds: string[] = [];
+  let labelId: string | undefined;
+
+  try {
+    await page.goto("/services");
+    serviceIds.push(await createHttpService(page, { name: labeledName, url }));
+    serviceIds.push(await createHttpService(page, { name: plainName, url }));
+
+    labelId = await createLabel(page, labelName);
+
+    // Assign the label through the service edit form.
+    await serviceCard(page, labeledName)
+      .getByRole("button", {
+        name: `Редактировать «${labeledName}»`,
+        exact: true,
+      })
+      .click();
+    const formDialog = page.getByRole("dialog");
+    await formDialog
+      .getByRole("button", { name: "Выбрать метки", exact: true })
+      .click();
+    await toggleLabelOption(page, labelName);
+
+    const patchPromise = page.waitForResponse((response) => {
+      const respUrl = new URL(response.url());
+      return (
+        respUrl.pathname === `/api/services/${serviceIds[0]}` &&
+        response.request().method() === "PATCH"
+      );
+    });
+    await formDialog
+      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .click();
+    expect((await patchPromise).status()).toBe(200);
+
+    // The chip shows up on the card once the list re-renders.
+    const labeledCard = serviceCard(page, labeledName);
+    await expect(labeledCard.getByTitle(labelName)).toBeVisible();
+    await expect(
+      serviceCard(page, plainName).getByTitle(labelName),
+    ).toHaveCount(0);
+
+    // Filtering by that label keeps the labeled service and drops the other.
+    await page.getByRole("button", { name: "Метки", exact: true }).click();
+    await toggleLabelOption(page, labelName);
+    await expect(labeledCard).toBeVisible();
+    await expect(serviceCard(page, plainName)).toHaveCount(0);
+
+    await page
+      .getByRole("button", { name: "Сбросить фильтры", exact: true })
+      .first()
+      .click();
+    await expect(serviceCard(page, plainName)).toBeVisible();
+
+    // Text search narrows the list down to a single card.
+    await page.getByLabel("Поиск сервисов", { exact: true }).fill(plainName);
+    await expect(serviceCard(page, plainName)).toBeVisible();
+    await expect(labeledCard).toHaveCount(0);
+  } finally {
+    if (labelId) await deleteServiceLabelViaApi(page, labelId);
+    for (const id of serviceIds) await deleteServiceViaApi(page, id);
   }
 });
 
