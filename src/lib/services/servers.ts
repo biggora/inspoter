@@ -4,7 +4,8 @@ import { getServerProvidersForWorkspace } from "@/lib/providers/servers";
 import type { Server, ServerProvider } from "@/lib/providers/servers/types";
 import type { ProviderResult } from "@/lib/providers/result";
 import { logError } from "@/lib/services/logs";
-import { updateProviderHealth } from "./provider-health";
+import * as snapshots from "@/lib/services/provider-snapshots";
+import { recordSyncOutcomes, type SyncOutcome } from "./provider-health";
 
 // Servers service — aggregates all hosting providers with per-provider
 // error isolation: a failing/unreachable provider never takes down the
@@ -12,6 +13,22 @@ import { updateProviderHealth } from "./provider-health";
 // provider inventory into LocalServer rows and composes each row with its
 // VPS Metrics Agent state (ADR: provider + agent-only servers share one
 // listing surface).
+//
+// The provider half of that composition is cached in ProviderSnapshot
+// (ADR-004 amendment) and refreshed by refreshServerSnapshots(); the local
+// half — LocalServer rows and their metric snapshots — is read live on every
+// request, since it is already database-only and always current.
+
+const KIND = "SERVERS" as const;
+
+/** One credential's cached inventory, as stored in ProviderSnapshot.payload. */
+export interface ServersByProvider {
+  providerId: string;
+  providerType: string;
+  label: string;
+  servers: Server[];
+  error: string | null;
+}
 
 type PrismaTransactionClient = Parameters<
   Parameters<typeof db.$transaction>[0]
@@ -232,15 +249,93 @@ function dedupeByMachine(
   return kept;
 }
 
-export async function listServers(
+/**
+ * Fans out to the server providers, reconciles their inventory into
+ * LocalServer rows, and persists one snapshot per credential.
+ *
+ * Reconciliation lives here rather than on the read path on purpose: it
+ * records what the provider *just* reported, so replaying it against an
+ * unchanged cached listing on every page visit would only add writes.
+ */
+export async function refreshServerSnapshots(
   workspaceId: string,
-): Promise<ComposedServersResponse> {
-  const providers = await getServerProvidersForWorkspace(workspaceId);
+  credentialIds?: string[],
+): Promise<void> {
+  const all = await getServerProvidersForWorkspace(workspaceId);
+  const wanted = credentialIds ? new Set(credentialIds) : null;
+  const providers = wanted
+    ? all.filter((provider) => wanted.has(provider.id))
+    : all;
+  if (providers.length === 0) return;
+
   const settled = await Promise.allSettled(
     providers.map((provider) => provider.listServers()),
   );
 
-  const successfulProviders = new Map<string, Server[]>();
+  const groups: ServersByProvider[] = settled.map((result, index) => {
+    const provider = providers[index];
+    const base = {
+      providerId: provider.id,
+      providerType: provider.providerType,
+      label: provider.label,
+    };
+    if (result.status === "rejected") {
+      return { ...base, servers: [], error: String(result.reason) };
+    }
+    const providerResult = result.value;
+    if (!providerResult.ok) {
+      return {
+        ...base,
+        servers: [],
+        error:
+          providerResult.kind === "error"
+            ? providerResult.message
+            : `Operation not supported: ${providerResult.operation}`,
+      };
+    }
+    return { ...base, servers: providerResult.data, error: null };
+  });
+
+  // Only a successful listing is authoritative about which machines exist —
+  // reconciling an empty list from a failed call would mark every server of
+  // that credential as missing.
+  for (const group of groups) {
+    if (group.error) continue;
+    await db.$transaction((tx) =>
+      reconcileProviderServers(tx, workspaceId, group.providerId, group.servers),
+    );
+  }
+
+  await Promise.all(
+    groups.map((group) =>
+      snapshots.writeSnapshot(
+        workspaceId,
+        group.providerId,
+        KIND,
+        group,
+        group.error,
+      ),
+    ),
+  );
+
+  const outcomes: SyncOutcome[] = groups.map((group) => ({
+    credentialId: group.providerId,
+    providerType: group.providerType,
+    error: group.error,
+  }));
+  await recordSyncOutcomes(workspaceId, "Серверы", "listServers", outcomes);
+}
+
+export async function listServers(
+  workspaceId: string,
+): Promise<ComposedServersResponse> {
+  const rows = await snapshots.readCachedListing(
+    workspaceId,
+    KIND,
+    refreshServerSnapshots,
+  );
+  const groups = rows.map((row) => row.payload as ServersByProvider);
+
   const failedProviders: {
     providerId: string;
     label: string;
@@ -248,57 +343,18 @@ export async function listServers(
   }[] = [];
   const providerServerMap = new Map<string, Server>();
 
-  settled.forEach((result, index) => {
-    const provider = providers[index];
-    if (result.status === "rejected") {
+  for (const group of groups) {
+    if (group.error) {
       failedProviders.push({
-        providerId: provider.id,
-        label: provider.label,
-        error: String(result.reason),
+        providerId: group.providerId,
+        label: group.label,
+        error: group.error,
       });
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-        String(result.reason),
-        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
-      return;
+      continue;
     }
-    const providerResult = result.value;
-    if (!providerResult.ok) {
-      const errorMsg = providerResult.kind === "error"
-        ? providerResult.message
-        : `Operation not supported: ${providerResult.operation}`;
-      failedProviders.push({
-        providerId: provider.id,
-        label: provider.label,
-        error: errorMsg,
-      });
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-        errorMsg,
-        JSON.stringify({ operation: "listServers", credentialId: provider.id }));
-      return;
+    for (const server of group.servers) {
+      providerServerMap.set(`${group.providerId}:${server.id}`, server);
     }
-    successfulProviders.set(provider.id, providerResult.data);
-    for (const server of providerResult.data) {
-      providerServerMap.set(`${provider.id}:${server.id}`, server);
-    }
-  });
-
-  await Promise.all(
-    providers.map((p) => {
-      const failed = failedProviders.find((f) => f.providerId === p.id);
-      return updateProviderHealth(
-        workspaceId,
-        p.id,
-        "Серверы",
-        p.label,
-        failed?.error ?? null,
-      ).catch(() => {});
-    }),
-  );
-
-  for (const [credentialId, servers] of successfulProviders) {
-    await db.$transaction((tx) =>
-      reconcileProviderServers(tx, workspaceId, credentialId, servers),
-    );
   }
 
   const failedProviderIds = new Set(failedProviders.map((f) => f.providerId));
@@ -365,7 +421,7 @@ export async function listServers(
   });
 
   const providerTypeByCredentialId = new Map(
-    providers.map((provider) => [provider.id, provider.providerType]),
+    groups.map((group) => [group.providerId, group.providerType]),
   );
 
   return {
@@ -461,6 +517,10 @@ export async function power(
     logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
       result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
       JSON.stringify({ operation: "power", action, serverId: id }));
+  } else {
+    // The machine's status just changed and the cached listing still carries
+    // the old one — let the next read refetch this credential.
+    await snapshots.markStale(providerId, KIND);
   }
   return result;
 }

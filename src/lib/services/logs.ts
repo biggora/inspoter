@@ -75,13 +75,36 @@ export function logError(
   message: string,
   details?: string | null,
 ): void {
+  writeInternalEntry("error", workspaceId, source, message, details);
+}
+
+// Same fire-and-forget contract as logError, for the other half of a
+// recovery pair: provider-health.ts logs the failure once when a provider
+// goes down and this once when it comes back, so an operator reading Logs
+// sees the outage close rather than just trail off.
+export function logInfo(
+  workspaceId: string,
+  source: string,
+  message: string,
+  details?: string | null,
+): void {
+  writeInternalEntry("info", workspaceId, source, message, details);
+}
+
+function writeInternalEntry(
+  level: "error" | "info",
+  workspaceId: string,
+  source: string,
+  message: string,
+  details?: string | null,
+): void {
   void (async () => {
     try {
       await db.logEntry.create({
-        data: { workspaceId, level: "error", source, message, details },
+        data: { workspaceId, level, source, message, details },
       });
     } catch (err) {
-      console.error("[logError] failed to persist log entry:", err);
+      console.error("[logs] failed to persist internal log entry:", err);
     }
   })();
 }

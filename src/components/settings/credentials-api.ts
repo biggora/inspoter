@@ -18,6 +18,7 @@ export interface CredentialDto {
   allowInsecure: boolean;
   isValid: boolean | null;
   lastCheckedAt: string | null;
+  autoRefreshEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -107,6 +108,11 @@ export const credentialsApi = {
     request<CredentialDto>(`/api/credentials/${id}`, {
       method: "PUT",
       body: JSON.stringify(input),
+    }),
+  setAutoRefresh: (id: string, enabled: boolean) =>
+    request<CredentialDto>(`/api/credentials/${id}/auto-refresh`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
     }),
   remove: (id: string) =>
     request<void>(`/api/credentials/${id}`, { method: "DELETE" }),

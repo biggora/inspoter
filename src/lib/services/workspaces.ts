@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import {
   Prisma,
   type Operator,
+  type ProviderSnapshotKind,
   type Workspace,
   type WorkspaceMember,
 } from "@/generated/prisma/client";
@@ -242,6 +243,22 @@ export async function setHiddenSections(
   return db.workspace.update({
     where: { id },
     data: { hiddenSections },
+  });
+}
+
+// Section-wide kill switch for the background provider-listing refresh
+// (provider-snapshot-scheduler.ts). Owner-only, like section visibility above:
+// it changes how often the workspace's provider quota is spent.
+export async function setAutoRefreshDisabledKinds(
+  id: string,
+  operatorId: string,
+  disabledKinds: ProviderSnapshotKind[],
+): Promise<Workspace> {
+  await findWorkspaceOrThrow(id);
+  await requireOwner(id, operatorId);
+  return db.workspace.update({
+    where: { id },
+    data: { autoRefreshDisabledKinds: disabledKinds },
   });
 }
 

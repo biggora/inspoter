@@ -13,6 +13,19 @@ vi.mock("@/lib/providers/hosting", async () => {
   };
 });
 
+// listAccounts() reads the ProviderSnapshot cache rather than calling the
+// providers directly; an in-memory cache keeps this test database-free while
+// still running the full fan-out on the first (cold) read.
+vi.mock("@/lib/services/provider-snapshots", async () => {
+  const { createSnapshotsMemoryMock } = await import(
+    "./provider-snapshots-memory"
+  );
+  const { getHostingProvidersForWorkspace } = await import(
+    "@/lib/providers/hosting"
+  );
+  return createSnapshotsMemoryMock(() => getHostingProvidersForWorkspace(""));
+});
+
 const WORKSPACE_ID = "test-workspace";
 const PROVIDER_ID = "mock-hosting";
 

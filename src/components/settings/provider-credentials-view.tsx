@@ -8,6 +8,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -68,6 +69,9 @@ export function ProviderCredentialsView() {
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CredentialDto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [savingAutoRefresh, setSavingAutoRefresh] = useState<string | null>(
+    null,
+  );
 
   const load = useCallback(() => {
     return credentialsApi
@@ -96,6 +100,36 @@ export function ProviderCredentialsView() {
       toast.error(t("deleteProviderError"));
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // Optimistic: the row flips immediately and rolls back if the PATCH fails,
+  // so a toggle doesn't need a full list reload to feel responsive.
+  async function handleAutoRefreshChange(
+    credential: CredentialDto,
+    enabled: boolean,
+  ) {
+    setSavingAutoRefresh(credential.id);
+    setCredentials((prev) =>
+      prev.map((entry) =>
+        entry.id === credential.id
+          ? { ...entry, autoRefreshEnabled: enabled }
+          : entry,
+      ),
+    );
+    try {
+      await credentialsApi.setAutoRefresh(credential.id, enabled);
+    } catch {
+      setCredentials((prev) =>
+        prev.map((entry) =>
+          entry.id === credential.id
+            ? { ...entry, autoRefreshEnabled: !enabled }
+            : entry,
+        ),
+      );
+      toast.error(t("autoRefreshSaveError"));
+    } finally {
+      setSavingAutoRefresh(null);
     }
   }
 
@@ -138,6 +172,7 @@ export function ProviderCredentialsView() {
               <TableHead>{t("nameHeader")}</TableHead>
               <TableHead>{t("keyHeader")}</TableHead>
               <TableHead>{t("categoryHeader")}</TableHead>
+              <TableHead>{t("autoRefreshHeader")}</TableHead>
               <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -157,6 +192,18 @@ export function ProviderCredentialsView() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {categoryLabel(meta.category, t)}
+                  </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={credential.autoRefreshEnabled}
+                      disabled={savingAutoRefresh === credential.id}
+                      aria-label={t("autoRefreshAria", {
+                        label: credential.label,
+                      })}
+                      onCheckedChange={(value) =>
+                        handleAutoRefreshChange(credential, value === true)
+                      }
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

@@ -79,6 +79,9 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   hiddenSections String[] @default([])
+  // Section-wide kill switch for the background snapshot refresh, mirroring
+  // hiddenSections above. Empty = every section refreshes automatically.
+  autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
 
   members             WorkspaceMember[]
   defaultForOperators Operator[]         @relation("DefaultWorkspace")
@@ -871,14 +874,52 @@ model ProviderCredential {
   lastSyncError   String?
   lastSyncErrorAt DateTime?
   lastSyncOkAt    DateTime?
+  // Per-credential kill switch for the background snapshot refresh
+  // (provider-snapshot-scheduler.ts). Manual refresh and the very first
+  // fetch ignore it — turning it off freezes the data, it never empties
+  // the section.
+  autoRefreshEnabled Boolean   @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   localServers LocalServer[]
+  snapshots    ProviderSnapshot[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId, provider])
   @@index([workspaceId])
+}
+
+// --- Provider listing cache (ADR-004 amendment) ---
+// A non-authoritative read cache of one credential's listing, so a page
+// render costs a constant number of SQL queries instead of an N+1 fan-out
+// to the provider on every visit. The provider stays the source of truth:
+// every mutation goes straight to its API and never reads or writes this
+// table as data. Dropping the whole table is safe — it rebuilds itself,
+// which is also why it is excluded from backup/restore (same as
+// ServerMetricSnapshot).
+enum ProviderSnapshotKind {
+  DNS_ZONES
+  HOSTING_ACCOUNTS
+  SERVERS
+}
+
+model ProviderSnapshot {
+  workspaceId  String
+  credentialId String
+  kind         ProviderSnapshotKind
+  // The finished per-credential group DTO, so reading is a parse and not a
+  // reassembly: DomainsByProvider / AccountsByProvider / ServersByProvider.
+  payload      Json
+  // Provider error as of this snapshot; payload then holds an empty listing.
+  error        String?
+  fetchedAt    DateTime             @default(now())
+
+  credential ProviderCredential @relation(fields: [credentialId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+
+  @@id([credentialId, kind])
+  @@index([workspaceId, kind])
+  @@index([kind, fetchedAt]) // scheduler due-scan; cross-tenant by design
 }
 
 // --- Server metrics agent (FR-SRV-003, specs/metrics-script.md §8) ---

@@ -88,6 +88,11 @@ export const workspacesApi = {
       method: "PATCH",
       body: JSON.stringify({ hiddenSections }),
     }),
+  setAutoRefresh: (id: string, disabledKinds: string[]) =>
+    request<Workspace>(`/api/workspaces/${id}/auto-refresh`, {
+      method: "PATCH",
+      body: JSON.stringify({ disabledKinds }),
+    }),
   switchTo: (workspaceId: string) =>
     request<{ ok: true }>("/api/workspaces/switch", {
       method: "POST",

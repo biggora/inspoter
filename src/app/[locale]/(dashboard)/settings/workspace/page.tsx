@@ -12,6 +12,7 @@ import {
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { AddMemberForm } from "@/components/workspace/add-member-form";
+import { AutoRefreshForm } from "@/components/workspace/auto-refresh-form";
 import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
 import { MembersSection } from "@/components/workspace/members-section";
 import { RenameWorkspaceForm } from "@/components/workspace/rename-workspace-form";
@@ -59,6 +60,19 @@ export default async function WorkspaceSettingsPage() {
           <SectionVisibilityForm
             workspaceId={workspace.id}
             hiddenSections={workspace.hiddenSections}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("autoRefreshCardTitle")}</CardTitle>
+          <CardDescription>{t("autoRefreshCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AutoRefreshForm
+            workspaceId={workspace.id}
+            disabledKinds={workspace.autoRefreshDisabledKinds}
           />
         </CardContent>
       </Card>

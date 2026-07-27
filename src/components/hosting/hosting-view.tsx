@@ -42,6 +42,7 @@ import {
 import {
   fetchAccounts,
   getAccount,
+  refreshAccounts,
   setSuspended,
   type AccountsByProviderDto,
   type HostingAccountDto,
@@ -99,25 +100,35 @@ export function HostingView() {
     [],
   );
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const groups: AccountsByProviderDto[] = await fetchAccounts();
-      const flat: Account[] = [];
-      const errors: string[] = [];
-      for (const g of groups) {
-        if (g.error) errors.push(`${g.label}: ${g.error}`);
-        for (const a of g.accounts)
-          flat.push({ ...a, providerId: g.providerId });
+  // `force` asks the server for a live provider fan-out instead of the cached
+  // listing — the Refresh and Retry buttons need it, since a plain fetch would
+  // just replay the same snapshot.
+  const load = useCallback(
+    async (force = false) => {
+      setLoading(true);
+      try {
+        const groups: AccountsByProviderDto[] = force
+          ? await refreshAccounts()
+          : await fetchAccounts();
+        const flat: Account[] = [];
+        const errors: string[] = [];
+        for (const g of groups) {
+          if (g.error) errors.push(`${g.label}: ${g.error}`);
+          for (const a of g.accounts)
+            flat.push({ ...a, providerId: g.providerId });
+        }
+        setAccounts(flat);
+        setLoadError(errors.length ? errors.join("; ") : null);
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : t("loadError"));
+      } finally {
+        setLoading(false);
       }
-      setAccounts(flat);
-      setLoadError(errors.length ? errors.join("; ") : null);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : t("loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+    },
+    [t],
+  );
+
+  const reload = useCallback(() => load(true), [load]);
 
   useEffect(() => {
     load();
@@ -203,7 +214,7 @@ export function HostingView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={load}>
+              <Button variant="outline" onClick={reload}>
                 <Icon
                   name="ri-refresh-line"
                   aria-hidden
@@ -252,7 +263,7 @@ export function HostingView() {
           title={t("providerUnavailableTitle")}
           description={t("providerUnavailableDescription")}
           action={
-            <Button onClick={load}>
+            <Button onClick={reload}>
               <Icon
                 name="ri-refresh-line"
                 aria-hidden
@@ -298,7 +309,7 @@ export function HostingView() {
           onOpenChange={setIsCreateProviderOpen}
           mode="create"
           existing={null}
-          onSaved={load}
+          onSaved={reload}
         />
       )}
     </PageBody>

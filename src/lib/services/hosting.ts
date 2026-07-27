@@ -5,11 +5,19 @@ import type {
 } from "@/lib/providers/hosting/types";
 import type { ProviderResult } from "@/lib/providers/result";
 import { logError } from "@/lib/services/logs";
-import { updateProviderHealth } from "./provider-health";
+import * as snapshots from "@/lib/services/provider-snapshots";
+import { recordSyncOutcomes, type SyncOutcome } from "./provider-health";
 
 // Hosting service — aggregates all hosting-account providers with
 // per-provider error isolation: a failing/unreachable provider never takes
 // down the whole listing (mirrors services/servers.ts).
+//
+// The fan-out runs in refreshHostingSnapshots() and is cached in
+// ProviderSnapshot (ADR-004 amendment). That matters most here: Hostinger's
+// listAccounts() expands into a per-site sweep for PHP versions and WordPress
+// installs, which is far too expensive to repeat on every page visit.
+
+const KIND = "HOSTING_ACCOUNTS" as const;
 
 export interface AccountsByProvider {
   providerId: string;
@@ -20,15 +28,27 @@ export interface AccountsByProvider {
   error: string | null;
 }
 
-export async function listAccounts(
+/**
+ * Fans out to the hosting providers and persists one snapshot per credential.
+ * `credentialIds` narrows the pass; omitted, every hosting credential in the
+ * workspace is refreshed.
+ */
+export async function refreshHostingSnapshots(
   workspaceId: string,
-): Promise<AccountsByProvider[]> {
-  const providers = await getHostingProvidersForWorkspace(workspaceId);
+  credentialIds?: string[],
+): Promise<void> {
+  const all = await getHostingProvidersForWorkspace(workspaceId);
+  const wanted = credentialIds ? new Set(credentialIds) : null;
+  const providers = wanted
+    ? all.filter((provider) => wanted.has(provider.id))
+    : all;
+  if (providers.length === 0) return;
+
   const settled = await Promise.allSettled(
     providers.map((provider) => provider.listAccounts()),
   );
 
-  const result = settled.map((result, index) => {
+  const groups: AccountsByProvider[] = settled.map((result, index) => {
     const provider = providers[index];
     const base = {
       providerId: provider.id,
@@ -37,41 +57,51 @@ export async function listAccounts(
       mode: provider.mode,
     };
     if (result.status === "rejected") {
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-        String(result.reason),
-        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
       return { ...base, accounts: [], error: String(result.reason) };
     }
     const providerResult = result.value;
     if (!providerResult.ok) {
-      const errorMsg = providerResult.kind === "error"
-        ? providerResult.message
-        : `Operation not supported: ${providerResult.operation}`;
-      logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-        errorMsg,
-        JSON.stringify({ operation: "listAccounts", credentialId: provider.id }));
       return {
         ...base,
         accounts: [],
-        error: errorMsg,
+        error:
+          providerResult.kind === "error"
+            ? providerResult.message
+            : `Operation not supported: ${providerResult.operation}`,
       };
     }
     return { ...base, accounts: providerResult.data, error: null };
   });
 
   await Promise.all(
-    result.map((r) =>
-      updateProviderHealth(
+    groups.map((group) =>
+      snapshots.writeSnapshot(
         workspaceId,
-        r.providerId,
-        "Хостинг",
-        r.providerType,
-        r.error,
-      ).catch(() => {}),
+        group.providerId,
+        KIND,
+        group,
+        group.error,
+      ),
     ),
   );
 
-  return result;
+  const outcomes: SyncOutcome[] = groups.map((group) => ({
+    credentialId: group.providerId,
+    providerType: group.providerType,
+    error: group.error,
+  }));
+  await recordSyncOutcomes(workspaceId, "Хостинг", "listAccounts", outcomes);
+}
+
+export async function listAccounts(
+  workspaceId: string,
+): Promise<AccountsByProvider[]> {
+  const rows = await snapshots.readCachedListing(
+    workspaceId,
+    KIND,
+    refreshHostingSnapshots,
+  );
+  return rows.map((row) => row.payload as AccountsByProvider);
 }
 
 async function findProvider(
@@ -113,6 +143,10 @@ export async function setSuspended(
     logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
       result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
       JSON.stringify({ operation: "setSuspended", accountId: id, suspended }));
+  } else {
+    // The cached card still shows the old suspension state and there is no
+    // way to derive the new one — let the next read refetch this credential.
+    await snapshots.markStale(providerId, KIND);
   }
   return result;
 }

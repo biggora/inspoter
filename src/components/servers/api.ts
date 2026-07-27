@@ -72,6 +72,18 @@ export async function fetchServers(): Promise<ComposedServersResponse> {
   return res.json();
 }
 
+// GET /api/servers serves the cached inventory, so the Refresh button has to
+// ask for a live fan-out explicitly or it would only re-render the same
+// snapshot.
+export async function refreshServers(): Promise<ComposedServersResponse> {
+  const res = await fetch("/api/servers/refresh", {
+    method: "POST",
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+  });
+  if (!res.ok) throw new Error("Failed to refresh servers");
+  return res.json();
+}
+
 export async function getServer(
   providerId: string,
   id: string,

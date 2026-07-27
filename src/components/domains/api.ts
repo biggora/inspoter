@@ -72,6 +72,13 @@ export function fetchDomains(): Promise<DomainsByProvider[]> {
   return request("/api/domains");
 }
 
+// The listing is served from a cached snapshot, so "Retry" has to ask for a
+// live fan-out explicitly — a plain re-render would show the same failed
+// snapshot again.
+export function refreshDomains(): Promise<DomainsByProvider[]> {
+  return request("/api/domains/refresh", { method: "POST" });
+}
+
 export function fetchRecords(
   providerId: string,
   domainId: string,

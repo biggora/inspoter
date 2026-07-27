@@ -28,10 +28,13 @@ vi.mock("@/lib/providers/servers", () => ({
 }));
 
 class FailingServerProvider implements ServerProvider {
-  readonly id = "failing-provider";
   readonly providerType = "hetzner";
   readonly label = "Failing Provider";
   readonly mode = "mock" as const;
+
+  // The id has to be a real ProviderCredential row: the listing is cached in
+  // ProviderSnapshot, whose composite FK points at one.
+  constructor(readonly id: string) {}
 
   async listServers(): Promise<ProviderResult<never[]>> {
     return { ok: false, kind: "error", message: "boom" };
@@ -157,7 +160,13 @@ describe("listServers()", () => {
   });
 
   it("isolates a failing provider's error without dropping the working provider", async () => {
-    const failing = new FailingServerProvider();
+    const failingCredential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${WORKSPACE_NAME_PREFIX}-hetzner-failing`,
+      { type: "HETZNER_CLOUD", apiToken: "mock-token-failing" },
+    );
+    const failing = new FailingServerProvider(failingCredential.id);
     mockState.providers = [mockProvider, failing];
     try {
       const result = await serversService.listServers(workspaceId);
@@ -172,11 +181,14 @@ describe("listServers()", () => {
       ).toBe(true);
     } finally {
       mockState.providers = [mockProvider];
+      await db.providerCredential
+        .delete({ where: { id: failingCredential.id } })
+        .catch(() => {});
     }
   });
 
   it("marks a LocalServer the provider no longer reports as missing, without deleting it", async () => {
-    await serversService.listServers(workspaceId);
+    await serversService.refreshServerSnapshots(workspaceId);
 
     const orphan = await db.localServer.create({
       data: {
@@ -189,6 +201,11 @@ describe("listServers()", () => {
         providerLastSeenAt: new Date(),
       },
     });
+
+    // Reconciliation runs on the refresh path, not the read path — the cached
+    // listing is what a page visit sees, and replaying it would only rewrite
+    // the same rows.
+    await serversService.refreshServerSnapshots(workspaceId);
 
     const result = await serversService.listServers(workspaceId);
     const composed = result.servers.find((s) => s.localServerId === orphan.id);
