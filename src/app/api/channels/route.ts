@@ -58,6 +58,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(channel, { status: 201 });
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

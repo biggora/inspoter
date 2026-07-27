@@ -28,6 +28,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(result);
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

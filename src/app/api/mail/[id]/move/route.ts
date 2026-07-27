@@ -34,6 +34,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     );
     return jsonResponse({ id, folderId: parsed.data.targetFolderId });
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

@@ -31,6 +31,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     if (error instanceof webhookTokensService.ChannelWebhookNotFoundError) {
       return jsonResponse({ error: "Resource not found." }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

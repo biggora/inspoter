@@ -30,6 +30,6 @@ export async function POST(
     if (error instanceof servicesService.ServiceNotFoundError) {
       return jsonResponse({ error: "Resource not found." }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

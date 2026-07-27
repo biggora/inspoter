@@ -37,6 +37,6 @@ export async function GET(request: NextRequest) {
     if (error instanceof mailService.MailListResourceNotFoundError) {
       return jsonResponse({ error: error.code }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

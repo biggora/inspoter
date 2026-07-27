@@ -9,7 +9,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-function serviceErrorResponse(error: unknown) {
+function serviceErrorResponse(error: unknown, workspaceId?: string) {
   if (
     error instanceof mailFilterRunsService.MailFilterRunResourceNotFoundError
   ) {
@@ -24,7 +24,7 @@ function serviceErrorResponse(error: unknown) {
   if (error instanceof mailFilterRunsService.MailFilterRunRetryConflictError) {
     return jsonResponse({ error: error.code }, { status: 409 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
@@ -43,6 +43,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       ),
     );
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }

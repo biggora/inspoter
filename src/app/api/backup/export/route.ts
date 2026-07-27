@@ -57,6 +57,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    return mapBackupError(error);
+    return mapBackupError(error, workspace.id);
   }
 }

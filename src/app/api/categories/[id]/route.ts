@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse({ id: category.id, name: category.name });
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }
 
@@ -63,6 +63,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

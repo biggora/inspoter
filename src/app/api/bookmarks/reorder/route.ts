@@ -37,6 +37,6 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof bookmarksService.BookmarkReorderValidationError) {
       return jsonResponse({ error: error.message }, { status: 400 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

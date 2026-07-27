@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(workspace);
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }
 
@@ -69,6 +69,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     }
     return emptyResponse();
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }

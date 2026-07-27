@@ -57,6 +57,6 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       },
     });
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

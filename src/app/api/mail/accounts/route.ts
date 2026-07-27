@@ -60,6 +60,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof MailTransportError) {
       return jsonResponse({ error: error.message }, { status: 502 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

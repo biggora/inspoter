@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     await mailActionsService.setRead(id, workspace.id, parsed.data.isRead);
     return jsonResponse({ id, isRead: parsed.data.isRead });
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }
 
@@ -61,6 +61,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     const result = await mailActionsService.deleteItem(id, workspace.id);
     return jsonResponse(result);
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

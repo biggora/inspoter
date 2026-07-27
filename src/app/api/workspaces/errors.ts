@@ -10,7 +10,10 @@ import {
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 
-export function mapWorkspaceServiceError(error: unknown): NextResponse {
+export function mapWorkspaceServiceError(
+  error: unknown,
+  workspaceId?: string,
+): NextResponse {
   if (error instanceof WorkspaceNotFoundError) {
     return jsonResponse({ error: error.message }, { status: 404 });
   }
@@ -27,5 +30,5 @@ export function mapWorkspaceServiceError(error: unknown): NextResponse {
   if (error instanceof WorkspaceValidationError) {
     return jsonResponse({ error: error.message }, { status: 400 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }

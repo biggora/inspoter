@@ -53,6 +53,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof credentialsService.EncryptionNotConfiguredError) {
       return jsonResponse({ error: error.message }, { status: 503 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     if (error instanceof credentialsService.CredentialNotFoundError) {
       return jsonResponse({ error: error.message }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }
 
@@ -76,6 +76,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     if (error instanceof credentialsService.CredentialNotFoundError) {
       return jsonResponse({ error: error.message }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

@@ -22,6 +22,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     await deleteMailDraftAttachment(id, attachmentId, workspace.id);
     return emptyResponse();
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

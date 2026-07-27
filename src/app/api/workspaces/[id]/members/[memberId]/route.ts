@@ -28,6 +28,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }

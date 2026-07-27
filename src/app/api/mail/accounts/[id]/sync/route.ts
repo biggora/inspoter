@@ -44,6 +44,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (error instanceof MailAccountNotFoundError) {
       return jsonResponse({ error: error.message }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }
