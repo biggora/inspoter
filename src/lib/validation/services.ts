@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { MonitorType } from "@/generated/prisma/client";
+import { isLabelColor, type LabelColor } from "@/lib/label-color";
+import { normalizeLabelDisplayName } from "@/lib/label-normalization";
 import { VALIDATION_RU } from "@/lib/validation/error-map";
 
 // Zod schemas — single source of input validation for Services (Uptime
@@ -11,6 +13,8 @@ import { VALIDATION_RU } from "@/lib/validation/error-map";
 // type-specific fields are only required when monitorType itself is being
 // changed in the same request). Messages are Russian because they surface
 // directly as fieldErrors in the service form dialog.
+
+export const SERVICE_LABELS_PER_SERVICE_LIMIT = 20;
 
 const httpUrlSchema = z
   .string()
@@ -67,6 +71,16 @@ const retriesSchema = z.coerce
   .min(1, { error: () => VALIDATION_RU.service.retriesTooSmall })
   .max(10, { error: () => VALIDATION_RU.service.retriesTooBig });
 
+// Ids come straight from the label picker, so a bad value here is a client
+// bug rather than operator input — one generic message is enough.
+const labelIdsSchema = z
+  .array(z.string().trim().min(1), {
+    error: () => VALIDATION_RU.service.labelIdsInvalid,
+  })
+  .max(SERVICE_LABELS_PER_SERVICE_LIMIT, {
+    error: () => VALIDATION_RU.service.labelIdsInvalid,
+  });
+
 const commonFields = {
   name: z
     .string()
@@ -77,6 +91,7 @@ const commonFields = {
   timeoutMs: timeoutMsSchema.optional(),
   retries: retriesSchema.optional(),
   isActive: z.boolean().optional(),
+  labelIds: labelIdsSchema.optional(),
 };
 
 export const serviceCreateSchema = z.discriminatedUnion("monitorType", [
@@ -145,3 +160,48 @@ export const serviceUpdateSchema = z
 
 export type ServiceCreateSchemaInput = z.infer<typeof serviceCreateSchema>;
 export type ServiceUpdateSchemaInput = z.infer<typeof serviceUpdateSchema>;
+
+// --- Service labels ---
+// Unlike the schemas above these emit machine-readable codes rather than
+// Russian prose: the manage-labels dialog maps them to locale-aware
+// messages, exactly like the mail label schemas in @/lib/validation/mail.
+
+const serviceLabelColorSchema = z
+  .string({ error: "LABEL_COLOR_INVALID" })
+  .transform((value) => value.trim().toUpperCase())
+  .refine(isLabelColor, { error: "LABEL_COLOR_INVALID" })
+  .transform((value) => value as LabelColor);
+
+const serviceLabelNameSchema = z
+  .string({ error: "LABEL_NAME_REQUIRED" })
+  .transform(normalizeLabelDisplayName)
+  .pipe(
+    z
+      .string()
+      .min(1, { error: "LABEL_NAME_REQUIRED" })
+      .max(40, { error: "LABEL_NAME_TOO_LONG" }),
+  );
+
+export const createServiceLabelSchema = z
+  .object({
+    name: serviceLabelNameSchema,
+    color: serviceLabelColorSchema,
+  })
+  .strict();
+
+export const updateServiceLabelSchema = z
+  .object({
+    name: serviceLabelNameSchema.optional(),
+    color: serviceLabelColorSchema.optional(),
+  })
+  .strict()
+  .refine((input) => input.name !== undefined || input.color !== undefined, {
+    error: "LABEL_UPDATE_REQUIRED",
+  });
+
+export type CreateServiceLabelSchemaInput = z.infer<
+  typeof createServiceLabelSchema
+>;
+export type UpdateServiceLabelSchemaInput = z.infer<
+  typeof updateServiceLabelSchema
+>;

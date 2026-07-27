@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -17,14 +17,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { Input } from "@/components/ui/input";
+import { LabelChip } from "@/components/ui/label-chip";
 import { Spinner } from "@/components/ui/spinner";
 import { CardGrid } from "@/components/shell/card-grid";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import type { Service } from "@/generated/prisma/client";
 import type { ServiceOverviewItem } from "@/lib/services/services";
-import { servicesApi } from "./api";
+import { servicesApi, type ServiceLabelListItemDto } from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
+import { filterServices } from "./filter";
+import { ServiceLabelPicker } from "./label-picker";
+import { ManageServiceLabelsDialog } from "./manage-labels-dialog";
 import {
   formatDateTime,
   formatRelativeTime,
@@ -53,12 +59,15 @@ const MONITOR_TYPE_ICONS = {
 // bookmarks/bookmarks-board.tsx's comment on this convention).
 export function ServicesView({
   initialServices,
+  initialLabels,
 }: {
   initialServices: ServiceOverviewItem[];
+  initialLabels: ServiceLabelListItemDto[];
 }) {
   const t = useTranslations("services");
   const router = useRouter();
   const services = initialServices;
+  const labels = initialLabels;
 
   const [formState, setFormState] = useState<ServiceFormDialogState | null>(
     null,
@@ -66,6 +75,28 @@ export function ServicesView({
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set());
   const [checkErrors, setCheckErrors] = useState<Record<string, string>>({});
+  const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [filterLabelIds, setFilterLabelIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
+  const visibleServices = useMemo(
+    () => filterServices(services, { query, labelIds: filterLabelIds }),
+    [services, query, filterLabelIds],
+  );
+
+  const hasActiveFilters = query !== "" || filterLabelIds.length > 0;
+
+  function resetFilters() {
+    setSearchInput("");
+    setQuery("");
+    setFilterLabelIds([]);
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -108,12 +139,56 @@ export function ServicesView({
         title={t("pageTitle")}
         description={t("count", { count: services.length })}
         actions={
-          <Button onClick={() => setFormState({ mode: "create" })}>
-            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            {t("newServiceButton")}
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setManageLabelsOpen(true)}>
+              <Icon
+                name="ri-price-tag-3-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              {t("manageLabelsButton")}
+            </Button>
+            <Button onClick={() => setFormState({ mode: "create" })}>
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
+              {t("newServiceButton")}
+            </Button>
+          </>
         }
-      />
+      >
+        {services.length > 0 && (
+          <FilterBar>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+              aria-label={t("searchLabel")}
+              className="sm:max-w-xs"
+            />
+            <ServiceLabelPicker
+              labels={labels}
+              selectedIds={filterLabelIds}
+              onChange={setFilterLabelIds}
+              triggerLabel={
+                filterLabelIds.length > 0
+                  ? t("labelFilterActive", { count: filterLabelIds.length })
+                  : t("labelFilterLabel")
+              }
+              title={t("labelFilterTitle")}
+              description={t("labelFilterDescription")}
+            />
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                <Icon
+                  name="ri-close-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+                {t("resetFiltersButton")}
+              </Button>
+            )}
+          </FilterBar>
+        )}
+      </PageHeader>
 
       {services.length === 0 ? (
         <EmptyState
@@ -127,9 +202,21 @@ export function ServicesView({
             </Button>
           }
         />
+      ) : visibleServices.length === 0 ? (
+        <EmptyState
+          icon="ri-search-line"
+          title={t("noResultsTitle")}
+          description={t("noResultsDescription")}
+          action={
+            <Button variant="outline" onClick={resetFilters}>
+              <Icon name="ri-close-line" aria-hidden data-icon="inline-start" />
+              {t("resetFiltersButton")}
+            </Button>
+          }
+        />
       ) : (
         <CardGrid>
-          {services.map((service) => (
+          {visibleServices.map((service) => (
             <ServiceCard
               key={service.id}
               service={service}
@@ -145,9 +232,23 @@ export function ServicesView({
 
       <ServiceFormDialog
         state={formState}
+        labels={labels}
         onOpenChange={(open) => !open && setFormState(null)}
         onSaved={() => {
           setFormState(null);
+          router.refresh();
+        }}
+      />
+      <ManageServiceLabelsDialog
+        open={manageLabelsOpen}
+        onOpenChange={setManageLabelsOpen}
+        labels={labels}
+        onChanged={(change) => {
+          if (change?.deletedId) {
+            setFilterLabelIds((prev) =>
+              prev.filter((id) => id !== change.deletedId),
+            );
+          }
           router.refresh();
         }}
       />
@@ -218,6 +319,16 @@ function ServiceCard({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-1.5">
+        {service.labels.length > 0 && (
+          <div
+            className="flex flex-wrap gap-1"
+            aria-label={t("serviceLabelsAriaLabel", { name: service.name })}
+          >
+            {service.labels.map((label) => (
+              <LabelChip key={label.id} label={label} />
+            ))}
+          </div>
+        )}
         <div className="flex items-center justify-between text-xs">
           <span className="text-foreground-500">{t("lastCheckedLabel")}</span>
           <span className="text-foreground-800 font-medium">

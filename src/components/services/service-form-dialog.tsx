@@ -31,9 +31,16 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import type { Service } from "@/generated/prisma/client";
-import { ApiError, servicesApi, type MonitorTypeValue } from "./api";
+import { LabelChip } from "@/components/ui/label-chip";
+import type { ServiceWithLabels } from "@/lib/services/services";
+import {
+  ApiError,
+  servicesApi,
+  type MonitorTypeValue,
+  type ServiceLabelDto,
+} from "./api";
 import { getMonitorTypeLabel } from "./format";
+import { ServiceLabelPicker } from "./label-picker";
 
 // `initial` pre-fills the create form — used by the domains views, which
 // derive the probe target from a domain / DNS record
@@ -49,12 +56,14 @@ export interface ServiceFormInitialValues {
 
 export type ServiceFormDialogState =
   | { mode: "create"; initial?: ServiceFormInitialValues }
-  | { mode: "edit"; service: Service };
+  | { mode: "edit"; service: ServiceWithLabels };
 
 interface ServiceFormDialogProps {
   state: ServiceFormDialogState | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  /** Workspace labels available for assignment; omit to hide the field. */
+  labels?: ServiceLabelDto[];
 }
 
 interface FieldErrors {
@@ -90,6 +99,7 @@ export function ServiceFormDialog({
   state,
   onOpenChange,
   onSaved,
+  labels,
 }: ServiceFormDialogProps) {
   const t = useTranslations("services");
   const nameId = useId();
@@ -103,6 +113,7 @@ export function ServiceFormDialog({
   const timeoutMsId = useId();
   const retriesId = useId();
   const isActiveId = useId();
+  const labelsId = useId();
 
   const isEdit = state?.mode === "edit";
 
@@ -119,6 +130,7 @@ export function ServiceFormDialog({
   const [timeoutMs, setTimeoutMs] = useState(DEFAULT_TIMEOUT_MS);
   const [retries, setRetries] = useState(DEFAULT_RETRIES);
   const [isActive, setIsActive] = useState(true);
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -141,6 +153,7 @@ export function ServiceFormDialog({
       setTimeoutMs(String(service.timeoutMs));
       setRetries(String(service.retries));
       setIsActive(service.isActive);
+      setLabelIds(service.labels.map((label) => label.id));
     } else if (state?.mode === "create") {
       const initial = state.initial;
       setName(initial?.name ?? "");
@@ -154,6 +167,7 @@ export function ServiceFormDialog({
       setTimeoutMs(DEFAULT_TIMEOUT_MS);
       setRetries(DEFAULT_RETRIES);
       setIsActive(true);
+      setLabelIds([]);
     }
     setErrors({});
   }
@@ -201,6 +215,9 @@ export function ServiceFormDialog({
       timeoutMs: timeoutMs.trim() ? Number(timeoutMs) : undefined,
       retries: retries.trim() ? Number(retries) : undefined,
       isActive,
+      // Only sent when the picker is rendered, so callers that hide the field
+      // (e.g. the domains views) never clear existing assignments.
+      ...(labels ? { labelIds } : {}),
     };
 
     setSubmitting(true);
@@ -229,6 +246,10 @@ export function ServiceFormDialog({
       setSubmitting(false);
     }
   }
+
+  const selectedLabels = (labels ?? []).filter((label) =>
+    labelIds.includes(label.id),
+  );
 
   const monitorTypeItems: Record<MonitorTypeValue, string> = {
     HTTP: getMonitorTypeLabel("HTTP", t),
@@ -459,6 +480,28 @@ export function ServiceFormDialog({
                 </FieldError>
               </Field>
             </FieldGroup>
+
+            {labels && (
+              // Field is already role="group"; naming it via aria-labelledby
+              // (instead of a <label for> on the popover trigger) keeps the
+              // trigger's own accessible name equal to its visible text.
+              <Field aria-labelledby={labelsId}>
+                <FieldLabel id={labelsId}>{t("labelsFieldLabel")}</FieldLabel>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ServiceLabelPicker
+                    labels={labels}
+                    selectedIds={labelIds}
+                    onChange={setLabelIds}
+                    triggerLabel={t("labelPickerButton")}
+                    title={t("labelPickerTitle")}
+                    description={t("labelPickerDescription")}
+                  />
+                  {selectedLabels.map((label) => (
+                    <LabelChip key={label.id} label={label} />
+                  ))}
+                </div>
+              </Field>
+            )}
 
             <Field orientation="horizontal">
               <Checkbox

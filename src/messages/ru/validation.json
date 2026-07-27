@@ -75,7 +75,8 @@
     "urlRequiredForHttp": "URL обязателен для HTTP-мониторов",
     "hostRequiredForTcp": "Хост обязателен для TCP-мониторов",
     "portRequiredForTcp": "Порт обязателен для TCP-мониторов",
-    "hostRequiredForPing": "Хост обязателен для PING-мониторов"
+    "hostRequiredForPing": "Хост обязателен для PING-мониторов",
+    "labelIdsInvalid": "Некорректный список меток"
   },
   "webhookToken": {
     "nameRequired": "Название обязательно"

@@ -10,6 +10,11 @@ import {
 import { runCheck, type CheckOutcome } from "./monitor-checks";
 import { nextState } from "./service-status";
 import * as alertsService from "./alerts";
+import {
+  setServiceLabels,
+  toSummary,
+  type ServiceLabelSummary,
+} from "./service-labels";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 // Sole Prisma caller for Service/ServiceCheck (plan.md "Слой сервиса, API,
@@ -35,6 +40,8 @@ export interface ServiceCreateInput {
   timeoutMs?: number;
   retries?: number;
   isActive?: boolean;
+  // undefined leaves the current assignments alone; [] clears them.
+  labelIds?: string[];
 }
 
 export type ServiceUpdateInput = Partial<ServiceCreateInput>;
@@ -49,13 +56,31 @@ export interface ListServiceChecksResult {
   nextCursor: string | null;
 }
 
-export type ServiceOverviewItem = Service & {
+export type ServiceWithLabels = Service & {
+  labels: ServiceLabelSummary[];
+};
+
+export type ServiceOverviewItem = ServiceWithLabels & {
   checks: Array<
     Pick<ServiceCheck, "id" | "status" | "responseTimeMs" | "checkedAt">
   >;
 };
 
 const OVERVIEW_CHECK_COUNT = 24;
+
+const LABEL_INCLUDE = {
+  labels: {
+    select: { label: { select: { id: true, name: true, color: true } } },
+  },
+} satisfies Prisma.ServiceInclude;
+
+function toLabelSummaries(
+  rows: Array<{ label: { id: string; name: string; color: string } }>,
+): ServiceLabelSummary[] {
+  return rows
+    .map((row) => toSummary(row.label))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 interface Cursor {
   w: string;
@@ -91,20 +116,26 @@ function decodeCursor(cursor: string): Cursor | null {
   }
 }
 
-export async function list(workspaceId: string): Promise<Service[]> {
-  return db.service.findMany({
+export async function list(workspaceId: string): Promise<ServiceWithLabels[]> {
+  const rows = await db.service.findMany({
     where: { workspaceId },
     orderBy: { name: "asc" },
+    include: LABEL_INCLUDE,
   });
+  return rows.map(({ labels, ...service }) => ({
+    ...service,
+    labels: toLabelSummaries(labels),
+  }));
 }
 
 export async function listOverview(
   workspaceId: string,
 ): Promise<ServiceOverviewItem[]> {
-  return db.service.findMany({
+  const rows = await db.service.findMany({
     where: { workspaceId },
     orderBy: { name: "asc" },
     include: {
+      ...LABEL_INCLUDE,
       checks: {
         orderBy: [{ checkedAt: "desc" }, { id: "desc" }],
         take: OVERVIEW_CHECK_COUNT,
@@ -117,46 +148,79 @@ export async function listOverview(
       },
     },
   });
+  return rows.map(({ labels, ...service }) => ({
+    ...service,
+    labels: toLabelSummaries(labels),
+  }));
 }
 
 export async function get(
   id: string,
   workspaceId: string,
-): Promise<Service | null> {
-  return db.service.findFirst({ where: { id, workspaceId } });
+): Promise<ServiceWithLabels | null> {
+  const row = await db.service.findFirst({
+    where: { id, workspaceId },
+    include: LABEL_INCLUDE,
+  });
+  if (!row) return null;
+  const { labels, ...service } = row;
+  return { ...service, labels: toLabelSummaries(labels) };
 }
 
 export async function create(
   workspaceId: string,
   input: ServiceCreateInput,
-): Promise<Service> {
-  return db.service.create({
-    data: {
-      workspaceId,
-      name: input.name,
-      description: input.description ?? null,
-      monitorType: input.monitorType,
-      url: input.url ?? null,
-      host: input.host ?? null,
-      port: input.port ?? null,
-      expectedStatusCodes: input.expectedStatusCodes ?? null,
-      ...(input.intervalSeconds !== undefined
-        ? { intervalSeconds: input.intervalSeconds }
-        : {}),
-      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
-      ...(input.retries !== undefined ? { retries: input.retries } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      // Picked up on the very next scheduler tick.
-      nextCheckAt: new Date(),
-    },
+): Promise<ServiceWithLabels> {
+  return db.$transaction(async (tx) => {
+    const created = await tx.service.create({
+      data: {
+        workspaceId,
+        name: input.name,
+        description: input.description ?? null,
+        monitorType: input.monitorType,
+        url: input.url ?? null,
+        host: input.host ?? null,
+        port: input.port ?? null,
+        expectedStatusCodes: input.expectedStatusCodes ?? null,
+        ...(input.intervalSeconds !== undefined
+          ? { intervalSeconds: input.intervalSeconds }
+          : {}),
+        ...(input.timeoutMs !== undefined
+          ? { timeoutMs: input.timeoutMs }
+          : {}),
+        ...(input.retries !== undefined ? { retries: input.retries } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        // Picked up on the very next scheduler tick.
+        nextCheckAt: new Date(),
+      },
+    });
+
+    if (!input.labelIds?.length) return { ...created, labels: [] };
+
+    await setServiceLabels(tx, workspaceId, created.id, input.labelIds);
+    return readWithLabels(tx, created.id, workspaceId);
   });
+}
+
+// Re-read after a label mutation so callers always get the committed set,
+// rather than reconstructing it from the requested ids.
+async function readWithLabels(
+  tx: Prisma.TransactionClient,
+  id: string,
+  workspaceId: string,
+): Promise<ServiceWithLabels> {
+  const { labels, ...service } = await tx.service.findUniqueOrThrow({
+    where: { id_workspaceId: { id, workspaceId } },
+    include: LABEL_INCLUDE,
+  });
+  return { ...service, labels: toLabelSummaries(labels) };
 }
 
 export async function update(
   id: string,
   workspaceId: string,
   input: ServiceUpdateInput,
-): Promise<Service> {
+): Promise<ServiceWithLabels> {
   const current = await db.service.findFirst({ where: { id, workspaceId } });
   if (!current) throw new ServiceNotFoundError(id);
 
@@ -192,30 +256,40 @@ export async function update(
       ? (input.expectedStatusCodes ?? current.expectedStatusCodes)
       : null;
 
-  return db.service.update({
-    where: { id, workspaceId },
-    data: {
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.description !== undefined
-        ? { description: input.description }
-        : {}),
-      ...(input.monitorType !== undefined
-        ? { monitorType: input.monitorType }
-        : {}),
-      url,
-      host,
-      port,
-      expectedStatusCodes,
-      ...(input.intervalSeconds !== undefined
-        ? { intervalSeconds: input.intervalSeconds }
-        : {}),
-      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
-      ...(input.retries !== undefined ? { retries: input.retries } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      ...(targetChanged
-        ? { consecutiveFailures: 0, nextCheckAt: new Date() }
-        : {}),
-    },
+  return db.$transaction(async (tx) => {
+    await tx.service.update({
+      where: { id, workspaceId },
+      data: {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.description !== undefined
+          ? { description: input.description }
+          : {}),
+        ...(input.monitorType !== undefined
+          ? { monitorType: input.monitorType }
+          : {}),
+        url,
+        host,
+        port,
+        expectedStatusCodes,
+        ...(input.intervalSeconds !== undefined
+          ? { intervalSeconds: input.intervalSeconds }
+          : {}),
+        ...(input.timeoutMs !== undefined
+          ? { timeoutMs: input.timeoutMs }
+          : {}),
+        ...(input.retries !== undefined ? { retries: input.retries } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(targetChanged
+          ? { consecutiveFailures: 0, nextCheckAt: new Date() }
+          : {}),
+      },
+    });
+
+    if (input.labelIds !== undefined) {
+      await setServiceLabels(tx, workspaceId, id, input.labelIds);
+    }
+
+    return readWithLabels(tx, id, workspaceId);
   });
 }
 
