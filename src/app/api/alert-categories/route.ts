@@ -47,6 +47,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(category, { status: 201 });
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

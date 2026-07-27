@@ -24,6 +24,6 @@ export async function POST(request: NextRequest) {
     const draft = await saveMailDraft(workspace.id, parsed.data);
     return jsonResponse(draft);
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

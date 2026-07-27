@@ -34,6 +34,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(bookmark, { status: 201 });
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

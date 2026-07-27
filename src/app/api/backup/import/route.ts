@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireWorkspaceOwner(workspace.id, operator.id);
   } catch (error) {
-    return mapBackupError(error);
+    return mapBackupError(error, workspace.id);
   }
 
   const contentLength = request.headers.get("content-length");
@@ -64,6 +64,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(summary);
   } catch (error) {
-    return mapBackupError(error);
+    return mapBackupError(error, workspace.id);
   }
 }

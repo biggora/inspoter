@@ -54,19 +54,28 @@ const PROVIDER_LABELS: Record<string, string> = {
   godaddy: "GoDaddy",
 };
 
-const PROVIDER_ERROR_KEYS: Record<string, string> = {
-  "Provider unreachable": "errorProviderUnreachable",
-  "Authentication failed": "errorAuthFailed",
-  "Rate limited": "errorRateLimited",
-  "Provider error": "errorProviderGeneric",
-};
+// src/lib/providers/http.ts now appends root-cause detail to these
+// messages (e.g. "Provider unreachable: <detail>", "Authentication failed
+// (HTTP 401)"), so match on prefix instead of exact equality. An ordered
+// array (not a Record) keeps the match deterministic regardless of key
+// order — "Provider unreachable" and "Provider error" both start with
+// "Provider ", but neither is a prefix of the other, so plain prefix
+// matching is safe either way.
+const PROVIDER_ERROR_PREFIXES: [string, string][] = [
+  ["Provider unreachable", "errorProviderUnreachable"],
+  ["Authentication failed", "errorAuthFailed"],
+  ["Rate limited", "errorRateLimited"],
+  ["Provider error", "errorProviderGeneric"],
+];
 
 function providerErrorMessage(
   error: string | null,
   t: ReturnType<typeof useTranslations>,
 ): string {
-  const key = error && PROVIDER_ERROR_KEYS[error];
-  return key ? t(key) : t("errorProviderFallback");
+  const match =
+    error &&
+    PROVIDER_ERROR_PREFIXES.find(([prefix]) => error.startsWith(prefix));
+  return match ? t(match[1]) : t("errorProviderFallback");
 }
 
 function providerLabel(providerId: string): string {

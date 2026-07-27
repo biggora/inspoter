@@ -139,8 +139,17 @@ export class ImapSmtpMailDriver implements MailDriver {
   // drop the cached connection explicitly and let the next call reconnect.
   private handleConnectionError(client: ImapFlow, error: unknown): void {
     if (this.client === client) this.client = null;
+    const message = errorMessage(error);
     console.error(
-      `[mail] IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${errorMessage(error)}`,
+      `[mail] IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${message}`,
+    );
+    this.config.onTransportError?.(
+      `IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${message}`,
+      JSON.stringify({
+        email: this.config.email,
+        imapHost: this.config.imapHost,
+        imapPort: this.config.imapPort,
+      }),
     );
   }
 

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { getServerProvidersForWorkspace } from "@/lib/providers/servers";
+import { logError } from "@/lib/services/logs";
 import type {
   ParsedMetricsPayload,
   ClassifiedAddress,
@@ -216,7 +217,20 @@ export async function processMetricsIngestion(
         error.code,
         error.message,
         payload.hostname,
-      ).catch(() => {});
+      ).catch((err) => {
+        // Alert write failed — record it so the lost ingestion-error
+        // notification isn't silently invisible.
+        logError(
+          ctx.workspaceId,
+          "alerts",
+          "Failed to create metrics-ingestion-error alert",
+          JSON.stringify({
+            code: error.code,
+            hostname: payload.hostname,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      });
       throw error;
     }
     if (isPrismaUniqueConstraintError(error)) {
@@ -232,7 +246,20 @@ export async function processMetricsIngestion(
         metricsError.code,
         metricsError.message,
         payload.hostname,
-      ).catch(() => {});
+      ).catch((err) => {
+        // Alert write failed — record it so the lost address-conflict
+        // notification isn't silently invisible.
+        logError(
+          ctx.workspaceId,
+          "alerts",
+          "Failed to create metrics-ingestion-error alert",
+          JSON.stringify({
+            code: metricsError.code,
+            hostname: payload.hostname,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      });
       throw metricsError;
     }
     throw error;

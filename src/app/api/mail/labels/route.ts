@@ -74,6 +74,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof mailLabelsService.MailLabelLimitReachedError) {
       return jsonResponse({ error: error.code }, { status: 409 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, authResult.workspace.id);
   }
 }

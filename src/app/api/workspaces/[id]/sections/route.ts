@@ -43,6 +43,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(workspace);
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }

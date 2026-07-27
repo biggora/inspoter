@@ -26,6 +26,6 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     );
     return jsonResponse(result);
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

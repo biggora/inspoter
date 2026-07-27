@@ -20,6 +20,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     await outgoingWebhooksService.retryDelivery(id, deliveryId, workspace.id);
     return emptyResponse();
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

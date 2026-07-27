@@ -11,7 +11,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-function serviceErrorResponse(error: unknown) {
+function serviceErrorResponse(error: unknown, workspaceId?: string) {
   if (
     error instanceof mailFilterRulesService.MailFilterRuleResourceNotFoundError
   ) {
@@ -34,7 +34,7 @@ function serviceErrorResponse(error: unknown) {
   ) {
     return jsonResponse({ error: error.code }, { status: 400 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(rule);
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }
 
@@ -92,6 +92,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }

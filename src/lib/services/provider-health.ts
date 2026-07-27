@@ -103,7 +103,21 @@ export async function recordSyncOutcomes(
         category,
         outcome.providerType,
         outcome.error,
-      ).catch(() => "unchanged" as ProviderHealthTransition);
+      ).catch((err) => {
+        // Runs inside Promise.all alongside sibling providers — must not
+        // reject, or one provider's health-write failure would take down the
+        // whole refresh pass.
+        logError(
+          workspaceId,
+          "provider-health",
+          String(err),
+          JSON.stringify({
+            operation: "updateProviderHealth",
+            credentialId: outcome.credentialId,
+          }),
+        );
+        return "unchanged" as ProviderHealthTransition;
+      });
 
       const details = JSON.stringify({
         operation,

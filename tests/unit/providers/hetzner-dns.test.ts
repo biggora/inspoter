@@ -247,7 +247,7 @@ describe("HetznerDnsProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 401)",
     });
   });
 
@@ -283,7 +283,7 @@ describe("HetznerDnsProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 401)",
     });
   });
 
@@ -301,7 +301,7 @@ describe("HetznerDnsProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 401)",
     });
   });
 
@@ -324,7 +324,7 @@ describe("HetznerDnsProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider error",
+      message: "Provider error (HTTP 500, 3 attempts)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     vi.useRealTimers();

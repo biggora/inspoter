@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     if (error instanceof webhookTokensService.ChannelWebhookNotFoundError) {
       return notFoundResponse();
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, authResult.workspace.id);
   }
 }
 
@@ -73,6 +73,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (error instanceof webhookTokensService.ChannelWebhookNotFoundError) {
       return notFoundResponse();
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

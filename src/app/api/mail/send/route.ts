@@ -34,6 +34,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(result, { status: 201 });
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

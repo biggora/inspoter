@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { Prisma, type Activity } from "@/generated/prisma/client";
+import { logError } from "@/lib/services/logs";
 
 // Activity service (user action journal). Keyset (cursor) pagination on
 // (timestamp, id), mirroring src/lib/services/logs.ts.
@@ -411,6 +412,19 @@ export async function recordActivity(
     });
   } catch (error) {
     console.error("[activity] recordActivity failed:", error);
+    // Also persist to Logs — the audit trail entry was lost and console
+    // output alone isn't discoverable from the UI.
+    logError(
+      workspaceId,
+      "activity",
+      "Failed to record activity",
+      JSON.stringify({
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
   }
 }
 

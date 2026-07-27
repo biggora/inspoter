@@ -459,6 +459,14 @@ export async function getComposedServer(
       providerServer = result.data;
       providerAvailability = "present";
     } else {
+      logError(
+        workspaceId,
+        `provider:${provider.providerType.toLowerCase()}`,
+        result.kind === "error"
+          ? result.message
+          : `Unsupported: ${result.operation}`,
+        JSON.stringify({ operation: "getServer", remoteServerId }),
+      );
       providerAvailability = "unavailable";
     }
   }
@@ -514,9 +522,14 @@ export async function power(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.power(id, action);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "power", action, serverId: id }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "power", action, serverId: id }),
+    );
   } else {
     // The machine's status just changed and the cached listing still carries
     // the old one — let the next read refetch this credential.

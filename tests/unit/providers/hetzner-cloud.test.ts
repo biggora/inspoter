@@ -113,7 +113,11 @@ describe("HetznerServerProvider", () => {
     // exist — the agent's df of / then contradicts the card.
     const rescaled = {
       ...rawServer,
-      server_type: { ...rawServer.server_type, disk: 160, description: "CPX31" },
+      server_type: {
+        ...rawServer.server_type,
+        disk: 160,
+        description: "CPX31",
+      },
       primary_disk_size: 80,
     };
     const fetchMock = vi
@@ -271,7 +275,7 @@ describe("HetznerServerProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Authentication failed",
+      message: "Authentication failed (HTTP 401)",
     });
   });
 
@@ -294,7 +298,7 @@ describe("HetznerServerProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider error",
+      message: "Provider error (HTTP 500, 3 attempts)",
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
@@ -379,7 +383,7 @@ describe("HetznerServerProvider", () => {
     expect(result).toEqual({
       ok: false,
       kind: "error",
-      message: "Provider error",
+      message: "Provider error (HTTP 500, 3 attempts)",
     });
     // 1 call for page 1 + 3 retried attempts for the failing page 2.
     expect(fetchMock).toHaveBeenCalledTimes(4);

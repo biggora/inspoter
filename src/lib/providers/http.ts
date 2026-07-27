@@ -35,6 +35,42 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || (status >= 500 && status < 600);
 }
 
+const SNIPPET_MAX = 200;
+
+// Collapses whitespace and truncates text destined for a user-facing error
+// message, so a large HTML error page or JSON blob can't flood a LogEntry
+// row on the Logs page.
+function truncateSnippet(text: string): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  return collapsed.length > SNIPPET_MAX
+    ? `${collapsed.slice(0, SNIPPET_MAX)}…`
+    : collapsed;
+}
+
+// Reads a response body for inclusion in an error message. Must never throw
+// itself — a broken body stream shouldn't take down error handling with it.
+async function safeBodySnippet(response: Response): Promise<string> {
+  try {
+    return truncateSnippet(await response.text());
+  } catch {
+    return "(unable to read response body)";
+  }
+}
+
+// Extracts the useful part of a fetch() rejection for the Logs page. undici
+// commonly wraps the real reason in `error.cause` — the top-level message is
+// often just the unhelpful "fetch failed" — so prefer that when present.
+function describeError(err: unknown): string {
+  if (err && typeof err === "object") {
+    const cause = (err as { cause?: unknown }).cause;
+    if (cause instanceof Error && cause.message) return cause.message;
+    if (typeof cause === "string" && cause) return cause;
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return String(err);
+}
+
 export function createProviderHttpClient(
   options: ProviderHttpClientOptions = {},
 ): ProviderHttpClient {
@@ -70,7 +106,7 @@ export function createProviderHttpClient(
             : timeoutSignal,
           ...(insecureDispatcher ? { dispatcher: insecureDispatcher } : {}),
         });
-      } catch {
+      } catch (err) {
         if (reqOptions.signal?.aborted) {
           return {
             ok: false,
@@ -78,18 +114,22 @@ export function createProviderHttpClient(
             message: "Request aborted",
           };
         }
+        // Preserve the real cause for the user-facing Logs page — headers
+        // and the request body are deliberately excluded, since they carry
+        // Authorization/API-key material that must never reach a log entry.
         return {
           ok: false,
           kind: "error",
-          message: "Provider unreachable",
+          message: `Provider unreachable: ${describeError(err)}`,
         };
       }
 
       if (response.status === 401 || response.status === 403) {
+        // 401 vs 403 mean different things when debugging credentials.
         return {
           ok: false,
           kind: "error",
-          message: "Authentication failed",
+          message: `Authentication failed (HTTP ${response.status})`,
         };
       }
 
@@ -103,10 +143,13 @@ export function createProviderHttpClient(
       }
 
       if (!response.ok) {
+        // Providers usually return machine-readable JSON here — surface
+        // status + a truncated body snippet, but never the request headers
+        // or body (they carry the provider's credentials/secrets).
         return {
           ok: false,
           kind: "error",
-          message: "Provider error",
+          message: `Provider error (HTTP ${response.status}): ${await safeBodySnippet(response)}`,
         };
       }
 
@@ -119,16 +162,21 @@ export function createProviderHttpClient(
         return {
           ok: false,
           kind: "error",
-          message: "Invalid response from provider",
+          message: `Invalid response from provider: ${truncateSnippet(text)}`,
         };
       }
       return { ok: true, data };
     }
 
+    // Retries are exhausted — include the status so the Logs page shows
+    // what finally failed instead of a bare, undifferentiated label.
     return {
       ok: false,
       kind: "error",
-      message: lastStatus === 429 ? "Rate limited" : "Provider error",
+      message:
+        lastStatus === 429
+          ? `Rate limited (HTTP 429, ${MAX_ATTEMPTS} attempts)`
+          : `Provider error (HTTP ${lastStatus}, ${MAX_ATTEMPTS} attempts)`,
     };
   }
 

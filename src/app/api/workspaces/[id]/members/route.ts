@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const members = await workspacesService.listMembers(id);
     return jsonResponse(members);
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }
 
@@ -57,6 +57,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(member, { status: 201 });
   } catch (error) {
-    return mapWorkspaceServiceError(error);
+    return mapWorkspaceServiceError(error, id);
   }
 }

@@ -8,14 +8,14 @@ interface RouteContext {
   params: Promise<{ id: string; labelId: string }>;
 }
 
-function serviceErrorResponse(error: unknown) {
+function serviceErrorResponse(error: unknown, workspaceId?: string) {
   if (
     error instanceof
     mailLabelAssignmentsService.MailLabelAssignmentResourceNotFoundError
   ) {
     return jsonResponse({ error: error.code }, { status: 404 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }
 
 export async function PUT(request: NextRequest, { params }: RouteContext) {
@@ -33,7 +33,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     );
     return jsonResponse(label);
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }
 
@@ -52,6 +52,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     );
     return emptyResponse();
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }

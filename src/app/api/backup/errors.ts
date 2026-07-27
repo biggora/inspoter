@@ -16,7 +16,10 @@ import { jsonResponse } from "@/lib/api/response";
 // Mirrors src/app/api/workspaces/errors.ts — Prisma/generic fallback is
 // delegated to toErrorResponse, which already maps EncryptionNotConfiguredError
 // (from src/lib/services/outgoingWebhooks.ts, reused here for backup) to 503.
-export function mapBackupError(error: unknown): NextResponse {
+export function mapBackupError(
+  error: unknown,
+  workspaceId?: string,
+): NextResponse {
   if (
     error instanceof BackupInvalidFileError ||
     error instanceof BackupUnsupportedVersionError ||
@@ -36,5 +39,5 @@ export function mapBackupError(error: unknown): NextResponse {
   if (error instanceof WorkspaceNotFoundError) {
     return jsonResponse({ error: error.message }, { status: 404 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }

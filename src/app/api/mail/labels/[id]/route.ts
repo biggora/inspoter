@@ -11,7 +11,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-function serviceErrorResponse(error: unknown) {
+function serviceErrorResponse(error: unknown, workspaceId?: string) {
   if (error instanceof mailLabelsService.MailLabelResourceNotFoundError) {
     return jsonResponse({ error: error.code }, { status: 404 });
   }
@@ -27,7 +27,7 @@ function serviceErrorResponse(error: unknown) {
   if (error instanceof mailLabelsService.MailLabelInUseError) {
     return jsonResponse({ error: error.code }, { status: 409 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(label);
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }
 
@@ -85,6 +85,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }

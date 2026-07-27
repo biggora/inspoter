@@ -10,7 +10,7 @@ import {
   listMailFilterRulesQuerySchema,
 } from "@/lib/validation/mail";
 
-function serviceErrorResponse(error: unknown) {
+function serviceErrorResponse(error: unknown, workspaceId?: string) {
   if (error instanceof WorkspaceMemberRequiredError) {
     return jsonResponse(
       { error: "WORKSPACE_MEMBER_REQUIRED" },
@@ -33,7 +33,7 @@ function serviceErrorResponse(error: unknown) {
   ) {
     return jsonResponse({ error: error.code }, { status: 400 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }
 
 export async function GET(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     );
     return jsonResponse(rules);
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }
 
@@ -88,6 +88,6 @@ export async function POST(request: NextRequest) {
     });
     return jsonResponse(rule, { status: 201 });
   } catch (error) {
-    return serviceErrorResponse(error);
+    return serviceErrorResponse(error, authResult.workspace.id);
   }
 }

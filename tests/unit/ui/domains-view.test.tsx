@@ -114,6 +114,60 @@ describe("DomainsView record counts", () => {
   });
 });
 
+describe("DomainsView provider error copy", () => {
+  it("maps a new-format error message to its specific translated wording by prefix", () => {
+    renderWithIntl(
+      <DomainsView
+        providers={[
+          {
+            providerId: "cred-1",
+            providerType: "cloudflare",
+            mode: "mock",
+            domains: [],
+            // src/lib/providers/http.ts now appends the HTTP status to this
+            // message instead of returning the bare "Authentication failed"
+            // constant — the lookup must still resolve to the specific copy.
+            error: "Authentication failed (HTTP 401)",
+          },
+        ]}
+        categories={[]}
+        services={[]}
+      />,
+    );
+
+    // The alert prefixes the copy with "<Provider> — ", split across
+    // sibling text nodes, so assert via textContent rather than exact
+    // getByText (which only matches an element's own direct text nodes).
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Ошибка аутентификации провайдера.");
+    expect(alert).not.toHaveTextContent(
+      "Не удалось получить данные от провайдера.",
+    );
+  });
+
+  it("falls back to the generic copy for a genuinely unknown error message", () => {
+    renderWithIntl(
+      <DomainsView
+        providers={[
+          {
+            providerId: "cred-1",
+            providerType: "cloudflare",
+            mode: "mock",
+            domains: [],
+            error: "Something unexpected happened",
+          },
+        ]}
+        categories={[]}
+        services={[]}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Не удалось получить данные от провайдера.",
+    );
+  });
+});
+
 describe("DomainsView shared zones", () => {
   it("marks a zone that more than one credential exposes", () => {
     renderWithIntl(

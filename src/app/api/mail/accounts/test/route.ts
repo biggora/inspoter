@@ -19,12 +19,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await mailAccountsService.testConnection(parsed.data);
+    const result = await mailAccountsService.testConnection(
+      authResult.workspace.id,
+      parsed.data,
+    );
     return jsonResponse(result);
   } catch (error) {
     if (error instanceof MailTransportError) {
       return jsonResponse({ error: error.message }, { status: 502 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, authResult.workspace.id);
   }
 }

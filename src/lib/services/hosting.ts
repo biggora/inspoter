@@ -127,7 +127,18 @@ export async function getAccount(
 ): Promise<ProviderResult<HostingAccount>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unknownProviderResult(providerId);
-  return provider.getAccount(id);
+  const result = await provider.getAccount(id);
+  if (!result.ok) {
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "getAccount", accountId: id }),
+    );
+  }
+  return result;
 }
 
 export async function setSuspended(
@@ -140,9 +151,14 @@ export async function setSuspended(
   if (!provider) return unknownProviderResult(providerId);
   const result = await provider.setSuspended(id, suspended);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "setSuspended", accountId: id, suspended }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "setSuspended", accountId: id, suspended }),
+    );
   } else {
     // The cached card still shows the old suspension state and there is no
     // way to derive the new one — let the next read refetch this credential.

@@ -14,6 +14,7 @@ import {
 } from "@/lib/crypto/credentials";
 import { getMailDriver, getMailDriverFromConfig } from "@/lib/mail";
 import { EncryptionNotConfiguredError } from "@/lib/services/credentials";
+import { logError } from "@/lib/services/logs";
 
 export class MailAccountNotFoundError extends Error {
   constructor(id: string) {
@@ -426,6 +427,7 @@ export interface TestConnectionData {
 // Transient verify from raw dialog input — nothing is persisted and no
 // account row is involved (POST /api/mail/accounts/test, plan §4).
 export async function testConnection(
+  workspaceId: string,
   input: TestConnectionData,
 ): Promise<{ imapOk: boolean; smtpOk: boolean; error: string | null }> {
   const driver = getMailDriverFromConfig(
@@ -439,6 +441,15 @@ export async function testConnection(
       smtpSecurity: input.smtpSecurity,
       username: input.username,
       imapPassword: input.password,
+      // Mirrors getMailDriver() so out-of-band IMAP socket errors from a
+      // "Test connection" attempt reach the Logs page too — skipped for
+      // the mock path since MockMailDriver never emits transport errors.
+      ...(input.mode === "MOCK"
+        ? {}
+        : {
+            onTransportError: (message: string, details: string) =>
+              logError(workspaceId, "mail:imap", message, details),
+          }),
     },
     { mock: input.mode === "MOCK" },
   );

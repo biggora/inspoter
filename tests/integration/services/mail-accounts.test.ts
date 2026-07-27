@@ -308,6 +308,7 @@ describe("deleteAccount", () => {
 describe("testConnection", () => {
   it("returns imapOk/smtpOk true for a MOCK config", async () => {
     const result = await mailAccountsService.testConnection(
+      workspaceId,
       accountInput({ mode: "MOCK" }),
     );
     expect(result).toEqual({ imapOk: true, smtpOk: true, error: null });

@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (error instanceof servicesService.ServiceNotFoundError) {
       return jsonResponse({ error: "Resource not found." }, { status: 404 });
     }
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }
 
@@ -77,6 +77,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return emptyResponse();
   } catch (error) {
-    return toErrorResponse(error);
+    return toErrorResponse(error, workspace.id);
   }
 }

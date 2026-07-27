@@ -31,6 +31,13 @@ export function createSnapshotsMemoryMock(
     markStale: vi.fn(async (credentialId: string, kind: string) => {
       store.delete(key(credentialId, kind));
     }),
+    // domains.ts reads the previous snapshot to tell a zone that has just
+    // started failing from one that was already failing.
+    readSnapshots: vi.fn(async (_workspaceId: string, kind: string) =>
+      [...store.entries()]
+        .filter(([entryKey]) => entryKey.endsWith(`:${kind}`))
+        .map(([, row]) => ({ ...row, kind, error: null, fetchedAt: new Date() })),
+    ),
     readCachedListing: vi.fn(
       async (
         workspaceId: string,

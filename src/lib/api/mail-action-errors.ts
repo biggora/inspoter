@@ -28,7 +28,10 @@ import { jsonResponse } from "@/lib/api/response";
 // Shared error mapping for the mail item action routes (PATCH/DELETE
 // /api/mail/[id], /api/mail/[id]/move, /api/mail/send) — same status
 // conventions as /api/mail/accounts/[id] (MailTransportError → 502 etc.).
-export function mailActionErrorResponse(error: unknown): NextResponse {
+export function mailActionErrorResponse(
+  error: unknown,
+  workspaceId?: string,
+): NextResponse {
   if (
     error instanceof MailItemNotFoundError ||
     error instanceof MailAccountNotFoundError ||
@@ -64,5 +67,5 @@ export function mailActionErrorResponse(error: unknown): NextResponse {
   if (error instanceof MailTransportError) {
     return jsonResponse({ error: error.message }, { status: 502 });
   }
-  return toErrorResponse(error);
+  return toErrorResponse(error, workspaceId);
 }

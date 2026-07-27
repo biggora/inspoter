@@ -27,7 +27,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     contentLength &&
     Number(contentLength) > env.MAIL_MAX_ATTACHMENT_BYTES + 1_048_576
   ) {
-    return mailActionErrorResponse(new MailDraftAttachmentTooLargeError());
+    return mailActionErrorResponse(
+      new MailDraftAttachmentTooLargeError(),
+      workspace.id,
+    );
   }
 
   const form = await request.formData().catch(() => null);
@@ -45,6 +48,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
     return jsonResponse(attachment, { status: 201 });
   } catch (error) {
-    return mailActionErrorResponse(error);
+    return mailActionErrorResponse(error, workspace.id);
   }
 }

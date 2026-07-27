@@ -49,13 +49,42 @@ export interface DomainsByProvider {
 // whose records can't be read degrades to `null` on its own row rather than
 // failing the whole provider (same isolation rule as listDomains itself).
 // This is the N+1 the snapshot cache exists to keep off the render path.
+//
+// `previouslyFailed` holds the zones that already had no count in the last
+// snapshot: their failure is logged once, when it starts, not on every
+// background pass.
 async function withRecordCounts(
+  workspaceId: string,
   provider: DnsProvider,
   domains: Domain[],
+  previouslyFailed: Set<string>,
 ): Promise<DomainWithRecordCount[]> {
+  const source = `provider:${provider.providerType.toLowerCase()}`;
+
+  function logZoneFailure(domainId: string, message: string): void {
+    if (previouslyFailed.has(zoneKey(provider.id, domainId))) return;
+    logError(
+      workspaceId,
+      source,
+      message,
+      JSON.stringify({ operation: "listRecords", domainId }),
+    );
+  }
+
   return Promise.all(
     domains.map(async (domain) => {
-      const result = await provider.listRecords(domain.id).catch(() => null);
+      const result = await provider.listRecords(domain.id).catch((err) => {
+        logZoneFailure(domain.id, String(err));
+        return null;
+      });
+      if (result && !result.ok) {
+        logZoneFailure(
+          domain.id,
+          result.kind === "error"
+            ? result.message
+            : `Unsupported: ${result.operation}`,
+        );
+      }
       return {
         ...domain,
         recordCount: result?.ok ? result.data.length : null,
@@ -63,6 +92,31 @@ async function withRecordCounts(
       };
     }),
   );
+}
+
+function zoneKey(credentialId: string, domainId: string): string {
+  return `${credentialId}:${domainId}`;
+}
+
+// Zones whose record count was already missing in the stored snapshot.
+async function failedZoneIds(
+  workspaceId: string,
+  providers: DnsProvider[],
+): Promise<Set<string>> {
+  const failed = new Set<string>();
+  const wanted = new Set(providers.map((provider) => provider.id));
+  const rows = await snapshots.readSnapshots(workspaceId, KIND).catch(() => []);
+
+  for (const row of rows) {
+    if (!wanted.has(row.credentialId)) continue;
+    const group = row.payload as DomainsByProvider | null;
+    for (const domain of group?.domains ?? []) {
+      if (domain.recordCount === null) {
+        failed.add(zoneKey(row.credentialId, domain.id));
+      }
+    }
+  }
+  return failed;
 }
 
 // Two credentials of one DNS provider can expose the same zone — a second token
@@ -98,8 +152,10 @@ function dedupeZones(groups: DomainsByProvider[]): DomainsByProvider[] {
 }
 
 async function fetchGroup(
+  workspaceId: string,
   provider: DnsProvider,
   result: PromiseSettledResult<ProviderResult<Domain[]>>,
+  previouslyFailedZones: Set<string>,
 ): Promise<DomainsByProvider> {
   const base = {
     providerId: provider.id,
@@ -122,7 +178,12 @@ async function fetchGroup(
   }
   return {
     ...base,
-    domains: await withRecordCounts(provider, providerResult.data),
+    domains: await withRecordCounts(
+      workspaceId,
+      provider,
+      providerResult.data,
+      previouslyFailedZones,
+    ),
     error: null,
   };
 }
@@ -150,8 +211,16 @@ export async function refreshDnsSnapshots(
     providers.map((provider) => provider.listDomains()),
   );
 
+  // Which zones already failed their record count last time. A zone that
+  // stays broken is polled every tick, so logging it each pass would bury the
+  // Logs section — same reason provider-level errors are transition-gated in
+  // recordSyncOutcomes.
+  const previouslyFailedZones = await failedZoneIds(workspaceId, providers);
+
   const groups = await Promise.all(
-    settled.map((result, index) => fetchGroup(providers[index], result)),
+    settled.map((result, index) =>
+      fetchGroup(workspaceId, providers[index], result, previouslyFailedZones),
+    ),
   );
 
   await Promise.all(
@@ -243,7 +312,18 @@ export async function listRecords(
 ): Promise<ProviderResult<DnsRecord[]>> {
   const provider = await findProvider(workspaceId, providerId);
   if (!provider) return unsupportedProviderResult(providerId);
-  return provider.listRecords(domainId);
+  const result = await provider.listRecords(domainId);
+  if (!result.ok) {
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "listRecords", domainId }),
+    );
+  }
+  return result;
 }
 
 export async function createRecord(
@@ -256,9 +336,14 @@ export async function createRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.createRecord(domainId, input);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "createRecord", domainId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "createRecord", domainId }),
+    );
   } else {
     await shiftCachedRecordCount(workspaceId, providerId, domainId, 1);
   }
@@ -276,9 +361,14 @@ export async function updateRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.updateRecord(domainId, recordId, input);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "updateRecord", domainId, recordId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "updateRecord", domainId, recordId }),
+    );
   }
   // An edit changes a record's contents, never how many there are — the
   // cached count stays correct.
@@ -295,9 +385,14 @@ export async function deleteRecord(
   if (!provider) return unsupportedProviderResult(providerId);
   const result = await provider.deleteRecord(domainId, recordId);
   if (!result.ok) {
-    logError(workspaceId, `provider:${provider.providerType.toLowerCase()}`,
-      result.kind === "error" ? result.message : `Unsupported: ${result.operation}`,
-      JSON.stringify({ operation: "deleteRecord", domainId, recordId }));
+    logError(
+      workspaceId,
+      `provider:${provider.providerType.toLowerCase()}`,
+      result.kind === "error"
+        ? result.message
+        : `Unsupported: ${result.operation}`,
+      JSON.stringify({ operation: "deleteRecord", domainId, recordId }),
+    );
   } else {
     await shiftCachedRecordCount(workspaceId, providerId, domainId, -1);
   }
