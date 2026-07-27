@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   StatusIndicator,
   type StatusState,
@@ -121,11 +122,9 @@ export function OutgoingWebhookDeliveries({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+          <LoadingRegion>
+            <TableSkeleton rows={3} />
+          </LoadingRegion>
         ) : deliveries.length === 0 ? (
           <EmptyState
             icon="ri-send-plane-line"

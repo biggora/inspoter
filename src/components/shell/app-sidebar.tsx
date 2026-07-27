@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Icon } from "@/components/ui/icon";
 import { InspoterIcon } from "@/components/ui/inspoter-logo";
+import { NavPending } from "./route-progress";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -97,6 +98,7 @@ export function AppSidebar({
                           <Icon name={item.icon} />
                         </span>
                         <span>{t(item.labelKey)}</span>
+                        <NavPending />
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -130,6 +132,7 @@ export function AppSidebar({
                       />
                     </span>
                     <span>{t(SETTINGS_NAV_ITEM.labelKey)}</span>
+                    <NavPending />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

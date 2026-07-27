@@ -31,8 +31,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CardGridSkeleton } from "@/components/ui/skeletons";
 import { Spinner } from "@/components/ui/spinner";
 import { UsageMeter } from "@/components/ui/usage-meter";
 import {
@@ -172,13 +173,17 @@ export function HostingView() {
     [cardKey, showNotification, t],
   );
 
-  const pageState: PageState = loading
-    ? "loading"
-    : accounts.length === 0 && loadError
-      ? "error"
-      : accounts.length === 0
-        ? "empty"
-        : "ready";
+  // Only the first load empties the page into a skeleton. A refresh over
+  // accounts we already have keeps the cards and dims them instead
+  // (design.md §4.4: retain confirmed data while a refresh runs).
+  const pageState: PageState =
+    loading && accounts.length === 0
+      ? "loading"
+      : accounts.length === 0 && loadError
+        ? "error"
+        : accounts.length === 0
+          ? "empty"
+          : "ready";
 
   return (
     <PageBody>
@@ -203,7 +208,7 @@ export function HostingView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={load}>
+              <Button variant="outline" onClick={load} disabled={loading}>
                 <Icon
                   name="ri-refresh-line"
                   aria-hidden
@@ -217,32 +222,9 @@ export function HostingView() {
       />
 
       {pageState === "loading" && (
-        <CardGrid>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} size="sm" className="animate-fade-in">
-              <CardHeader className="border-b">
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="size-9 shrink-0 rounded-lg" />
-                  <div className="flex flex-1 flex-col gap-1.5">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </div>
-                <CardAction>
-                  <Skeleton className="h-6 w-20 rounded-full" />
-                </CardAction>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((j) => (
-                  <div key={j} className="flex items-center justify-between">
-                    <Skeleton className="h-3 w-10" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
-        </CardGrid>
+        <LoadingRegion>
+          <CardGridSkeleton metricRows={5} footerActions={0} />
+        </LoadingRegion>
       )}
 
       {pageState === "error" && (
@@ -279,17 +261,19 @@ export function HostingView() {
       )}
 
       {pageState === "ready" && (
-        <CardGrid>
-          {accounts.map((account) => (
-            <HostingCard
-              key={cardKey(account)}
-              account={account}
-              busy={!!busyIds[cardKey(account)]}
-              error={cardErrors[cardKey(account)]}
-              onToggleSuspend={handleToggleSuspend}
-            />
-          ))}
-        </CardGrid>
+        <LoadingOverlay busy={loading}>
+          <CardGrid>
+            {accounts.map((account) => (
+              <HostingCard
+                key={cardKey(account)}
+                account={account}
+                busy={!!busyIds[cardKey(account)]}
+                error={cardErrors[cardKey(account)]}
+                onToggleSuspend={handleToggleSuspend}
+              />
+            ))}
+          </CardGrid>
+        </LoadingOverlay>
       )}
 
       {isCreateProviderOpen && (

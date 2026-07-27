@@ -1,5 +1,7 @@
 {
   "close": "Close",
+  "loading": "Loading…",
+  "loadingPage": "Loading page…",
   "paginationNavLabel": "Pagination",
   "paginationPreviousLabel": "Go to previous page",
   "paginationNextLabel": "Go to next page",

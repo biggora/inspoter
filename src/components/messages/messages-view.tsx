@@ -428,14 +428,22 @@ function MessagesCoordinator() {
   );
 }
 
+// Mirrors the route fallback in messages-skeleton.tsx. Kept inlined for the
+// same reason mail-client-view keeps its own: a component at this position
+// would change the element type and remount the loaded panes instead of
+// letting React update them in place.
 function MessagesLoading() {
   const t = useTranslations("messages");
+  const tUi = useTranslations("ui");
   return (
     <PageBody fullBleed>
       <div className="shrink-0 border-b border-background-200 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
         <PageHeader title={t("pageTitle")} />
+        <span className="sr-only" role="status">
+          {tUi("loading")}
+        </span>
       </div>
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1" aria-busy="true">
         <div className="hidden w-64 shrink-0 flex-col border-r border-background-200 bg-background-50 lg:flex">
           <div className="space-y-4 px-3 py-4">
             {[1, 2, 3].map((item) => (

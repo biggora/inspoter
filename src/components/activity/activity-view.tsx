@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   Table,
   TableBody,
@@ -159,6 +160,14 @@ export function ActivityView() {
 
   const currentCursor = pageCursors[pageIndex];
 
+  // Which request the table on screen belongs to. Comparing it with the one
+  // the effect below is about to run identifies a refetch (page turn, filter
+  // change) without a second piece of state set inside the effect — the rows
+  // stay put and `LoadingOverlay` reports the work.
+  const requestKey = `${currentCursor ?? ""}|${filterKey}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const refreshing = !loading && loadedKey !== requestKey;
+
   // setLoading/setError/setItems only run inside the .then/.catch/.finally
   // continuations (not synchronously in the effect body) so this doesn't
   // trip react-hooks/set-state-in-effect — the initial `loading` state
@@ -194,12 +203,14 @@ export function ActivityView() {
         if (!cancelled) setError(t("loadError"));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        setLoading(false);
+        setLoadedKey(requestKey);
       });
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, action, entityType, operator, query, sort, t]);
+  }, [currentCursor, action, entityType, operator, query, sort, requestKey, t]);
 
   function handleNext() {
     if (!nextCursor) return;
@@ -333,12 +344,9 @@ export function ActivityView() {
       )}
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
+        <LoadingRegion>
+          <TableSkeleton rows={4} />
+        </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
           <EmptyState description={t("emptyFilteredDescription")} />
@@ -350,86 +358,91 @@ export function ActivityView() {
           />
         )
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("timeHeader")}</TableHead>
-              <TableHead>{t("operatorHeader")}</TableHead>
-              <TableHead>{t("actionHeader")}</TableHead>
-              <TableHead>{t("entityTypeHeader")}</TableHead>
-              <TableHead>{t("entityHeader")}</TableHead>
-              <TableHead>
-                <span className="sr-only">{t("detailsHeader")}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((entry) => {
-              const isExpanded = expandedId === entry.id;
-              const entityTypeLabelKey =
-                ENTITY_TYPE_LABEL_KEYS[entry.entityType];
-              const entityTypeLabel = entityTypeLabelKey
-                ? t(entityTypeLabelKey)
-                : entry.entityType;
-              return (
-                <Fragment key={entry.id}>
-                  <TableRow>
-                    <TableCell className="font-mono text-muted-foreground">
-                      {formatTimestamp(entry.timestamp)}
-                    </TableCell>
-                    <TableCell>{entry.operatorName}</TableCell>
-                    <TableCell>
-                      <ActionBadge action={entry.action} />
-                    </TableCell>
-                    <TableCell>{entityTypeLabel}</TableCell>
-                    <TableCell
-                      className={cn(
-                        !entry.entityLabel && entry.entityId && "font-mono",
-                      )}
-                    >
-                      {entry.entityLabel ?? entry.entityId ?? "—"}
-                    </TableCell>
-                    <TableCell className="w-[var(--control-sm)]">
-                      {entry.details && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-expanded={isExpanded}
-                          aria-controls={`${entry.id}-detail`}
-                          aria-label={t("detailsHeader")}
-                          onClick={() =>
-                            setExpandedId(isExpanded ? null : entry.id)
-                          }
-                        >
-                          <Icon
-                            name="ri-arrow-right-s-line"
-                            aria-hidden
-                            data-icon="inline-start"
-                            className={cn(
-                              "transition-transform",
-                              isExpanded && "rotate-90",
-                            )}
-                          />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                  {isExpanded && entry.details && (
-                    <TableRow id={`${entry.id}-detail`} className="bg-muted/30">
+        <LoadingOverlay busy={refreshing}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("timeHeader")}</TableHead>
+                <TableHead>{t("operatorHeader")}</TableHead>
+                <TableHead>{t("actionHeader")}</TableHead>
+                <TableHead>{t("entityTypeHeader")}</TableHead>
+                <TableHead>{t("entityHeader")}</TableHead>
+                <TableHead>
+                  <span className="sr-only">{t("detailsHeader")}</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((entry) => {
+                const isExpanded = expandedId === entry.id;
+                const entityTypeLabelKey =
+                  ENTITY_TYPE_LABEL_KEYS[entry.entityType];
+                const entityTypeLabel = entityTypeLabelKey
+                  ? t(entityTypeLabelKey)
+                  : entry.entityType;
+                return (
+                  <Fragment key={entry.id}>
+                    <TableRow>
+                      <TableCell className="font-mono text-muted-foreground">
+                        {formatTimestamp(entry.timestamp)}
+                      </TableCell>
+                      <TableCell>{entry.operatorName}</TableCell>
+                      <TableCell>
+                        <ActionBadge action={entry.action} />
+                      </TableCell>
+                      <TableCell>{entityTypeLabel}</TableCell>
                       <TableCell
-                        colSpan={6}
-                        className="font-mono text-sm whitespace-pre-wrap"
+                        className={cn(
+                          !entry.entityLabel && entry.entityId && "font-mono",
+                        )}
                       >
-                        {entry.details}
+                        {entry.entityLabel ?? entry.entityId ?? "—"}
+                      </TableCell>
+                      <TableCell className="w-[var(--control-sm)]">
+                        {entry.details && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-expanded={isExpanded}
+                            aria-controls={`${entry.id}-detail`}
+                            aria-label={t("detailsHeader")}
+                            onClick={() =>
+                              setExpandedId(isExpanded ? null : entry.id)
+                            }
+                          >
+                            <Icon
+                              name="ri-arrow-right-s-line"
+                              aria-hidden
+                              data-icon="inline-start"
+                              className={cn(
+                                "transition-transform",
+                                isExpanded && "rotate-90",
+                              )}
+                            />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  )}
-                </Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {isExpanded && entry.details && (
+                      <TableRow
+                        id={`${entry.id}-detail`}
+                        className="bg-muted/30"
+                      >
+                        <TableCell
+                          colSpan={6}
+                          className="font-mono text-sm whitespace-pre-wrap"
+                        >
+                          {entry.details}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </LoadingOverlay>
       )}
 
       <Pagination
@@ -438,7 +451,7 @@ export function ActivityView() {
         hasNext={Boolean(nextCursor)}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        disabled={loading}
+        disabled={loading || refreshing}
       />
     </PageBody>
   );

@@ -36,6 +36,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -415,14 +416,13 @@ export function ChannelSettingsDialog({
               )}
 
               {loading ? (
-                <div
-                  role="status"
-                  className="space-y-2"
-                  aria-label={t("loadingWebhooksLabel")}
+                <LoadingRegion
+                  label={t("loadingWebhooksLabel")}
+                  className="flex flex-col gap-2"
                 >
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
-                </div>
+                </LoadingRegion>
               ) : webhooks.length === 0 && !loadError ? (
                 <EmptyState
                   icon="ri-links-line"

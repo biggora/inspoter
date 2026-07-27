@@ -20,7 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   Table,
   TableBody,
@@ -119,11 +120,9 @@ export function ProviderCredentialsView() {
       )}
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
+        <LoadingRegion>
+          <TableSkeleton rows={3} />
+        </LoadingRegion>
       ) : credentials.length === 0 ? (
         <EmptyState
           icon="ri-key-2-line"

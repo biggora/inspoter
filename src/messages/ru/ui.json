@@ -1,5 +1,7 @@
 {
   "close": "Закрыть",
+  "loading": "Загрузка…",
+  "loadingPage": "Загрузка страницы…",
   "paginationNavLabel": "Пагинация",
   "paginationPreviousLabel": "На предыдущую страницу",
   "paginationNextLabel": "На следующую страницу",

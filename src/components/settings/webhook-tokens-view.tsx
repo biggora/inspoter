@@ -35,7 +35,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { Spinner } from "@/components/ui/spinner";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import {
@@ -236,11 +237,9 @@ export function WebhookTokensView() {
       )}
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
+        <LoadingRegion>
+          <TableSkeleton rows={3} />
+        </LoadingRegion>
       ) : tokens.length === 0 ? (
         <EmptyState
           icon="ri-links-line"

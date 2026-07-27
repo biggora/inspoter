@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import { StatusDot } from "@/components/ui/status-indicator";
 import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
@@ -207,21 +208,9 @@ export function MessageList({
             </Button>
           </div>
         ) : loading ? (
-          <div>
-            {[1, 2, 3, 4, 5, 6].map((row) => (
-              <div
-                key={row}
-                className="flex items-center gap-3 border-b border-background-100 px-4 py-3"
-              >
-                <Skeleton className="size-8 shrink-0 rounded-full" />
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-3.5 w-32" />
-                  <Skeleton className="h-3 w-full max-w-56" />
-                </div>
-                <Skeleton className="h-3 w-10 shrink-0" />
-              </div>
-            ))}
-          </div>
+          <LoadingRegion>
+            <ListSkeleton rows={6} avatar dividers trailing />
+          </LoadingRegion>
         ) : items.length === 0 ? (
           hasActiveFilters ? (
             <div className="flex h-full items-center justify-center p-6">

@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   Table,
   TableBody,
@@ -308,13 +309,12 @@ export function AlertsView() {
         </Alert>
       )}
 
-      {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
+      {/* The skeleton is for the first load only: a refetch (page turn, filter
+          change) keeps the confirmed rows and dims them instead. */}
+      {loading && items.length === 0 ? (
+        <LoadingRegion>
+          <TableSkeleton rows={4} />
+        </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
           <EmptyState description={t("noResultsDescription")} />
@@ -334,36 +334,38 @@ export function AlertsView() {
           />
         )
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("severityColumn")}</TableHead>
-              <TableHead>{t("categoryColumn")}</TableHead>
-              <TableHead>{t("sourceColumn")}</TableHead>
-              <TableHead>{t("messageColumn")}</TableHead>
-              <TableHead>{t("timeColumn")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((alert) => (
-              <TableRow key={alert.id}>
-                <TableCell>
-                  <SeverityBadge severity={alert.severity} />
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {alert.alertCategory?.name ?? t("noCategoryLabel")}
-                </TableCell>
-                <TableCell className="font-mono">{alert.source}</TableCell>
-                <TableCell className="max-w-md truncate font-mono">
-                  {alert.message}
-                </TableCell>
-                <TableCell className="font-mono text-muted-foreground">
-                  {formatTimestamp(alert.timestamp)}
-                </TableCell>
+        <LoadingOverlay busy={loading}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("severityColumn")}</TableHead>
+                <TableHead>{t("categoryColumn")}</TableHead>
+                <TableHead>{t("sourceColumn")}</TableHead>
+                <TableHead>{t("messageColumn")}</TableHead>
+                <TableHead>{t("timeColumn")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((alert) => (
+                <TableRow key={alert.id}>
+                  <TableCell>
+                    <SeverityBadge severity={alert.severity} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {alert.alertCategory?.name ?? t("noCategoryLabel")}
+                  </TableCell>
+                  <TableCell className="font-mono">{alert.source}</TableCell>
+                  <TableCell className="max-w-md truncate font-mono">
+                    {alert.message}
+                  </TableCell>
+                  <TableCell className="font-mono text-muted-foreground">
+                    {formatTimestamp(alert.timestamp)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </LoadingOverlay>
       )}
 
       <Pagination

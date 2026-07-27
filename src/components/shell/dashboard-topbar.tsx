@@ -7,6 +7,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { OperatorMenu } from "./operator-menu";
+import { RouteProgressBar } from "./route-progress";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 
 // Module-scope so it isn't recomputed on every render.
@@ -34,6 +35,7 @@ export function DashboardTopbar({ username }: { username: string }) {
         <ThemeToggle />
         <OperatorMenu username={username} />
       </div>
+      <RouteProgressBar />
     </header>
   );
 }

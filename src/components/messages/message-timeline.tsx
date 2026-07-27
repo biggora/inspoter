@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import { formatRelativeTime, type Format } from "@/lib/format/relative-time";
 import type { MessageDto } from "./api";
 
@@ -151,21 +152,9 @@ export function MessageTimeline({
           />
         </div>
       ) : loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((item) => (
-            <div key={item} className="flex gap-3">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-              <div className="flex-1 space-y-1.5">
-                <div className="flex gap-2">
-                  <Skeleton className="h-3.5 w-24" />
-                  <Skeleton className="h-3 w-14" />
-                </div>
-                <Skeleton className="h-3.5 w-full" />
-                <Skeleton className="h-3.5 w-3/4" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingRegion>
+          <ListSkeleton rows={5} avatar className="gap-4" />
+        </LoadingRegion>
       ) : messages.length === 0 ? (
         <div className="flex h-full items-center justify-center">
           <EmptyState

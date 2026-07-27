@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth/dal";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
+import { RouteProgressProvider } from "@/components/shell/route-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +15,17 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar
-        workspaceName={workspace.name}
-        workspaceId={workspace.id}
-        hiddenSections={workspace.hiddenSections}
-      />
-      <SidebarInset>
-        <DashboardTopbar username={operator.username} />
-        <main className="w-full flex-1 p-6">{children}</main>
-      </SidebarInset>
+      <RouteProgressProvider>
+        <AppSidebar
+          workspaceName={workspace.name}
+          workspaceId={workspace.id}
+          hiddenSections={workspace.hiddenSections}
+        />
+        <SidebarInset>
+          <DashboardTopbar username={operator.username} />
+          <main className="w-full flex-1 p-6">{children}</main>
+        </SidebarInset>
+      </RouteProgressProvider>
     </SidebarProvider>
   );
 }

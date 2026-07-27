@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   StatusIndicator,
   type StatusIndicatorVariant,
@@ -125,6 +126,14 @@ export function LogsView() {
 
   const currentCursor = pageCursors[pageIndex];
 
+  // Which request the table on screen belongs to. Comparing it with the one
+  // the effect below is about to run identifies a refetch (page turn, filter
+  // change) without a second piece of state set inside the effect — the rows
+  // stay put and `LoadingOverlay` reports the work.
+  const requestKey = `${currentCursor ?? ""}|${filterKey}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const refreshing = !loading && loadedKey !== requestKey;
+
   // setLoading/setError/setItems only run inside the .then/.catch/.finally
   // continuations (not synchronously in the effect body) so this doesn't
   // trip react-hooks/set-state-in-effect — the initial `loading` state
@@ -154,12 +163,14 @@ export function LogsView() {
         if (!cancelled) setError(t("loadError"));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        setLoading(false);
+        setLoadedKey(requestKey);
       });
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, level, source, query, sort, t]);
+  }, [currentCursor, level, source, query, sort, requestKey, t]);
 
   function handleNext() {
     if (!nextCursor) return;
@@ -261,12 +272,9 @@ export function LogsView() {
       )}
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
+        <LoadingRegion>
+          <TableSkeleton rows={4} />
+        </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
           <EmptyState description={t("emptyFilteredDescription")} />
@@ -286,82 +294,89 @@ export function LogsView() {
           />
         )
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("timeHeader")}</TableHead>
-              <TableHead>{t("levelHeader")}</TableHead>
-              <TableHead>{t("sourceHeader")}</TableHead>
-              <TableHead>{t("messageHeader")}</TableHead>
-              <TableHead>
-                <span className="sr-only">{t("detailsSrOnly")}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((entry) => {
-              const isExpanded = expandedId === entry.id;
-              return (
-                <Fragment key={entry.id}>
-                  <TableRow>
-                    <TableCell className="font-mono text-muted-foreground">
-                      {formatTimestamp(entry.timestamp)}
-                    </TableCell>
-                    <TableCell>
-                      <LevelBadge level={entry.level} />
-                    </TableCell>
-                    <TableCell className="font-mono">{entry.source}</TableCell>
-                    <TableCell className="max-w-md truncate font-mono">
-                      {entry.message}
-                    </TableCell>
-                    <TableCell className="w-[var(--control-sm)]">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-expanded={isExpanded}
-                        aria-controls={`${entry.id}-detail`}
-                        aria-label={t("toggleDetailsAriaLabel", {
-                          action: isExpanded
-                            ? t("hideAction")
-                            : t("showAction"),
-                        })}
-                        onClick={() =>
-                          setExpandedId(isExpanded ? null : entry.id)
-                        }
-                      >
-                        <Icon
-                          name="ri-arrow-right-s-line"
-                          aria-hidden
-                          data-icon="inline-start"
-                          className={cn(
-                            "transition-transform",
-                            isExpanded && "rotate-90",
-                          )}
-                        />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  {isExpanded && (
-                    <TableRow id={`${entry.id}-detail`} className="bg-muted/30">
-                      <TableCell
-                        colSpan={5}
-                        className="font-mono text-sm whitespace-pre-wrap"
-                      >
+        <LoadingOverlay busy={refreshing}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("timeHeader")}</TableHead>
+                <TableHead>{t("levelHeader")}</TableHead>
+                <TableHead>{t("sourceHeader")}</TableHead>
+                <TableHead>{t("messageHeader")}</TableHead>
+                <TableHead>
+                  <span className="sr-only">{t("detailsSrOnly")}</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((entry) => {
+                const isExpanded = expandedId === entry.id;
+                return (
+                  <Fragment key={entry.id}>
+                    <TableRow>
+                      <TableCell className="font-mono text-muted-foreground">
+                        {formatTimestamp(entry.timestamp)}
+                      </TableCell>
+                      <TableCell>
+                        <LevelBadge level={entry.level} />
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {entry.source}
+                      </TableCell>
+                      <TableCell className="max-w-md truncate font-mono">
                         {entry.message}
-                        {entry.details && (
-                          <div className="mt-2 rounded-md bg-background-100 p-3 text-xs text-muted-foreground">
-                            {entry.details}
-                          </div>
-                        )}
+                      </TableCell>
+                      <TableCell className="w-[var(--control-sm)]">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-expanded={isExpanded}
+                          aria-controls={`${entry.id}-detail`}
+                          aria-label={t("toggleDetailsAriaLabel", {
+                            action: isExpanded
+                              ? t("hideAction")
+                              : t("showAction"),
+                          })}
+                          onClick={() =>
+                            setExpandedId(isExpanded ? null : entry.id)
+                          }
+                        >
+                          <Icon
+                            name="ri-arrow-right-s-line"
+                            aria-hidden
+                            data-icon="inline-start"
+                            className={cn(
+                              "transition-transform",
+                              isExpanded && "rotate-90",
+                            )}
+                          />
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  )}
-                </Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {isExpanded && (
+                      <TableRow
+                        id={`${entry.id}-detail`}
+                        className="bg-muted/30"
+                      >
+                        <TableCell
+                          colSpan={5}
+                          className="font-mono text-sm whitespace-pre-wrap"
+                        >
+                          {entry.message}
+                          {entry.details && (
+                            <div className="mt-2 rounded-md bg-background-100 p-3 text-xs text-muted-foreground">
+                              {entry.details}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </LoadingOverlay>
       )}
 
       <Pagination
@@ -370,7 +385,7 @@ export function LogsView() {
         hasNext={Boolean(nextCursor)}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        disabled={loading}
+        disabled={loading || refreshing}
       />
     </PageBody>
   );

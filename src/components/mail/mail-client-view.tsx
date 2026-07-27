@@ -904,14 +904,18 @@ function MailClientCoordinator() {
   const isInTrash = detailFolder?.specialUse === "TRASH";
   const isDraft = detailFolder?.specialUse === "DRAFTS";
 
-  // Initial accounts load — full-layout skeleton.
+  // Initial accounts load — full-layout skeleton. It mirrors the route
+  // fallback in mail-skeleton.tsx but stays inlined here on purpose: swapping
+  // these host elements for a component would change the element type at this
+  // position and make React remount the whole page (losing focus and scroll)
+  // the moment the accounts arrive, instead of updating the panes in place.
   if (accounts === null && !accountsError) {
     return (
       <PageBody fullBleed>
         <div className="shrink-0 border-b border-background-200 px-6 pt-6 pb-4">
           <PageHeader title={t("pageTitle")} actions={headerActions} />
         </div>
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1" aria-busy="true">
           <div className="hidden w-[220px] shrink-0 flex-col gap-2 border-r border-background-200 bg-background-50 p-3 lg:flex">
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
@@ -938,7 +942,10 @@ function MailClientCoordinator() {
             ))}
           </div>
           <div className="hidden flex-1 items-center justify-center bg-background-50 p-8 lg:flex">
-            <p className="animate-pulse text-sm text-foreground-400">
+            <p
+              role="status"
+              className="animate-pulse text-sm text-foreground-400"
+            >
               {t("loadingLabel")}
             </p>
           </div>

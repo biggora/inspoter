@@ -32,8 +32,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CardGridSkeleton } from "@/components/ui/skeletons";
 import { Spinner } from "@/components/ui/spinner";
 import {
   StatusIndicator,
@@ -282,13 +283,17 @@ export function ServersView() {
     setEnrollmentTarget({ name: server.name });
   }, []);
 
-  const pageState: PageState = loading
-    ? "loading"
-    : servers.length === 0 && loadError
-      ? "error"
-      : servers.length === 0
-        ? "empty"
-        : "ready";
+  // Only the first load empties the page into a skeleton. A refresh over
+  // inventory we already have keeps the cards and dims them instead
+  // (design.md §4.4: retain confirmed data while a mutation/refresh runs).
+  const pageState: PageState =
+    loading && servers.length === 0
+      ? "loading"
+      : servers.length === 0 && loadError
+        ? "error"
+        : servers.length === 0
+          ? "empty"
+          : "ready";
 
   return (
     <PageBody>
@@ -313,7 +318,7 @@ export function ServersView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={load}>
+              <Button variant="outline" onClick={load} disabled={loading}>
                 <Icon
                   name="ri-refresh-line"
                   aria-hidden
@@ -327,36 +332,9 @@ export function ServersView() {
       />
 
       {pageState === "loading" && (
-        <CardGrid>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} size="sm" className="animate-fade-in">
-              <CardHeader className="border-b">
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="size-9 shrink-0 rounded-lg" />
-                  <div className="flex flex-1 flex-col gap-1.5">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </div>
-                <CardAction>
-                  <Skeleton className="h-6 w-20 rounded-full" />
-                </CardAction>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((j) => (
-                  <div key={j} className="flex items-center justify-between">
-                    <Skeleton className="h-3 w-10" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                ))}
-              </CardContent>
-              <CardFooter className="gap-2">
-                <Skeleton className="h-7 w-16 rounded-lg" />
-                <Skeleton className="h-7 w-16 rounded-lg" />
-              </CardFooter>
-            </Card>
-          ))}
-        </CardGrid>
+        <LoadingRegion>
+          <CardGridSkeleton metricRows={5} footerActions={2} />
+        </LoadingRegion>
       )}
 
       {pageState === "error" && (
@@ -400,17 +378,19 @@ export function ServersView() {
               <AlertDescription>{loadError}</AlertDescription>
             </Alert>
           )}
-          <CardGrid>
-            {servers.map((server) => (
-              <ServerCard
-                key={server.localServerId}
-                server={server}
-                onPowerAction={handlePowerAction}
-                onSetupMonitoring={handleSetupMonitoring}
-                error={cardErrors[server.localServerId]}
-              />
-            ))}
-          </CardGrid>
+          <LoadingOverlay busy={loading}>
+            <CardGrid>
+              {servers.map((server) => (
+                <ServerCard
+                  key={server.localServerId}
+                  server={server}
+                  onPowerAction={handlePowerAction}
+                  onSetupMonitoring={handleSetupMonitoring}
+                  error={cardErrors[server.localServerId]}
+                />
+              ))}
+            </CardGrid>
+          </LoadingOverlay>
         </>
       )}
 

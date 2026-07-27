@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { LoadingRegion } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { MailBody } from "./mail-body";
@@ -197,7 +198,7 @@ export function MessagePane({
     return (
       <div className="flex h-full min-h-0 flex-col">
         <BackButton onBack={onBack} />
-        <div className="space-y-4 p-6">
+        <LoadingRegion className="space-y-4 p-6">
           <Skeleton className="h-6 w-3/4" />
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 shrink-0 rounded-full" />
@@ -212,7 +213,7 @@ export function MessagePane({
             ))}
             <Skeleton className="h-4 w-2/3" />
           </div>
-        </div>
+        </LoadingRegion>
       </div>
     );
   }
