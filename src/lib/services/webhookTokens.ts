@@ -1,9 +1,14 @@
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { parseScopes, type McpScope } from "@/lib/mcp/scopes";
 
 // Webhook token management (FR-WH-002, AC-WH-008/009). Raw secret is shown
 // once at creation and never stored — only its sha256 hash is persisted
 // (NFR-SEC-002); tokenPrefix is a display-only identification aid.
+//
+// The same row doubles as the MCP API token: `scopes` grants read/write
+// access to workspace data over /api/mcp. An empty array (the default, and
+// the value of every token issued before MCP existed) means ingest only.
 
 export interface WebhookTokenSummary {
   id: string;
@@ -12,6 +17,7 @@ export interface WebhookTokenSummary {
   createdAt: Date;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
+  scopes: McpScope[];
 }
 
 export interface ChannelWebhookDto extends WebhookTokenSummary {
@@ -38,7 +44,7 @@ export class WebhookTokenRevokedError extends Error {
   code = "TOKEN_REVOKED" as const;
 
   constructor() {
-    super("Cannot rotate a revoked token");
+    super("Cannot modify a revoked token");
   }
 }
 
@@ -70,6 +76,7 @@ function toSummary(token: {
   createdAt: Date;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
+  scopes: string[];
 }): WebhookTokenSummary {
   return {
     id: token.id,
@@ -78,17 +85,19 @@ function toSummary(token: {
     createdAt: token.createdAt,
     lastUsedAt: token.lastUsedAt,
     revokedAt: token.revokedAt,
+    scopes: parseScopes(token.scopes),
   };
 }
 
 export async function create(
   workspaceId: string,
   name: string,
+  scopes: readonly McpScope[] = [],
 ): Promise<{ id: string; token: string; prefix: string }> {
   const { secret, tokenHash, tokenPrefix } = generateToken();
 
   const created = await db.webhookToken.create({
-    data: { workspaceId, name, tokenHash, tokenPrefix },
+    data: { workspaceId, name, tokenHash, tokenPrefix, scopes: [...scopes] },
   });
 
   return { id: created.id, token: secret, prefix: tokenPrefix };
@@ -155,12 +164,39 @@ export async function rotate(
       throw new WebhookTokenRevokedError();
     }
 
+    // Scopes ride along with the name: a rotation replaces the secret, not
+    // the token's permissions — dropping them here would silently break
+    // every MCP client the operator just re-keyed.
     return tx.webhookToken.create({
-      data: { workspaceId, name: existing.name, tokenHash, tokenPrefix },
+      data: {
+        workspaceId,
+        name: existing.name,
+        tokenHash,
+        tokenPrefix,
+        scopes: existing.scopes,
+      },
     });
   });
 
   return { id: created.id, token: secret, prefix: tokenPrefix };
+}
+
+export async function updateScopes(
+  id: string,
+  workspaceId: string,
+  scopes: readonly McpScope[],
+): Promise<WebhookTokenSummary> {
+  const existing = await db.webhookToken.findFirst({
+    where: { id, workspaceId, channelId: null },
+  });
+  if (!existing) throw new WebhookTokenNotFoundError();
+  if (existing.revokedAt) throw new WebhookTokenRevokedError();
+
+  const updated = await db.webhookToken.update({
+    where: { id },
+    data: { scopes: [...scopes] },
+  });
+  return toSummary(updated);
 }
 
 async function requireChannel(

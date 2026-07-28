@@ -548,6 +548,109 @@
           }
         }
       }
+    },
+    "/api/mcp": {
+      "post": {
+        "operationId": "callMcp",
+        "summary": "Model Context Protocol endpoint",
+        "description": "Streamable HTTP transport for MCP clients. The bearer token identifies the workspace and its scopes decide which tools `tools/list` advertises; a token with no MCP scopes is rejected as unauthorized. Serving is stateless, so GET and DELETE (session operations) answer 405.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JsonRpcRequest"
+              },
+              "example": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The JSON-RPC exchange completed. The body is a JSON-RPC response, or an SSE stream of them when the server emits related messages before its result.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcResponse"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpError"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not allowed on this stateless endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -608,6 +711,13 @@
         "schema": {
           "type": "string",
           "pattern": "^[0-9]+$"
+        }
+      },
+      "WwwAuthenticate": {
+        "description": "Announces bearer authentication for the MCP endpoint.",
+        "schema": {
+          "type": "string",
+          "const": "Bearer realm=\"inspoter-mcp\""
         }
       }
     },
@@ -829,6 +939,76 @@
           }
         }
       },
+      "JsonRpcRequest": {
+        "type": "object",
+        "required": ["jsonrpc", "method"],
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "const": "2.0"
+          },
+          "id": {
+            "description": "Omitted for notifications.",
+            "type": ["string", "number"]
+          },
+          "method": {
+            "type": "string",
+            "description": "MCP method, e.g. initialize, tools/list, tools/call."
+          },
+          "params": {
+            "type": "object"
+          }
+        }
+      },
+      "JsonRpcResponse": {
+        "type": "object",
+        "required": ["jsonrpc"],
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "const": "2.0"
+          },
+          "id": {
+            "type": ["string", "number"]
+          },
+          "result": {
+            "type": "object"
+          },
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "McpError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["UNAUTHORIZED", "RATE_LIMITED", "METHOD_NOT_ALLOWED"]
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "MetricsError": {
         "type": "object",
         "additionalProperties": false,
@@ -864,8 +1044,15 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "schemaVersion", "agentVersion", "capturedAt", "hostname",
-          "ips", "cpu", "memory", "filesystem", "uptimeSeconds"
+          "schemaVersion",
+          "agentVersion",
+          "capturedAt",
+          "hostname",
+          "ips",
+          "cpu",
+          "memory",
+          "filesystem",
+          "uptimeSeconds"
         ],
         "properties": {
           "schemaVersion": { "type": "integer", "const": 1 },
@@ -898,7 +1085,12 @@
       "MetricsMemory": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["totalBytes", "availableBytes", "swapTotalBytes", "swapFreeBytes"],
+        "required": [
+          "totalBytes",
+          "availableBytes",
+          "swapTotalBytes",
+          "swapFreeBytes"
+        ],
         "properties": {
           "totalBytes": { "type": "integer", "minimum": 0 },
           "availableBytes": { "type": "integer", "minimum": 0 },

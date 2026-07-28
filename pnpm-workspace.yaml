@@ -32,3 +32,5 @@ minimumReleaseAgeExclude:
   - next@16.2.11
   - swagger-client@3.37.7
   - swagger-ui-react@5.32.10
+  - '@modelcontextprotocol/core@2.0.0'
+  - '@modelcontextprotocol/server@2.0.0'

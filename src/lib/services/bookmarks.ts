@@ -149,6 +149,13 @@ export async function list(
     }));
 }
 
+export async function getBookmark(
+  id: string,
+  workspaceId: string,
+): Promise<Bookmark | null> {
+  return db.bookmark.findFirst({ where: { id, workspaceId } });
+}
+
 export async function createCategory(
   workspaceId: string,
   input: CreateCategoryInput,

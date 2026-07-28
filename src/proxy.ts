@@ -23,7 +23,10 @@ import { routing } from "@/i18n/routing";
 // rewrite like any other page, but it stays exempt from the auth redirect
 // itself (AC-AUTH-001 exception, NFR-SEC-001, C-2), as do
 // /api/auth/authentik/:path* (Authentik login-initiation/callback — reached
-// before any session cookie exists) and /api/webhooks/:path*. Renamed from
+// before any session cookie exists), /api/webhooks/:path*,
+// /api/server-metrics and /api/mcp. The last three authenticate with a bearer
+// API token and never carry a session cookie, so without the exemption they
+// would be redirected to /login instead of reaching their handler. Renamed from
 // middleware.ts to proxy.ts for Next.js 16 (the `middleware` file/export
 // convention is deprecated); proxy runs on the Node.js runtime, which is
 // sufficient for this cookie-only redirect.
@@ -68,6 +71,7 @@ export function proxy(request: NextRequest) {
     localizedPathname === "/" ||
     localizedPathname === "/login" ||
     pathname === "/api/server-metrics" ||
+    pathname === "/api/mcp" ||
     pathname.startsWith("/api/auth/authentik") ||
     pathname.startsWith("/api/webhooks");
   if (isAuthExempt) return response;
