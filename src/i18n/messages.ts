@@ -12,6 +12,7 @@ import alerts from "@/messages/ru/alerts.json";
 import mail from "@/messages/ru/mail.json";
 import messagesArea from "@/messages/ru/messages.json";
 import settings from "@/messages/ru/settings.json";
+import help from "@/messages/ru/help.json";
 import workspace from "@/messages/ru/workspace.json";
 import ui from "@/messages/ru/ui.json";
 import metadata from "@/messages/ru/metadata.json";
@@ -32,6 +33,7 @@ import enAlerts from "@/messages/en/alerts.json";
 import enMail from "@/messages/en/mail.json";
 import enMessagesArea from "@/messages/en/messages.json";
 import enSettings from "@/messages/en/settings.json";
+import enHelp from "@/messages/en/help.json";
 import enWorkspace from "@/messages/en/workspace.json";
 import enUi from "@/messages/en/ui.json";
 import enMetadata from "@/messages/en/metadata.json";
@@ -53,6 +55,7 @@ export const ruMessages = {
   mail,
   messages: messagesArea,
   settings,
+  help,
   workspace,
   ui,
   metadata,
@@ -75,6 +78,7 @@ export const enMessages = {
   mail: enMail,
   messages: enMessagesArea,
   settings: enSettings,
+  help: enHelp,
   workspace: enWorkspace,
   ui: enUi,
   metadata: enMetadata,

@@ -85,3 +85,12 @@ export const SETTINGS_NAV_ITEM: NavItem = {
   labelKey: "navSettings",
   icon: "ri-settings-4-line",
 };
+
+// Additive, same as Settings — always visible, not part of
+// Workspace.hiddenSections/SECTION_KEYS (no `key`). Rendered below Settings
+// in the same nav group.
+export const HELP_NAV_ITEM: NavItem = {
+  href: "/help",
+  labelKey: "navHelp",
+  icon: "ri-question-line",
+};

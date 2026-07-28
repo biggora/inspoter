@@ -29,6 +29,7 @@
   "navLogs": "Logs",
   "navAlerts": "Alerts",
   "navSettings": "Settings",
+  "navHelp": "Help",
   "setDefaultWorkspace": "Set as default",
   "removeDefaultWorkspace": "Remove default",
   "defaultWorkspaceSet": "Default workspace updated.",
