@@ -1,0 +1,126 @@
+{
+  "pageTitle": "Help",
+  "pageDescription": "How each part of the dashboard works.",
+  "backToHelp": "Back to Help",
+  "howToUseHeading": "How to use it",
+
+  "bookmarksTitle": "Bookmarks",
+  "bookmarksCardDescription": "Organize saved links into categories and subcategories.",
+  "bookmarksIntroP1": "Bookmarks stores links to sites and tools you use often, grouped into categories with one level of subcategories. Each bookmark can have a name, URL, description, and icon.",
+  "bookmarksIntroP2": "Categories and bookmarks can be reordered by drag-and-drop, and the whole library can be searched or filtered by category.",
+  "bookmarksSteps": [
+    "Click \"New category\" to create a top-level category, or add a subcategory from an existing category's menu.",
+    "Inside a category, click \"Add\" to create a bookmark with a name, URL, description, and icon.",
+    "Drag a category header or bookmark card to reorder it; drag a bookmark onto another category to move it there.",
+    "Use the search box to filter by name, description, or URL, and the category dropdown to show only one category.",
+    "Use a category's or bookmark's menu to rename or delete it — deleting a category also deletes its bookmarks."
+  ],
+
+  "domainsTitle": "Domains",
+  "domainsCardDescription": "View and manage DNS records across connected providers.",
+  "domainsIntroP1": "Domains lists every domain from your connected DNS providers (Cloudflare, Hetzner DNS, GoDaddy) in one table, with the number of DNS records and which provider manages it.",
+  "domainsIntroP2": "From a domain you can drill into its DNS records, or link it to an existing Bookmark or Service — or create one pre-filled with the domain's name.",
+  "domainsSteps": [
+    "Click \"Add provider\" to connect a Cloudflare, Hetzner DNS, or GoDaddy API credential.",
+    "The table lists every domain across providers, with its DNS record count and provider badge.",
+    "Click \"View DNS records\" on a domain to see and edit its DNS records.",
+    "Use the row's link menu to create or open a linked Bookmark or Service for that domain.",
+    "If a provider shows an error banner, click \"Retry\" to re-fetch it live."
+  ],
+
+  "serversTitle": "Servers",
+  "serversCardDescription": "Monitor and control servers from cloud providers and the metrics agent.",
+  "serversIntroP1": "Servers shows every server from your connected cloud providers alongside any host running the InSpoter metrics agent, combined into one card per server.",
+  "serversIntroP2": "Each card shows live status, CPU/RAM/disk usage, OS, location, and uptime, and — where the provider supports it — Start/Stop/Restart controls.",
+  "serversSteps": [
+    "Click \"Add provider\" to connect a server-hosting provider credential.",
+    "Each card shows status, CPU/RAM/disk usage (from the metrics agent if installed, otherwise the provider's plan capacity), OS, location, and uptime.",
+    "Use the Start, Stop, or Restart buttons (with a confirmation dialog) to control provider-managed servers.",
+    "Click \"Refresh\" to force a live re-fetch of every provider instead of the cached snapshot.",
+    "For a server without live metrics, click \"Set up monitoring\" to enroll it with the metrics agent."
+  ],
+
+  "hostingTitle": "Hosting",
+  "hostingCardDescription": "Track shared hosting accounts across connected providers.",
+  "hostingIntroP1": "Hosting aggregates shared-hosting/control-panel accounts from your connected providers into one card grid, showing domain, plan, and status.",
+  "hostingIntroP2": "Each card reports disk and bandwidth usage, database and e-mail account counts, and — for supported providers — lets you suspend or unsuspend the account.",
+  "hostingSteps": [
+    "Click \"Add provider\" to connect a hosting-panel API credential.",
+    "Each card shows the account's domain, status, disk and bandwidth usage with meters, database and e-mail counts, and plan.",
+    "Where supported, use Suspend/Unsuspend (with a confirmation dialog) to change the account's state.",
+    "Click \"Refresh\" to force a live re-fetch; a failing provider shows a retry banner."
+  ],
+
+  "servicesTitle": "Services",
+  "servicesCardDescription": "Uptime monitoring for HTTP, TCP, and PING targets.",
+  "servicesIntroP1": "Services runs uptime checks against HTTP, TCP, or PING targets you define, polling on the interval you set and recording a status history for each.",
+  "servicesIntroP2": "Every card auto-refreshes roughly every 10 seconds and shows the current status, last check time, response time, and a heartbeat strip of recent checks.",
+  "servicesSteps": [
+    "Click \"New service\" to add an HTTP, TCP, or PING monitor with its target address and check interval.",
+    "Each card auto-refreshes and shows a status badge, last-checked time, response time, and a heartbeat strip of recent checks.",
+    "Click \"Check now\" to force an immediate check outside the regular interval.",
+    "Use Pause/Resume to stop or restart monitoring without deleting the service.",
+    "Use \"Manage labels\" to create labels, then the search box and label filter to narrow the list.",
+    "Click a card's title to open its detail page, or use the card menu to edit or delete it."
+  ],
+
+  "mailTitle": "Mail",
+  "mailCardDescription": "A three-pane webmail client for connected IMAP accounts.",
+  "mailIntroP1": "Mail is a three-pane webmail client — accounts and folders on the left, the message list in the middle, and the reading pane on the right — for IMAP/SMTP mailboxes you connect, plus a built-in webhook mailbox for mail received over the API.",
+  "mailIntroP2": "You can search, filter to unread, sort, reply/forward/archive/delete, apply labels, and set up filter rules that automatically label future incoming mail.",
+  "mailSteps": [
+    "Click \"Add account\" to connect an IMAP/SMTP mailbox.",
+    "Pick an account and folder in the sidebar, then use search, \"Unread only\", and sort to narrow the message list.",
+    "Click a message to read it, and use Reply, Forward, Archive, Delete, or mark read/unread from the reading pane.",
+    "Click \"Sync\" to pull new mail from the server on demand.",
+    "Use \"Manage labels\" to create colored labels and apply them to messages, and \"Filter rules\" to auto-label future mail matching a sender or subject.",
+    "Click \"Compose\" to write new mail; unsent drafts are saved and reopened from the Drafts folder."
+  ],
+
+  "messagesTitle": "Messages",
+  "messagesCardDescription": "Slack-style channels for internal chat and incoming webhooks.",
+  "messagesIntroP1": "Messages organizes channels into categories, similar to Slack, for both manual team chat and messages posted in by external systems through a channel's webhook.",
+  "messagesIntroP2": "Select a channel to see its timeline, scroll up to load older history, and send messages from the composer at the bottom.",
+  "messagesSteps": [
+    "Use the sidebar's \"+\" controls to create a category, then a channel inside it.",
+    "Select a channel to view its message timeline; scroll up or click \"Load previous\" for older messages.",
+    "Type in the composer and send to post a message to the selected channel.",
+    "Open a channel's settings (gear icon) to rename it or manage its incoming webhook, used by external systems to post into it.",
+    "Use the category or channel context menu to rename or delete it."
+  ],
+
+  "activityTitle": "Activity",
+  "activityCardDescription": "Audit log of every action taken in the workspace.",
+  "activityIntroP1": "Activity is a read-only audit trail of every create, update, delete, and other action operators take across the workspace — bookmarks, domains, servers, mail, tokens, and more.",
+  "activityIntroP2": "Entries are searchable and filterable, and each row can be expanded to see the full details of what changed.",
+  "activitySteps": [
+    "Use the search box, and the Action, Entity type, and Operator filters to narrow the table.",
+    "Use the sort control to switch between newest-first and oldest-first.",
+    "Click the chevron on a row with details to expand its full change payload.",
+    "Use Previous/Next to page through history."
+  ],
+
+  "logsTitle": "Logs",
+  "logsCardDescription": "Central log collector fed by the incoming webhook API.",
+  "logsIntroP1": "Logs stores log lines pushed in by external systems through the log webhook endpoint, so scripts, cron jobs, and services outside InSpoter have one place to report what they did.",
+  "logsIntroP2": "Entries are searchable and filterable by level and source, and each row can be expanded to see its full message and details.",
+  "logsSteps": [
+    "Point an external system at the log webhook endpoint with a bearer token to start sending entries (see the example request shown when the list is empty).",
+    "Use the search box, Level filter, and Source filter to narrow the list.",
+    "Use the sort control to switch between newest-first and oldest-first.",
+    "Click the chevron on a row to expand its full message and details.",
+    "Use Previous/Next to page through results."
+  ],
+
+  "alertsTitle": "Alerts",
+  "alertsCardDescription": "Categorized alert inbox fed by the incoming webhook API.",
+  "alertsIntroP1": "Alerts stores alert events pushed in by external systems through the alert webhook endpoint, organized into categories you define (e.g. \"Deploy\", \"Security\") with an info/warning/error/critical severity.",
+  "alertsIntroP2": "Entries are searchable and filterable by category and severity, so you can triage what needs attention.",
+  "alertsSteps": [
+    "Click \"New category\" to define alert categories used to classify incoming alerts.",
+    "Point an external system at the alert webhook endpoint with a bearer token, including category, severity, source, and message (see the example request shown when the list is empty).",
+    "Use the search box, Category filter, and Severity filter to narrow the table.",
+    "Use the sort control and Previous/Next to page through results.",
+    "Use \"Manage categories\" to rename or delete alert categories."
+  ]
+}

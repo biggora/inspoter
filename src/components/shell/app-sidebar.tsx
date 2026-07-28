@@ -19,8 +19,12 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { InspoterIcon } from "@/components/ui/inspoter-logo";
 import { NavPending } from "./route-progress";
-import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
+import { HELP_NAV_ITEM, SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+
+// Additive nav items rendered below the main sections, in a separate group —
+// always visible, never part of Workspace.hiddenSections.
+const ADDITIVE_NAV_ITEMS = [SETTINGS_NAV_ITEM, HELP_NAV_ITEM];
 
 // AC-SHELL-001/002/004 (design.md §3.2). Single <nav> landmark hosting the
 // seven PRD sections plus Settings (design.md §9 C-1) — below `lg`/1024px
@@ -112,29 +116,29 @@ export function AppSidebar({
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={isSectionActive(SETTINGS_NAV_ITEM.href)}
-                    tooltip={t(SETTINGS_NAV_ITEM.labelKey)}
-                    data-active={
-                      isSectionActive(SETTINGS_NAV_ITEM.href) ? "true" : "false"
-                    }
-                    className="shell-nav-item"
-                    render={<Link href={SETTINGS_NAV_ITEM.href} />}
-                  >
-                    <span className="shell-icon-tile">
-                      <i
-                        aria-hidden="true"
-                        className={cn(
-                          SETTINGS_NAV_ITEM.icon,
-                          "text-base leading-none",
-                        )}
-                      />
-                    </span>
-                    <span>{t(SETTINGS_NAV_ITEM.labelKey)}</span>
-                    <NavPending />
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {ADDITIVE_NAV_ITEMS.map((item) => {
+                  const active = isSectionActive(item.href);
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={t(item.labelKey)}
+                        data-active={active ? "true" : "false"}
+                        className="shell-nav-item"
+                        render={<Link href={item.href} />}
+                      >
+                        <span className="shell-icon-tile">
+                          <i
+                            aria-hidden="true"
+                            className={cn(item.icon, "text-base leading-none")}
+                          />
+                        </span>
+                        <span>{t(item.labelKey)}</span>
+                        <NavPending />
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

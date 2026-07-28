@@ -29,6 +29,7 @@
   "navLogs": "Логи",
   "navAlerts": "Оповещения",
   "navSettings": "Настройки",
+  "navHelp": "Помощь",
   "setDefaultWorkspace": "Назначить по умолчанию",
   "removeDefaultWorkspace": "Убрать по умолчанию",
   "defaultWorkspaceSet": "Рабочее пространство по умолчанию обновлено.",
