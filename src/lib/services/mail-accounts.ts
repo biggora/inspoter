@@ -4,6 +4,7 @@ import type {
   MailAccountKind,
   MailFolder,
   MailSecurity,
+  MailSpecialUse,
   MailSyncStatus,
   ProviderMode,
 } from "@/generated/prisma/client";
@@ -149,6 +150,54 @@ export async function getOrCreateWebhookAccount(
     if (raced) return raced;
     throw error;
   }
+}
+
+export interface MailFolderSummary {
+  id: string;
+  path: string;
+  name: string;
+  specialUse: MailSpecialUse | null;
+  position: number;
+  unreadCount: number;
+}
+
+// Folder list for one account, sorted by position then name, with unread
+// counts from a single groupBy. BigInt columns (uidValidity/lastSeenUid)
+// intentionally never leave the service. Shared by the mail UI sidebar route
+// and the MCP mail_folders_list tool.
+export async function listFoldersForAccount(
+  accountId: string,
+  workspaceId: string,
+): Promise<MailFolderSummary[]> {
+  const account = await db.mailAccount.findFirst({
+    where: { id: accountId, workspaceId },
+    select: { id: true },
+  });
+  if (!account) throw new MailAccountNotFoundError(accountId);
+
+  const [folders, unreadCounts] = await Promise.all([
+    db.mailFolder.findMany({
+      where: { accountId, workspaceId },
+      orderBy: [{ position: "asc" }, { name: "asc" }],
+    }),
+    db.mailItem.groupBy({
+      by: ["folderId"],
+      where: { accountId, workspaceId, isRead: false },
+      _count: true,
+    }),
+  ]);
+  const unreadByFolder = new Map(
+    unreadCounts.map((row) => [row.folderId, row._count]),
+  );
+
+  return folders.map((folder) => ({
+    id: folder.id,
+    path: folder.path,
+    name: folder.name,
+    specialUse: folder.specialUse,
+    position: folder.position,
+    unreadCount: unreadByFolder.get(folder.id) ?? 0,
+  }));
 }
 
 // Secret-free projection of a MailAccount row — encryptedData/iv/authTag

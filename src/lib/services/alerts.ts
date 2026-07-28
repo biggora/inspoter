@@ -153,6 +153,16 @@ export async function list(
   return { items, nextCursor };
 }
 
+export async function getById(
+  id: string,
+  workspaceId: string,
+): Promise<AlertWithCategory | null> {
+  return db.alert.findFirst({
+    where: { id, workspaceId },
+    include: { alertCategory: true },
+  });
+}
+
 export async function listCategories(
   workspaceId: string,
 ): Promise<AlertCategory[]> {

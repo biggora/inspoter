@@ -6,6 +6,7 @@ import {
   getActiveWorkspaceId,
   WORKSPACE_HEADER_NAME,
 } from "@/lib/client/active-workspace";
+import type { McpScope } from "@/lib/mcp/scopes";
 
 export interface WebhookTokenDto {
   id: string;
@@ -14,6 +15,8 @@ export interface WebhookTokenDto {
   createdAt: string;
   lastUsedAt: string | null;
   revokedAt: string | null;
+  /** MCP permissions; empty means the token can only post webhooks. */
+  scopes: McpScope[];
 }
 
 export interface CreatedWebhookTokenDto {
@@ -76,10 +79,15 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const webhookTokensApi = {
   list: () => request<WebhookTokenDto[]>("/api/webhook-tokens"),
-  create: (name: string) =>
+  create: (name: string, scopes: McpScope[]) =>
     request<CreatedWebhookTokenDto>("/api/webhook-tokens", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, scopes }),
+    }),
+  updateScopes: (id: string, scopes: McpScope[]) =>
+    request<WebhookTokenDto>(`/api/webhook-tokens/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ scopes }),
     }),
   revoke: (id: string) =>
     request<void>(`/api/webhook-tokens/${id}`, { method: "DELETE" }),

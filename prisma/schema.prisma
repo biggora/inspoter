@@ -750,6 +750,11 @@ model WebhookToken {
   createdAt          DateTime         @default(now())
   revokedAt          DateTime? // AC-WH-009 revoke -> 401
   lastUsedAt         DateTime?
+  // MCP permissions (src/lib/mcp/scopes.ts). Empty = ingest-only token: the
+  // webhook and server-metrics pipelines never look at this column, so every
+  // pre-existing token keeps working and gains no read access to the
+  // workspace.
+  scopes             String[]         @default([])
   idempotencyKeys    IdempotencyKey[]
 
   @@unique([id, workspaceId])

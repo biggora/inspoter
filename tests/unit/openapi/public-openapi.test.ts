@@ -82,6 +82,9 @@ const channel = spec.paths[channelPath].post;
 const responseStatuses = ["200", "201", "400", "401", "413", "429", "500"];
 const metricsPath = "/api/server-metrics";
 const metrics = spec.paths[metricsPath].post;
+const mcpPath = "/api/mcp";
+const mcp = spec.paths[mcpPath].post;
+const mcpResponseStatuses = ["200", "401", "405", "429", "500"];
 const metricsResponseStatuses = [
   "200",
   "201",
@@ -169,7 +172,7 @@ function forbiddenExampleEntries(
 describe("public OpenAPI contract", () => {
   it("contains exactly the expected public POST paths", () => {
     expect(Object.keys(spec.paths).sort()).toEqual(
-      [metricsPath, channelPath, typedPath].sort(),
+      [metricsPath, channelPath, typedPath, mcpPath].sort(),
     );
     for (const pathItem of Object.values(spec.paths)) {
       expect(Object.keys(pathItem)).toEqual(["post"]);
@@ -393,5 +396,37 @@ describe("public OpenAPI contract", () => {
         metrics.responses?.[status]?.headers?.["Retry-After"],
       ).toBeUndefined();
     }
+  });
+
+  it("uses bearer auth for the MCP endpoint", () => {
+    expect(mcp.security).toEqual([{ WebhookBearer: [] }]);
+    expect(mcp.requestBody?.required).toBe(true);
+    expect(
+      resolveRef(mcp.requestBody?.content?.["application/json"]?.schema ?? {})
+        .required,
+    ).toEqual(["jsonrpc", "method"]);
+  });
+
+  it("documents the MCP statuses a stateless endpoint can answer", () => {
+    expect(Object.keys(mcp.responses ?? {})).toEqual(mcpResponseStatuses);
+
+    const error = spec.components?.schemas?.McpError;
+    for (const status of ["401", "405", "429"]) {
+      expect(responseSchema(mcp, status)).toBe(error);
+    }
+    expect(responseSchema(mcp, "200")).toBe(
+      spec.components?.schemas?.JsonRpcResponse,
+    );
+    expect(mcp.responses?.["500"]?.content).toBeUndefined();
+  });
+
+  it("announces the bearer challenge and retry hint on MCP responses", () => {
+    for (const status of mcpResponseStatuses.filter((s) => s !== "500")) {
+      expect(mcp.responses?.[status]?.headers?.["Cache-Control"]).toBeTruthy();
+    }
+    expect(mcp.responses?.["500"]?.headers).toBeUndefined();
+
+    expect(mcp.responses?.["401"]?.headers?.["WWW-Authenticate"]).toBeTruthy();
+    expect(mcp.responses?.["429"]?.headers?.["Retry-After"]).toBeTruthy();
   });
 });

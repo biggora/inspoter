@@ -47,6 +47,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import type { McpScope } from "@/lib/mcp/scopes";
+import { McpScopeFields } from "./mcp-scope-fields";
 import {
   ApiError,
   webhookTokensApi,
@@ -68,7 +71,12 @@ function formatDate(iso: string | null): string {
 // Settings > Webhooks — token list + create/revoke (design.md §6.7.1,
 // AC-WH-008/009). Client-fetched (no server-component data hand-off) since
 // the raw secret must never round-trip through a server-rendered prop.
-export function WebhookTokensView() {
+interface WebhookTokensViewProps {
+  /** Absolute origin resolved from the request, for the MCP endpoint URL. */
+  origin: string;
+}
+
+export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
   const t = useTranslations("settings");
   const [tokens, setTokens] = useState<WebhookTokenDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,8 +87,17 @@ export function WebhookTokensView() {
     useState<CreatedWebhookTokenDto | null>(null);
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
+  const [scopes, setScopes] = useState<McpScope[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [scopesTarget, setScopesTarget] = useState<WebhookTokenDto | null>(
+    null,
+  );
+  const [editedScopes, setEditedScopes] = useState<McpScope[]>([]);
+  const [savingScopes, setSavingScopes] = useState(false);
+
+  const mcpEndpoint = `${origin}/api/mcp`;
 
   const [revokeTarget, setRevokeTarget] = useState<WebhookTokenDto | null>(
     null,
@@ -126,6 +143,7 @@ export function WebhookTokensView() {
     if (!open) {
       setName("");
       setNameError(null);
+      setScopes([]);
       setCreatedToken(null);
       setCopied(false);
       load();
@@ -142,7 +160,7 @@ export function WebhookTokensView() {
     setSubmitting(true);
     setNameError(null);
     try {
-      const created = await webhookTokensApi.create(trimmed);
+      const created = await webhookTokensApi.create(trimmed, scopes);
       setCreatedToken(created);
       toast.success(t("tokenCreatedToast"));
     } catch (err) {
@@ -166,6 +184,38 @@ export function WebhookTokensView() {
       toast.success(t("copiedToClipboardToast"));
     } catch {
       toast.error(t("copyFailedError"));
+    }
+  }
+
+  async function handleCopyEndpoint() {
+    try {
+      await navigator.clipboard.writeText(mcpEndpoint);
+      toast.success(t("copiedToClipboardToast"));
+    } catch {
+      toast.error(t("copyFailedError"));
+    }
+  }
+
+  function openScopesDialog(token: WebhookTokenDto) {
+    setScopesTarget(token);
+    setEditedScopes(token.scopes);
+  }
+
+  async function handleScopesSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!scopesTarget) return;
+    setSavingScopes(true);
+    try {
+      await webhookTokensApi.updateScopes(scopesTarget.id, editedScopes);
+      toast.success(t("scopesUpdatedToast"));
+      setScopesTarget(null);
+      load();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : t("updateScopesError"),
+      );
+    } finally {
+      setSavingScopes(false);
     }
   }
 
@@ -236,6 +286,32 @@ export function WebhookTokensView() {
         </Alert>
       )}
 
+      <section className="flex flex-col gap-3 rounded-lg border border-background-200 bg-background-50 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-medium text-foreground">{t("mcpTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("mcpDescription")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="rounded-md border border-border bg-(--bg-sunken) px-2 py-1 font-mono text-sm break-all text-foreground">
+            {mcpEndpoint}
+          </code>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopyEndpoint}
+          >
+            <Icon
+              name="ri-file-copy-line"
+              aria-hidden
+              data-icon="inline-start"
+            />
+            {t("copyButton")}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">{t("mcpAuthHint")}</p>
+      </section>
+
       {loading ? (
         <LoadingRegion>
           <TableSkeleton rows={3} />
@@ -252,6 +328,7 @@ export function WebhookTokensView() {
             <TableRow>
               <TableHead>{t("nameHeader")}</TableHead>
               <TableHead>{t("prefixHeader")}</TableHead>
+              <TableHead>{t("scopesHeader")}</TableHead>
               <TableHead>{t("createdHeader")}</TableHead>
               <TableHead>{t("lastUsedHeader")}</TableHead>
               <TableHead>{t("statusHeader")}</TableHead>
@@ -268,6 +345,21 @@ export function WebhookTokensView() {
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {token.tokenPrefix}…
+                  </TableCell>
+                  <TableCell>
+                    {token.scopes.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">
+                        {t("scopesWebhookOnly")}
+                      </span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {token.scopes.map((scope) => (
+                          <Badge key={scope} variant="outline">
+                            {scope}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(token.createdAt)}
@@ -289,6 +381,13 @@ export function WebhookTokensView() {
                       </Button>
                     ) : (
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openScopesDialog(token)}
+                        >
+                          {t("editScopesButton")}
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -340,6 +439,7 @@ export function WebhookTokensView() {
                     />
                     <FieldError id={nameErrorId}>{nameError}</FieldError>
                   </Field>
+                  <McpScopeFields value={scopes} onChange={setScopes} />
                 </FieldGroup>
                 <DialogFooter>
                   <DialogClose
@@ -404,6 +504,43 @@ export function WebhookTokensView() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={scopesTarget !== null}
+        onOpenChange={(open) => !open && setScopesTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("editScopesTitle", { name: scopesTarget?.name ?? "" })}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleScopesSubmit}
+            noValidate
+            className="flex flex-col gap-4"
+          >
+            <FieldGroup>
+              <McpScopeFields value={editedScopes} onChange={setEditedScopes} />
+            </FieldGroup>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" />}>
+                {t("cancelButton")}
+              </DialogClose>
+              <Button type="submit" disabled={savingScopes}>
+                {savingScopes ? (
+                  <>
+                    <Spinner data-icon="inline-start" aria-hidden />
+                    {t("savingLabel")}
+                  </>
+                ) : (
+                  t("saveButton")
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

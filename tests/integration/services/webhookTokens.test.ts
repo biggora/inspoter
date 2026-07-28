@@ -177,6 +177,21 @@ describe("rotate()", () => {
     expect(oldContext).toBeNull();
   });
 
+  it("carries the MCP scopes forward — a rotation re-keys, it does not downgrade", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-rotate-scopes`,
+      ["mail:read", "logs:read"],
+    );
+
+    const rotated = await webhookTokensService.rotate(created.id, workspaceId);
+
+    const newRow = await db.webhookToken.findUnique({
+      where: { id: rotated.id },
+    });
+    expect(newRow?.scopes).toEqual(["mail:read", "logs:read"]);
+  });
+
   it("throws WebhookTokenRevokedError when rotating an already-revoked token", async () => {
     const created = await webhookTokensService.create(
       workspaceId,
@@ -210,6 +225,69 @@ describe("rotate()", () => {
     await expect(
       webhookTokensService.rotate(created.webhook.id, workspaceId),
     ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
+  });
+});
+
+describe("updateScopes()", () => {
+  it("replaces the scope set in place, keeping the same secret", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-scopes-update`,
+      ["mail:read"],
+    );
+
+    const updated = await webhookTokensService.updateScopes(
+      created.id,
+      workspaceId,
+      ["mail:read", "mail:write", "alerts:read"],
+    );
+
+    expect(updated.scopes).toEqual(["mail:read", "mail:write", "alerts:read"]);
+    const stored = await db.webhookToken.findUnique({
+      where: { id: created.id },
+    });
+    expect(stored?.tokenPrefix).toBe(created.prefix);
+  });
+
+  it("downgrades a token to webhooks only when given an empty set", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-scopes-clear`,
+      ["logs:read"],
+    );
+
+    const updated = await webhookTokensService.updateScopes(
+      created.id,
+      workspaceId,
+      [],
+    );
+
+    expect(updated.scopes).toEqual([]);
+  });
+
+  it("throws WebhookTokenNotFoundError for another workspace's token", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-scopes-foreign`,
+      ["logs:read"],
+    );
+
+    await expect(
+      webhookTokensService.updateScopes(created.id, otherWorkspaceId, []),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenNotFoundError);
+  });
+
+  it("throws WebhookTokenRevokedError for a revoked token", async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-scopes-revoked`,
+      ["logs:read"],
+    );
+    await webhookTokensService.revoke(created.id, workspaceId);
+
+    await expect(
+      webhookTokensService.updateScopes(created.id, workspaceId, ["mail:read"]),
+    ).rejects.toBeInstanceOf(webhookTokensService.WebhookTokenRevokedError);
   });
 });
 

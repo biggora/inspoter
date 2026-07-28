@@ -11,6 +11,7 @@ Inspoter — self-hosted панель для управления доменам
 - почтовые аккаунты IMAP/SMTP, сообщения и вложения;
 - каналы сообщений, входящие и исходящие webhook;
 - закладки, логи и оповещения;
+- MCP-сервер для ИИ-ассистентов с правами на уровне API-токена;
 - рабочие пространства, участники и переключение между командами;
 - интерфейс на английском и русском языках;
 - вход по паролю или через Authentik OIDC.
@@ -108,12 +109,14 @@ docker compose exec app pnpm db:seed
 
 Swagger UI доступен авторизованным пользователям в разделе **Настройки → API документация** (`/settings/api-docs`; для русской локали — `/ru/settings/api-docs`). Приложение передаёт проверенную в репозитории спецификацию странице на сервере и не публикует отдельный `/openapi.json`.
 
-Контракт OpenAPI 3.1.1 описывает только два внешних входящих webhook:
+Контракт OpenAPI 3.1.1 описывает публичные маршруты, не использующие сессионную куку:
 
 - `POST /api/webhooks/{type}` с Bearer-токеном;
-- `POST /api/webhooks/channels/{webhookId}/{token}` с секретным токеном в URL.
+- `POST /api/webhooks/channels/{webhookId}/{token}` с секретным токеном в URL;
+- `POST /api/server-metrics` с Bearer-токеном;
+- `POST /api/mcp` с Bearer-токеном.
 
-Оба маршрута определяют рабочее пространство по webhook-токену и не используют `X-Inspoter-Workspace`. Описания операций и примеры в Swagger UI написаны на английском. Внутренние dashboard API, OIDC и маршруты управления токенами не входят в публичную спецификацию. Не сохраняйте и не передавайте channel webhook URL через логи: URL содержит секрет.
+Все они определяют рабочее пространство по API-токену и не используют `X-Inspoter-Workspace`. Описания операций и примеры в Swagger UI написаны на английском. Внутренние dashboard API, OIDC и маршруты управления токенами не входят в публичную спецификацию. Не сохраняйте и не передавайте channel webhook URL через логи: URL содержит секрет.
 
 Проверить спецификацию можно командами:
 
@@ -122,6 +125,53 @@ pnpm openapi:lint       # правила OpenAPI через Redocly CLI
 pnpm openapi:contract   # соответствие двум публичным route-контрактам
 pnpm openapi:check      # обе проверки последовательно
 ```
+
+## MCP (Model Context Protocol)
+
+`POST /api/mcp` — эндпоинт Model Context Protocol: ИИ-ассистент (Claude Code и Claude Desktop, Cursor, VS Code) получает доступ к почте, оповещениям, закладкам, серверам, сервисам и логам рабочего пространства. Транспорт — Streamable HTTP без сессий; авторизация — тот же универсальный API-токен, что и у webhook, через заголовок `Authorization: Bearer <токен>`.
+
+### Выдача токена
+
+**Настройки → API-токены** (`/settings/webhooks`). При создании токена отметьте нужные права; секрет показывается один раз. Права можно изменить позже кнопкой «Права» — секрет при этом не меняется, а ротация токена права сохраняет.
+
+Токен без единого права остаётся токеном приёма webhook и метрик: на `/api/mcp` он получает `401`. Поэтому все токены, выданные до появления MCP, доступа к данным рабочего пространства не получают.
+
+### Подключение клиента
+
+```json
+{
+  "mcpServers": {
+    "inspoter": {
+      "type": "http",
+      "url": "https://dashboard.example.com/api/mcp",
+      "headers": { "Authorization": "Bearer ВАШ_ТОКЕН" }
+    }
+  }
+}
+```
+
+Клиентам без поддержки HTTP-транспорта подойдёт обёртка [`mcp-remote`](https://www.npmjs.com/package/mcp-remote): `npx mcp-remote https://dashboard.example.com/api/mcp --header "Authorization: Bearer ВАШ_ТОКЕН"`.
+
+### Инструменты и права
+
+`tools/list` показывает только те инструменты, на которые у токена есть права.
+
+| Право             | Инструменты                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| `mail:read`       | `mail_accounts_list`, `mail_folders_list`, `mail_labels_list`, `mail_search`, `mail_get` |
+| `mail:write`      | `mail_draft_save`, `mail_send`                                                           |
+| `alerts:read`     | `alerts_search`, `alerts_get`, `alert_categories_list`                                   |
+| `bookmarks:read`  | `bookmarks_search`, `bookmarks_get`, `bookmark_categories_list`                          |
+| `bookmarks:write` | `bookmark_create`                                                                        |
+| `servers:read`    | `servers_list`, `server_get`                                                             |
+| `services:read`   | `services_list`, `service_get`, `service_checks`                                         |
+| `logs:read`       | `logs_search`                                                                            |
+
+Черновики и отправка работают с любого IMAP-аккаунта рабочего пространства: `mail_accounts_list` возвращает доступные аккаунты, их `id` передаётся в `mail_draft_save` и `mail_send`. Системный аккаунт `WEBHOOK` только принимает почту и отправлять через него нельзя.
+
+Показатели серверов (CPU, load, память, swap, диск, uptime) приходят прямо в ответе `servers_list` и `server_get` в поле `metrics`; история проверок сервисов — в `service_checks`.
+
+Rate limit общий с webhook-эндпоинтами и настраивается через `WEBHOOK_RATE_LIMIT` и `WEBHOOK_RATE_WINDOW_MS`. `GET` и `DELETE` на `/api/mcp` отвечают `405`: сессии протокола не поддерживаются.
 
 ## Метрики серверов (VPS Metrics Agent)
 
@@ -168,7 +218,7 @@ docker compose -f metrics-agent/compose.yml up -d
 
 `POST /api/server-metrics` — единственный публичный эндпоинт для приёма метрик. Авторизация через универсальный API-токен рабочего пространства (Bearer, SHA-256 hash-only) — тот же токен, что и для входящих webhook. Сессионная аутентификация не используется. Rate limit: 12 запросов в минуту на пару «токен + IP» (настраивается через env). Успешный ответ содержит `{ code, localServerId }`.
 
-Управление токенами: `GET/POST /api/webhook-tokens`, `DELETE /api/webhook-tokens/[id]`, `POST /api/webhook-tokens/[id]/rotate` — защищены сессионной аутентификацией и доступны любому участнику рабочего пространства.
+Управление токенами: `GET/POST /api/webhook-tokens`, `PATCH/DELETE /api/webhook-tokens/[id]`, `POST /api/webhook-tokens/[id]/rotate` — защищены сессионной аутентификацией и доступны любому участнику рабочего пространства. `PATCH` меняет права MCP (см. раздел выше).
 
 ## Демо-данные
 

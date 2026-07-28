@@ -1,15 +1,25 @@
 import { z } from "zod";
 import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { MCP_SCOPES } from "@/lib/mcp/scopes";
 
 // Legacy workspace-wide token management keeps its original permissive wire
 // contract for backwards compatibility. This schema is UI-facing (used by
 // the workspace settings webhook-tokens dialog), so messages are Russian.
+// `scopes` is optional and defaults to [] so the pre-MCP request body still
+// validates unchanged.
+const mcpScopesSchema = z.array(z.enum(MCP_SCOPES));
+
 export const createWebhookTokenSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, { error: () => VALIDATION_RU.webhookToken.nameRequired }),
+  scopes: mcpScopesSchema.default([]),
 });
+
+export const updateWebhookTokenScopesSchema = z
+  .object({ scopes: mcpScopesSchema })
+  .strict();
 
 // UI-facing (channel settings dialog's "create channel webhook" form) —
 // Russian messages surface as fieldErrors there.
@@ -44,4 +54,7 @@ export const idempotencyKeySchema = z
   .regex(/^[\x20-\x7e]+$/, "Idempotency-Key must be printable ASCII");
 
 export type CreateWebhookTokenInput = z.infer<typeof createWebhookTokenSchema>;
+export type UpdateWebhookTokenScopesInput = z.infer<
+  typeof updateWebhookTokenScopesSchema
+>;
 export type ChannelWebhookPayload = z.infer<typeof channelWebhookPayloadSchema>;

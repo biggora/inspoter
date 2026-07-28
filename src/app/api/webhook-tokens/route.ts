@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     const token = await webhookTokensService.create(
       workspace.id,
       parsed.data.name,
+      parsed.data.scopes,
     );
     recordActivity(workspace.id, {
       operatorId: operator.id,
