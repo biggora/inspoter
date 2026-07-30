@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.6
-**Status:** Mail label/filter member-management authorization reconciled; awaiting user verification.
+**Version:** 1.7
+**Status:** Dashboards section coverage recorded and green.
 **Owner:** tester
-**Date:** 2026-07-20
-**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.14, `docs/architecture.md` v1.12, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
+**Date:** 2026-07-30
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.15, `docs/architecture.md` v1.13, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.7 — 2026-07-30:** added §13 for the Dashboards section (AC-DSH-001..018): grid-engine, weather-cache, calendar-bucketing and per-kind config unit suites, the ten widget render suites, DB-backed service/API suites including layout rejection and workspace isolation, and two Playwright specs (functional flow plus light/dark/phone visual acceptance). Records the full-suite result and the three pre-existing failures that are outside this section.
 - **v1.6 — 2026-07-24:** opened Mail label definitions, automatic filter rules, and backfill controls to every authenticated active-workspace member; retained membership and workspace-isolation checks.
 - **v1.5 — 2026-07-21:** reconciled public OpenAPI, VPS Metrics Agent, and implemented Q-15 behavior; retained the guarded Phase 5 migration/performance/backup/rollback/restart evidence and final regression/review gate. User verification remains required.
 - **v1.4 — 2026-07-20:** added Q-15 Phase 2–5 service/API/component/Playwright, concurrency, isolation, accessibility, responsive, migration, rollback, recovery, and performance cases for AC-MAIL-031..045.
@@ -599,3 +600,83 @@ restore/hash comparison does not pass `ML-BACKUP-001`.
   and 420px, including Axe serious/critical=0, containment, keyboard/focus, and
   historical-run progress. Independent backend, UI, and docs/evidence audits
   were rerun after their findings were fixed.
+
+## 13. Dashboards (2026-07-30)
+
+Covers AC-DSH-001..018 (`docs/prd.md` §3.0a, `docs/architecture.md` §7E,
+`docs/design.md` §5.0). The grid invariant is verified as pure functions rather
+than through the browser: the same module validates a layout on both sides of
+the wire, so a unit test on it is a statement about the API contract too.
+
+### 13.1 Grid engine and configuration (unit, no database)
+
+| ID           | Acceptance/evidence target                                                                                                                                                                                                                                                                                                                                                                    | Trace          | Status |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------ |
+| DSH-GRID-001 | `clampRect` keeps a rectangle inside 12 columns, shrinks an over-wide tile instead of shifting it left, clamps to the kind's min/max, forbids a negative row, and rounds the fractional cells a pointer drag produces.                                                                                                                                                                          | AC-DSH-012/013 | PASS   |
+| DSH-GRID-002 | `rectsOverlap`/`hasOverlaps` treat touching edges as free and a shared cell as a collision, across a whole layout.                                                                                                                                                                                                                                                                             | AC-DSH-013     | PASS   |
+| DSH-GRID-003 | `resolveCollisions` pushes the overlapped tile down, propagates through a stack, leaves side-by-side tiles untouched, and is a no-op for an unknown priority id.                                                                                                                                                                                                                                | AC-DSH-011     | PASS   |
+| DSH-GRID-004 | `compactVertically` pulls tiles into a freed hole, keeps stacking order, compacts independent columns independently, never introduces an overlap, and is idempotent.                                                                                                                                                                                                                            | AC-DSH-011     | PASS   |
+| DSH-GRID-005 | `findFreeSlot` places the first tile at the origin, fills the gap beside an existing tile, moves to a new row when the top row is full, and clamps an over-wide tile.                                                                                                                                                                                                                          | AC-DSH-007     | PASS   |
+| DSH-GRID-006 | `moveWidget` swaps two stacked tiles, moves within a row without disturbing anything, compacts a drop into empty space back against the top, and ignores an unknown id.                                                                                                                                                                                                                         | AC-DSH-011     | PASS   |
+| DSH-GRID-007 | `resizeWidget` grows a tile and pushes its neighbour down, pulls a neighbour back up on shrink, and respects the kind's size envelope.                                                                                                                                                                                                                                                         | AC-DSH-012     | PASS   |
+| DSH-CFG-001  | Per-kind config schemas: name trim/length bounds, unknown-format and unusable-time-zone rejection, weather coordinate ranges plus required label, at-least-one calendar source, note length cap, item-count 1..20, unknown keys stripped rather than stored.                                                                                                                                     | AC-DSH-002/008 | PASS   |
+| DSH-CFG-002  | `parseWidgetConfigOrDefaults` falls back to a kind's defaults for a corrupt stored config and returns null for a kind with no usable default (weather).                                                                                                                                                                                                                                        | AC-DSH-010     | PASS   |
+| DSH-CFG-003  | `layoutSchema` rejects an empty layout, out-of-grid coordinates, an over-wide span, a negative row, and fractional cells before the request reaches the service.                                                                                                                                                                                                                                | AC-DSH-013     | PASS   |
+| DSH-WX-001   | Weather: provider reading mapped onto a snapshot; rounded coordinates and requested unit sent to Open-Meteo; second call served from cache; one fetch shared between two widgets while each keeps its own label; no cache sharing across units or distant coordinates; transport failure, non-OK status and reading-less response surface as `WeatherUnavailableError`; a failure is not cached.  | AC-DSH-015/016 | PASS   |
+| DSH-CAL-001  | Calendar: month range spans the first day to the first of the next (year rollover included); timestamps bucket per calendar day; several sources merge into one day; only requested sources are queried; a repeated source is de-duplicated; every query is workspace- and month-scoped; only DOWN checks count as incidents; a capped source is flagged and its counts stay at the cap.          | AC-DSH-015     | PASS   |
+
+### 13.2 Widget rendering (unit, jsdom)
+
+| ID         | Acceptance/evidence target                                                                                                                                                                                                                                                                | Trace              | Status |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
+| DSH-UI-001 | All ten widget kinds render from a payload fixture and from their empty payload without crashing; each empty state prints its own explanation rather than blank space.                                                                                                                      | AC-DSH-007/015     | PASS   |
+| DSH-UI-002 | Clock honours the 24h/seconds/date/time-zone options; note preserves line breaks and prompts when empty; weather rounds the temperature, names the condition, falls back to "unknown" for an unmapped WMO code, omits absent optional readings, and switches the unit suffix.               | AC-DSH-008         | PASS   |
+| DSH-UI-003 | Calendar lists the days that had events over a full month grid, states when the month was empty, and warns when counts were capped.                                                                                                                                                        | AC-DSH-015         | PASS   |
+| DSH-UI-004 | Service status prints the summary over the selected set plus a hidden-remainder count; server metrics render CPU/memory/disk from a live snapshot and explain a server with no agent instead of hiding it.                                                                                  | AC-DSH-015         | PASS   |
+| DSH-UI-005 | A widget whose resolution failed renders the error card with its cause, never replacing the board.                                                                                                                                                                                         | AC-DSH-015         | PASS   |
+
+### 13.3 Service and API (integration, real PostgreSQL)
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                                                                        | Trace              | Status |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
+| DSH-SVC-001 | Board create/list/get, increasing positions for stable tab order, and no cross-workspace leakage on list or get.                                                                                                                                                                   | AC-DSH-001/003     | PASS   |
+| DSH-SVC-002 | `getLandingDashboard` returns null for an empty workspace, the first board by position when none is flagged, and the flagged board otherwise.                                                                                                                                      | AC-DSH-005         | PASS   |
+| DSH-SVC-003 | `setDefault` moves the flag off the previous start board in one transaction and refuses a board from another workspace.                                                                                                                                                            | AC-DSH-004         | PASS   |
+| DSH-SVC-004 | Rename and delete work, deletion cascades the board's widgets, and both refuse across workspaces.                                                                                                                                                                                  | AC-DSH-006         | PASS   |
+| DSH-SVC-005 | `addWidget` places the first widget at the origin at its default size, packs the next into the free space beside it, stores a validated config with defaults filled, rejects a config that does not match the kind, and refuses another workspace's board.                           | AC-DSH-007/008     | PASS   |
+| DSH-SVC-006 | Config update replaces the stored options; update and remove reject a widget id belonging to another board; removal leaves the board empty.                                                                                                                                        | AC-DSH-009         | PASS   |
+| DSH-SVC-007 | `saveLayout` persists a legal layout and rejects overlaps, a partial layout, a duplicated widget id, a widget from another board, a size outside the kind's envelope, and a layout addressed to another workspace.                                                                  | AC-DSH-013         | PASS   |
+| DSH-API-001 | `POST /api/dashboards` creates and journals the board; an empty name returns a field-level 400; `GET` lists only the active workspace's boards.                                                                                                                                    | AC-DSH-001/002     | PASS   |
+| DSH-API-002 | `PATCH /api/dashboards/[id]` renames, promotes to start page (leaving exactly one flagged row), rejects a body that changes nothing, and returns 404 `DASHBOARD_NOT_FOUND` for another workspace's board.                                                                           | AC-DSH-004/006     | PASS   |
+| DSH-API-003 | Widget add returns the server-chosen position; unknown kind and kind-invalid config return 400; config PATCH persists; a widget not on that board returns 404 `DASHBOARD_WIDGET_NOT_FOUND`.                                                                                         | AC-DSH-007/008/009 | PASS   |
+| DSH-API-004 | `PATCH …/layout` persists a legal layout (204), returns 400 `DASHBOARD_LAYOUT_INVALID` for overlapping tiles, and rejects out-of-grid coordinates at the schema before reaching the service.                                                                                        | AC-DSH-013         | PASS   |
+| DSH-API-005 | `GET …/data` returns one payload per widget keyed by widget id and 404 for another workspace's board.                                                                                                                                                                               | AC-DSH-016         | PASS   |
+
+### 13.4 Browser (Playwright, 1440px)
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                    | Trace              | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
+| DSH-E2E-001 | The empty state creates the first board and lands on it showing the empty-board state.                                                                                                                                         | AC-DSH-001         | PASS   |
+| DSH-E2E-002 | A widget is added, configured (the saved note text appears on the tile), and removed, each step asserted on the API response.                                                                                                   | AC-DSH-007/008/009 | PASS   |
+| DSH-E2E-003 | Focusing the resize grip and pressing an arrow key widens the tile by one cell, persists (204), and the new width survives a reload.                                                                                            | AC-DSH-012/018     | PASS   |
+| DSH-E2E-004 | Dragging a tile onto another takes its cell, displaces it, persists, and survives a reload. The gesture is stepped and retried, matching the dnd-kit convention in `e2e/bookmarks.spec.ts`.                                      | AC-DSH-011         | PASS   |
+| DSH-E2E-005 | Rename, make-start-page (with its toast) and confirmed deletion work, after which the section returns to the no-boards empty state.                                                                                             | AC-DSH-004/006     | PASS   |
+| DSH-E2E-006 | A four-widget board renders in light and dark with no horizontal overflow and tiles sharing a top edge on the grid; at 375px every tile spans the full width at a distinct offset. Screenshots are attached to the run.           | AC-DSH-017         | PASS   |
+
+### 13.5 Evidence
+
+Unit **765/765** in 63 files; integration **478/478** in 36 files; production
+build and typecheck clean; lint 0 errors including the native-control guard
+(the resize grip lives in `src/components/ui/`, the only exempt folder).
+Playwright full suite **121 passed / 3 failed**, all six Dashboards specs green.
+
+The three failures are pre-existing and outside this section, confirmed by an
+empty `git diff HEAD` over their files:
+
+- `e2e/api-docs.spec.ts` asserts three OpenAPI operations while
+  `specs/openapi.json` has documented four since commit `779c15f` added
+  `POST /api/mcp`.
+- two `e2e/messages-channel-webhooks.spec.ts` cases (Ctrl+Enter send and a
+  webhook-delivery visibility assertion).
+
+Both are tracked as separate work items and are not gated by AC-DSH-\*.

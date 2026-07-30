@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.12
-**Status:** Q-15 Mail label/filter management opened to all active-workspace members; awaiting user verification
+**Version:** 1.13
+**Status:** Dashboards section (widget boards) implemented and verified
 **Owner:** Architect
-**Date:** 2026-07-24
+**Date:** 2026-07-30
 **Normative inputs:** `docs/prd.md` v3.11, `docs/design.md` v2.12, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.13 (2026-07-30):** documents the Dashboards section as CURRENT: the `Dashboard`/`DashboardWidget` pair (35 models) with migration `20260730120000_dashboards` and its partial unique "one start dashboard per workspace" index; the dependency-free grid engine (`src/lib/dashboards/grid.ts`) shared by the client drag/resize path and server-side layout validation; the per-widget-isolated data resolver and the single polling endpoint `GET /api/dashboards/[id]/data`; the client-safe payload contract (`src/lib/dashboards/widget-payloads.ts`) that keeps Prisma out of the browser bundle; Open-Meteo as the only outbound call; and the post-login landing move from `/bookmarks` to `/dashboards`. Updates §3.1, §3.2, §3.4, §4.1, and §7B.3. New section §7E.
 - **v1.12 (2026-07-26):** records two field-verified corrections in §7C. The agent now sends `User-Agent: inspoter-metrics-agent/<version>`: urllib's default is a bot signature that Cloudflare's Browser Integrity Check answers with 403 (`error code: 1010`), so every push failed while the identical payload succeeded via `curl`. Hetzner server cards now report `primary_disk_size` (the VM's own disk) instead of `server_type.disk` (the plan's nominal disk), which diverge permanently after a keep-disk rescale. Updates §7C.3 and §7C.4.
 - **v1.11 (2026-07-24):** replaces the per-server `ServerAgentToken` state machine with universal API tokens. Migration `20260724100000_universal_api_tokens` drops the `ServerAgentToken` model and enum; workspace-level `WebhookToken` rows (`channelId: null`) now authenticate both webhook ingestion and `POST /api/server-metrics`, with member-level list/create/revoke/rotate lifecycle in Settings (new `POST /api/webhook-tokens/[id]/rotate`). Server identity is resolved per ingest from reported global IPv4 claims (claim match → provider discovery → agent-only auto-create), metrics states reduce to `not_configured`/`live`/`stale`, the ingestion response body is `{ code, localServerId }`, and the rate-limit key becomes `${tokenId}:${clientIp}`. Rewrites §7C.1–7C.3 and corrects the §4.1 model inventory (33 models).
 - **v1.10 (2026-07-21):** reconciles Q-15 with the implemented schema, services, routes, UI, shared live/backfill matcher, one existing Mail scheduler, bounded historical batches, durable leases, retry API, and bounded status polling. Records verified migration, performance, encrypted restore, prior-runtime rollback, restart recovery, regression, and independent-review evidence.
@@ -109,11 +110,13 @@ flowchart LR
 
 ### 3.1 Complete current page tree
 
-**CURRENT (2026-07-20):** The application contains 21 `page.tsx` files. The `(dashboard)` route group does not add a URL segment. Beyond the v1.3 table below, later slices added `/services`, `/services/[id]`, `/settings/providers`, `/settings/api-docs`, `/no-workspace`, `/settings/backup`, and — with the Q-14 mail client — `/settings/mail`.
+**CURRENT (2026-07-30):** The application contains 26 `page.tsx` files. The `(dashboard)` route group does not add a URL segment. Beyond the v1.3 table below, later slices added `/services`, `/services/[id]`, `/settings/providers`, `/settings/api-docs`, `/no-workspace`, `/settings/backup`, `/help`, `/help/[article]`, the Dashboards pair below, and — with the Q-14 mail client — `/settings/mail`.
 
 | Label   | URL                   | File                                                      | Boundary and data source                                                                                       |
 | ------- | --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| CURRENT | `/`                   | `src/app/page.tsx`                                        | Server Component; redirects to `/bookmarks`                                                                    |
+| CURRENT | `/`                   | `src/app/[locale]/page.tsx`                               | Server Component; redirects an authenticated visitor to `/dashboards`, otherwise renders the marketing page     |
+| CURRENT | `/dashboards`         | `src/app/[locale]/(dashboard)/dashboards/page.tsx`        | Server Component router: forwards to the workspace's start dashboard, or renders the Client create prompt       |
+| CURRENT | `/dashboards/[id]`    | `src/app/[locale]/(dashboard)/dashboards/[id]/page.tsx`   | Server Component loads board, siblings, widget payloads and config targets; Client `DashboardView` owns the grid |
 | CURRENT | `/login`              | `src/app/login/page.tsx`                                  | Server Component; awaits `searchParams`, renders Client `LoginForm`                                            |
 | CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`                  | Server Component; `requireAuth()` plus workspace-scoped service read                                           |
 | CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`                    | Server Component; `requireAuth()` plus provider aggregation                                                    |
@@ -131,12 +134,13 @@ flowchart LR
 
 ### 3.2 Complete current route-handler families
 
-**CURRENT (2026-07-18):** `src/app/api` contains 48 `route.ts` files and 71 exported handlers: 24 GET, 21 POST, 12 PATCH, 13 DELETE, and 1 PUT. Beyond the v1.3 families below, later slices added Services (`/api/services/**`), provider credentials (`/api/credentials/**`), and Authentik OIDC (`/api/auth/authentik/**`); the Q-14 mail client expanded the Mail family as shown.
+**CURRENT (2026-07-30):** `src/app/api` contains 91 `route.ts` files and 130 exported handlers: 38 GET, 43 POST, 23 PATCH, 23 DELETE, and 3 PUT. Beyond the v1.3 families below, later slices added Services (`/api/services/**`), provider credentials (`/api/credentials/**`), Authentik OIDC (`/api/auth/authentik/**`), the MCP endpoint (`/api/mcp`), and Dashboards (`/api/dashboards/**`); the Q-14 mail client expanded the Mail family as shown.
 
 | Label   | Family                                 | Current URL patterns and methods                                                                                                                                                                                                                                                                                                          | Files / handlers |
 | ------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | CURRENT | Workspaces                             | `GET,POST /api/workspaces`; `PATCH,DELETE /api/workspaces/[id]`; `GET,POST /api/workspaces/[id]/members`; `DELETE /api/workspaces/[id]/members/[memberId]`; `POST /api/workspaces/switch`                                                                                                                                                 | 5 / 8            |
 | CURRENT | Bookmark categories and bookmarks      | `POST /api/categories`; `PATCH,DELETE /api/categories/[id]`; `POST /api/bookmarks`; `PATCH,DELETE /api/bookmarks/[id]`                                                                                                                                                                                                                    | 4 / 6            |
+| CURRENT | Dashboards and widgets (§7E)           | `GET,POST /api/dashboards`; `PATCH,DELETE /api/dashboards/[id]`; `GET /api/dashboards/[id]/data`; `PATCH /api/dashboards/[id]/layout`; `POST /api/dashboards/[id]/widgets`; `PATCH,DELETE /api/dashboards/[id]/widgets/[widgetId]`                                                                                                        | 6 / 9            |
 | CURRENT | Domains and DNS records                | `GET /api/domains`; `GET,POST /api/domains/[providerId]/[domainId]/records`; `PATCH,DELETE /api/domains/[providerId]/[domainId]/records/[recordId]`                                                                                                                                                                                       | 3 / 5            |
 | CURRENT | Servers and power                      | `GET /api/servers`; `GET /api/servers/[id]`; `POST /api/servers/[id]/power`                                                                                                                                                                                                                                                               | 3 / 3            |
 | CURRENT | Mail (Q-14 client)                     | `GET /api/mail`; `GET,PATCH,DELETE /api/mail/[id]`; `POST /api/mail/[id]/move`; `GET /api/mail/[id]/attachments/[attachmentId]`; `POST /api/mail/send`; `GET,POST /api/mail/accounts`; `POST /api/mail/accounts/test`; `PATCH,DELETE /api/mail/accounts/[id]`; `POST /api/mail/accounts/[id]/sync`; `GET /api/mail/accounts/[id]/folders` | 10 / 14          |
@@ -170,7 +174,9 @@ flowchart LR
 
 **CURRENT:** Bookmarks and workspace settings load initial database state in Server Components and pass serializable props to Client Components. Domains aggregates providers in its Server Component. Servers, Mail, Messages, Logs, Alerts, and webhook-token settings fetch their Route Handlers from Client views.
 
-**CURRENT:** Most mutations use Client `fetch()` helpers, then update local state or call `router.refresh()`. Login and logout use Server Actions. Internal navigation uses `next/link`, `redirect()`, and `useRouter`; `/` redirects to `/bookmarks`. After login, the Client applies one string-prefix check, `next.startsWith("/")`, before `router.push()`; this is not a validated target.
+**CURRENT:** Most mutations use Client `fetch()` helpers, then update local state or call `router.refresh()`. Login and logout use Server Actions. Internal navigation uses `next/link`, `redirect()`, and `useRouter`; an authenticated `/` redirects to `/dashboards` (§7E). After login, the Client applies one string-prefix check, `next.startsWith("/")`, before `router.push()`; this is not a validated target.
+
+**CURRENT (2026-07-30):** The post-login landing path has exactly one definition, `POST_LOGIN_PATH` in `src/lib/auth/redirect.ts`, used as `sanitizeNextPath()`'s fallback. The password form, the Authentik callback, `/`, and `/no-workspace` all resolve through it, so the landing section moves in one edit.
 
 **GAP:** The prefix check also accepts protocol-relative values such as `//attacker.example`. The Client neither normalizes the value nor proves that it is a same-origin local path.
 
@@ -184,7 +190,7 @@ flowchart LR
 
 ### 4.1 Exact current Prisma model inventory
 
-**CURRENT (2026-07-24):** `prisma/schema.prisma` defines exactly 33 models. `ServerAgentToken` was dropped by migration `20260724100000_universal_api_tokens` (§7C.1):
+**CURRENT (2026-07-30):** `prisma/schema.prisma` defines exactly 35 models. `ServerAgentToken` was dropped by migration `20260724100000_universal_api_tokens` (§7C.1):
 
 1. `Operator`
 2. `ExternalIdentity` (Authentik OIDC slice)
@@ -219,6 +225,14 @@ flowchart LR
 31. `LocalServer` (VPS Metrics Agent — durable workspace-local server identity)
 32. `LocalServerAddress` (VPS Metrics Agent — IPv4/IPv6 address claims)
 33. `ServerMetricSnapshot` (VPS Metrics Agent — latest-only metrics upsert per server)
+34. `Dashboard` (Dashboards slice — named widget board, workspace-shared)
+35. `DashboardWidget` (Dashboards slice — one tile: kind, grid rectangle, per-kind `config` JSON)
+
+**CURRENT — Dashboards cluster (2026-07-30):**
+
+- `Dashboard` — workspace-scoped board with `name`, `position` (tab order, assigned at creation), and `isDefault`. At most one default per workspace is enforced by a raw partial unique index in the migration SQL (`CREATE UNIQUE INDEX … ON "Dashboard"("workspaceId") WHERE "isDefault"`) — the same technique as the WEBHOOK `MailAccount` uniqueness, and not expressible in the Prisma DSL. Creation never sets the flag: `getLandingDashboard()` falls back to the first board by position, so the section always has a landing target without a write that could race.
+- `DashboardWidget` — composite-FK child of `Dashboard` with `kind DashboardWidgetKind` (10 values), the grid rectangle `x`/`y`/`w`/`h` in cells, and `config Json @default("{}")`. A `CHECK` constraint keeps `workspaceId = dashboardWorkspaceId`. Non-overlap is a service-layer invariant (`saveLayout`), not a database constraint: one legal move rewrites several rows at once, so the check has to see the whole proposed layout.
+- `config` is opaque JSON rather than ten nullable columns because no two widget kinds share an option, and adding a kind must not require a migration. Each kind's shape is validated by `WIDGET_CONFIG_SCHEMAS` (`src/lib/validation/dashboards.ts`) on the way in and re-parsed on the way out, so a config that predates a schema change degrades to that kind's defaults instead of breaking the board.
 
 **CURRENT — VPS Metrics Agent cluster (2026-07-24):**
 
@@ -685,6 +699,7 @@ Open-side errors: bad magic or a file shorter than the header → `BackupInvalid
 | Section             | Models exported                                           |
 | ------------------- | --------------------------------------------------------- |
 | `bookmarks`         | `Category`, `Bookmark`                                    |
+| `dashboards`        | `Dashboard`, `DashboardWidget`                            |
 | `messages`          | `MessageCategory`, `Channel`, `Message`                   |
 | `mail`              | `MailAccount`, `MailFolder`, `MailItem`, `MailAttachment` |
 | `logs`              | `LogEntry`                                                |
@@ -706,6 +721,7 @@ Open-side errors: bad magic or a file shorter than the header → `BackupInvalid
 - **Both modes regenerate every id** (`crypto.randomUUID()`) with in-memory FK remap maps, inserting in dependency tiers: self-referential `Category` (topological) → independent parents → children → `MailItem`/`Message` → `MailAttachment`. `createMany` is chunked by 500.
 - **Replace deletes only the sections present in the archive**, children first (`MailAttachment`/`WebhookDelivery`/`IdempotencyKey` → `Message`/`MailItem`/`ServiceCheck`/`Bookmark`/`WebhookToken`/`Alert` → `Channel`/`MailFolder`/`Category` → category/account/service/webhook/provider parents), then applies `manifest.workspace.hiddenSections` to the target workspace.
 - **Transient state is reset:** mail `syncStatus` → `IDLE`, `syncError`/`syncLeaseExpiresAt` → null, `nextSyncAt` → now; `Service.nextCheckAt` → now; `ProviderResourceBinding.operationState` → `IDLE` with all operation-lease fields nulled and `version` reset to 1.
+- **`Dashboard.isDefault` is dropped on import** (always inserted as `false`): the partial unique index allows one flagged board per workspace, so a merge into a workspace that already has a start dashboard would collide. The section still resolves a landing board by position; the operator re-pins their preference.
 - **Collision rules:** `WebhookToken.tokenHash` is globally unique → colliding rows are skipped and counted in `skipped.webhookTokens`; `ProviderResourceBinding` global natural key `(provider, accountKey, resourceType, mode, remoteId)` → skip + `skipped.providerResourceBindings`; a same-name `AlertCategory` is reused in merge; a WEBHOOK-kind `MailAccount` in merge is remapped onto the workspace's existing system account (partial unique index allows only one) with folders reused by `path`. **The token/binding guards are global to the instance:** importing an archive while its source workspace still exists on the same instance skips those rows. This is intended — the disaster-recovery path (source workspace gone) imports them fully.
 - A webhooks-only archive imported without the `messages` section nulls `WebhookToken.channelId` (the channel cannot be remapped), preserving the token as a legacy workspace-wide credential.
 
@@ -869,6 +885,150 @@ labels reapply when eligible INBOX messages are re-imported. Manual assignments
 may be lost because the recreated row has a new local identity. Nullable or
 non-unique `Message-ID` values must not be used to guess correspondence; this
 remains an explicit limitation until a reliable reconciliation identity exists.
+
+## 7E. Dashboards — CURRENT (2026-07-30)
+
+Named widget boards inside a workspace, in the shape Homarr popularised: a
+12-column grid of tiles that the operator drags and resizes. Boards are
+workspace-shared like every other content entity — there is no per-operator
+visibility flag — and one of them can be pinned as the workspace's start page.
+
+### 7E.1 Grid engine — one definition of a legal layout
+
+`src/lib/dashboards/grid.ts` is a dependency-free module of pure functions over
+rectangles: `clampRect`, `rectsOverlap`, `hasOverlaps`, `findFreeSlot`,
+`resolveCollisions` (push-down), `compactVertically`, and the two compositions
+`moveWidget` / `resizeWidget`. It holds no React and no DOM.
+
+Both sides of the wire depend on it. The client turns a pointer drag into a
+proposed layout here and sends the result to `PATCH /api/dashboards/:id/layout`;
+the service re-checks that payload with the same `hasOverlaps` before writing.
+A move therefore cannot mean one thing in the browser and another in the
+database, and the invariant is unit-testable without a renderer
+(`tests/unit/dashboards/grid.test.ts`).
+
+`resizeWidget`/`moveWidget` also clamp against the per-kind size envelope in
+`src/lib/dashboards/widget-kinds.ts`, which the server re-applies in
+`saveLayout` — a hand-crafted request cannot persist a tile at a size the UI
+refuses to render.
+
+The layout endpoint takes the dashboard's **whole** post-move layout, not just
+the tile that was touched: one legal move can push several tiles, and non-overlap
+can only be judged on the complete set.
+
+**Own implementation, not `react-grid-layout`:** `@dnd-kit/*` was already a
+dependency and supplies the drag; vertical packing is ~120 lines of pure
+functions that are cheaper to test than a library whose RSC/React-19 posture
+would have to be vetted.
+
+### 7E.2 Widget data resolution and the client-safe payload boundary
+
+`src/lib/services/dashboard-widget-data.ts` resolves the payload of every widget
+on a board, reusing the existing section services (`services.list`, `alerts.list`,
+`logs.list`, `mail.list`, `bookmarks.list`) plus two narrow additions:
+`servers.listLocalServerMetrics()` (agent snapshots only — the full
+`listServers()` composes provider inventory and may trigger a provider fetch,
+far too much work for a tile that re-reads every minute) and
+`src/lib/services/dashboard-calendar.ts`.
+
+Failures are **per widget**: each resolution runs in its own `try/catch` and a
+failed one becomes `{ error }`, rendered as an error card while the rest of the
+board renders. Same isolation rule the provider sections already follow (§7.1,
+`src/lib/services/domains.ts`).
+
+**The payload shapes live in `src/lib/dashboards/widget-payloads.ts`, a module
+with no imports.** This is a hard boundary, not a preference: the resolver
+imports Prisma through those services, so a client widget that imported both a
+payload *type* and the `isWidgetError` *value* from the resolver dragged the
+database client into the browser graph and the production build failed with
+`the chunking context (unknown) does not support external modules (request:
+node:module)`. Every timestamp in those shapes is an ISO string, so a tile
+receives an identical payload whether it arrived in the RSC payload or as JSON
+from the polling endpoint.
+
+`GET /api/dashboards/[id]/data` returns every widget's payload in one response,
+keyed by widget id. The client polls it every 60 s and pauses while the tab is
+hidden. One endpoint per board rather than per widget: a ten-tile board would
+otherwise cost ten requests a minute for data that all comes from one workspace.
+The route records no activity — journalling a timer-driven read would bury the
+Activity page.
+
+### 7E.3 Calendar events without a calendar entity
+
+There is no calendar model in this product. `dashboard-calendar.ts` buckets the
+days on which things the workspace already records happened: alerts raised,
+service checks that returned DOWN, mail received, operator actions. Each source
+is one indexed range query selecting nothing but its timestamp column, bucketed
+per day in JS.
+
+Buckets could be computed in SQL with `date_trunc`, but no application code in
+this repository uses raw SQL and a month of timestamps is small enough that the
+trade is not worth a new pattern. A `take` cap of 2000 rows per source keeps a
+pathological month (a flapping monitor writing a check a minute) out of memory;
+when it trips, the payload's `truncated` list says so and the tile shows a note
+instead of presenting partial counts as complete.
+
+Domains are deliberately absent: a DNS zone
+(`src/lib/providers/dns/types.ts`) carries no expiry date, so there is nothing
+dated to plot.
+
+### 7E.4 Outbound calls and the weather widget
+
+`src/lib/dashboards/weather.ts` is the **only** outbound call the Dashboards
+section makes: a server-side `fetch` to `https://api.open-meteo.com/v1/forecast`
+(no API key, no account) with a 5 s `AbortSignal.timeout`, results cached
+in-process for 10 minutes keyed by rounded coordinates and unit.
+
+The endpoint is a constant and the only caller-controlled parts are two numbers
+already range-checked by `weatherConfigSchema` (-90..90 / -180..180), so no
+operator input reaches the URL as text — there is no SSRF surface. An operator
+who wants zero third-party traffic simply does not add the widget; the other
+nine read only local data. The e2e suites exclude this widget for the same
+reason (`fixtures/test.ts` blocks cross-origin browser requests, but a
+server-side fetch would still leave the machine).
+
+### 7E.5 Landing page and section visibility
+
+Dashboards is the first entry in `SECTION_NAV_ITEMS`
+(`src/components/shell/nav-items.ts`), so it inherits the existing per-workspace
+visibility toggle, the topbar breadcrumb, and the Help article wiring without
+new plumbing. `/dashboards` itself is a router, not a screen: it forwards to the
+start dashboard (or the first by position) and renders the create prompt only
+when the workspace has none.
+
+The post-login landing moved from `/bookmarks` to `/dashboards` in one place —
+`POST_LOGIN_PATH` in `src/lib/auth/redirect.ts` (§3.4).
+
+### 7E.6 Accessibility and interaction posture
+
+- Drag and resize are available **only** in an explicit edit mode. In view mode
+  tiles stay interactive (links, scrolling) and cannot be nudged by a stray
+  press. `PointerSensor` uses the same 4 px activation distance as the Bookmarks
+  board so an ordinary click on a tile menu never arms a drag.
+- The resize grip is a real `<button>` (`src/components/ui/resize-handle.tsx`),
+  so arrow keys resize a tile one cell at a time through the same
+  `resizeWidget()` the pointer path uses. It lives under `src/components/ui/`
+  because that is the only folder `scripts/check-native-controls.mjs` exempts,
+  and a pointer-drag grip genuinely needs low-level pointer events.
+- Below `sm` the grid collapses to one column in reading order and edit mode is
+  unavailable. Placement is expressed as CSS custom properties consumed by an
+  `sm:`-only rule: inline `grid-column`/`grid-row` would outrank any media query
+  and keep desktop columns on a phone.
+- The calendar grid is intentionally non-interactive — 31 clickable cells per
+  tile would flood keyboard navigation, and a click-only cell would hide the
+  counts from anyone without a pointer. The list below the grid carries the same
+  information for everyone.
+
+### 7E.7 Tests
+
+`tests/unit/dashboards/{grid,weather,calendar}.test.ts` (engine, cache and
+failure mapping, day bucketing), `tests/unit/validation/dashboards.test.ts`
+(per-kind config schemas), `tests/unit/ui/dashboard-widgets.test.tsx` (all ten
+tiles plus empty and error states), `tests/integration/services/dashboards.test.ts`
+and `tests/integration/api/dashboards.test.ts` (CRUD, layout rejection, workspace
+isolation), `e2e/dashboards.spec.ts` (create → add → configure → drag → resize →
+reload → delete) and `e2e/dashboards-visual.spec.ts` (light/dark/phone with
+attached screenshots).
 
 ## 8. Request sequences
 
