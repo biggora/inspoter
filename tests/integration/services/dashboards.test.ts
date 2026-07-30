@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import * as dashboardsService from "@/lib/services/dashboards";
+import { resolveWidgetData } from "@/lib/services/dashboard-widget-data";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import { specFor } from "@/lib/dashboards/widget-kinds";
+import { WEATHER_DEFAULT_LOCATION } from "@/lib/validation/dashboards";
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -230,6 +232,22 @@ describe("addWidget", () => {
     });
   });
 
+  // The widget picker creates every kind with no config at all, so a kind whose
+  // schema cannot default itself would be impossible to add.
+  it("adds a weather widget with no config at its default location", async () => {
+    const dashboard = await freshDashboard(`w3b-${randomUUID()}`);
+    const widget = await dashboardsService.addWidget(
+      dashboard.id,
+      workspaceId,
+      { kind: "WEATHER" },
+    );
+
+    expect(widget.config).toMatchObject({
+      ...WEATHER_DEFAULT_LOCATION,
+      unit: "celsius",
+    });
+  });
+
   it("rejects a config that does not match the kind", async () => {
     const dashboard = await freshDashboard(`w4-${randomUUID()}`);
 
@@ -417,5 +435,29 @@ describe("saveLayout", () => {
         { id: second.id, x: 3, y: 0, w: 3, h: 2 },
       ]),
     ).rejects.toBeInstanceOf(dashboardsService.DashboardNotFoundError);
+  });
+});
+
+describe("resolveWidgetData", () => {
+  it("resolves a weather widget without coordinates to no reading", async () => {
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "weather-unconfigured",
+        kind: "WEATHER",
+        config: {
+          label: "",
+          latitude: null,
+          longitude: null,
+          unit: "celsius",
+        },
+      },
+    ]);
+
+    // No reading and no error: a tile with no location must not reach the
+    // weather provider at all.
+    expect(data["weather-unconfigured"]).toEqual({
+      kind: "WEATHER",
+      data: null,
+    });
   });
 });

@@ -96,26 +96,66 @@ const clockConfigSchema = z.object({
   timeZone: timeZoneField,
 });
 
+/**
+ * Where a freshly added weather widget points until the operator moves it —
+ * the same city the settings form offers as its example. A default is what lets
+ * the widget picker create the tile in one click, like every other kind.
+ */
+export const WEATHER_DEFAULT_LOCATION = {
+  label: "Riga",
+  latitude: 56.95,
+  longitude: 24.1,
+} as const;
+
 // Coordinates are plain numbers in range, which is also what keeps the
 // Open-Meteo call safe: the widget never contributes a URL, only two numbers
 // interpolated into a fixed endpoint (no SSRF surface).
-const weatherConfigSchema = z.object({
-  title: titleField,
-  label: z
-    .string()
-    .trim()
-    .min(1, { error: () => VALIDATION_RU.dashboard.locationRequired })
-    .max(WIDGET_TITLE_MAX),
-  latitude: z
-    .number()
-    .min(-90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid })
-    .max(90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid }),
-  longitude: z
-    .number()
-    .min(-180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid })
-    .max(180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid }),
-  unit: z.enum(["celsius", "fahrenheit"]).default("celsius"),
-});
+//
+// Both coordinates are nullable so a location can be cleared again: the tile
+// then says "set the coordinates" instead of fetching. That is also why the
+// location name is checked against the coordinates rather than on its own — a
+// widget with no place needs no caption, one with a place must have it.
+const weatherConfigSchema = z
+  .object({
+    title: titleField,
+    label: z
+      .string()
+      .trim()
+      .max(WIDGET_TITLE_MAX)
+      .default(WEATHER_DEFAULT_LOCATION.label),
+    latitude: z
+      .number()
+      .min(-90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid })
+      .max(90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid })
+      .nullable()
+      .default(WEATHER_DEFAULT_LOCATION.latitude),
+    longitude: z
+      .number()
+      .min(-180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid })
+      .max(180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid })
+      .nullable()
+      .default(WEATHER_DEFAULT_LOCATION.longitude),
+    unit: z.enum(["celsius", "fahrenheit"]).default("celsius"),
+  })
+  .superRefine((config, ctx) => {
+    const hasLatitude = config.latitude !== null;
+    const hasLongitude = config.longitude !== null;
+    if (hasLatitude !== hasLongitude) {
+      ctx.addIssue({
+        code: "custom",
+        path: [hasLatitude ? "longitude" : "latitude"],
+        message: VALIDATION_RU.dashboard.coordinatesRequired,
+      });
+      return;
+    }
+    if (hasLatitude && config.label.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["label"],
+        message: VALIDATION_RU.dashboard.locationRequired,
+      });
+    }
+  });
 
 const calendarConfigSchema = z.object({
   title: titleField,
@@ -235,9 +275,9 @@ export function parseWidgetConfig<K extends DashboardWidgetKind>(
 
 /**
  * A stored config that no longer parses (schema tightened, hand-edited row)
- * falls back to the kind's defaults instead of breaking the whole dashboard —
- * every schema is fully defaulted except WEATHER, whose coordinates have no
- * sensible default, so that one surfaces as a widget-level error instead.
+ * falls back to the kind's defaults instead of breaking the whole dashboard.
+ * Every kind is fully defaulted today, so the null return only guards against a
+ * future schema that stops being — callers turn it into a widget-level error.
  */
 export function parseWidgetConfigOrDefaults<K extends DashboardWidgetKind>(
   kind: K,

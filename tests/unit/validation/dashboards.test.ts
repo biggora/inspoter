@@ -7,6 +7,7 @@ import {
   parseWidgetConfig,
   parseWidgetConfigOrDefaults,
   widgetCreateSchema,
+  WEATHER_DEFAULT_LOCATION,
   WIDGET_CONFIG_SCHEMAS,
 } from "@/lib/validation/dashboards";
 import { WIDGET_KIND_ORDER } from "@/lib/dashboards/widget-kinds";
@@ -83,7 +84,15 @@ describe("widget config schemas", () => {
     ).toBe(true);
   });
 
-  it("requires weather coordinates in range plus a label", () => {
+  it("gives a weather widget a default location", () => {
+    const parsed = parseWidgetConfig("WEATHER", {});
+    expect(parsed.success && parsed.data).toEqual({
+      ...WEATHER_DEFAULT_LOCATION,
+      unit: "celsius",
+    });
+  });
+
+  it("keeps weather coordinates in range", () => {
     expect(
       parseWidgetConfig("WEATHER", {
         label: "Рига",
@@ -98,9 +107,32 @@ describe("widget config schemas", () => {
         longitude: 24.1,
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a weather widget with no location, but not half of one", () => {
     expect(
-      parseWidgetConfig("WEATHER", { latitude: 56.95, longitude: 24.1 })
-        .success,
+      parseWidgetConfig("WEATHER", {
+        label: "",
+        latitude: null,
+        longitude: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      parseWidgetConfig("WEATHER", {
+        label: "Рига",
+        latitude: 56.95,
+        longitude: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires a location name once the coordinates are set", () => {
+    expect(
+      parseWidgetConfig("WEATHER", {
+        label: "  ",
+        latitude: 56.95,
+        longitude: 24.1,
+      }).success,
     ).toBe(false);
   });
 
@@ -137,10 +169,11 @@ describe("parseWidgetConfigOrDefaults", () => {
     });
   });
 
-  it("returns null when the kind has no usable default", () => {
-    expect(
-      parseWidgetConfigOrDefaults("WEATHER", { latitude: "x" }),
-    ).toBeNull();
+  it("falls back to the default location for a corrupt weather config", () => {
+    expect(parseWidgetConfigOrDefaults("WEATHER", { latitude: "x" })).toEqual({
+      ...WEATHER_DEFAULT_LOCATION,
+      unit: "celsius",
+    });
   });
 });
 

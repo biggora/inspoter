@@ -112,6 +112,14 @@ describe("WeatherWidget", () => {
 
     expect(screen.getByText("12°F")).toBeInTheDocument();
   });
+
+  it("asks for coordinates when the location was cleared", () => {
+    renderWithIntl(<WeatherWidget data={null} />);
+
+    expect(
+      screen.getByText(ruDashboards.weather.notConfigured),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("CalendarWidget", () => {

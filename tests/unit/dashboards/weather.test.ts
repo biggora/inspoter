@@ -4,10 +4,10 @@ import {
   WeatherUnavailableError,
   clearWeatherCache,
   getWeather,
+  type ResolvedWeatherConfig,
 } from "@/lib/dashboards/weather";
-import type { WeatherConfig } from "@/lib/validation/dashboards";
 
-const riga: WeatherConfig = {
+const riga: ResolvedWeatherConfig = {
   label: "Рига",
   latitude: 56.9496,
   longitude: 24.1052,
