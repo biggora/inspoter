@@ -12,6 +12,27 @@ import { MockDnsProvider } from "@/lib/providers/dns/mock";
 // credential set (two credentials of one provider, for instance).
 const mockState = vi.hoisted(() => ({
   providers: null as unknown[] | null,
+  logError: vi.fn(),
+  recordSyncOutcomes: vi.fn(),
+  providerSnapshotFindUnique: vi.fn(),
+  providerSnapshotUpdate: vi.fn(),
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    providerSnapshot: {
+      findUnique: mockState.providerSnapshotFindUnique,
+      update: mockState.providerSnapshotUpdate,
+    },
+  },
+}));
+
+vi.mock("@/lib/services/logs", () => ({
+  logError: mockState.logError,
+}));
+
+vi.mock("@/lib/services/provider-health", () => ({
+  recordSyncOutcomes: mockState.recordSyncOutcomes,
 }));
 
 vi.mock("@/lib/providers/dns", async () => {
@@ -31,9 +52,8 @@ vi.mock("@/lib/providers/dns", async () => {
 // tests database-free while still exercising the whole fan-out: a workspace
 // with no snapshot yet refreshes synchronously, which is every test here.
 vi.mock("@/lib/services/provider-snapshots", async () => {
-  const { createSnapshotsMemoryMock } = await import(
-    "./provider-snapshots-memory"
-  );
+  const { createSnapshotsMemoryMock } =
+    await import("./provider-snapshots-memory");
   const { getDnsProvidersForWorkspace } = await import("@/lib/providers/dns");
   return createSnapshotsMemoryMock(() => getDnsProvidersForWorkspace(""));
 });
@@ -43,6 +63,11 @@ const WORKSPACE_ID = "test-workspace";
 // Each test starts from a cold cache, so one test's zones can never leak into
 // the next one's listing.
 beforeEach(async () => {
+  mockState.logError.mockReset();
+  mockState.recordSyncOutcomes.mockReset().mockResolvedValue(undefined);
+  mockState.providerSnapshotFindUnique.mockReset().mockResolvedValue(null);
+  mockState.providerSnapshotUpdate.mockReset().mockResolvedValue(undefined);
+
   const snapshots = await import("@/lib/services/provider-snapshots");
   (snapshots as unknown as { __store: Map<string, unknown> }).__store.clear();
 });
@@ -147,6 +172,18 @@ describe("listDomains()", () => {
       "Operation not supported: listDomains",
     );
     expect(cloudflareResult?.domains).toEqual([]);
+    expect(mockState.recordSyncOutcomes).toHaveBeenCalledWith(
+      WORKSPACE_ID,
+      "DNS",
+      "listDomains",
+      expect.arrayContaining([
+        {
+          credentialId: "mock-cloudflare",
+          providerType: "cloudflare",
+          error: "Operation not supported: listDomains",
+        },
+      ]),
+    );
   });
 });
 
