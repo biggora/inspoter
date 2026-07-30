@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "../../test-utils";
 import { AlertsWidget } from "@/components/dashboards/widgets/alerts-widget";
@@ -123,7 +124,9 @@ describe("WeatherWidget", () => {
 });
 
 describe("CalendarWidget", () => {
-  it("lists the days that had events", () => {
+  it("reveals event details from a highlighted day", async () => {
+    const user = userEvent.setup();
+
     renderWithIntl(
       <CalendarWidget
         data={{
@@ -144,6 +147,16 @@ describe("CalendarWidget", () => {
     expect(screen.getByText(/июль/i)).toBeInTheDocument();
     expect(screen.getByText("31")).toBeInTheDocument();
     expect(screen.getByText(/Оповещения 2/)).toBeInTheDocument();
+
+    const markedDay = screen.getByRole("button", {
+      name: /События за 3 июл.*3 события.*Оповещения 2.*Инциденты сервисов 1/i,
+    });
+    await user.hover(markedDay);
+
+    expect(await screen.findByText(/События за 3 июл/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(ruDashboards.calendar.markedDayHint),
+    ).toBeInTheDocument();
   });
 
   it("says so when the month had no events at all", () => {

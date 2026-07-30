@@ -153,6 +153,7 @@
     "dayEventsTitle": "Events on {date}",
     "noEvents": "Nothing happened on this day.",
     "eventCount": "{count, plural, one {# event} other {# events}}",
+    "markedDayHint": "Highlighted days contain workspace activity. Hover or focus one for details.",
     "truncatedNote": "Too many events this month — showing a subset.",
     "monthNavigationHint": "The calendar shows the current month."
   },

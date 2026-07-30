@@ -3,22 +3,36 @@
 import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { CalendarMonthData } from "@/lib/dashboards/widget-payloads";
+import type {
+  CalendarDayBucket,
+  CalendarMonthData,
+} from "@/lib/dashboards/widget-payloads";
 import type { CalendarEventSource } from "@/lib/validation/dashboards";
 
 // A month grid over the day buckets the server produced, with the days that had
 // events highlighted, followed by those days spelled out as text.
 //
-// The grid is deliberately non-interactive. Clicking a day to reveal its counts
-// would mean 31 controls per tile — a lot of keyboard stops for a summary — and
-// a click-only cell would hide the counts from anyone not using a pointer. The
-// list below carries the same information for everyone, in one pass.
+// Only highlighted days are interactive. Hovering or focusing one reveals its
+// event breakdown, while the list below carries the same information without
+// requiring pointer interaction.
 //
 // The month is fixed to the one the payload covers: each month is its own server
 // query, and this tile is an at-a-glance summary, not a calendar application.
 
 const WEEK_START_MONDAY_OFFSET = 1;
+const EVENT_SOURCES = [
+  "alerts",
+  "serviceIncidents",
+  "mail",
+  "activity",
+] as const satisfies readonly CalendarEventSource[];
 
 interface CalendarCell {
   /** YYYY-MM-DD, or null for the leading blanks before the 1st. */
@@ -58,6 +72,10 @@ function weekdayLabels(locale: string): string[] {
   );
 }
 
+function populatedSources(bucket: CalendarDayBucket): CalendarEventSource[] {
+  return EVENT_SOURCES.filter((source) => bucket.counts[source] > 0);
+}
+
 export function CalendarWidget({ data }: { data: CalendarMonthData }) {
   const t = useTranslations("dashboards");
   const locale = useLocale();
@@ -88,35 +106,101 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
         {monthFormatter.format(new Date(`${data.month}T00:00:00.000Z`))}
       </p>
 
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[0.7rem]">
-        {weekdays.map((weekday) => (
-          <span key={weekday} className="text-muted-foreground">
-            {weekday}
-          </span>
-        ))}
-        {cells.map((cell, index) => {
-          if (!cell.date) {
-            return <span key={`blank-${index}`} aria-hidden="true" />;
-          }
-          const bucket = byDate.get(cell.date);
-          return (
-            <span
-              key={cell.date}
-              data-today={cell.date === todayIso ? "true" : undefined}
-              data-has-events={bucket ? "true" : undefined}
-              className={cn(
-                "flex aspect-square items-center justify-center rounded tabular-nums",
-                cell.date === todayIso && "font-semibold text-primary-600",
-                bucket
-                  ? "bg-accent-100 text-foreground-800"
-                  : "text-muted-foreground",
-              )}
-            >
-              {cell.dayOfMonth}
+      <TooltipProvider delay={150}>
+        <div className="grid grid-cols-7 gap-0.5 text-center text-[0.7rem]">
+          {weekdays.map((weekday) => (
+            <span key={weekday} className="text-muted-foreground">
+              {weekday}
             </span>
-          );
-        })}
-      </div>
+          ))}
+          {cells.map((cell, index) => {
+            if (!cell.date) {
+              return <span key={`blank-${index}`} aria-hidden="true" />;
+            }
+
+            const bucket = byDate.get(cell.date);
+            const isToday = cell.date === todayIso;
+            const cellClassName = cn(
+              "flex aspect-square items-center justify-center rounded tabular-nums",
+              isToday && "font-semibold text-primary-600",
+            );
+
+            if (!bucket) {
+              return (
+                <span
+                  key={cell.date}
+                  data-today={isToday ? "true" : undefined}
+                  className={cn(cellClassName, "text-muted-foreground")}
+                >
+                  {cell.dayOfMonth}
+                </span>
+              );
+            }
+
+            const dateLabel = dayFormatter.format(
+              new Date(`${cell.date}T00:00:00.000Z`),
+            );
+            const sources = populatedSources(bucket);
+            const sourceSummary = sources
+              .map(
+                (source) =>
+                  `${t(`calendar.sources.${source}`)} ${bucket.counts[source]}`,
+              )
+              .join(", ");
+            const title = t("calendar.dayEventsTitle", { date: dateLabel });
+            const count = t("calendar.eventCount", { count: bucket.total });
+
+            return (
+              <Tooltip key={cell.date}>
+                <TooltipTrigger
+                  type="button"
+                  data-today={isToday ? "true" : undefined}
+                  data-has-events="true"
+                  aria-label={`${title}. ${count}. ${sourceSummary}`}
+                  className={cn(
+                    cellClassName,
+                    "cursor-help border border-accent-200 bg-accent-100 text-foreground-800 outline-none transition-colors hover:bg-accent-200 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-card)]",
+                  )}
+                >
+                  {cell.dayOfMonth}
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="w-56 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-1.5 px-3 py-2 text-left"
+                >
+                  <div>
+                    <p className="font-medium">{title}</p>
+                    <p className="opacity-75">{count}</p>
+                  </div>
+                  <ul className="space-y-0.5">
+                    {sources.map((source) => (
+                      <li
+                        key={source}
+                        className="flex items-center justify-between gap-4"
+                      >
+                        <span>{t(`calendar.sources.${source}`)}</span>
+                        <span className="tabular-nums">
+                          {bucket.counts[source]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+
+      {data.days.length > 0 && (
+        <p className="flex items-start gap-1.5 text-[0.7rem] leading-snug text-muted-foreground">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 size-2.5 shrink-0 rounded-sm border border-accent-200 bg-accent-100"
+          />
+          {t("calendar.markedDayHint")}
+        </p>
+      )}
 
       {data.days.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -125,9 +209,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
       ) : (
         <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto text-xs">
           {data.days.map((day) => {
-            const parts = (
-              Object.keys(day.counts) as CalendarEventSource[]
-            ).filter((source) => day.counts[source] > 0);
+            const parts = populatedSources(day);
             return (
               <li key={day.date} className="flex items-baseline gap-1.5">
                 <span className="shrink-0 font-medium text-foreground-700">
