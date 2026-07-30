@@ -191,7 +191,9 @@ describe("standardized form contracts", () => {
     await user.type(screen.getByLabelText("Пароль"), "secret");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/bookmarks"));
+    // An unsafe `next` falls back to the post-login landing path, not to the
+    // attacker's target.
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/dashboards"));
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 

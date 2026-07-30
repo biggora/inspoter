@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  DashboardWidgetKind,
   MailAccountKind,
   MailSecurity,
   MailSpecialUse,
@@ -22,6 +23,7 @@ import {
 
 export const BACKUP_SECTIONS = [
   "bookmarks",
+  "dashboards",
   "messages",
   "mail",
   "logs",
@@ -36,6 +38,7 @@ export type BackupSection = (typeof BACKUP_SECTIONS)[number];
 
 export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
   bookmarks: ["categories", "bookmarks"],
+  dashboards: ["dashboards", "dashboardWidgets"],
   messages: ["messageCategories", "channels", "messages"],
   mail: ["mailAccounts", "mailFolders", "mailItems", "mailAttachments"],
   logs: ["logEntries"],
@@ -69,6 +72,33 @@ const bookmarkSchema = z.object({
   color: z.string().nullable(),
   description: z.string().nullable(),
   position: z.number().int(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+// A dashboard widget's `config` is a per-kind options object validated by
+// WIDGET_CONFIG_SCHEMAS on the way in. The archive keeps it as opaque JSON on
+// purpose: re-validating it here would make a backup unrestorable the moment a
+// widget kind's schema tightens, and a config that no longer parses degrades to
+// the kind's defaults when the dashboard renders.
+const dashboardSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  position: z.number().int(),
+  isDefault: z.boolean(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const dashboardWidgetSchema = z.object({
+  id: z.string(),
+  dashboardId: z.string(),
+  kind: z.enum(DashboardWidgetKind),
+  x: z.number().int(),
+  y: z.number().int(),
+  w: z.number().int(),
+  h: z.number().int(),
+  config: z.unknown(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });
@@ -317,6 +347,8 @@ const manifestSchema = z.object({
 const dataSchema = z.object({
   categories: z.array(categorySchema).optional(),
   bookmarks: z.array(bookmarkSchema).optional(),
+  dashboards: z.array(dashboardSchema).optional(),
+  dashboardWidgets: z.array(dashboardWidgetSchema).optional(),
   messageCategories: z.array(messageCategorySchema).optional(),
   channels: z.array(channelSchema).optional(),
   messages: z.array(messageSchema).optional(),
@@ -345,6 +377,8 @@ export type BackupManifest = z.infer<typeof manifestSchema>;
 export type BackupData = z.infer<typeof dataSchema>;
 export type BackupCategoryRecord = z.infer<typeof categorySchema>;
 export type BackupBookmarkRecord = z.infer<typeof bookmarkSchema>;
+export type BackupDashboardRecord = z.infer<typeof dashboardSchema>;
+export type BackupDashboardWidgetRecord = z.infer<typeof dashboardWidgetSchema>;
 export type BackupMessageCategoryRecord = z.infer<typeof messageCategorySchema>;
 export type BackupChannelRecord = z.infer<typeof channelSchema>;
 export type BackupMessageRecord = z.infer<typeof messageSchema>;

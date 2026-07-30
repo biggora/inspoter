@@ -1,0 +1,227 @@
+{
+  "pageTitle": "Дашборды",
+  "count": "{count, plural, one {# дашборд} few {# дашборда} other {# дашбордов}}",
+  "newDashboardButton": "Новый дашборд",
+  "emptyTitle": "Дашбордов пока нет",
+  "emptyDescription": "Соберите свой обзор рабочего пространства: часы, погода, календарь и данные из любого раздела — серверов, почты, сервисов.",
+  "createFirstButton": "Создать дашборд",
+
+  "tabsLabel": "Список дашбордов",
+  "defaultBadge": "Стартовый",
+  "editButton": "Редактировать",
+  "editDoneButton": "Готово",
+  "addWidgetButton": "Добавить виджет",
+  "dashboardMenuLabel": "Действия с дашбордом",
+  "renameAction": "Переименовать",
+  "setDefaultAction": "Сделать стартовым",
+  "deleteAction": "Удалить",
+  "editHintDesktop": "Перетаскивайте виджеты за заголовок, а размер меняйте за уголок в правом нижнем углу.",
+  "editHintMobile": "На узком экране виджеты идут одной колонкой. Раскладку можно менять на экране шире 640 пикселей.",
+  "emptyBoardTitle": "На дашборде пока нет виджетов",
+  "emptyBoardDescription": "Добавьте первый виджет — часы, погоду или сводку из любого раздела.",
+  "addFirstWidgetButton": "Добавить первый виджет",
+  "updatedAt": "Обновлено в {time}",
+
+  "createDialogTitle": "Новый дашборд",
+  "renameDialogTitle": "Переименовать дашборд",
+  "nameLabel": "Название",
+  "namePlaceholder": "Например, Продакшн",
+  "nameRequiredError": "Укажите название дашборда",
+  "saveButton": "Сохранить",
+  "cancelButton": "Отмена",
+  "deleteDialogTitle": "Удалить дашборд?",
+  "deleteDialogDescription": "Дашборд «{name}» и все его виджеты будут удалены. Данные разделов при этом не меняются.",
+  "deleteConfirmButton": "Удалить",
+
+  "widgetPickerTitle": "Добавить виджет",
+  "widgetPickerDescription": "Выберите, что показывать на дашборде.",
+  "widgetConfigTitle": "Настройки: {widget}",
+  "widgetMenuLabel": "Действия с виджетом",
+  "configureAction": "Настроить",
+  "removeWidgetAction": "Удалить виджет",
+  "dragHandleLabel": "Переместить виджет «{widget}»",
+  "resizeHandleLabel": "Изменить размер виджета «{widget}»",
+  "widgetErrorTitle": "Данные недоступны",
+  "widgetLoadingLabel": "Загрузка данных виджета",
+  "viewSectionLink": "Открыть раздел",
+
+  "titleLabel": "Свой заголовок",
+  "titlePlaceholder": "Оставьте пустым для заголовка по умолчанию",
+  "limitLabel": "Сколько записей показывать",
+
+  "justNow": "Только что",
+  "minutesAgo": "{count} мин. назад",
+  "hoursAgo": "{count} ч. назад",
+  "daysAgo": "{count} дн. назад",
+
+  "kinds": {
+    "CLOCK": {
+      "title": "Часы и дата",
+      "description": "Текущее время и дата, при необходимости в другой временной зоне."
+    },
+    "WEATHER": {
+      "title": "Погода",
+      "description": "Текущая погода по координатам — данные Open-Meteo."
+    },
+    "CALENDAR": {
+      "title": "Календарь",
+      "description": "Сетка месяца с отметками дней, когда были оповещения, инциденты, письма или действия."
+    },
+    "NOTE": {
+      "title": "Заметка",
+      "description": "Произвольный текст: дежурства, контакты, напоминания."
+    },
+    "BOOKMARKS": {
+      "title": "Закладки",
+      "description": "Плитки ссылок из выбранной категории закладок."
+    },
+    "SERVICE_STATUS": {
+      "title": "Статусы сервисов",
+      "description": "Сводка мониторинга: что работает, что упало."
+    },
+    "SERVER_METRICS": {
+      "title": "Метрики серверов",
+      "description": "Загрузка процессора, памяти и диска по данным агента."
+    },
+    "MAIL": {
+      "title": "Почта",
+      "description": "Последние письма, при необходимости только непрочитанные."
+    },
+    "ALERTS": {
+      "title": "Оповещения",
+      "description": "Последние оповещения с фильтром по уровню важности."
+    },
+    "LOGS": {
+      "title": "Логи",
+      "description": "Последние записи журнала с фильтром по уровню."
+    }
+  },
+
+  "clock": {
+    "formatLabel": "Формат времени",
+    "format24h": "24 часа",
+    "format12h": "12 часов",
+    "showSecondsLabel": "Показывать секунды",
+    "showDateLabel": "Показывать дату",
+    "timeZoneLabel": "Временная зона",
+    "timeZonePlaceholder": "Например, Europe/Riga",
+    "timeZoneHint": "Оставьте пустым, чтобы использовать зону браузера."
+  },
+
+  "weather": {
+    "locationLabel": "Название места",
+    "locationPlaceholder": "Например, Рига",
+    "latitudeLabel": "Широта",
+    "longitudeLabel": "Долгота",
+    "unitLabel": "Единицы измерения",
+    "unitCelsius": "Цельсий",
+    "unitFahrenheit": "Фаренгейт",
+    "feelsLike": "Ощущается как {value}",
+    "wind": "Ветер {value} км/ч",
+    "notConfigured": "Укажите координаты в настройках виджета.",
+    "conditions": {
+      "clear": "Ясно",
+      "mainlyClear": "В основном ясно",
+      "partlyCloudy": "Переменная облачность",
+      "overcast": "Пасмурно",
+      "fog": "Туман",
+      "drizzle": "Морось",
+      "freezingDrizzle": "Ледяная морось",
+      "rain": "Дождь",
+      "freezingRain": "Ледяной дождь",
+      "snow": "Снег",
+      "snowGrains": "Снежные зёрна",
+      "showers": "Ливень",
+      "snowShowers": "Снегопад",
+      "thunderstorm": "Гроза",
+      "thunderstormHail": "Гроза с градом",
+      "unknown": "Нет данных"
+    }
+  },
+
+  "calendar": {
+    "sourcesLabel": "Источники событий",
+    "sources": {
+      "alerts": "Оповещения",
+      "serviceIncidents": "Инциденты сервисов",
+      "mail": "Письма",
+      "activity": "Действия"
+    },
+    "previousMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "today": "Сегодня",
+    "dayEventsTitle": "События за {date}",
+    "noEvents": "В этот день событий не было.",
+    "eventCount": "{count, plural, one {# событие} few {# события} other {# событий}}",
+    "truncatedNote": "Событий за месяц слишком много — показана часть.",
+    "monthNavigationHint": "Календарь показывает текущий месяц."
+  },
+
+  "note": {
+    "textLabel": "Текст заметки",
+    "textPlaceholder": "Дежурный на неделе, контакты, что не забыть…",
+    "empty": "Заметка пуста — откройте настройки виджета и добавьте текст."
+  },
+
+  "bookmarks": {
+    "categoryLabel": "Категория",
+    "allCategoriesOption": "Все категории",
+    "empty": "В выбранной категории нет закладок.",
+    "moreCount": "и ещё {count}"
+  },
+
+  "serviceStatus": {
+    "servicesLabel": "Сервисы",
+    "allServicesOption": "Все сервисы",
+    "summaryUp": "Работает: {count}",
+    "summaryDown": "Не работает: {count}",
+    "summaryPending": "Ожидание: {count}",
+    "empty": "Сервисы для мониторинга ещё не добавлены.",
+    "responseTime": "{value} мс",
+    "moreCount": "и ещё {count}"
+  },
+
+  "serverMetrics": {
+    "serverLabel": "Сервер",
+    "allServersOption": "Все серверы",
+    "cpuLabel": "Процессор",
+    "memoryLabel": "Память",
+    "diskLabel": "Диск",
+    "loadLabel": "Загрузка",
+    "empty": "Серверы ещё не добавлены.",
+    "noMetrics": "Агент метрик не подключён.",
+    "staleMetrics": "Данные устарели.",
+    "moreCount": "и ещё {count}"
+  },
+
+  "mail": {
+    "accountLabel": "Ящик",
+    "allAccountsOption": "Все ящики",
+    "unreadOnlyLabel": "Только непрочитанные",
+    "noSubject": "Без темы",
+    "empty": "Писем пока нет."
+  },
+
+  "alerts": {
+    "severitiesLabel": "Уровни важности",
+    "allSeveritiesHint": "Ничего не выбрано — показываются все уровни.",
+    "empty": "Оповещений пока нет."
+  },
+
+  "logs": {
+    "levelsLabel": "Уровни",
+    "allLevelsHint": "Ничего не выбрано — показываются все уровни.",
+    "empty": "Записей в журнале пока нет."
+  },
+
+  "createError": "Не удалось создать дашборд.",
+  "renameError": "Не удалось переименовать дашборд.",
+  "setDefaultError": "Не удалось сделать дашборд стартовым.",
+  "deleteError": "Не удалось удалить дашборд.",
+  "layoutError": "Не удалось сохранить раскладку.",
+  "widgetAddError": "Не удалось добавить виджет.",
+  "widgetSaveError": "Не удалось сохранить настройки виджета.",
+  "widgetRemoveError": "Не удалось удалить виджет.",
+  "dataRefreshError": "Не удалось обновить данные виджетов.",
+  "setDefaultSuccess": "Дашборд стал стартовым."
+}

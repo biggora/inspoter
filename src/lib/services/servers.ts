@@ -302,7 +302,12 @@ export async function refreshServerSnapshots(
   for (const group of groups) {
     if (group.error) continue;
     await db.$transaction((tx) =>
-      reconcileProviderServers(tx, workspaceId, group.providerId, group.servers),
+      reconcileProviderServers(
+        tx,
+        workspaceId,
+        group.providerId,
+        group.servers,
+      ),
     );
   }
 
@@ -324,6 +329,42 @@ export async function refreshServerSnapshots(
     error: group.error,
   }));
   await recordSyncOutcomes(workspaceId, "Серверы", "listServers", outcomes);
+}
+
+export interface LocalServerMetricsDto {
+  localServerId: string;
+  name: string;
+  hostname: string | null;
+  metrics: ServerMetricsDto;
+}
+
+/**
+ * Metrics of every known server, straight from the agent snapshots — no
+ * provider call and no snapshot-cache refresh.
+ *
+ * The dashboard's server-metrics widget uses this instead of listServers():
+ * that function composes provider inventory (and can trigger a provider fetch),
+ * which is far too much work for a tile that re-reads its data every minute and
+ * only shows CPU/RAM/disk. Provider-side fields (power state, IP, plan) are
+ * deliberately absent here.
+ */
+export async function listLocalServerMetrics(
+  workspaceId: string,
+): Promise<LocalServerMetricsDto[]> {
+  const rows = await db.localServer.findMany({
+    where: { workspaceId },
+    include: { metricSnapshot: true },
+    orderBy: [{ displayName: "asc" }, { id: "asc" }],
+  });
+  return rows.map((row) => ({
+    localServerId: row.id,
+    name: row.displayName,
+    hostname: row.hostname,
+    metrics: serializeSnapshot(
+      row.metricSnapshot,
+      computeMetricsState(row.metricSnapshot),
+    ),
+  }));
 }
 
 export async function listServers(

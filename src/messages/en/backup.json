@@ -13,6 +13,7 @@
   "sectionsRequiredError": "Select at least one section",
   "sections": {
     "bookmarks": "Bookmarks",
+    "dashboards": "Dashboards",
     "messages": "Messages",
     "mail": "Mail",
     "logs": "Logs",

@@ -13,6 +13,7 @@
   "sectionsRequiredError": "Выберите хотя бы один раздел",
   "sections": {
     "bookmarks": "Закладки",
+    "dashboards": "Дашборды",
     "messages": "Сообщения",
     "mail": "Почта",
     "logs": "Логи",

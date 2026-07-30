@@ -1,0 +1,227 @@
+{
+  "pageTitle": "Dashboards",
+  "count": "{count, plural, one {# dashboard} other {# dashboards}}",
+  "newDashboardButton": "New dashboard",
+  "emptyTitle": "No dashboards yet",
+  "emptyDescription": "Build your own overview of the workspace: clock, weather, calendar, and data from any section — servers, mail, services.",
+  "createFirstButton": "Create dashboard",
+
+  "tabsLabel": "Dashboard list",
+  "defaultBadge": "Start page",
+  "editButton": "Edit",
+  "editDoneButton": "Done",
+  "addWidgetButton": "Add widget",
+  "dashboardMenuLabel": "Dashboard actions",
+  "renameAction": "Rename",
+  "setDefaultAction": "Make start page",
+  "deleteAction": "Delete",
+  "editHintDesktop": "Drag widgets by their header, and resize them from the handle in the bottom-right corner.",
+  "editHintMobile": "On a narrow screen widgets stack into one column. The layout can be changed on screens wider than 640 pixels.",
+  "emptyBoardTitle": "This dashboard has no widgets yet",
+  "emptyBoardDescription": "Add the first widget — a clock, the weather, or a summary from any section.",
+  "addFirstWidgetButton": "Add the first widget",
+  "updatedAt": "Updated at {time}",
+
+  "createDialogTitle": "New dashboard",
+  "renameDialogTitle": "Rename dashboard",
+  "nameLabel": "Name",
+  "namePlaceholder": "For example, Production",
+  "nameRequiredError": "Enter a dashboard name",
+  "saveButton": "Save",
+  "cancelButton": "Cancel",
+  "deleteDialogTitle": "Delete dashboard?",
+  "deleteDialogDescription": "The dashboard “{name}” and all of its widgets will be deleted. Section data is not affected.",
+  "deleteConfirmButton": "Delete",
+
+  "widgetPickerTitle": "Add widget",
+  "widgetPickerDescription": "Choose what to show on the dashboard.",
+  "widgetConfigTitle": "Settings: {widget}",
+  "widgetMenuLabel": "Widget actions",
+  "configureAction": "Configure",
+  "removeWidgetAction": "Remove widget",
+  "dragHandleLabel": "Move the “{widget}” widget",
+  "resizeHandleLabel": "Resize the “{widget}” widget",
+  "widgetErrorTitle": "Data unavailable",
+  "widgetLoadingLabel": "Loading widget data",
+  "viewSectionLink": "Open section",
+
+  "titleLabel": "Custom title",
+  "titlePlaceholder": "Leave empty for the default title",
+  "limitLabel": "How many entries to show",
+
+  "justNow": "Just now",
+  "minutesAgo": "{count} min ago",
+  "hoursAgo": "{count} h ago",
+  "daysAgo": "{count} d ago",
+
+  "kinds": {
+    "CLOCK": {
+      "title": "Clock and date",
+      "description": "Current time and date, optionally in another time zone."
+    },
+    "WEATHER": {
+      "title": "Weather",
+      "description": "Current weather for a pair of coordinates — data from Open-Meteo."
+    },
+    "CALENDAR": {
+      "title": "Calendar",
+      "description": "A month grid marking the days that had alerts, incidents, mail, or operator actions."
+    },
+    "NOTE": {
+      "title": "Note",
+      "description": "Free-form text: who is on duty, contacts, reminders."
+    },
+    "BOOKMARKS": {
+      "title": "Bookmarks",
+      "description": "Link tiles from a chosen bookmark category."
+    },
+    "SERVICE_STATUS": {
+      "title": "Service status",
+      "description": "Monitoring summary: what is up and what is down."
+    },
+    "SERVER_METRICS": {
+      "title": "Server metrics",
+      "description": "CPU, memory, and disk usage reported by the metrics agent."
+    },
+    "MAIL": {
+      "title": "Mail",
+      "description": "The most recent messages, optionally unread only."
+    },
+    "ALERTS": {
+      "title": "Alerts",
+      "description": "The most recent alerts, filtered by severity."
+    },
+    "LOGS": {
+      "title": "Logs",
+      "description": "The most recent log entries, filtered by level."
+    }
+  },
+
+  "clock": {
+    "formatLabel": "Time format",
+    "format24h": "24-hour",
+    "format12h": "12-hour",
+    "showSecondsLabel": "Show seconds",
+    "showDateLabel": "Show date",
+    "timeZoneLabel": "Time zone",
+    "timeZonePlaceholder": "For example, Europe/Riga",
+    "timeZoneHint": "Leave empty to use the browser's zone."
+  },
+
+  "weather": {
+    "locationLabel": "Location name",
+    "locationPlaceholder": "For example, Riga",
+    "latitudeLabel": "Latitude",
+    "longitudeLabel": "Longitude",
+    "unitLabel": "Units",
+    "unitCelsius": "Celsius",
+    "unitFahrenheit": "Fahrenheit",
+    "feelsLike": "Feels like {value}",
+    "wind": "Wind {value} km/h",
+    "notConfigured": "Set the coordinates in the widget settings.",
+    "conditions": {
+      "clear": "Clear",
+      "mainlyClear": "Mainly clear",
+      "partlyCloudy": "Partly cloudy",
+      "overcast": "Overcast",
+      "fog": "Fog",
+      "drizzle": "Drizzle",
+      "freezingDrizzle": "Freezing drizzle",
+      "rain": "Rain",
+      "freezingRain": "Freezing rain",
+      "snow": "Snow",
+      "snowGrains": "Snow grains",
+      "showers": "Showers",
+      "snowShowers": "Snow showers",
+      "thunderstorm": "Thunderstorm",
+      "thunderstormHail": "Thunderstorm with hail",
+      "unknown": "No data"
+    }
+  },
+
+  "calendar": {
+    "sourcesLabel": "Event sources",
+    "sources": {
+      "alerts": "Alerts",
+      "serviceIncidents": "Service incidents",
+      "mail": "Mail",
+      "activity": "Activity"
+    },
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today",
+    "dayEventsTitle": "Events on {date}",
+    "noEvents": "Nothing happened on this day.",
+    "eventCount": "{count, plural, one {# event} other {# events}}",
+    "truncatedNote": "Too many events this month — showing a subset.",
+    "monthNavigationHint": "The calendar shows the current month."
+  },
+
+  "note": {
+    "textLabel": "Note text",
+    "textPlaceholder": "Who is on duty this week, contacts, things to remember…",
+    "empty": "This note is empty — open the widget settings and add some text."
+  },
+
+  "bookmarks": {
+    "categoryLabel": "Category",
+    "allCategoriesOption": "All categories",
+    "empty": "The selected category has no bookmarks.",
+    "moreCount": "and {count} more"
+  },
+
+  "serviceStatus": {
+    "servicesLabel": "Services",
+    "allServicesOption": "All services",
+    "summaryUp": "Up: {count}",
+    "summaryDown": "Down: {count}",
+    "summaryPending": "Pending: {count}",
+    "empty": "No services are being monitored yet.",
+    "responseTime": "{value} ms",
+    "moreCount": "and {count} more"
+  },
+
+  "serverMetrics": {
+    "serverLabel": "Server",
+    "allServersOption": "All servers",
+    "cpuLabel": "CPU",
+    "memoryLabel": "Memory",
+    "diskLabel": "Disk",
+    "loadLabel": "Load",
+    "empty": "No servers have been added yet.",
+    "noMetrics": "The metrics agent is not connected.",
+    "staleMetrics": "This data is stale.",
+    "moreCount": "and {count} more"
+  },
+
+  "mail": {
+    "accountLabel": "Mailbox",
+    "allAccountsOption": "All mailboxes",
+    "unreadOnlyLabel": "Unread only",
+    "noSubject": "No subject",
+    "empty": "No mail yet."
+  },
+
+  "alerts": {
+    "severitiesLabel": "Severities",
+    "allSeveritiesHint": "Nothing selected — every severity is shown.",
+    "empty": "No alerts yet."
+  },
+
+  "logs": {
+    "levelsLabel": "Levels",
+    "allLevelsHint": "Nothing selected — every level is shown.",
+    "empty": "No log entries yet."
+  },
+
+  "createError": "Could not create the dashboard.",
+  "renameError": "Could not rename the dashboard.",
+  "setDefaultError": "Could not make this dashboard the start page.",
+  "deleteError": "Could not delete the dashboard.",
+  "layoutError": "Could not save the layout.",
+  "widgetAddError": "Could not add the widget.",
+  "widgetSaveError": "Could not save the widget settings.",
+  "widgetRemoveError": "Could not remove the widget.",
+  "dataRefreshError": "Could not refresh widget data.",
+  "setDefaultSuccess": "This dashboard is now the start page."
+}

@@ -13,9 +13,14 @@ const SECTIONS = [
   "Оповещения",
 ];
 
+// Scoped by accessible name: a dashboard page also renders a navigation
+// landmark for its dashboard tabs, so the bare "navigation" role is ambiguous
+// once a workspace has more than one dashboard.
+const MAIN_NAV = { name: "Основная навигация" } as const;
+
 test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
   await login(page);
-  const nav = page.getByRole("navigation");
+  const nav = page.getByRole("navigation", MAIN_NAV);
   for (const section of SECTIONS) {
     await expect(
       nav.getByRole("link", { name: section, exact: true }),
@@ -34,7 +39,7 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
   });
 
   await page
-    .getByRole("navigation")
+    .getByRole("navigation", MAIN_NAV)
     .getByRole("link", { name: "Домены", exact: true })
     .click();
   await expect(page).toHaveURL(/\/domains$/);

@@ -17,6 +17,13 @@ function iconFor(key: string): string {
 // card with missing i18n keys.
 export const HELP_ARTICLES: HelpArticle[] = [
   {
+    slug: "dashboards",
+    href: "/help/dashboards",
+    icon: iconFor("dashboards"),
+    titleKey: "dashboardsTitle",
+    cardDescriptionKey: "dashboardsCardDescription",
+  },
+  {
     slug: "bookmarks",
     href: "/help/bookmarks",
     icon: iconFor("bookmarks"),

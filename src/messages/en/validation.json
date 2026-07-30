@@ -47,6 +47,22 @@
     "urlInvalidFormat": "URL must be a valid http(s) address",
     "categoryIdRequired": "Category is required"
   },
+  "dashboard": {
+    "nameRequired": "Name is required",
+    "nameTooLong": "Name must not exceed 60 characters",
+    "kindInvalid": "Unknown widget type",
+    "configInvalid": "Invalid widget settings",
+    "titleTooLong": "Title must not exceed 60 characters",
+    "latitudeInvalid": "Latitude must be between -90 and 90",
+    "longitudeInvalid": "Longitude must be between -180 and 180",
+    "locationRequired": "Enter a location name",
+    "timeZoneInvalid": "Invalid time zone",
+    "noteTooLong": "Note text must not exceed 4000 characters",
+    "sourcesRequired": "Select at least one event source",
+    "limitOutOfRange": "Item count must be between 1 and 20",
+    "layoutRequired": "Layout cannot be empty",
+    "layoutCellInvalid": "Invalid widget coordinates"
+  },
   "dns": {
     "nameRequired": "Record name is required",
     "valueRequired": "Record value is required",

@@ -3,6 +3,8 @@ import { Prisma } from "@/generated/prisma/client";
 import type {
   Category,
   Bookmark,
+  Dashboard,
+  DashboardWidget,
   MessageCategory,
   Channel,
   Message,
@@ -37,6 +39,8 @@ import {
   type BackupManifest,
   type BackupCategoryRecord,
   type BackupBookmarkRecord,
+  type BackupDashboardRecord,
+  type BackupDashboardWidgetRecord,
   type BackupMessageCategoryRecord,
   type BackupChannelRecord,
   type BackupMessageRecord,
@@ -167,6 +171,34 @@ function toBookmarkRecord(row: Bookmark): BackupBookmarkRecord {
     color: row.color,
     description: row.description,
     position: row.position,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toDashboardRecord(row: Dashboard): BackupDashboardRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    isDefault: row.isDefault,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toDashboardWidgetRecord(
+  row: DashboardWidget,
+): BackupDashboardWidgetRecord {
+  return {
+    id: row.id,
+    dashboardId: row.dashboardId,
+    kind: row.kind,
+    x: row.x,
+    y: row.y,
+    w: row.w,
+    h: row.h,
+    config: row.config,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -553,6 +585,21 @@ export async function exportWorkspace(
         counts.bookmarks = bookmarks.length;
       }
 
+      if (sections.includes("dashboards")) {
+        const dashboards = await tx.dashboard.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        const dashboardWidgets = await tx.dashboardWidget.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        data.dashboards = dashboards.map(toDashboardRecord);
+        data.dashboardWidgets = dashboardWidgets.map(toDashboardWidgetRecord);
+        counts.dashboards = dashboards.length;
+        counts.dashboardWidgets = dashboardWidgets.length;
+      }
+
       if (sections.includes("messages")) {
         const messageCategories = await tx.messageCategory.findMany({
           where: { workspaceId },
@@ -800,6 +847,9 @@ export async function importWorkspace(
         if (sections.has("bookmarks")) {
           await tx.bookmark.deleteMany({ where: { workspaceId } });
         }
+        if (sections.has("dashboards")) {
+          await tx.dashboardWidget.deleteMany({ where: { workspaceId } });
+        }
         if (sections.has("webhooks")) {
           await tx.webhookToken.deleteMany({ where: { workspaceId } });
         }
@@ -814,6 +864,9 @@ export async function importWorkspace(
         }
         if (sections.has("bookmarks")) {
           await tx.category.deleteMany({ where: { workspaceId } });
+        }
+        if (sections.has("dashboards")) {
+          await tx.dashboard.deleteMany({ where: { workspaceId } });
         }
         if (sections.has("messages")) {
           await tx.messageCategory.deleteMany({ where: { workspaceId } });
@@ -848,6 +901,7 @@ export async function importWorkspace(
       }
 
       const categoryIdMap = new Map<string, string>();
+      const dashboardIdMap = new Map<string, string>();
       const messageCategoryIdMap = new Map<string, string>();
       const channelIdMap = new Map<string, string>();
       const mailAccountIdMap = new Map<string, string>();
@@ -887,6 +941,33 @@ export async function importWorkspace(
       }
 
       // --- Tier 2: independent parents ---
+      // `isDefault` is dropped on import: at most one dashboard per workspace
+      // may carry it (partial unique index), and a merge-mode import into a
+      // workspace that already has a start dashboard would collide. The section
+      // falls back to the first dashboard by position, so nothing breaks — the
+      // operator re-pins their preferred board.
+      if (payload.data.dashboards) {
+        const inserts = payload.data.dashboards.map((row) => {
+          const newId = crypto.randomUUID();
+          dashboardIdMap.set(row.id, newId);
+          return {
+            id: newId,
+            workspaceId,
+            name: row.name,
+            position: row.position,
+            isDefault: false,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.dashboard.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.dashboards = inserts.length;
+      }
+
       if (payload.data.messageCategories) {
         const inserts = payload.data.messageCategories.map((row) => {
           const newId = crypto.randomUUID();
@@ -1222,6 +1303,35 @@ export async function importWorkspace(
           500,
         );
         imported.bookmarks = inserts.length;
+      }
+
+      if (payload.data.dashboardWidgets) {
+        const inserts = payload.data.dashboardWidgets.map((row) => {
+          const dashboardId = mustRemap(dashboardIdMap, row.dashboardId);
+          return {
+            id: crypto.randomUUID(),
+            workspaceId,
+            dashboardId,
+            dashboardWorkspaceId: workspaceId,
+            kind: row.kind,
+            x: row.x,
+            y: row.y,
+            w: row.w,
+            h: row.h,
+            // The column is non-nullable Json, so jsonInput()'s DbNull branch
+            // does not apply here: an absent config restores as `{}`, which is
+            // exactly what every widget schema defaults from.
+            config: (row.config ?? {}) as Prisma.InputJsonValue,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.dashboardWidget.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.dashboardWidgets = inserts.length;
       }
 
       if (payload.data.channels) {

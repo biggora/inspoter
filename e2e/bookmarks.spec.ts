@@ -6,6 +6,9 @@ type RegisterCategory = (id: string) => void;
 
 test.beforeEach(async ({ page }) => {
   await login(page);
+  // Sign-in lands on the Dashboards section, so this suite navigates to its own
+  // section explicitly instead of relying on the post-login landing page.
+  await page.goto("/bookmarks");
 });
 
 function categorySection(page: Page, categoryName: string) {

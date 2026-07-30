@@ -4,6 +4,19 @@
   "backToHelp": "Back to Help",
   "howToUseHeading": "How to use it",
 
+  "dashboardsTitle": "Dashboards",
+  "dashboardsCardDescription": "Build your own overview from widgets — clock, weather, calendar, and data from any section.",
+  "dashboardsIntroP1": "Dashboards are named overview pages inside a workspace. Each one holds widgets: global ones (clock and date, weather, calendar, note) and ones that read a section — bookmarks, service status, server metrics, mail, alerts, and logs.",
+  "dashboardsIntroP2": "Widgets sit on a 12-column grid and can be dragged and resized, but only in edit mode — in normal mode the tiles stay interactive and never move on a stray press. Widget data refreshes itself once a minute while the page is open. Dashboards are shared across the workspace, and one of them can be made the start page, which is what opens right after signing in.",
+  "dashboardsSteps": [
+    "Choose “New dashboard” from the actions menu and give it a name — for example “Production” or “On call”.",
+    "Click “Edit”, then “Add widget”, and pick a type from the catalogue.",
+    "The widget's settings open right after it is added: that is where you set weather coordinates, a bookmark category, a specific server or mailbox, how many entries to show, and a custom title.",
+    "In edit mode, drag a widget by the handle on the left of its header, and resize it from the grip in the bottom-right corner — with the grip focused, the arrow keys resize it a cell at a time.",
+    "Click “Done” to leave edit mode: widgets then show a link into their section instead of the actions menu.",
+    "The dashboard menu renames it, makes it the start page, or deletes it — deleting a dashboard never touches section data."
+  ],
+
   "bookmarksTitle": "Bookmarks",
   "bookmarksCardDescription": "Organize saved links into categories and subcategories.",
   "bookmarksIntroP1": "Bookmarks stores links to sites and tools you use often, grouped into categories with one level of subcategories. Each bookmark can have a name, URL, description, and icon.",
