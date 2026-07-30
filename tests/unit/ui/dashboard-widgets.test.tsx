@@ -124,6 +124,32 @@ describe("WeatherWidget", () => {
 });
 
 describe("CalendarWidget", () => {
+  it("keeps the event list in the widget frame scroll flow", () => {
+    const { container } = renderWithIntl(
+      <CalendarWidget
+        data={{
+          month: "2026-07-01",
+          days: [
+            {
+              date: "2026-07-03",
+              counts: { alerts: 2, serviceIncidents: 1, mail: 0, activity: 0 },
+              total: 3,
+            },
+          ],
+          truncated: [],
+        }}
+      />,
+    );
+
+    const widget = container.querySelector('[data-slot="calendar-widget"]');
+    const eventList = container.querySelector(
+      '[data-slot="calendar-event-list"]',
+    );
+
+    expect(widget).not.toHaveClass("h-full");
+    expect(eventList).not.toHaveClass("min-h-0", "flex-1", "overflow-auto");
+  });
+
   it("reveals event details from a highlighted day", async () => {
     const user = userEvent.setup();
 

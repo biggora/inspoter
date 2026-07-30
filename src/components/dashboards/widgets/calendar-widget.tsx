@@ -101,7 +101,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div data-slot="calendar-widget" className="flex flex-col gap-2">
       <p className="text-xs font-medium text-foreground-700">
         {monthFormatter.format(new Date(`${data.month}T00:00:00.000Z`))}
       </p>
@@ -207,7 +207,10 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
           {t("calendar.noEvents")}
         </p>
       ) : (
-        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto text-xs">
+        <ul
+          data-slot="calendar-event-list"
+          className="flex flex-col gap-1 text-xs"
+        >
           {data.days.map((day) => {
             const parts = populatedSources(day);
             return (
