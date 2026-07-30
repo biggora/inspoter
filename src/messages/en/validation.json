@@ -56,6 +56,7 @@
     "latitudeInvalid": "Latitude must be between -90 and 90",
     "longitudeInvalid": "Longitude must be between -180 and 180",
     "locationRequired": "Enter a location name",
+    "coordinatesRequired": "Enter both coordinates",
     "timeZoneInvalid": "Invalid time zone",
     "noteTooLong": "Note text must not exceed 4000 characters",
     "sourcesRequired": "Select at least one event source",

@@ -30,6 +30,16 @@ const cache = new Map<string, CacheEntry>();
 
 export type { WeatherSnapshot };
 
+/**
+ * A weather config whose location is actually set. `WeatherConfig` allows null
+ * coordinates ("not configured yet"), which is a state this module has nothing
+ * to fetch for, so the caller narrows before asking.
+ */
+export type ResolvedWeatherConfig = WeatherConfig & {
+  latitude: number;
+  longitude: number;
+};
+
 export class WeatherUnavailableError extends Error {
   readonly code = "WEATHER_UNAVAILABLE" as const;
   constructor(message: string) {
@@ -43,7 +53,7 @@ function round(value: number): number {
   return Math.round(value * factor) / factor;
 }
 
-function cacheKey(config: WeatherConfig): string {
+function cacheKey(config: ResolvedWeatherConfig): string {
   return `${round(config.latitude)}:${round(config.longitude)}:${config.unit}`;
 }
 
@@ -63,7 +73,7 @@ interface OpenMeteoResponse {
 }
 
 export async function getWeather(
-  config: WeatherConfig,
+  config: ResolvedWeatherConfig,
 ): Promise<WeatherSnapshot> {
   const key = cacheKey(config);
   const cached = cache.get(key);

@@ -44,8 +44,19 @@ function formatTemperature(value: number, unit: string): string {
   return `${Math.round(value)}°${unit === "fahrenheit" ? "F" : "C"}`;
 }
 
-export function WeatherWidget({ data }: { data: WeatherSnapshot }) {
+export function WeatherWidget({ data }: { data: WeatherSnapshot | null }) {
   const t = useTranslations("dashboards");
+
+  // No location set yet — the tile says what to do rather than showing an
+  // error, because nothing has failed.
+  if (data === null) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {t("weather.notConfigured")}
+      </p>
+    );
+  }
+
   const condition = CONDITIONS[data.weatherCode] ?? {
     key: "unknown",
     icon: "ri-question-line",

@@ -74,7 +74,16 @@ async function resolveOne(
     case "WEATHER": {
       const config = parseWidgetConfigOrDefaults("WEATHER", widget.config);
       if (!config) return { error: "WEATHER_CONFIG_INVALID" };
-      return { kind: "WEATHER", data: await getWeather(config) };
+      // A widget whose location was cleared has nothing to ask the provider
+      // for; the tile renders the "set the coordinates" hint instead.
+      const { latitude, longitude } = config;
+      if (latitude === null || longitude === null) {
+        return { kind: "WEATHER", data: null };
+      }
+      return {
+        kind: "WEATHER",
+        data: await getWeather({ ...config, latitude, longitude }),
+      };
     }
     case "CALENDAR": {
       const config = parseWidgetConfigOrDefaults("CALENDAR", widget.config);

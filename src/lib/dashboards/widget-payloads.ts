@@ -146,7 +146,9 @@ export interface LogsPayload {
 export type WidgetPayload =
   | { kind: "CLOCK" }
   | { kind: "NOTE" }
-  | { kind: "WEATHER"; data: WeatherSnapshot }
+  // `data: null` is a weather widget with no location yet — the tile asks for
+  // coordinates instead of showing a reading.
+  | { kind: "WEATHER"; data: WeatherSnapshot | null }
   | { kind: "CALENDAR"; data: CalendarMonthData }
   | { kind: "BOOKMARKS"; data: BookmarksPayload }
   | { kind: "SERVICE_STATUS"; data: ServiceStatusPayload }

@@ -46,6 +46,11 @@ function num(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+/** A number field that may legitimately be empty — the weather coordinates. */
+function numOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -312,9 +317,14 @@ export function WidgetConfigFields({
               step="0.0001"
               min={-90}
               max={90}
-              value={num(config.latitude, 0)}
+              value={numOrNull(config.latitude) ?? ""}
               onChange={(event) =>
-                onChange({ latitude: Number(event.target.value) })
+                onChange({
+                  latitude:
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                })
               }
             />
           </Field>
@@ -328,9 +338,14 @@ export function WidgetConfigFields({
               step="0.0001"
               min={-180}
               max={180}
-              value={num(config.longitude, 0)}
+              value={numOrNull(config.longitude) ?? ""}
               onChange={(event) =>
-                onChange({ longitude: Number(event.target.value) })
+                onChange({
+                  longitude:
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                })
               }
             />
           </Field>
