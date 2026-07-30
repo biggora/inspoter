@@ -307,6 +307,59 @@ describe("listServers()", () => {
   });
 });
 
+describe("listLocalServerMetrics()", () => {
+  it("shows one entry per machine when two credentials expose the same server", async () => {
+    const mirrorCredential = await credentialsService.createCredential(
+      workspaceId,
+      "HETZNER_CLOUD",
+      `${WORKSPACE_NAME_PREFIX}-hetzner-metrics-mirror`,
+      { type: "HETZNER_CLOUD", apiToken: "mock-token-metrics-mirror" },
+    );
+    // Same address as srv-01, different remote id — mirrors the listServers()
+    // scenario above, but exercised through the dashboard widget's read path.
+    const mirror = new MirrorServerProvider(mirrorCredential.id, {
+      id: "mirror-metrics-01",
+      name: "web-prod-01",
+      type: "cx41 · 4vCPU / 16GB",
+      status: "running",
+      cpu: "4 vCPU (AMD EPYC)",
+      ram: "16 GB",
+      disk: "160 GB NVMe",
+      ip: "49.12.34.56",
+      location: "Nuremberg, DE",
+      os: "Ubuntu 24.04 LTS",
+    });
+    mockState.providers = [mockProvider, mirror];
+
+    try {
+      // Reconciles both credentials' LocalServer rows and populates the
+      // ProviderSnapshot cache that the dedup reads from.
+      await serversService.listServers(workspaceId);
+
+      const rows = await db.localServer.findMany({
+        where: {
+          workspaceId,
+          providerRemoteId: { in: ["srv-01", "mirror-metrics-01"] },
+        },
+      });
+      expect(rows).toHaveLength(2);
+
+      const metrics =
+        await serversService.listLocalServerMetrics(workspaceId);
+      const matches = metrics.filter((m) =>
+        rows.some((r) => r.id === m.localServerId),
+      );
+      expect(matches).toHaveLength(1);
+    } finally {
+      mockState.providers = [mockProvider];
+      await credentialsService.deleteCredential(
+        mirrorCredential.id,
+        workspaceId,
+      );
+    }
+  });
+});
+
 describe("getComposedServer()", () => {
   it("returns null when no LocalServer row matches the provider/remote id", async () => {
     const result = await serversService.getComposedServer(

@@ -347,16 +347,67 @@ export interface LocalServerMetricsDto {
  * which is far too much work for a tile that re-reads its data every minute and
  * only shows CPU/RAM/disk. Provider-side fields (power state, IP, plan) are
  * deliberately absent here.
+ *
+ * One machine reachable through two credentials still owns two LocalServer
+ * rows (see dedupeByMachine above) — without collapsing them here, the tile
+ * would list that server twice. The read stays cheap: whatever provider
+ * inventory is already cached is enough to tell the rows apart by address; a
+ * missing/stale cache just means this pass can't dedupe until the next
+ * refresh (a background listServers()/refreshServerSnapshots() call), it
+ * never triggers one itself.
  */
 export async function listLocalServerMetrics(
   workspaceId: string,
 ): Promise<LocalServerMetricsDto[]> {
-  const rows = await db.localServer.findMany({
-    where: { workspaceId },
-    include: { metricSnapshot: true },
-    orderBy: [{ displayName: "asc" }, { id: "asc" }],
-  });
-  return rows.map((row) => ({
+  const [rows, snapshotRows] = await Promise.all([
+    db.localServer.findMany({
+      where: { workspaceId },
+      include: { metricSnapshot: true },
+      orderBy: [{ displayName: "asc" }, { id: "asc" }],
+    }),
+    snapshots.readSnapshots(workspaceId, KIND),
+  ]);
+
+  const ipByCredentialAndRemoteId = new Map<string, string>();
+  const providerTypeByCredentialId = new Map<string, string>();
+  for (const snapshot of snapshotRows) {
+    if (snapshot.error) continue;
+    const group = snapshot.payload as ServersByProvider;
+    providerTypeByCredentialId.set(snapshot.credentialId, group.providerType);
+    for (const server of group.servers) {
+      ipByCredentialAndRemoteId.set(
+        `${snapshot.credentialId}:${server.id}`,
+        server.ip,
+      );
+    }
+  }
+
+  const kept = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    if (!row.providerCredentialId || !row.providerRemoteId) {
+      kept.set(row.id, row); // agent-only rows are already unique.
+      continue;
+    }
+
+    const ip = ipByCredentialAndRemoteId.get(
+      `${row.providerCredentialId}:${row.providerRemoteId}`,
+    );
+    const identity = ip
+      ? `ip:${ip}`
+      : `remote:${providerTypeByCredentialId.get(row.providerCredentialId) ?? ""}:${row.providerRemoteId}`;
+
+    const existing = kept.get(identity);
+    if (!existing) {
+      kept.set(identity, row);
+    } else if (
+      computeMetricsState(existing.metricSnapshot) === "not_configured" &&
+      computeMetricsState(row.metricSnapshot) !== "not_configured"
+    ) {
+      kept.set(identity, row);
+    }
+  }
+
+  return [...kept.values()].map((row) => ({
     localServerId: row.id,
     name: row.displayName,
     hostname: row.hostname,
