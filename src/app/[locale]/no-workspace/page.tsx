@@ -2,6 +2,7 @@ import { redirect } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireOperator } from "@/lib/auth/dal";
 import { listForOperator } from "@/lib/services/workspaces";
+import { POST_LOGIN_PATH } from "@/lib/auth/redirect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { logout } from "@/app/[locale]/login/actions";
@@ -17,7 +18,7 @@ export default async function NoWorkspacePage() {
   // workspace in another tab since this session started.
   const workspaces = await listForOperator(operator.id);
   if (workspaces.length > 0) {
-    redirect({ href: "/bookmarks", locale: await getLocale() });
+    redirect({ href: POST_LOGIN_PATH, locale: await getLocale() });
   }
 
   const t = await getTranslations("auth");

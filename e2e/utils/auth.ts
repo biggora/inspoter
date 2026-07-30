@@ -11,13 +11,18 @@ function requireCredential(name: "OPERATOR_USERNAME" | "OPERATOR_PASSWORD") {
 export const OPERATOR_USERNAME = requireCredential("OPERATOR_USERNAME");
 export const OPERATOR_PASSWORD = requireCredential("OPERATOR_PASSWORD");
 
+// Where a successful sign-in lands: the Dashboards section, which forwards to
+// the workspace's start dashboard (or shows the "create your first one" state).
+// Kept as one constant because several specs assert the post-login URL.
+export const POST_LOGIN_PATH = "/dashboards";
+
 export async function submitLoginForm(
   page: Page,
   username: string = OPERATOR_USERNAME,
   password: string = OPERATOR_PASSWORD,
 ) {
   await page.goto("/login");
-  const expectedDashboardUrl = new URL("/bookmarks", page.url()).href;
+  const expectedDashboardUrl = new URL(POST_LOGIN_PATH, page.url()).href;
   await page.getByLabel(/^(?:Username|Имя пользователя)$/).fill(username);
   await page.getByLabel(/^(?:Password|Пароль)$/).fill(password);
   await page.getByRole("button", { name: /^(?:Sign in|Войти)$/ }).click();
@@ -30,5 +35,5 @@ export async function login(
   password: string = OPERATOR_PASSWORD,
 ) {
   await submitLoginForm(page, username, password);
-  await page.waitForURL(/\/bookmarks/);
+  await page.waitForURL(/\/dashboards/);
 }

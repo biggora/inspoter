@@ -3,12 +3,19 @@
 // Authentik login-initiation/callback routes (the `next` value round-trips
 // through a cookie an attacker could tamper with) and reusable by the
 // password-login form.
+//
+// The fallback is the Dashboards section: it is the workspace overview and the
+// first sidebar entry, and it forwards to the start dashboard (or to the "create
+// your first one" state) on its own.
 
 const DUMMY_ORIGIN = "http://dummy.invalid";
 
+/** Where a sign-in lands when no explicit `next` target was supplied. */
+export const POST_LOGIN_PATH = "/dashboards";
+
 export function sanitizeNextPath(
   next: string | null | undefined,
-  fallback = "/bookmarks",
+  fallback = POST_LOGIN_PATH,
 ): string {
   if (!next) return fallback;
 

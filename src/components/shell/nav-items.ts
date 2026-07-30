@@ -12,7 +12,18 @@ export interface NavItem {
 // monitoring, additive), in design.md §3.2.1 order. `labelKey` resolves
 // against the "shell" i18n namespace (src/messages/ru/shell.json) via
 // `useTranslations("shell")` in the consuming components.
+//
+// Dashboards leads the list: it is the workspace's overview and the section the
+// post-login redirect lands on (src/app/[locale]/page.tsx). It stays hideable
+// like every other section — a workspace that doesn't use boards can switch it
+// off in workspace settings.
 export const SECTION_NAV_ITEMS: NavItem[] = [
+  {
+    key: "dashboards",
+    href: "/dashboards",
+    labelKey: "navDashboards",
+    icon: "ri-dashboard-line",
+  },
   {
     key: "bookmarks",
     href: "/bookmarks",

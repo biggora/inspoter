@@ -114,6 +114,8 @@ model Workspace {
   webhookDeliveries WebhookDelivery[]
   localServers      LocalServer[]
   activities        Activity[]
+  dashboards        Dashboard[]
+  dashboardWidgets  DashboardWidget[]
 }
 
 model WorkspaceMember {
@@ -167,6 +169,67 @@ model Bookmark {
   updatedAt           DateTime  @updatedAt
 
   @@index([workspaceId, categoryId, position, id]) // grouped display AC-BM-012
+}
+
+// --- Dashboards (widget boards, Homarr-style) ---
+// A workspace holds any number of named dashboards; each dashboard holds
+// widgets placed on a 12-column grid. `config` is the per-kind options object
+// validated by WIDGET_CONFIG_SCHEMAS (src/lib/validation/dashboards.ts) — the
+// column is Json rather than ten nullable columns because no two widget kinds
+// share an option, and adding a kind must not require a migration.
+enum DashboardWidgetKind {
+  CLOCK
+  WEATHER
+  CALENDAR
+  NOTE
+  BOOKMARKS
+  SERVICE_STATUS
+  SERVER_METRICS
+  MAIL
+  ALERTS
+  LOGS
+}
+
+model Dashboard {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  position    Int       @default(0)
+  // The dashboard the post-login redirect lands on. At most one per workspace:
+  // raw partial unique index in the migration SQL (WHERE "isDefault") — not
+  // expressible in the Prisma DSL, same as MailAccount's WEBHOOK uniqueness.
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  widgets     DashboardWidget[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, position, id])
+}
+
+model DashboardWidget {
+  id                   String              @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  dashboardId          String
+  dashboardWorkspaceId String
+  dashboard            Dashboard           @relation(fields: [dashboardId, dashboardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  kind                 DashboardWidgetKind
+  // Grid placement in cells: x/w on a 12-column axis, y/h on an unbounded row
+  // axis. Non-overlap is a service-layer invariant (saveLayout), not a
+  // constraint — a legal move rewrites several rows at once, so the check has
+  // to see the whole proposed layout.
+  x                    Int
+  y                    Int
+  w                    Int
+  h                    Int
+  config               Json                @default("{}")
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, dashboardId, y, x, id])
 }
 
 // --- Messages (FR-MSG-001..002) ---

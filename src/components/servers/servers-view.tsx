@@ -41,6 +41,7 @@ import {
   type StatusState,
 } from "@/components/ui/status-indicator";
 import { UsageMeter } from "@/components/ui/usage-meter";
+import { usageFromTotals } from "@/lib/format/bytes";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
 import {
@@ -68,31 +69,6 @@ const TRANSITIONAL_STATUSES: ServerStatus[] = [
   "restarting",
 ];
 
-const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
-
-// Index of the unit a value reads best in, so a used/total pair can be printed
-// in one shared unit instead of "28.0 GB / 74.8 GB".
-function byteUnitIndex(bytes: bigint): number {
-  let value = Number(bytes);
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return unitIndex;
-}
-
-function formatBytesIn(bytes: bigint, unitIndex: number): string {
-  const value = Number(bytes) / 1024 ** unitIndex;
-  return value.toFixed(unitIndex === 0 ? 0 : 1);
-}
-
-// "28.0 / 74.8 GB" — the unit is taken from the total and printed once.
-function formatBytesPair(used: bigint, total: bigint): string {
-  const unitIndex = byteUnitIndex(total);
-  return `${formatBytesIn(used, unitIndex)} / ${formatBytesIn(total, unitIndex)} ${BYTE_UNITS[unitIndex]}`;
-}
-
 function formatUptime(seconds: bigint): string {
   const totalMinutes = Number(seconds) / 60;
   const days = Math.floor(totalMinutes / 1440);
@@ -101,30 +77,6 @@ function formatUptime(seconds: bigint): string {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
-}
-
-interface ResourceUsage {
-  // Whole percent: the meter is segmented, so extra precision would only make
-  // the value harder to read and the markup noisier.
-  percent: number;
-  // "1.8 / 3.7 GB · 48%" — absolute figures for precision, percentage for the
-  // instant read of how full the resource is.
-  text: string;
-}
-
-function usageFromTotals(
-  total: string | null,
-  available: string | null,
-): ResourceUsage | null {
-  if (!total || !available) return null;
-  const totalBytes = BigInt(total);
-  if (totalBytes <= 0n) return null;
-  const usedBytes = totalBytes - BigInt(available);
-  const percent = Math.round((Number(usedBytes) / Number(totalBytes)) * 100);
-  return {
-    percent,
-    text: `${formatBytesPair(usedBytes, totalBytes)} · ${percent}%`,
-  };
 }
 
 function formatRelativeTime(isoString: string): string {

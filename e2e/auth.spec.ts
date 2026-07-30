@@ -12,6 +12,7 @@ import {
 // end in a real browser against the real app + Postgres.
 
 const DASHBOARD_ROUTES = [
+  "/dashboards",
   "/bookmarks",
   "/domains",
   "/servers",
@@ -38,7 +39,7 @@ test("AC-AUTH-002: valid env-seeded credentials establish a session and reach th
   page,
 }) => {
   await login(page);
-  await expect(page).toHaveURL(/\/bookmarks/);
+  await expect(page).toHaveURL(/\/dashboards/);
 });
 
 test("AC-AUTH-003: invalid credentials are rejected with a generic error and no session", async ({
@@ -55,7 +56,7 @@ test("AC-AUTH-004: logout invalidates the session and subsequent requests redire
   page,
 }) => {
   await login(page);
-  await expect(page).toHaveURL(/\/bookmarks/);
+  await expect(page).toHaveURL(/\/dashboards/);
 
   await page
     .getByRole("button", { name: new RegExp(`${OPERATOR_USERNAME}$`) })
@@ -77,5 +78,5 @@ test("AC-AUTH-005: operator env bootstrap — the seeded credentials authenticat
   expect(OPERATOR_USERNAME).toBeTruthy();
   expect(OPERATOR_PASSWORD).toBeTruthy();
   await login(page);
-  await expect(page).toHaveURL(/\/bookmarks/);
+  await expect(page).toHaveURL(/\/dashboards/);
 });

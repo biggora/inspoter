@@ -6,6 +6,12 @@ import {
 } from "@/lib/auth/dal";
 import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
 import {
+  DashboardLayoutValidationError,
+  DashboardNotFoundError,
+  DashboardWidgetConfigError,
+  DashboardWidgetNotFoundError,
+} from "@/lib/services/dashboards";
+import {
   EncryptionNotConfiguredError,
   OutgoingWebhookNotFoundError,
   WebhookDeliveryNotFoundError,
@@ -72,6 +78,21 @@ export function toErrorResponse(
   }
   if (error instanceof CategoryHierarchyValidationError) {
     return jsonResponse({ error: error.message }, { status: 400 });
+  }
+  if (
+    error instanceof DashboardNotFoundError ||
+    error instanceof DashboardWidgetNotFoundError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (
+    error instanceof DashboardLayoutValidationError ||
+    error instanceof DashboardWidgetConfigError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 400 },
+    );
   }
   if (
     error instanceof OutgoingWebhookNotFoundError ||
