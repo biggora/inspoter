@@ -549,7 +549,11 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
 }) => {
   const categoryName = testData.name("Cascade Cat");
   const bookmarkName = testData.name("Cascade Bookmark");
-  await createCategory(page, categoryName, testData.registerCategory);
+  const categoryId = await createCategory(
+    page,
+    categoryName,
+    testData.registerCategory,
+  );
   await createBookmark(page, categoryName, {
     name: bookmarkName,
     url: testData.localUrl(`/settings?bookmark=${testData.suffix}`),
@@ -571,6 +575,7 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
 
   await expect(categorySection(page, categoryName)).toHaveCount(0);
   await expect(bookmarkArticle(page, bookmarkName)).toHaveCount(0);
+  testData.markCategoryDeleted(categoryId);
 });
 
 test("AC-BM-019: typing a query filters visible bookmark cards immediately, case-insensitively", async ({
@@ -1225,12 +1230,16 @@ test("Phase 4: deleting a top-level category with a subcategory warns of the cas
   const bookmarkA = testData.name("Cascade Direct Bookmark");
   const bookmarkB = testData.name("Cascade Nested Bookmark");
 
-  await createCategory(page, categoryA, testData.registerCategory);
+  const categoryAId = await createCategory(
+    page,
+    categoryA,
+    testData.registerCategory,
+  );
   await createBookmark(page, categoryA, {
     name: bookmarkA,
     url: testData.localUrl(`/settings?bookmark=direct-${testData.suffix}`),
   });
-  await createSubcategory(
+  const subcategoryBId = await createSubcategory(
     page,
     categoryA,
     subcategoryB,
@@ -1265,6 +1274,10 @@ test("Phase 4: deleting a top-level category with a subcategory warns of the cas
   ).toHaveCount(0);
   await expect(bookmarkArticle(page, bookmarkA)).toHaveCount(0);
   await expect(bookmarkArticle(page, bookmarkB)).toHaveCount(0);
+  // The parent delete cascades server-side, so teardown must expect 404 for
+  // both levels instead of the usual 204.
+  testData.markCategoryDeleted(subcategoryBId);
+  testData.markCategoryDeleted(categoryAId);
 });
 
 test("Phase 4: a bookmark added to a subcategory renders nested inside that subcategory's own section, not the parent's direct grid", async ({
