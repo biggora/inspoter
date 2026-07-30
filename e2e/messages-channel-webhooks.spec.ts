@@ -116,7 +116,6 @@ async function deleteResource(
 
 async function createMessageFixture(
   page: Page,
-  registerCategory: (id: string) => void,
   uniqueName: (baseName: string) => string,
 ): Promise<MessageFixture> {
   await login(page);
@@ -128,7 +127,6 @@ async function createMessageFixture(
     "/api/message-categories",
     { name: uniqueName("E2E Messages") },
   );
-  registerCategory(category.id);
   const channel = await postJson<CreatedChannel>(
     page,
     workspaceId,
@@ -140,12 +138,19 @@ async function createMessageFixture(
     name: channel.name,
     exact: true,
   });
+  // The view auto-selects the alphabetically first channel, so never rely on
+  // that default: always open the channel this fixture just created.
   if ((await page.viewportSize())?.width === 375) {
     await page
       .getByRole("button", { name: "Открыть каналы", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Категории и каналы", exact: true })
+      .getByRole("button", { name: channel.name, exact: true })
+      .click();
+  } else {
+    await page
+      .getByRole("navigation", { name: "Каналы сообщений", exact: true })
       .getByRole("button", { name: channel.name, exact: true })
       .click();
   }
@@ -156,6 +161,19 @@ async function createMessageFixture(
     categoryId: category.id,
     channel,
   };
+}
+
+// The shared `testData.registerCategory` teardown deletes bookmark categories
+// (DELETE /api/categories/:id), so message categories must clean themselves up
+// through their own route or they leak into every later run.
+async function removeMessageCategory(page: Page, fixture: MessageFixture) {
+  expect([204, 404]).toContain(
+    await deleteResource(
+      page,
+      fixture.workspaceId,
+      `/api/message-categories/${fixture.categoryId}`,
+    ),
+  );
 }
 
 async function createMemberContext(
@@ -246,11 +264,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
   test.setTimeout(60_000);
   if (!baseURL) throw new Error("Playwright baseURL is required.");
 
-  const fixture = await createMessageFixture(
-    page,
-    testData.registerCategory,
-    testData.name,
-  );
+  const fixture = await createMessageFixture(page, testData.name);
   const memberName = testData.name("webhook-member");
   const memberPassword = "member-local-test-password";
   const member = await postJson<CreatedMember>(
@@ -447,49 +461,47 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       `/api/workspaces/${fixture.workspaceId}/members/${member.id}`,
     );
     expect([204, 404]).toContain(removeStatus);
+    expect([204, 404]).toContain(
+      await deleteResource(
+        page,
+        fixture.workspaceId,
+        `/api/workspaces/${secondWorkspace.id}`,
+      ),
+    );
+    await removeMessageCategory(page, fixture);
   }
 });
 
 test("multiline composer keeps Enter as a newline and sends with Ctrl+Enter", async ({
   page,
   testData,
-}, testInfo) => {
+}) => {
   test.setTimeout(40_000);
-  const usesFixtureCleanup = testInfo.project.name === "desktop-1440";
-  const fixture = await createMessageFixture(
-    page,
-    usesFixtureCleanup ? testData.registerCategory : () => {},
-    testData.name,
-  );
-  const composer = page.getByLabel(
-    `Сообщение в канале #${fixture.channel.name}`,
-    { exact: true },
-  );
-  const firstLine = testData.name("first-line");
-  const secondLine = "second-line";
-  await composer.fill(firstLine);
-  await composer.press("Enter");
-  await composer.pressSequentially(secondLine);
-  await expect(composer).toHaveValue(`${firstLine}\n${secondLine}`);
-  const sent = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname ===
-        `/api/channels/${fixture.channel.id}/messages` &&
-      response.request().method() === "POST",
-  );
-  await composer.press("Control+Enter");
-  expect((await sent).status()).toBe(201);
-  await expect(composer).toHaveValue("");
-  await expect(page.getByText(firstLine, { exact: false })).toBeVisible();
-  await expect(page.getByText("Оператор", { exact: true })).toBeVisible();
-  if (!usesFixtureCleanup) {
-    expect([204, 404]).toContain(
-      await deleteResource(
-        page,
-        fixture.workspaceId,
-        `/api/message-categories/${fixture.categoryId}`,
-      ),
+  const fixture = await createMessageFixture(page, testData.name);
+  try {
+    const composer = page.getByLabel(
+      `Сообщение в канале #${fixture.channel.name}`,
+      { exact: true },
     );
+    const firstLine = testData.name("first-line");
+    const secondLine = "second-line";
+    await composer.fill(firstLine);
+    await composer.press("Enter");
+    await composer.pressSequentially(secondLine);
+    await expect(composer).toHaveValue(`${firstLine}\n${secondLine}`);
+    const sent = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/api/channels/${fixture.channel.id}/messages` &&
+        response.request().method() === "POST",
+    );
+    await composer.press("Control+Enter");
+    expect((await sent).status()).toBe(201);
+    await expect(composer).toHaveValue("");
+    await expect(page.getByText(firstLine, { exact: false })).toBeVisible();
+    await expect(page.getByText("Оператор", { exact: true })).toBeVisible();
+  } finally {
+    await removeMessageCategory(page, fixture);
   }
 });
 
@@ -499,7 +511,15 @@ test("mobile uses one channel Sheet and restores focus to the exact Sheet and he
 }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-375", "mobile acceptance");
   test.setTimeout(40_000);
-  const fixture = await createMessageFixture(page, () => {}, testData.name);
+  const fixture = await createMessageFixture(page, testData.name);
+  try {
+    await runMobileSheetAssertions(page, fixture);
+  } finally {
+    await removeMessageCategory(page, fixture);
+  }
+});
+
+async function runMobileSheetAssertions(page: Page, fixture: MessageFixture) {
   await expect(page.locator("select")).toHaveCount(0);
   const sheetOpener = page.getByRole("button", {
     name: "Открыть каналы",
@@ -539,11 +559,4 @@ test("mobile uses one channel Sheet and restores focus to the exact Sheet and he
   await expect(sheet).toBeHidden();
   await expect(sheetOpener).toBeFocused();
   await expectNoBlockingAxeViolations(page);
-  expect([204, 404]).toContain(
-    await deleteResource(
-      page,
-      fixture.workspaceId,
-      `/api/message-categories/${fixture.categoryId}`,
-    ),
-  );
-});
+}
