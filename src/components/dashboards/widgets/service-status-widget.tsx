@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import type { ServiceStatusPayload } from "@/lib/dashboards/widget-payloads";
 
@@ -42,33 +43,35 @@ export function ServiceStatusWidget({ data }: { data: ServiceStatusPayload }) {
       </div>
       <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto">
         {data.services.map((service) => (
-          <li
-            key={service.id}
-            className="flex items-center justify-between gap-2 text-xs"
-          >
-            <span className="min-w-0 truncate text-foreground-800">
-              {service.name}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              {service.lastResponseTimeMs !== null && (
-                <span className="tabular-nums text-muted-foreground">
-                  {t("serviceStatus.responseTime", {
-                    value: service.lastResponseTimeMs,
-                  })}
-                </span>
-              )}
-              <StatusIndicator
-                status={
-                  !service.isActive
-                    ? "disabled"
-                    : service.status === "UP"
-                      ? "up"
-                      : service.status === "DOWN"
-                        ? "down"
-                        : "pending"
-                }
-              />
-            </span>
+          <li key={service.id} className="min-w-0">
+            <Link
+              href={`/services/${service.id}`}
+              className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-xs no-underline transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+            >
+              <span className="min-w-0 truncate text-foreground-800">
+                {service.name}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                {service.lastResponseTimeMs !== null && (
+                  <span className="tabular-nums text-muted-foreground">
+                    {t("serviceStatus.responseTime", {
+                      value: service.lastResponseTimeMs,
+                    })}
+                  </span>
+                )}
+                <StatusIndicator
+                  status={
+                    !service.isActive
+                      ? "disabled"
+                      : service.status === "UP"
+                        ? "up"
+                        : service.status === "DOWN"
+                          ? "down"
+                          : "pending"
+                  }
+                />
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
