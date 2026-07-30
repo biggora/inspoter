@@ -668,15 +668,18 @@ the wire, so a unit test on it is a statement about the API contract too.
 Unit **765/765** in 63 files; integration **478/478** in 36 files; production
 build and typecheck clean; lint 0 errors including the native-control guard
 (the resize grip lives in `src/components/ui/`, the only exempt folder).
-Playwright full suite **121 passed / 3 failed**, all six Dashboards specs green.
+Playwright full suite **124 passed / 0 failed** after merging `main`'s three
+independent e2e fixes into this branch (`dceae42`, `2504807`, `283788a` — none
+gated by an AC-DSH id, see below); all six Dashboards specs green.
 
-The three failures are pre-existing and outside this section, confirmed by an
-empty `git diff HEAD` over their files:
+At the original Dashboards verification run the suite was 121 passed / 3
+failed, confirmed at the time by an empty `git diff HEAD` over the failing
+files as pre-existing and outside this section:
 
-- `e2e/api-docs.spec.ts` asserts three OpenAPI operations while
-  `specs/openapi.json` has documented four since commit `779c15f` added
-  `POST /api/mcp`.
+- `e2e/api-docs.spec.ts` asserted three OpenAPI operations while
+  `specs/openapi.json` had documented four since commit `779c15f` added
+  `POST /api/mcp` — fixed in `dceae42`.
 - two `e2e/messages-channel-webhooks.spec.ts` cases (Ctrl+Enter send and a
-  webhook-delivery visibility assertion).
-
-Both are tracked as separate work items and are not gated by AC-DSH-\*.
+  webhook-delivery visibility assertion) failed because the spec leaked
+  fixtures into the shared test database — fixed in `2504807`, with the
+  fixture teardown hardened in `283788a`.

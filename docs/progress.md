@@ -296,10 +296,13 @@ node:module)`. Контракт payload'ов вынесен в `src/lib/dashboar
 
 **Верификация:** unit 765/765 (63 файла), integration 478/478 (36 файлов),
 typecheck, lint (включая guard нативных контролов) и production build чисто.
-Playwright 121 passed / 3 failed — все шесть спеков дашбордов зелёные; три
-падения pre-existing и вне зоны изменений (`api-docs` ждёт 3 операции OpenAPI
-вместо четырёх после MCP-слайса `779c15f`; два кейса
-`messages-channel-webhooks`), вынесены в отдельные задачи.
+Playwright после слияния трёх независимых e2e-фиксов с `main` (`dceae42`,
+`2504807`, `283788a` — ни один не завязан на AC-DSH) — 124 passed / 0 failed,
+все шесть спеков дашбордов зелёные. На исходном прогоне верификации раздела
+было 121 passed / 3 failed; тогда падения подтверждены как pre-existing и вне
+зоны изменений пустым `git diff HEAD` по затронутым файлам (`api-docs` ждал 3
+операции OpenAPI вместо четырёх после MCP-слайса `779c15f`; два кейса
+`messages-channel-webhooks` — из-за утечки фикстур в общую тестовую БД).
 
 Документация: prd.md v3.15 (§3.0a, FR-DSH-001..005, AC-DSH-001..018),
 architecture.md v1.13 (§7E), design.md v2.19 (§5.0), test-plan.md v1.7 (§13),
