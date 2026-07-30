@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.14
-**Status:** Mail account, label, and filter-rule management opened to all active-workspace members; awaiting user verification
+**Version:** v3.15
+**Status:** Dashboards section (widget boards) specified and implemented
 **Owner:** Product Analyst
-**Date:** 2026-07-24
+**Date:** 2026-07-30
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), the verbatim Mail-label request recorded in `specs/mail-label-filtering-plan.md` v0.3, `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -97,6 +97,56 @@ The visible UI defaults to English, with Russian fully supported and operator-se
   - _Note: Auth mechanism for Slice 1/MVP is fixed by coordinator decision — a single operator whose credentials are seeded from environment variables (progress.md Decisions log, debate cycle 1). The concrete session/hashing implementation is an architecture decision; the PRD mandates only the outcomes above. Multi-account creation exists via workspace-owner invite (FR-WS-002), not self-service registration. OQ-5 is resolved for MVP; future OAuth/SSO requires a new sourced requirement._
 
 ---
+
+### 3.0a Dashboards (widget boards, 2026-07-30)
+
+**FR-DSH-001: Named dashboards inside a workspace**
+
+- Description: An operator creates any number of named dashboards in the active workspace at `/dashboards`. Boards are workspace-shared — every member sees and edits the same set, like bookmarks or services. One board may be pinned as the workspace's start page; `/dashboards` forwards to it, and the post-login landing resolves there. Without a pinned board the section falls back to the first board by creation order, so the landing target never disappears.
+- Priority: Must Have (Dashboards slice)
+- Acceptance Criteria:
+  - **AC-DSH-001**: Given a workspace with no dashboards, When the operator opens `/dashboards`, Then an empty state invites creating the first board, and creating one navigates straight to it.
+  - **AC-DSH-002**: Given a board-create or rename form, When the operator submits an empty name or one longer than 60 characters, Then a validation error is shown and nothing is persisted.
+  - **AC-DSH-003**: Given two or more boards, When any board is open, Then the others are listed as links and the start board is marked by a non-colour-only indicator.
+  - **AC-DSH-004**: Given a board that is not the start page, When the operator picks «Сделать стартовым», Then that board becomes the workspace's only start board and the previous one loses the flag in the same transaction.
+  - **AC-DSH-005**: Given an authenticated operator with at least one board, When they sign in or open the root protected entry, Then they land on the start board (or the first board by position when none is pinned).
+  - **AC-DSH-006**: Given an existing board, When the operator confirms deletion, Then the board and its widgets are removed, no section data is affected, and the section resolves to another remaining board or to the empty state.
+
+**FR-DSH-002: Widgets from a fixed catalogue**
+
+- Description: A board holds widgets chosen from ten kinds: clock/date, weather, calendar, note, bookmarks, service status, server metrics, mail, alerts, and logs. Each kind carries its own options object validated per kind (coordinates and units for weather, event sources for the calendar, a target and item count for the section-reading kinds, an optional custom title for all of them). A newly added widget lands at the first free grid slot at its kind's default size, and its settings open immediately so a kind that needs input is never left unusable.
+- Priority: Must Have (Dashboards slice)
+- Acceptance Criteria:
+  - **AC-DSH-007**: Given the widget catalogue, When the operator picks a kind, Then a widget of that kind is created at the first free grid position with its default size and appears on the board without a full page reload.
+  - **AC-DSH-008**: Given a widget's settings form, When the operator saves valid options, Then they are persisted and the tile reflects them; When the submitted options violate the kind's schema (for example a latitude outside -90..90), Then the request is rejected and nothing is persisted.
+  - **AC-DSH-009**: Given a widget, When the operator removes it in edit mode, Then it disappears from the board and the remaining tiles keep their positions.
+  - **AC-DSH-010**: Given a stored widget configuration that no longer satisfies its kind's schema, When the board is rendered, Then the widget falls back to that kind's defaults (or reports a configuration error for a kind with no usable default) instead of breaking the board.
+
+**FR-DSH-003: Grid layout with drag, resize, and an explicit edit mode**
+
+- Description: Widgets occupy cells on a 12-column grid. Moving and resizing are available only after the operator enters edit mode; in view mode tiles stay interactive (links, scrolling) and cannot be displaced by a stray press. A tile displaced by another is pushed down, freed space is pulled back up, and the layout is validated against per-kind size limits and non-overlap on the server as well as in the browser.
+- Priority: Must Have (Dashboards slice)
+- Acceptance Criteria:
+  - **AC-DSH-011**: Given edit mode, When the operator drags a tile onto a cell occupied by another, Then the dragged tile takes that position, the displaced tile moves down, and the new layout persists and survives a reload.
+  - **AC-DSH-012**: Given edit mode, When the operator resizes a tile by pointer or by focusing its resize control and pressing an arrow key, Then the tile changes size by whole cells within its kind's limits and the new layout persists and survives a reload.
+  - **AC-DSH-013**: Given a layout request that overlaps two tiles, omits a widget of the board, repeats a widget, references a widget of another board, or exceeds a kind's size limits, When it reaches the API, Then it is rejected and the stored layout is unchanged.
+  - **AC-DSH-014**: Given view mode, When the operator presses and moves the pointer over a tile, Then no drag begins and no layout request is sent.
+
+**FR-DSH-004: Widget data, refresh, and failure isolation**
+
+- Description: A board's widget payloads are resolved from the workspace's own data through the existing section services, and refreshed periodically in one request per board while the tab is visible. Weather is the single exception and the section's only outbound call: a server-side request to Open-Meteo (no API key), keyed by the widget's coordinates and cached briefly in process.
+- Priority: Must Have (Dashboards slice)
+- Acceptance Criteria:
+  - **AC-DSH-015**: Given a board whose widgets read several sections, When one widget's data cannot be resolved (unreachable provider, deleted target, invalid configuration), Then that tile shows an error card naming the cause and every other tile renders normally.
+  - **AC-DSH-016**: Given an open board, When the refresh interval elapses while the tab is visible, Then the widget payloads are re-read in a single request and the header states the refresh time; When the tab is hidden, Then no refresh request is sent.
+
+**FR-DSH-005: Responsive and keyboard operation**
+
+- Description: The board is usable on a phone and without a pointer. Below the small breakpoint the grid becomes one column in reading order and layout editing is disabled with an explicit note. Every tile control is a real, separately focusable control with a descriptive accessible name.
+- Priority: Must Have (Dashboards slice)
+- Acceptance Criteria:
+  - **AC-DSH-017**: Given a 375px viewport, When a populated board is rendered, Then every tile spans the full width in reading order, there is no horizontal overflow, and layout editing is unavailable with a note explaining why.
+  - **AC-DSH-018**: Given a keyboard-only operator in edit mode, When they tab to a tile's drag handle, actions menu, or resize control, Then each is a separate focus stop with a non-generic accessible name naming the widget, and the resize control changes the tile's size by one cell per arrow-key press.
 
 ### 3.1 Bookmarks (Slice 1)
 
@@ -899,9 +949,10 @@ No v3.14 requirement is gated by an unresolved product question. Q-1…Q-13, Q-1
 
 ## Appendix B — AC-ID index and source traceability
 
-All IDs are stable and must not be renumbered, reused, or transferred. v3.12 has exactly **167 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 184 unique criteria**:
+All IDs are stable and must not be renumbered, reused, or transferred. v3.15 has exactly **185 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 202 unique criteria** (v3.12's 184 plus AC-DSH-001..018):
 
 - Shell: AC-SHELL-001..004
+- Dashboards: AC-DSH-001..018, added by the Dashboards amendment (boards 001..006, widgets 007..010, grid layout 011..014, data/refresh 015..016, responsive/keyboard 017..018)
 - Auth: AC-AUTH-001..005
 - Bookmarks: AC-BM-001..034
 - Domains: AC-DOM-001..009
@@ -941,6 +992,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.12 has
 | FR-REAL-001 / AC-REAL-HD-001..004   | `docs/idea.md` Domains; Q-11; `docs/remediation-plan.md` §5                                                                       | Conditionally applicable: PASS when Hetzner DNS is enabled; NOT_ENABLED/N/A when disabled                                                                                                                                                                   |
 | FR-REAL-001 / AC-REAL-GD-001..004   | `docs/idea.md` Domains; Q-11; `docs/remediation-plan.md` §5 task 3.4                                                              | Conditionally applicable; release gate requires PASS on an enabled eligible account or evidenced account/API ineligibility plus a dated explicit user exclusion; missing credentials alone never qualify                                                    |
 | FR-DEMO-001 / AC-DEMO-001..003      | Q-12; `docs/remediation-plan.md` §6                                                                                               | Active; optional and production-separated                                                                                                                                                                                                                   |
+| FR-DSH-001..005 / AC-DSH-001..018   | Verbatim Dashboards request (Homarr-style boards); `docs/architecture.md` §7E; `docs/design.md` §5.0; `tests/unit/dashboards/**`; `tests/integration/{api,services}/dashboards.test.ts`; `e2e/dashboards*.spec.ts`                       | Active; workspace-shared boards, ten widget kinds, edit-mode-gated 12-column grid; Dashboards is the product home                                                                                                                                            |
 | FR-BCK-001..003 / AC-BCK-001..008   | Backup slice implementation; `docs/architecture.md` §7B; `tests/unit/services/backup.test.ts`; `tests/unit/backup/format.test.ts` | Active; owner-only encrypted export/import of the active workspace with id regeneration and secret re-encryption                                                                                                                                            |
 | NFR-DEPLOY-001                      | `docs/progress.md` self-hosted decision; `docs/plan.md` §10                                                                       | Active                                                                                                                                                                                                                                                      |
 | NFR-SEC-001                         | FR-AUTH-001; `docs/plan.md` §10.1                                                                                                 | Active                                                                                                                                                                                                                                                      |
@@ -960,6 +1012,13 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.15 — 2026-07-30 (Dashboards: named widget boards)
+
+- Added §3.0a with FR-DSH-001..005 and AC-DSH-001..018: workspace-shared named boards, a fixed ten-kind widget catalogue with per-kind validated options, a 12-column grid whose drag and resize are gated behind an explicit edit mode, per-widget failure isolation with a single periodic refresh per board, and the responsive/keyboard contract.
+- Dashboards becomes the product home: the post-login landing and the root protected entry resolve to `/dashboards` instead of `/bookmarks`. No existing AC changed — the landing path was never pinned by an AC ID.
+- Weather is recorded as the section's only outbound integration (Open-Meteo, no API key); every other widget reads workspace-local data. Dashboards are included in workspace backup/restore as their own section.
+- No AC ID was renumbered, reused, or retired. Appendix B's running total moves from 184 to 202 unique criteria.
 
 ### v3.14 — 2026-07-24 (Mail labels and rules opened to all workspace members)
 

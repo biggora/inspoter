@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.18
-**Status:** Hosting card row contract recorded and Hostinger cards enriched; awaiting user verification
+**Version:** v2.19
+**Status:** Dashboards section (widget boards) specified and implemented
 **Owner:** UI/UX Designer
-**Date:** 2026-07-26
+**Date:** 2026-07-30
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.11, docs/architecture.md v1.8, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -56,11 +56,11 @@ The precedence above, approved PRD decisions, and §0.1 exceptions still govern.
 
 ## 1. Product and navigation model
 
-Exactly seven product sections exist, in this order: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts.
+The seven original product sections are, in this order: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts. Later slices added Hosting, Services, and — as of 2026-07-30 — Dashboards, which leads the list.
 
-Settings is a separated utility destination, not an eighth product section. Login and Shell are shared surfaces, not product sections. There is no separate product home route; successful login and the root protected entry resolve to /bookmarks.
+Settings and Help are separated utility destinations, not product sections. Login and Shell are shared surfaces, not product sections. Dashboards is the product home: successful login and the root protected entry resolve to /dashboards, which itself forwards to the workspace's start dashboard or, when the workspace has none, renders the create prompt. There is still no home route outside the shell.
 
-Desktop navigation places the seven sections in the main group and Settings at the bottom. Mobile uses the same order in an off-canvas sheet. Active navigation uses color, text weight, and aria-current; color alone is insufficient.
+Desktop navigation places the product sections in the main group with Settings and Help at the bottom. Mobile uses the same order in an off-canvas sheet. Active navigation uses color, text weight, and aria-current; color alone is insufficient.
 
 ## 2. Foundations
 
@@ -233,6 +233,28 @@ Where duplicates are collapsed on read, the underlying bindings are untouched: r
 ## 5. Product-section specifications
 
 Each following chapter is complete and normative. Its acceptance checks supplement, and never replace, the cited PRD ACs.
+
+## 5.0 Dashboards (widget boards, 2026-07-30)
+
+**Route and scope:** /dashboards (router) and /dashboards/[id] (board); active-workspace content, shared by every member. Trace: AC-DSH-001..018.
+
+**Layout/content:** page header with the board's name and, once two or more boards exist, a wrapping row of board links below it (the start board carries a home glyph with an accessible name, never colour alone). Header actions: «Редактировать» / «Готово», «Добавить виджет» (edit mode only), and a board action menu (create, rename, make start page, delete). The board itself is a 12-column grid of `--dashboard-row-height` rows. Each tile is a bordered card: header with the kind's outline Remix icon, the resolved title, and either the actions menu (edit mode) or a link into the widget's own section (view mode); below it a scrollable body that is a container-query context, so a widget adapts to its own tile width rather than the viewport.
+
+**Widget catalogue (10 kinds):** Часы и дата, Погода, Календарь, Заметка, Закладки, Статусы сервисов, Метрики серверов, Почта, Оповещения, Логи. Each kind declares a default, minimum, and maximum size in cells; the picker lists kind name plus one sentence of purpose.
+
+**Actions:** create/rename/delete a board; pin one board as the workspace start page; add a widget from the catalogue (the new tile's settings open immediately, so a widget that needs input is never left as an error card); configure or remove a widget; move a tile by dragging its handle; resize a tile from the corner grip by pointer or arrow keys. Drag and resize exist **only** in edit mode — in view mode tiles stay interactive and cannot be nudged by a stray press. A displaced tile is pushed down and freed space is pulled up, so the grid never keeps a floating hole. Every layout change persists immediately and optimistically; a failed save reverts the tile and shows a notice.
+
+**Data freshness:** widget payloads refresh once a minute in one request per board, paused while the tab is hidden. The header states the last refresh time once a refresh has happened. A failed refresh is silent — the tile keeps its previous value and the next tick retries.
+
+**States:** matched skeleton (board links row plus tiles at their default spans); no-boards empty state with «Создать дашборд»; empty-board state with «Добавить первый виджет»; per-widget error card («Данные недоступны» plus the cause) that never takes down its neighbours; per-widget empty copy that explains the emptiness instead of rendering blank; local form validation in the board and widget dialogs; confirmed board deletion stating that section data is untouched.
+
+**Mobile:** below 640px the grid collapses to one column in reading order, every tile spans the full width, and layout editing is unavailable with an explicit note saying so. Dialogs become sheets. No horizontal overflow at 375px.
+
+**Accessibility:** each tile is a labelled `section`; its drag handle, actions menu, and resize grip are separate focus stops with non-generic Russian accessible names that include the widget's title. The resize grip is a real button — arrow keys resize one cell per press through the same path the pointer uses, so a board can be arranged without a pointer. The clock does not announce every tick. The calendar grid is deliberately non-interactive: the per-day counts are printed as a list below it, so they are available without a pointer and do not add 31 focus stops per tile.
+
+**Acceptance:** board CRUD, start-page pinning, and the landing behaviour satisfy AC-DSH-001..006; adding, configuring, and removing widgets satisfies AC-DSH-007..010; pointer and keyboard layout changes and their persistence satisfy AC-DSH-011..014; per-widget failure isolation and refresh behaviour satisfy AC-DSH-015..016; the responsive collapse and edit-mode lockout satisfy AC-DSH-017..018; Russian-copy, Remix-only, 375px, and 1440px checks succeed.
+
+**Exclusions:** per-operator private boards, drag-reordering of the board links, sharing or public boards, an iframe/embed widget, cross-month calendar navigation, and any widget that would need a second outbound integration (weather's Open-Meteo call is the only one).
 
 ## 5.1 Bookmarks
 
@@ -537,6 +559,19 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.19 — 2026-07-30 (Dashboards: widget boards on a 12-column grid)
+
+Adds §5.0 Dashboards and rewrites §1: Dashboards leads the navigation and is
+the product home, so login and the root protected entry now resolve to
+/dashboards instead of /bookmarks. Specifies the ten widget kinds, the board
+links row, the explicit edit mode that gates drag and resize (view-mode tiles
+stay interactive and cannot be nudged), push-down-and-compact layout behaviour,
+the once-a-minute refresh that pauses on a hidden tab, per-widget error
+isolation, the single-column collapse below 640px with editing disabled, and the
+accessibility contract — a real resize button operable by arrow keys, separate
+focus stops per tile control, and a non-interactive calendar grid whose counts
+are printed as a list so they need no pointer.
 
 ### v2.18 — 2026-07-26 (Hosting cards state what the provider knows)
 
