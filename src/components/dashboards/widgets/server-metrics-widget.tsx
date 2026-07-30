@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { UsageMeter } from "@/components/ui/usage-meter";
@@ -46,7 +47,11 @@ export function ServerMetricsWidget({ data }: { data: ServerMetricsPayload }) {
             : Math.round(metrics.cpuUsagePercent);
 
         return (
-          <div key={server.localServerId} className="flex flex-col gap-1">
+          <Link
+            key={server.localServerId}
+            href="/servers"
+            className="flex flex-col gap-1 rounded-md px-1 py-0.5 -mx-1 no-underline transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+          >
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-xs font-medium text-foreground-800">
                 {server.name}
@@ -84,7 +89,7 @@ export function ServerMetricsWidget({ data }: { data: ServerMetricsPayload }) {
                 />
               </MetricRows>
             )}
-          </div>
+          </Link>
         );
       })}
       {hidden > 0 && (
