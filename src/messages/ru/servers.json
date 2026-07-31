@@ -57,6 +57,7 @@
   "notFoundDescription": "Сервер удалён или не принадлежит текущему рабочему пространству.",
   "typeLabel": "Тип",
   "lastUpdateLabel": "Обновлено",
+  "utilizationLabel": "Текущая загрузка ресурсов",
   "swapLabel": "Подкачка",
   "historyTitle": "История метрик",
   "rangeGroupLabel": "Период истории",

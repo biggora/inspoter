@@ -57,6 +57,7 @@
   "notFoundDescription": "The server was removed, or it belongs to another workspace.",
   "typeLabel": "Type",
   "lastUpdateLabel": "Updated",
+  "utilizationLabel": "Current resource utilization",
   "swapLabel": "Swap",
   "historyTitle": "Metric history",
   "rangeGroupLabel": "History range",

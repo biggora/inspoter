@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { LoadingRegion } from "@/components/ui/loading";
+import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import {
@@ -65,6 +66,14 @@ const RANGE_LABEL_KEYS: Record<HistoryRangeKey, string> = {
 
 const DEFAULT_RANGE: HistoryRangeKey = "24h";
 const POLL_INTERVAL_MS = 60_000;
+
+function vCpuCount(cpu: string | null): number | null {
+  if (!cpu) return null;
+  const match = cpu.match(/(\d+(?:\.\d+)?)\s*v?cpu\b/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
 
 function isRange(value: string | null): value is HistoryRangeKey {
   return value !== null && (RANGES as string[]).includes(value);
@@ -303,6 +312,26 @@ export function ServerDetailView({
     metrics.filesystemTotalBytes,
     metrics.filesystemAvailableBytes,
   );
+  const cpuCapacity = isProvider ? server.cpu : null;
+  const cpuValue =
+    metrics.cpuUsagePercent !== null
+      ? [`${metrics.cpuUsagePercent.toFixed(1)}%`, cpuCapacity]
+          .filter(Boolean)
+          .join(" · ")
+      : (cpuCapacity ?? "—");
+  const memoryValue = memory?.text ?? (isProvider ? server.ram : "—");
+  const diskValue = disk?.text ?? (isProvider ? server.disk : "—");
+  const loadValueText = [metrics.load1, metrics.load5, metrics.load15]
+    .map((value) => (value === null ? "—" : value.toFixed(2)))
+    .join(" / ");
+  const cores = vCpuCount(cpuCapacity);
+  // One-minute load is the immediate load-average reading. Dividing it by the
+  // available vCPUs turns it into the same bounded visual language as the
+  // other utilization rows; the adjacent text retains all three raw values.
+  const loadPercent =
+    metrics.load1 !== null && cores !== null
+      ? (metrics.load1 / cores) * 100
+      : null;
 
   const percentValue = (value: number) => `${Math.round(value)}%`;
   const loadValue = (value: number) => value.toFixed(2);
@@ -420,66 +449,76 @@ export function ServerDetailView({
         }
       />
 
-      <div className="rounded-xl border border-background-200 bg-background-50 p-5 flex flex-col gap-4">
-        {/* The header already states the address (IP for a provider server,
-            hostname for an agent-only one), so the grid doesn't repeat it. */}
-        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          {isProvider && (
-            <>
-              <SummaryItem label={t("typeLabel")} value={server.type} />
-              <SummaryItem label={t("osLabel")} value={server.os} />
-              <SummaryItem label={t("locationLabel")} value={server.location} />
-            </>
-          )}
-          <SummaryItem
-            label={t("cpuUsageLabel")}
-            value={
-              metrics.cpuUsagePercent !== null
-                ? [
-                    `${metrics.cpuUsagePercent.toFixed(1)}%`,
-                    isProvider ? server.cpu : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : isProvider
-                  ? server.cpu
-                  : "—"
-            }
-            meter={
-              metrics.cpuUsagePercent === null ? undefined : (
-                <UsageMeter value={metrics.cpuUsagePercent} />
-              )
-            }
-          />
-          <SummaryItem
-            label={t("memoryLabel")}
-            value={memory?.text ?? (isProvider ? server.ram : "—")}
-            meter={memory ? <UsageMeter value={memory.percent} /> : undefined}
-          />
-          <SummaryItem
-            label={t("diskLabel")}
-            value={disk?.text ?? (isProvider ? server.disk : "—")}
-            meter={disk ? <UsageMeter value={disk.percent} /> : undefined}
-          />
-          {metrics.load1 !== null && (
-            <SummaryItem
-              label={t("loadLabel")}
-              value={`${metrics.load1.toFixed(2)} / ${metrics.load5?.toFixed(2)} / ${metrics.load15?.toFixed(2)}`}
-            />
-          )}
-          {metrics.uptimeSeconds && (
-            <SummaryItem
-              label={t("uptimeLabel")}
-              value={formatUptime(BigInt(metrics.uptimeSeconds))}
-            />
-          )}
-          {metrics.receivedAt && (
-            <SummaryItem
-              label={t("lastUpdateLabel")}
-              value={formatRelativeTime(metrics.receivedAt)}
-            />
-          )}
-        </dl>
+      <div className="flex flex-col gap-4 rounded-xl border border-background-200 bg-background-50 p-5">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1.35fr)]">
+          {/* The header already states the address (IP for a provider server,
+              hostname for an agent-only one), so the grid doesn't repeat it. */}
+          <dl className="grid grid-cols-2 content-start gap-4 text-sm sm:grid-cols-3 lg:grid-cols-2">
+            {isProvider && (
+              <>
+                <SummaryItem label={t("typeLabel")} value={server.type} />
+                <SummaryItem label={t("osLabel")} value={server.os} />
+                <SummaryItem
+                  label={t("locationLabel")}
+                  value={server.location}
+                />
+              </>
+            )}
+            {metrics.uptimeSeconds && (
+              <SummaryItem
+                label={t("uptimeLabel")}
+                value={formatUptime(BigInt(metrics.uptimeSeconds))}
+              />
+            )}
+            {metrics.receivedAt && (
+              <SummaryItem
+                label={t("lastUpdateLabel")}
+                value={formatRelativeTime(metrics.receivedAt)}
+              />
+            )}
+          </dl>
+
+          <section
+            aria-label={t("utilizationLabel")}
+            data-slot="server-utilization"
+            className="border-background-200 pt-1 lg:border-l lg:pl-6"
+          >
+            <MetricRows className="gap-y-3">
+              <MetricRow
+                label={t("cpuUsageLabel")}
+                value={cpuValue}
+                meter={
+                  metrics.cpuUsagePercent === null ? undefined : (
+                    <UsageMeter value={metrics.cpuUsagePercent} />
+                  )
+                }
+              />
+              <MetricRow
+                label={t("memoryLabel")}
+                value={memoryValue}
+                meter={
+                  memory ? <UsageMeter value={memory.percent} /> : undefined
+                }
+              />
+              <MetricRow
+                label={t("diskLabel")}
+                value={diskValue}
+                meter={disk ? <UsageMeter value={disk.percent} /> : undefined}
+              />
+              {metrics.load1 !== null && (
+                <MetricRow
+                  label={t("loadLabel")}
+                  value={loadValueText}
+                  meter={
+                    loadPercent === null ? undefined : (
+                      <UsageMeter value={loadPercent} />
+                    )
+                  }
+                />
+              )}
+            </MetricRows>
+          </section>
+        </div>
 
         {metrics.state === "not_configured" && (
           <p className="text-xs text-foreground-400">
@@ -622,22 +661,13 @@ export function ServerDetailView({
   );
 }
 
-function SummaryItem({
-  label,
-  value,
-  meter,
-}: {
-  label: string;
-  value: string;
-  meter?: React.ReactNode;
-}) {
+function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs text-foreground-500">{label}</dt>
       <dd className="truncate font-medium text-foreground-800">
         {value || "—"}
       </dd>
-      {meter && <div className="mt-1">{meter}</div>}
     </div>
   );
 }

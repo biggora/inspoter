@@ -108,6 +108,14 @@ describe("ServerDetailView", () => {
     expect(screen.getByText("Ubuntu 24.04")).toBeInTheDocument();
     expect(screen.getByText("Helsinki")).toBeInTheDocument();
 
+    const utilization = screen.getByRole("region", {
+      name: "Текущая загрузка ресурсов",
+    });
+    const meters = utilization.querySelectorAll('[data-slot="usage-meter"]');
+    expect(meters).toHaveLength(4);
+    // Load 0.4 divided by the server's 2 vCPUs is a 20% utilization meter.
+    expect(meters[3]).toHaveAttribute("data-value", "20");
+
     expect(
       await screen.findByRole("img", {
         name: "График загрузки CPU сервера «web-prod-01»",
