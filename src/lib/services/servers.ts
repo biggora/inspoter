@@ -522,6 +522,24 @@ export async function listServers(
   };
 }
 
+/**
+ * One composed server by its local id — what the detail page renders.
+ *
+ * Built on listServers() rather than on its own query so composition,
+ * provider availability, and dedupeByMachine stay a single implementation:
+ * the detail page must describe exactly the machine whose card was clicked,
+ * including which of several credential-owned rows won the collapse.
+ */
+export async function getComposedServerByLocalId(
+  workspaceId: string,
+  localServerId: string,
+): Promise<ComposedServerDto | null> {
+  const { servers } = await listServers(workspaceId);
+  return (
+    servers.find((server) => server.localServerId === localServerId) ?? null
+  );
+}
+
 export async function getComposedServer(
   workspaceId: string,
   providerId: string,

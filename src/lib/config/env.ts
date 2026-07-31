@@ -96,6 +96,26 @@ const envSchema = z
       .int()
       .positive()
       .default(180_000),
+    // --- Server metric history retention (server detail charts) ---
+    // The agent pushes once a minute, so one server writes ~1440 sample rows a
+    // day; 30 days is the deepest range the detail page offers.
+    // Zero is allowed here (unlike the other retention knobs) so an operator
+    // can disable history entirely.
+    SERVER_METRICS_RETENTION_DAYS: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(30),
+    SERVER_METRICS_RETENTION_BATCH: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5_000),
+    SERVER_METRICS_RETENTION_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000), // hourly
     // --- Provider listing cache (provider-snapshots.ts) ---
     // How long a cached listing is served without a refresh. The scheduler
     // ticks more often than the TTL so a snapshot is never much older than

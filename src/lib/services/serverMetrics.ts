@@ -314,7 +314,42 @@ async function applySnapshot(
     WHERE "ServerMetricSnapshot"."capturedAt" < EXCLUDED."capturedAt"
   `;
 
+  if (affected > 0) {
+    await insertSample(tx, serverId, workspaceId, payload);
+  }
+
   return affected > 0;
+}
+
+// History row for the server detail page's charts. Written only where the
+// snapshot itself was accepted, so a stale out-of-order payload never appears
+// in the series either.
+//
+// ON CONFLICT DO NOTHING on (localServerId, capturedAt): a redelivered payload
+// carries the same capture instant, and a P2002 here would abort the whole
+// ingestion transaction and surface as a misclassified ADDRESS_CONFLICT (the
+// same failure mode applySnapshot's single-statement upsert avoids).
+async function insertSample(
+  tx: PrismaTx,
+  serverId: string,
+  workspaceId: string,
+  payload: ParsedMetricsPayload,
+): Promise<void> {
+  await tx.$executeRaw`
+    INSERT INTO "ServerMetricSample" (
+      "id", "localServerId", "workspaceId", "capturedAt",
+      "cpuUsagePercent", "load1", "load5", "load15",
+      "memoryTotalBytes", "memoryAvailableBytes", "swapTotalBytes", "swapFreeBytes",
+      "filesystemTotalBytes", "filesystemAvailableBytes", "uptimeSeconds"
+    )
+    VALUES (
+      ${crypto.randomUUID()}, ${serverId}, ${workspaceId}, ${payload.capturedAt},
+      ${payload.cpu.usagePercent}, ${payload.cpu.load1}, ${payload.cpu.load5}, ${payload.cpu.load15},
+      ${BigInt(payload.memory.totalBytes)}, ${BigInt(payload.memory.availableBytes)}, ${BigInt(payload.memory.swapTotalBytes)}, ${BigInt(payload.memory.swapFreeBytes)},
+      ${BigInt(payload.filesystem.totalBytes)}, ${BigInt(payload.filesystem.availableBytes)}, ${BigInt(payload.uptimeSeconds)}
+    )
+    ON CONFLICT ("localServerId", "capturedAt") DO NOTHING
+  `;
 }
 
 // Shared body for "ingest into an already-known server": optionally
@@ -551,6 +586,7 @@ async function enrollNatOnlyServer(
     await tx.serverMetricSnapshot.create({
       data: snapshotData(created.id, workspaceId, payload),
     });
+    await insertSample(tx, created.id, workspaceId, payload);
 
     return {
       status: 201,
@@ -606,6 +642,7 @@ async function enrollAgentOnlyServer(
     await tx.serverMetricSnapshot.create({
       data: snapshotData(created.id, workspaceId, payload),
     });
+    await insertSample(tx, created.id, workspaceId, payload);
 
     return {
       status: 201,

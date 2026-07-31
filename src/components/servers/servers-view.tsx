@@ -8,18 +8,8 @@ import { NotificationToast } from "@/components/shell/notification-toast";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { ProviderCredentialDialog } from "@/components/settings/provider-credential-dialog";
+import { Link } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,26 +25,28 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  StatusIndicator,
-  type StatusState,
-} from "@/components/ui/status-indicator";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import { UsageMeter } from "@/components/ui/usage-meter";
 import { usageFromTotals } from "@/lib/format/bytes";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
 import {
+  formatRelativeTime,
+  formatUptime,
+  metricsState,
+  statusState,
+} from "./format";
+import { ServerPowerActions } from "./server-power-actions";
+import {
+  useServerPowerAction,
+  type PowerActionType,
+} from "./use-server-power-action";
+import {
   fetchServers,
   refreshServers,
-  getServer,
-  powerAction,
-  type MetricsState,
   type ProviderServerDto,
   type ServerDto,
 } from "./api";
-
-type PowerActionType = "start" | "stop" | "restart";
 
 interface Notification {
   message: string;
@@ -62,32 +54,6 @@ interface Notification {
 }
 
 type PageState = "loading" | "error" | "empty" | "ready";
-
-const TRANSITIONAL_STATUSES: ServerStatus[] = [
-  "starting",
-  "stopping",
-  "restarting",
-];
-
-function formatUptime(seconds: bigint): string {
-  const totalMinutes = Number(seconds) / 60;
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const mins = Math.floor(totalMinutes % 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
-}
-
-function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
 
 export function ServersView() {
   const t = useTranslations("servers");
@@ -100,9 +66,6 @@ export function ServersView() {
   const [enrollmentTarget, setEnrollmentTarget] = useState<{
     name: string;
   } | null>(null);
-  const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
-    new Map(),
-  );
   const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -146,11 +109,16 @@ export function ServersView() {
 
   const reload = useCallback(() => load(true), [load]);
 
+  // The initial fetch runs from a locally-defined async function rather than
+  // straight from the effect body, so its loading/error resets aren't flagged
+  // as synchronous setState in an effect (react-hooks/set-state-in-effect) —
+  // the same pattern as services/service-detail-view.tsx.
   useEffect(() => {
-    load();
-    const pollers = pollingRef.current;
+    async function run() {
+      await load();
+    }
+    void run();
     return () => {
-      pollers.forEach((interval) => clearInterval(interval));
       if (notificationTimeoutRef.current) {
         clearTimeout(notificationTimeoutRef.current);
       }
@@ -166,78 +134,54 @@ export function ServersView() {
     });
   }, []);
 
-  const handlePowerAction = useCallback(
-    async (server: ProviderServerDto, action: PowerActionType) => {
-      clearCardError(server.localServerId);
-      const previousStatus = server.status as ServerStatus;
-      const transitionalStatus: ServerStatus =
-        action === "start"
-          ? "starting"
-          : action === "stop"
-            ? "stopping"
-            : "restarting";
-
+  const applyStatus = useCallback(
+    (localServerId: string, status: ServerStatus) => {
       setServers((prev) =>
         prev.map((s) =>
-          s.localServerId === server.localServerId && s.origin === "provider"
-            ? { ...s, status: transitionalStatus }
+          s.localServerId === localServerId && s.origin === "provider"
+            ? { ...s, status }
             : s,
         ),
       );
-
-      try {
-        await powerAction(server.providerId, server.remoteServerId, action);
-      } catch (err) {
-        setServers((prev) =>
-          prev.map((s) =>
-            s.localServerId === server.localServerId && s.origin === "provider"
-              ? { ...s, status: previousStatus }
-              : s,
-          ),
-        );
-        setCardErrors((prev) => ({
-          ...prev,
-          [server.localServerId]:
-            err instanceof Error ? err.message : t("actionError"),
-        }));
-        return;
-      }
-
-      const existing = pollingRef.current.get(server.localServerId);
-      if (existing) clearInterval(existing);
-
-      const interval = setInterval(async () => {
-        try {
-          const updated = await getServer(
-            server.providerId,
-            server.remoteServerId,
-          );
-          setServers((prev) =>
-            prev.map((s) =>
-              s.localServerId === server.localServerId ? updated : s,
-            ),
-          );
-          if (!TRANSITIONAL_STATUSES.includes(updated.status as ServerStatus)) {
-            clearInterval(interval);
-            pollingRef.current.delete(server.localServerId);
-            showNotification(
-              t("actionSuccessToast", { name: server.name }),
-              "success",
-            );
-          }
-        } catch (err) {
-          clearInterval(interval);
-          pollingRef.current.delete(server.localServerId);
-          setCardErrors((prev) => ({
-            ...prev,
-            [server.localServerId]:
-              err instanceof Error ? err.message : t("statusUpdateError"),
-          }));
-        }
-      }, 2000);
-      pollingRef.current.set(server.localServerId, interval);
     },
-    [clearCardError, showNotification, t],
+    [],
+  );
+
+  const applyServer = useCallback((updated: ProviderServerDto) => {
+    setServers((prev) =>
+      prev.map((s) =>
+        s.localServerId === updated.localServerId ? updated : s,
+      ),
+    );
+  }, []);
+
+  const onSettled = useCallback(
+    (server: ProviderServerDto) => {
+      showNotification(
+        t("actionSuccessToast", { name: server.name }),
+        "success",
+      );
+    },
+    [showNotification, t],
+  );
+
+  const onPowerError = useCallback((localServerId: string, message: string) => {
+    setCardErrors((prev) => ({ ...prev, [localServerId]: message }));
+  }, []);
+
+  const triggerPowerAction = useServerPowerAction({
+    applyStatus,
+    applyServer,
+    onSettled,
+    onError: onPowerError,
+  });
+
+  const handlePowerAction = useCallback(
+    (server: ProviderServerDto, action: PowerActionType) => {
+      clearCardError(server.localServerId);
+      void triggerPowerAction(server, action);
+    },
+    [clearCardError, triggerPowerAction],
   );
 
   const handleSetupMonitoring = useCallback((server: ServerDto) => {
@@ -378,86 +322,6 @@ export function ServersView() {
   );
 }
 
-// Provider power states mapped onto the app-wide status vocabulary — the
-// indicator supplies colour, wording, and pulse (ui/status-indicator.tsx).
-const statusState: Record<ServerStatus, StatusState> = {
-  running: "up",
-  stopped: "stopped",
-  starting: "starting",
-  stopping: "stopping",
-  restarting: "restarting",
-  unknown: "unknown",
-};
-
-const metricsState: Record<MetricsState, StatusState> = {
-  live: "up",
-  stale: "stale",
-  not_configured: "notConfigured",
-};
-
-interface PowerCardAction {
-  action: PowerActionType;
-  icon: string;
-  labelKey: string;
-  confirmTitleKey: string;
-  confirmTextKey: string;
-}
-
-const PENDING_ACTION_BY_STATUS: Partial<Record<ServerStatus, PowerActionType>> =
-  {
-    starting: "start",
-    stopping: "stop",
-    restarting: "restart",
-  };
-
-const POWER_ACTIONS_BY_STATUS = {
-  running: ["restart", "stop"],
-  stopped: ["start"],
-  starting: ["start"],
-  stopping: ["stop"],
-  restarting: ["restart"],
-  unknown: ["start"],
-} as const satisfies Record<ServerStatus, readonly PowerActionType[]>;
-
-const PENDING_ACTION_LABEL_KEYS: Record<PowerActionType, string> = {
-  start: "pendingStart",
-  stop: "pendingStop",
-  restart: "pendingRestart",
-};
-
-const POWER_ACTION_CONFIG: Record<
-  PowerActionType,
-  Omit<PowerCardAction, "action">
-> = {
-  start: {
-    icon: "ri-play-circle-line",
-    labelKey: "startAction",
-    confirmTitleKey: "startConfirmTitle",
-    confirmTextKey: "startConfirmText",
-  },
-  stop: {
-    icon: "ri-stop-circle-line",
-    labelKey: "stopAction",
-    confirmTitleKey: "stopConfirmTitle",
-    confirmTextKey: "stopConfirmText",
-  },
-  restart: {
-    icon: "ri-restart-line",
-    labelKey: "restartAction",
-    confirmTitleKey: "restartConfirmTitle",
-    confirmTextKey: "restartConfirmText",
-  },
-};
-
-function getAvailableActions(server: ProviderServerDto): PowerCardAction[] {
-  const status = server.status as ServerStatus;
-  const actions = POWER_ACTIONS_BY_STATUS[status] ?? [];
-  return actions.map((action) => ({
-    action,
-    ...POWER_ACTION_CONFIG[action],
-  }));
-}
-
 function ServerCard({
   server,
   onPowerAction,
@@ -470,12 +334,7 @@ function ServerCard({
   error?: string;
 }) {
   const t = useTranslations("servers");
-  const [pendingAction, setPendingAction] = useState<PowerActionType | null>(
-    null,
-  );
   const cardRef = useRef<HTMLDivElement>(null);
-  const activeTriggerRef = useRef<HTMLButtonElement>(null);
-  const confirmingRef = useRef(false);
 
   const isProvider = server.origin === "provider";
   const metrics = server.metrics;
@@ -483,9 +342,6 @@ function ServerCard({
 
   const status = isProvider ? (server.status as ServerStatus) : null;
   const cardStatus = status ? (statusState[status] ?? "unknown") : null;
-  const busy = status ? TRANSITIONAL_STATUSES.includes(status) : false;
-  const busyAction = status ? PENDING_ACTION_BY_STATUS[status] : undefined;
-  const availableActions = isProvider ? getAvailableActions(server) : [];
 
   // One resource section per card: the agent's live utilisation and the
   // provider's capacity are the same three facts, so they share three rows.
@@ -509,20 +365,6 @@ function ServerCard({
   const memoryValue = memory?.text ?? (isProvider ? server.ram : null);
   const diskValue = disk?.text ?? (isProvider ? server.disk : null);
 
-  useEffect(() => {
-    if (pendingAction === null && confirmingRef.current) {
-      confirmingRef.current = false;
-      cardRef.current?.focus();
-    }
-  }, [pendingAction]);
-
-  const handleConfirm = (action: PowerActionType) => {
-    if (confirmingRef.current || !isProvider) return;
-    confirmingRef.current = true;
-    setPendingAction(null);
-    onPowerAction(server, action);
-  };
-
   return (
     <Card
       ref={cardRef}
@@ -542,7 +384,17 @@ function ServerCard({
           </div>
           <div className="min-w-0">
             <CardTitle>
-              <h4 className="truncate">{server.name}</h4>
+              {/* The name is the way into the server's history — only the
+                  title is a link, so the power buttons below stay their own
+                  targets. */}
+              <h4 className="truncate">
+                <Link
+                  href={`/servers/${server.localServerId}`}
+                  className="text-inherit no-underline hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+                >
+                  {server.name}
+                </Link>
+              </h4>
             </CardTitle>
             <CardDescription className="text-xs">
               {isProvider ? server.ip : (server.hostname ?? "")}
@@ -645,87 +497,13 @@ function ServerCard({
       {((isProvider && server.powerActionsAvailable) ||
         metrics.state === "not_configured") && (
         <CardFooter className="flex-wrap gap-2">
-          {isProvider &&
-            server.powerActionsAvailable &&
-            availableActions.map((act) => {
-              const actionBusy = busy && busyAction === act.action;
-
-              return (
-                <AlertDialog
-                  key={act.action}
-                  open={pendingAction === act.action}
-                  onOpenChange={(open) => {
-                    if (open) {
-                      confirmingRef.current = false;
-                      setPendingAction(act.action);
-                    } else if (pendingAction === act.action) {
-                      setPendingAction(null);
-                    }
-                  }}
-                >
-                  <AlertDialogTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={actionBusy}
-                        onFocus={(event) => {
-                          activeTriggerRef.current = event.currentTarget;
-                        }}
-                      />
-                    }
-                  >
-                    {actionBusy ? (
-                      <Spinner aria-hidden data-icon="inline-start" />
-                    ) : (
-                      <Icon
-                        name={act.icon}
-                        aria-hidden
-                        data-icon="inline-start"
-                      />
-                    )}
-                    {actionBusy
-                      ? t(PENDING_ACTION_LABEL_KEYS[act.action])
-                      : t(act.labelKey)}
-                  </AlertDialogTrigger>
-                  <AlertDialogContent
-                    finalFocus={() =>
-                      confirmingRef.current
-                        ? cardRef.current
-                        : activeTriggerRef.current
-                    }
-                  >
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {t(act.confirmTitleKey, { name: server.name })}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t(act.confirmTextKey)}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant={
-                          act.action === "stop" ? "destructive" : "default"
-                        }
-                        onClick={() => handleConfirm(act.action)}
-                      >
-                        {t("confirmButton")}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              );
-            })}
-          {isProvider &&
-            server.powerActionsAvailable &&
-            availableActions.length === 0 &&
-            !busy && (
-              <span className="text-xs text-foreground-400">
-                {t("noActionsAvailable")}
-              </span>
-            )}
+          {isProvider && server.powerActionsAvailable && (
+            <ServerPowerActions
+              server={server}
+              onAction={onPowerAction}
+              confirmedFocus={() => cardRef.current}
+            />
+          )}
           {metrics.state === "not_configured" && (
             <Button
               variant="outline"

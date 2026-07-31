@@ -84,6 +84,71 @@ export async function refreshServers(): Promise<ComposedServersResponse> {
   return res.json();
 }
 
+export type HistoryRangeKey = "24h" | "48h" | "5d" | "7d" | "30d";
+
+export interface MetricsHistoryPointDto {
+  t: string;
+  cpuAvg: number;
+  cpuMax: number;
+  load1: number;
+  load5: number;
+  load15: number;
+  memoryUsedBytes: number;
+  memoryTotalBytes: number;
+  memoryPercent: number;
+  swapUsedBytes: number;
+  swapTotalBytes: number;
+  swapPercent: number | null;
+  diskUsedBytes: number;
+  diskTotalBytes: number;
+  diskPercent: number;
+  uptimeSeconds: number;
+}
+
+export interface MetricsHistoryDto {
+  range: HistoryRangeKey;
+  from: string;
+  to: string;
+  bucketSeconds: number;
+  points: MetricsHistoryPointDto[];
+  reboots: string[];
+}
+
+// "This server is gone" is a different answer from "the request failed", and
+// the detail page states them differently — a missing server offers the way
+// back to the list, a failed request offers Retry.
+export class ServerNotFoundError extends Error {
+  constructor() {
+    super("Server not found");
+    this.name = "ServerNotFoundError";
+  }
+}
+
+// Keyed by local server id — the detail page addresses one machine, and an
+// agent-only server has no provider/remote id pair to address it by.
+export async function getServerByLocalId(
+  localServerId: string,
+): Promise<ServerDto> {
+  const res = await fetch(`/api/servers/local/${localServerId}`, {
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+  });
+  if (res.status === 404) throw new ServerNotFoundError();
+  if (!res.ok) throw new Error("Failed to fetch server");
+  return res.json();
+}
+
+export async function getServerMetricsHistory(
+  localServerId: string,
+  range: HistoryRangeKey,
+): Promise<MetricsHistoryDto> {
+  const res = await fetch(
+    `/api/servers/local/${localServerId}/metrics?range=${range}`,
+    { headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" } },
+  );
+  if (!res.ok) throw new Error("Failed to fetch server metrics history");
+  return res.json();
+}
+
 export async function getServer(
   providerId: string,
   id: string,

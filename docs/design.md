@@ -326,6 +326,14 @@ A hosting card states what its provider actually knows, and the row set is the s
 
 Metrics freshness stays in the header's status indicator; there is no separate "Метрики" heading, divider, or nested block.
 
+**Server detail (/servers/[id]):** the card's name is a link to the machine's own page — the one place metric history is shown. The header carries «К серверам», the server name, its address (IP for a provider server, hostname for an agent-only one), the same status and metrics indicators as the card, the same power actions, and «Настроить мониторинг» when no agent reports. A summary block restates the card's facts as a labelled grid (type, OS, location, CPU, memory, disk, load, uptime, «Обновлено») without repeating the address the header already gives.
+
+Below it, «История метрик» offers one range at a time — 24 часа, 2 суток, 5 суток, 7 суток, 30 суток — as a segmented toggle, defaulting to 24 hours and mirrored into `?range=` so a view can be linked. Four charts follow in two columns (one on narrow viewports): CPU (average plus peak), средняя нагрузка (1/5/15), память и подкачка, диск. Percentage charts fix their axis at 100 so two servers can be compared by eye; the load chart scales to its data. Reboots — a drop in reported uptime — are dashed vertical markers on the CPU chart. Hovering anywhere on a chart reads out the bucket's time and every series' value.
+
+Colour never carries a series alone: each is named in a legend with «мин · сред · макс · сейчас» as text, and each chart has a text alternative naming the server. The page polls once a minute, the agent's own interval, and pauses while the tab is hidden. States: skeleton on first load; «Сервер не найден» with the way back when the machine is gone or belongs to another workspace; a retryable error for a failed load; «Нет исторических данных» when the range holds no samples, worded differently when no agent is connected at all.
+
+**Missing data is a state, never a failure.** A server that has never reported, a range that holds no samples, a metric the agent leaves empty, a gap in the middle of a series, and an unknown `?range=` value all resolve to an ordinary rendered page: the summary states «—» where a figure is unknown, the history section states why it is empty and what to do about it, and an unknown range falls back to 24 часа. Nothing about absent data may surface as an error banner, a broken chart, or a crashed page — the day an agent is installed is exactly the day every one of these holds at once, and that day must look calm.
+
 **Actions:** start a stopped server; stop or restart a running server; refresh inventory. Every power action opens a real modal confirmation with action, server name, consequence, cancel, and confirm. Only the affected card enters pending/polling state.
 
 **States:** skeleton; empty inventory; full provider error with Повторить; action pending; deterministic status polling; timeout/failure with confirmed provider status; success after target status is observed.
@@ -608,6 +616,20 @@ naming how many further credentials hold the zone, and mail refuses a second
 account for a mailbox already connected instead of collapsing on read. Cross-
 provider zones stay separate rows: the same domain in Cloudflare and GoDaddy is
 two zones managed separately. Collapsing never touches the stored bindings.
+
+### v2.16 — 2026-07-31 (Server detail page and metric history)
+
+Adds `/servers/[id]` to §5.3: a machine's own page with the card's facts, its
+power actions, and — new to the product — charts of CPU, load, memory/swap, and
+disk over 24 часа / 2 суток / 5 суток / 7 суток / 30 суток, with reboot markers
+and a hover readout. Establishes the time-series chart as a shared component
+built from the existing palette tokens rather than a charting dependency, and
+requires every series to state min/avg/max/now as text so colour is never the
+only carrier. The range lives in `?range=` so a view can be linked. Servers is
+the first section with a detail route besides Services and Dashboards; the card
+title becomes its entry point, leaving the footer's power buttons their own
+targets. Records the normative rule that absent data — no agent, no samples in
+range, gaps, an unknown range — is a rendered state and never an error.
 
 ### v2.15 — 2026-07-26 (One resource section per server card)
 
