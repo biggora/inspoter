@@ -305,6 +305,27 @@ export async function listAccounts(
   return accounts.map(toSummary);
 }
 
+export interface MailAccountIdentity {
+  id: string;
+  name: string;
+  email: string;
+}
+
+/**
+ * Just enough to label a mailbox: id, name, address. Read-only on purpose —
+ * unlike listAccounts() it never creates the webhook mailbox, so the dashboard
+ * widget resolver can call it on every poll without writing to the database.
+ */
+export async function listAccountIdentities(
+  workspaceId: string,
+): Promise<MailAccountIdentity[]> {
+  return db.mailAccount.findMany({
+    where: { workspaceId },
+    select: { id: true, name: true, email: true },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function createAccount(
   workspaceId: string,
   input: CreateMailAccountData,

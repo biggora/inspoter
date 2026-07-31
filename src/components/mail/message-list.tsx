@@ -21,6 +21,7 @@ import { LoadingRegion } from "@/components/ui/loading";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { StatusDot } from "@/components/ui/status-indicator";
 import { Toggle } from "@/components/ui/toggle";
+import { getInitials, stringToColor } from "@/lib/mail/avatar";
 import { cn } from "@/lib/utils";
 import type { MailListItemDto } from "./api";
 import { LabelChip } from "./label-chip";
@@ -29,31 +30,6 @@ const SORT_LABEL_KEYS: Record<"desc" | "asc", string> = {
   desc: "sortDesc",
   asc: "sortAsc",
 };
-
-// Deterministic avatar color from the sender string (prototype
-// specs/prototype/src/pages/mail/page.tsx stringToColor). Lightness is
-// dropped from the prototype's 0.55 to 0.5: greenish hues at 0.55 sit just
-// under the 4.5:1 WCAG AA contrast ratio against the near-white initials
-// (axe color-contrast, e2e/mail-client.spec.ts).
-export function stringToColor(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `oklch(0.5 0.16 ${hue})`;
-}
-
-export function getInitials(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(/\s+/)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 type Format = ReturnType<typeof useFormatter>;
 

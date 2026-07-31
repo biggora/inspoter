@@ -132,19 +132,41 @@ function applyRuleLabel<T extends MailListItemDto | MailDetailDto>(
 // swap in place and the sidebar lives in a Sheet.
 export interface MailClientViewProps {
   workspaceId: string;
+  /** Mailbox to preselect, from `?account=` (dashboard mail widget deep link). */
+  initialAccountId?: string | null;
+  /** Message to open, from `?message=`. */
+  initialMessageId?: string | null;
 }
 
-export function MailClientView({ workspaceId }: MailClientViewProps) {
-  return <MailClientCoordinator key={workspaceId} />;
+export function MailClientView({
+  workspaceId,
+  initialAccountId = null,
+  initialMessageId = null,
+}: MailClientViewProps) {
+  return (
+    <MailClientCoordinator
+      key={workspaceId}
+      initialAccountId={initialAccountId}
+      initialMessageId={initialMessageId}
+    />
+  );
 }
 
-function MailClientCoordinator() {
+function MailClientCoordinator({
+  initialAccountId,
+  initialMessageId,
+}: {
+  initialAccountId: string | null;
+  initialMessageId: string | null;
+}) {
   const t = useTranslations("mail");
   const [accounts, setAccounts] = useState<MailAccountDto[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [accountsReload, setAccountsReload] = useState(0);
+  // A deep-linked account id is kept only until the accounts arrive: the load
+  // effect drops it when it does not belong to this workspace.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
-    null,
+    initialAccountId,
   );
 
   const [folders, setFolders] = useState<MailFolderDto[]>([]);
@@ -176,8 +198,12 @@ function MailClientCoordinator() {
   const [listReload, setListReload] = useState(0);
 
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
-    null,
+    initialMessageId,
   );
+  // The deep-linked message may sit outside the default folder (Archive, Junk).
+  // Its folder is adopted once, when the detail first arrives, so the list pane
+  // shows the message in context without fighting later navigation.
+  const deepLinkFolderAdopted = useRef(initialMessageId === null);
   const [detail, setDetail] = useState<MailDetailDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -424,6 +450,10 @@ function MailClientCoordinator() {
         const result = await fetchMailById(messageId);
         if (cancelled) return;
         setDetail(result);
+        if (!deepLinkFolderAdopted.current) {
+          deepLinkFolderAdopted.current = true;
+          setSelectedFolderId(result.folderId);
+        }
         if (!result.isRead) {
           setItems((prev) =>
             prev.map((item) =>

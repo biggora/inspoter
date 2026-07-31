@@ -112,6 +112,11 @@ export interface MailEntry {
   subject: string;
   isRead: boolean;
   receivedAt: string;
+  /** Which mailbox received the message — the tile marks every row with it and
+   *  deep-links into that account's view. */
+  accountId: string;
+  accountName: string;
+  accountEmail: string;
 }
 
 export interface MailPayload {

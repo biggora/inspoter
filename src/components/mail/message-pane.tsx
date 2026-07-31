@@ -22,10 +22,10 @@ import { Icon } from "@/components/ui/icon";
 import { LoadingRegion } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { getInitials, stringToColor } from "@/lib/mail/avatar";
 import { MailBody } from "./mail-body";
 import { LabelChip } from "./label-chip";
 import { MessageLabelPicker } from "./message-label-picker";
-import { getInitials, stringToColor } from "./message-list";
 import {
   ApiError,
   downloadAttachment,

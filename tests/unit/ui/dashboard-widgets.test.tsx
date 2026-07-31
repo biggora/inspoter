@@ -397,6 +397,9 @@ describe("MailWidget", () => {
               subject: "  ",
               isRead: false,
               receivedAt: new Date().toISOString(),
+              accountId: "acc-1",
+              accountName: "Support Box",
+              accountEmail: "support@example.com",
             },
           ],
         }}
@@ -405,6 +408,38 @@ describe("MailWidget", () => {
 
     expect(screen.getByText(ruDashboards.mail.noSubject)).toBeInTheDocument();
     expect(screen.getByText("Ops")).toBeInTheDocument();
+  });
+
+  // The mailbox marker is what makes a tile aggregating several accounts
+  // usable: the chip says which mailbox received the message. The row's deep
+  // link is not asserted here — next-intl's Link renders no anchor in jsdom
+  // without a Next router, so the href is only observable in the browser.
+  it("marks each row with its mailbox", () => {
+    renderWithIntl(
+      <MailWidget
+        data={{
+          items: [
+            {
+              id: "m1",
+              from: "billing@example.com",
+              fromName: null,
+              subject: "Счёт за хостинг",
+              isRead: true,
+              receivedAt: new Date().toISOString(),
+              accountId: "acc-1",
+              accountName: "Support Box",
+              accountEmail: "support@example.com",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("SB")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ящик: Support Box · support@example.com"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Счёт за хостинг")).toBeInTheDocument();
   });
 
   it("shows the empty state", () => {
