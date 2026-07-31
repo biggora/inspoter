@@ -3,6 +3,7 @@ import * as alertsService from "@/lib/services/alerts";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import * as logsService from "@/lib/services/logs";
 import * as mailService from "@/lib/services/mail";
+import * as mailAccountsService from "@/lib/services/mail-accounts";
 import * as serversService from "@/lib/services/servers";
 import * as servicesService from "@/lib/services/services";
 import { getMonthEvents } from "@/lib/services/dashboard-calendar";
@@ -138,23 +139,37 @@ async function resolveOne(
     case "MAIL": {
       const config = parseWidgetConfigOrDefaults("MAIL", widget.config);
       if (!config) return { error: "MAIL_CONFIG_INVALID" };
-      const result = await mailService.list(workspaceId, {
-        pageSize: config.limit,
-        sort: "desc",
-        ...(config.accountId ? { accountId: config.accountId } : {}),
-        ...(config.unreadOnly ? { unreadOnly: true } : {}),
-      });
+      // The mailbox each message landed in is what the tile marks its rows
+      // with, so the accounts are read alongside the messages.
+      const [result, accounts] = await Promise.all([
+        mailService.list(workspaceId, {
+          pageSize: config.limit,
+          sort: "desc",
+          ...(config.accountId ? { accountId: config.accountId } : {}),
+          ...(config.unreadOnly ? { unreadOnly: true } : {}),
+        }),
+        mailAccountsService.listAccountIdentities(workspaceId),
+      ]);
+      const accountsById = new Map(
+        accounts.map((account) => [account.id, account]),
+      );
       return {
         kind: "MAIL",
         data: {
-          items: result.items.map((item) => ({
-            id: item.id,
-            from: item.fromAddress,
-            fromName: item.fromName,
-            subject: item.subject,
-            isRead: item.isRead,
-            receivedAt: item.receivedAt.toISOString(),
-          })),
+          items: result.items.map((item) => {
+            const account = accountsById.get(item.accountId);
+            return {
+              id: item.id,
+              from: item.fromAddress,
+              fromName: item.fromName,
+              subject: item.subject,
+              isRead: item.isRead,
+              receivedAt: item.receivedAt.toISOString(),
+              accountId: item.accountId,
+              accountName: account?.name ?? "",
+              accountEmail: account?.email ?? "",
+            };
+          }),
         },
       };
     }

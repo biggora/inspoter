@@ -200,6 +200,7 @@
     "allAccountsOption": "All mailboxes",
     "unreadOnlyLabel": "Unread only",
     "noSubject": "No subject",
+    "accountAriaLabel": "Mailbox: {account}",
     "empty": "No mail yet."
   },
 

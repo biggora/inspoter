@@ -200,6 +200,7 @@
     "allAccountsOption": "Все ящики",
     "unreadOnlyLabel": "Только непрочитанные",
     "noSubject": "Без темы",
+    "accountAriaLabel": "Ящик: {account}",
     "empty": "Писем пока нет."
   },
 
