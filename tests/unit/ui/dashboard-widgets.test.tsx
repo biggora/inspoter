@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -17,6 +17,21 @@ import { ServiceStatusWidget } from "@/components/dashboards/widgets/service-sta
 import { WeatherWidget } from "@/components/dashboards/widgets/weather-widget";
 import { DashboardWidgetError } from "@/components/dashboards/dashboard-widget-frame";
 import ruDashboards from "@/messages/ru/dashboards.json";
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 // Each widget is rendered from a payload fixture, plus its empty state. The
 // point is that a tile never crashes on a legitimately empty or partial payload
@@ -173,6 +188,11 @@ describe("CalendarWidget", () => {
     expect(screen.getByText(/июль/i)).toBeInTheDocument();
     expect(screen.getByText("31")).toBeInTheDocument();
     expect(screen.getByText(/Оповещения 2/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /Открыть 2 оповещения за 3 июл/i,
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("date=2026-07-03"));
 
     const markedDay = screen.getByRole("button", {
       name: /События за 3 июл.*3 события.*Оповещения 2.*Инциденты сервисов 1/i,

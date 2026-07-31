@@ -277,6 +277,7 @@ function toMailAccountRecord(row: MailAccount): BackupMailAccountRecord {
     isValid: row.isValid,
     lastCheckedAt: isoOrNull(row.lastCheckedAt),
     isActive: row.isActive,
+    isDefault: row.isDefault,
     syncStatus: row.syncStatus,
     syncError: row.syncError,
     lastSyncAt: isoOrNull(row.lastSyncAt),
@@ -1037,6 +1038,10 @@ export async function importWorkspace(
       }
 
       if (payload.data.mailAccounts) {
+        const existingDefaultAccount = await tx.mailAccount.findFirst({
+          where: { workspaceId, isDefault: true },
+          select: { id: true },
+        });
         const existingWebhookAccount =
           mode === "merge"
             ? await tx.mailAccount.findFirst({
@@ -1078,6 +1083,10 @@ export async function importWorkspace(
             isValid: row.isValid,
             lastCheckedAt: row.lastCheckedAt,
             isActive: row.isActive,
+            // Apply the archived default after the batch insert. Keeping this
+            // false here avoids colliding with an existing target default in
+            // merge mode and tolerates malformed archives carrying two flags.
+            isDefault: false,
             syncStatus: "IDLE" as const,
             syncError: null,
             lastSyncAt: row.lastSyncAt,
@@ -1093,6 +1102,18 @@ export async function importWorkspace(
           inserts,
           500,
         );
+        const archivedDefault = payload.data.mailAccounts.find(
+          (row) => row.isDefault,
+        );
+        const defaultAccountId = archivedDefault
+          ? mailAccountIdMap.get(archivedDefault.id)
+          : undefined;
+        if (!existingDefaultAccount && defaultAccountId) {
+          await tx.mailAccount.update({
+            where: { id: defaultAccountId },
+            data: { isDefault: true },
+          });
+        }
         imported.mailAccounts = inserts.length;
       }
 

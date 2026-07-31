@@ -7,6 +7,7 @@
   "categoryFilterLabel": "Filter by category",
   "severityFilterLabel": "Filter by severity",
   "sortOrderLabel": "Sort order",
+  "dateFilterLabel": "Filter by UTC date",
   "allCategoriesOption": "All categories",
   "severityAllOption": "All severities",
   "severityInfoOption": "Info",

@@ -147,6 +147,9 @@ const mailAccountSchema = z.object({
   isValid: z.boolean().nullable(),
   lastCheckedAt: isoDate.nullable(),
   isActive: z.boolean(),
+  // Default keeps v1 archives produced before workspace mailbox selection
+  // compatible with the same format version.
+  isDefault: z.boolean().default(false),
   syncStatus: z.enum(MailSyncStatus),
   syncError: z.string().nullable(),
   lastSyncAt: isoDate.nullable(),

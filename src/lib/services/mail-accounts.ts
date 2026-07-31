@@ -219,6 +219,7 @@ export interface MailAccountSummary {
   isValid: boolean | null;
   lastCheckedAt: Date | null;
   isActive: boolean;
+  isDefault: boolean;
   syncStatus: MailSyncStatus;
   syncError: string | null;
   lastSyncAt: Date | null;
@@ -241,7 +242,9 @@ export interface CreateMailAccountData {
 }
 
 // Empty/absent password means "keep the stored one".
-export type UpdateMailAccountData = Partial<CreateMailAccountData>;
+export type UpdateMailAccountData = Partial<CreateMailAccountData> & {
+  isDefault?: true;
+};
 
 function toSummary(account: MailAccount): MailAccountSummary {
   return {
@@ -261,6 +264,7 @@ function toSummary(account: MailAccount): MailAccountSummary {
     isValid: account.isValid,
     lastCheckedAt: account.lastCheckedAt,
     isActive: account.isActive,
+    isDefault: account.isDefault,
     syncStatus: account.syncStatus,
     syncError: account.syncError,
     lastSyncAt: account.lastSyncAt,
@@ -300,7 +304,7 @@ export async function listAccounts(
   await getOrCreateWebhookAccount(workspaceId);
   const accounts = await db.mailAccount.findMany({
     where: { workspaceId },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
   });
   return accounts.map(toSummary);
 }
@@ -399,10 +403,29 @@ export async function updateAccount(
     if (touchesProtectedField) {
       throw new WebhookAccountProtectedError();
     }
-    const renamed = await db.mailAccount.update({
-      where: { id: existing.id },
-      data: input.name !== undefined ? { name: input.name } : {},
-    });
+    const data = {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.isDefault ? { isDefault: true } : {}),
+    };
+    const renamed = input.isDefault
+      ? await db.$transaction(async (tx) => {
+          await tx.mailAccount.updateMany({
+            where: {
+              workspaceId,
+              id: { not: existing.id },
+              isDefault: true,
+            },
+            data: { isDefault: false },
+          });
+          return tx.mailAccount.update({
+            where: { id: existing.id },
+            data,
+          });
+        })
+      : await db.mailAccount.update({
+          where: { id: existing.id },
+          data,
+        });
     return toSummary(renamed);
   }
 
@@ -438,26 +461,44 @@ export async function updateAccount(
     };
   }
 
-  const updated = await db.mailAccount.update({
-    where: { id: existing.id },
-    data: {
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.email !== undefined ? { email: input.email } : {}),
-      ...(input.imapHost !== undefined ? { imapHost: input.imapHost } : {}),
-      ...(input.imapPort !== undefined ? { imapPort: input.imapPort } : {}),
-      ...(input.imapSecurity !== undefined
-        ? { imapSecurity: input.imapSecurity }
-        : {}),
-      ...(input.smtpHost !== undefined ? { smtpHost: input.smtpHost } : {}),
-      ...(input.smtpPort !== undefined ? { smtpPort: input.smtpPort } : {}),
-      ...(input.smtpSecurity !== undefined
-        ? { smtpSecurity: input.smtpSecurity }
-        : {}),
-      ...(input.username !== undefined ? { username: input.username } : {}),
-      ...(input.mode !== undefined ? { mode: input.mode } : {}),
-      ...secretData,
-    },
-  });
+  const updateData = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.email !== undefined ? { email: input.email } : {}),
+    ...(input.imapHost !== undefined ? { imapHost: input.imapHost } : {}),
+    ...(input.imapPort !== undefined ? { imapPort: input.imapPort } : {}),
+    ...(input.imapSecurity !== undefined
+      ? { imapSecurity: input.imapSecurity }
+      : {}),
+    ...(input.smtpHost !== undefined ? { smtpHost: input.smtpHost } : {}),
+    ...(input.smtpPort !== undefined ? { smtpPort: input.smtpPort } : {}),
+    ...(input.smtpSecurity !== undefined
+      ? { smtpSecurity: input.smtpSecurity }
+      : {}),
+    ...(input.username !== undefined ? { username: input.username } : {}),
+    ...(input.mode !== undefined ? { mode: input.mode } : {}),
+    ...(input.isDefault ? { isDefault: true } : {}),
+    ...secretData,
+  };
+
+  const updated = input.isDefault
+    ? await db.$transaction(async (tx) => {
+        await tx.mailAccount.updateMany({
+          where: {
+            workspaceId,
+            id: { not: existing.id },
+            isDefault: true,
+          },
+          data: { isDefault: false },
+        });
+        return tx.mailAccount.update({
+          where: { id: existing.id },
+          data: updateData,
+        });
+      })
+    : await db.mailAccount.update({
+        where: { id: existing.id },
+        data: updateData,
+      });
 
   if (!connectionChanged) {
     return toSummary(updated);
@@ -478,7 +519,29 @@ export async function deleteAccount(
   if (existing.kind === "WEBHOOK") {
     throw new WebhookAccountProtectedError();
   }
-  await db.mailAccount.delete({ where: { id: existing.id } });
+  await db.$transaction(async (tx) => {
+    await tx.mailAccount.delete({ where: { id: existing.id } });
+    if (!existing.isDefault) return;
+
+    const replacement =
+      (await tx.mailAccount.findFirst({
+        where: { workspaceId, kind: "IMAP" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true },
+      })) ??
+      (await tx.mailAccount.findFirst({
+        where: { workspaceId },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true },
+      }));
+
+    if (replacement) {
+      await tx.mailAccount.update({
+        where: { id: replacement.id },
+        data: { isDefault: true },
+      });
+    }
+  });
 }
 
 export interface TestConnectionData {

@@ -124,6 +124,7 @@ const ACCOUNTS: MailAccountDto[] = [
     isValid: true,
     lastCheckedAt: null,
     isActive: true,
+    isDefault: true,
     syncStatus: "IDLE",
     syncError: null,
     lastSyncAt: null,
@@ -147,6 +148,7 @@ const ACCOUNTS: MailAccountDto[] = [
     isValid: true,
     lastCheckedAt: null,
     isActive: true,
+    isDefault: false,
     syncStatus: "IDLE",
     syncError: null,
     lastSyncAt: null,
@@ -206,6 +208,22 @@ afterEach(() => {
 });
 
 describe("Mail client state boundaries", () => {
+  it("selects the workspace default mailbox instead of the first account", async () => {
+    apiMocks.fetchMailAccounts.mockResolvedValue([
+      { ...ACCOUNTS[0], isDefault: false },
+      { ...ACCOUNTS[1], isDefault: true },
+    ]);
+    apiMocks.fetchFolders.mockImplementation(
+      async (accountId: string) => FOLDERS[accountId] ?? [],
+    );
+
+    renderWithIntl(<MailClientView workspaceId="default-mailbox-workspace" />);
+
+    await waitFor(() =>
+      expect(apiMocks.fetchFolders).toHaveBeenCalledWith("account-2"),
+    );
+  });
+
   it("removes old-account rows before the destination folders resolve", async () => {
     const user = userEvent.setup();
     let resolveSecondFolders!: (folders: MailFolderDto[]) => void;

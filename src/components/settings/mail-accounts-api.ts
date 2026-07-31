@@ -32,6 +32,7 @@ export interface MailAccountDto {
   isValid: boolean | null;
   lastCheckedAt: string | null;
   isActive: boolean;
+  isDefault: boolean;
   syncStatus: MailSyncStatus;
   syncError: string | null;
   lastSyncAt: string | null;
@@ -52,7 +53,9 @@ export interface CreateMailAccountInput {
   password: string;
 }
 
-export type UpdateMailAccountInput = Partial<CreateMailAccountInput>;
+export type UpdateMailAccountInput = Partial<CreateMailAccountInput> & {
+  isDefault?: true;
+};
 
 export interface TestConnectionResult {
   imapOk: boolean;

@@ -30,6 +30,7 @@ export interface FetchAlertsParams {
   severity?: string;
   query?: string;
   sort?: "asc" | "desc";
+  date?: string;
 }
 
 export interface FetchAlertsResult {
@@ -98,6 +99,7 @@ export function fetchAlerts(
   if (params.severity) searchParams.set("severity", params.severity);
   if (params.query) searchParams.set("query", params.query);
   if (params.sort) searchParams.set("sort", params.sort);
+  if (params.date) searchParams.set("date", params.date);
   return request(`/api/alerts?${searchParams}`);
 }
 

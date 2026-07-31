@@ -7,6 +7,7 @@
   "categoryFilterLabel": "Фильтр по категории",
   "severityFilterLabel": "Фильтр по уровню важности",
   "sortOrderLabel": "Порядок сортировки",
+  "dateFilterLabel": "Фильтр по дате UTC",
   "allCategoriesOption": "Все категории",
   "severityAllOption": "Все уровни",
   "severityInfoOption": "Информация",

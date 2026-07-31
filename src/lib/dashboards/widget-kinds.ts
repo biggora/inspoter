@@ -22,66 +22,67 @@ export interface WidgetKindSpec {
 }
 
 export const GRID_COLUMNS = 12;
+export const GRID_MAX_WIDGET_ROWS = 20;
 
 export const WIDGET_KIND_SPECS: Record<DashboardWidgetKind, WidgetKindSpec> = {
   CLOCK: {
     defaultSize: { w: 3, h: 2 },
     minSize: { w: 2, h: 1 },
-    maxSize: { w: 12, h: 4 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: false,
   },
   WEATHER: {
     defaultSize: { w: 3, h: 2 },
     minSize: { w: 2, h: 2 },
-    maxSize: { w: 6, h: 4 },
+    maxSize: { w: 6, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   CALENDAR: {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 3 },
-    maxSize: { w: 8, h: 6 },
+    maxSize: { w: 8, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   NOTE: {
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: false,
   },
   BOOKMARKS: {
     defaultSize: { w: 4, h: 3 },
     minSize: { w: 2, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   SERVICE_STATUS: {
     defaultSize: { w: 4, h: 3 },
     minSize: { w: 2, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   SERVER_METRICS: {
     defaultSize: { w: 4, h: 3 },
     minSize: { w: 3, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   MAIL: {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   ALERTS: {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
   LOGS: {
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 2 },
-    maxSize: { w: 12, h: 8 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
 };

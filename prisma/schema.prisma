@@ -73,49 +73,49 @@ model Session {
 
 // --- Workspaces ---
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  hiddenSections String[] @default([])
+  id                       String                 @id @default(cuid())
+  name                     String
+  slug                     String                 @unique
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  hiddenSections           String[]               @default([])
   // Section-wide kill switch for the background snapshot refresh, mirroring
   // hiddenSections above. Empty = every section refreshes automatically.
   autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
 
-  members             WorkspaceMember[]
-  defaultForOperators Operator[]         @relation("DefaultWorkspace")
-  categories          Category[]
-  bookmarks         Bookmark[]
-  messageCategories MessageCategory[]
-  channels          Channel[]
-  messages          Message[]
-  mailAccounts      MailAccount[]
-  mailFolders       MailFolder[]
-  mailItems         MailItem[]
-  mailLabels        MailLabel[]
-  mailItemLabels    MailItemLabel[]
-  mailFilterRules   MailFilterRule[]
-  mailFilterConditions MailFilterCondition[]
-  mailFilterRuns    MailFilterRun[]
-  mailFilterActionJobs MailFilterActionJob[]
-  logEntries        LogEntry[]
-  alertCategories   AlertCategory[]
-  alerts            Alert[]
-  webhookTokens     WebhookToken[]
-  idempotencyKeys   IdempotencyKey[]
-  providerBindings  ProviderResourceBinding[]
-  credentials       ProviderCredential[]
-  services          Service[]
-  serviceChecks     ServiceCheck[]
-  serviceLabels     ServiceLabel[]
+  members                 WorkspaceMember[]
+  defaultForOperators     Operator[]                @relation("DefaultWorkspace")
+  categories              Category[]
+  bookmarks               Bookmark[]
+  messageCategories       MessageCategory[]
+  channels                Channel[]
+  messages                Message[]
+  mailAccounts            MailAccount[]
+  mailFolders             MailFolder[]
+  mailItems               MailItem[]
+  mailLabels              MailLabel[]
+  mailItemLabels          MailItemLabel[]
+  mailFilterRules         MailFilterRule[]
+  mailFilterConditions    MailFilterCondition[]
+  mailFilterRuns          MailFilterRun[]
+  mailFilterActionJobs    MailFilterActionJob[]
+  logEntries              LogEntry[]
+  alertCategories         AlertCategory[]
+  alerts                  Alert[]
+  webhookTokens           WebhookToken[]
+  idempotencyKeys         IdempotencyKey[]
+  providerBindings        ProviderResourceBinding[]
+  credentials             ProviderCredential[]
+  services                Service[]
+  serviceChecks           ServiceCheck[]
+  serviceLabels           ServiceLabel[]
   serviceLabelAssignments ServiceLabelAssignment[]
-  outgoingWebhooks  OutgoingWebhook[]
-  webhookDeliveries WebhookDelivery[]
-  localServers      LocalServer[]
-  activities        Activity[]
-  dashboards        Dashboard[]
-  dashboardWidgets  DashboardWidget[]
+  outgoingWebhooks        OutgoingWebhook[]
+  webhookDeliveries       WebhookDelivery[]
+  localServers            LocalServer[]
+  activities              Activity[]
+  dashboards              Dashboard[]
+  dashboardWidgets        DashboardWidget[]
 }
 
 model WorkspaceMember {
@@ -191,17 +191,17 @@ enum DashboardWidgetKind {
 }
 
 model Dashboard {
-  id          String    @id @default(cuid())
+  id          String            @id @default(cuid())
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
-  position    Int       @default(0)
+  position    Int               @default(0)
   // The dashboard the post-login redirect lands on. At most one per workspace:
   // raw partial unique index in the migration SQL (WHERE "isDefault") — not
   // expressible in the Prisma DSL, same as MailAccount's WEBHOOK uniqueness.
-  isDefault   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isDefault   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   widgets     DashboardWidget[]
 
   @@unique([id, workspaceId])
@@ -351,9 +351,9 @@ enum MailFilterActionJobStatus {
 }
 
 model MailAccount {
-  id                  String           @id @default(cuid())
+  id                  String                @id @default(cuid())
   workspaceId         String
-  workspace           Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   kind                MailAccountKind
   mode                ProviderMode
   name                String
@@ -371,15 +371,16 @@ model MailAccount {
   maskedHint          String?
   isValid             Boolean?
   lastCheckedAt       DateTime?
-  isActive            Boolean          @default(true)
-  syncStatus          MailSyncStatus   @default(IDLE)
+  isActive            Boolean               @default(true)
+  isDefault           Boolean               @default(false)
+  syncStatus          MailSyncStatus        @default(IDLE)
   syncError           String?
   lastSyncAt          DateTime?
   nextSyncAt          DateTime?
   syncLeaseExpiresAt  DateTime?
-  syncIntervalSeconds Int              @default(300)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  syncIntervalSeconds Int                   @default(300)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
   folders             MailFolder[]
   mailItems           MailItem[]
   filterRules         MailFilterRule[]
@@ -387,28 +388,30 @@ model MailAccount {
 
   // At most one WEBHOOK account per workspace: raw partial unique index in the
   // migration SQL (WHERE "kind" = 'WEBHOOK') — not expressible in Prisma DSL.
+  // At most one default account per workspace is likewise enforced by a raw
+  // partial unique index (WHERE "isDefault").
   @@unique([id, workspaceId])
   @@index([workspaceId])
   @@index([isActive, nextSyncAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
 }
 
 model MailFolder {
-  id                 String         @id @default(cuid())
+  id                 String           @id @default(cuid())
   workspaceId        String
-  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   accountId          String
   accountWorkspaceId String
-  account            MailAccount    @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  account            MailAccount      @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   path               String
   name               String
   delimiter          String?
-  specialUse         MailSpecialUse @default(OTHER)
-  position           Int            @default(0)
+  specialUse         MailSpecialUse   @default(OTHER)
+  position           Int              @default(0)
   uidValidity        BigInt?
   lastSeenUid        BigInt?
   lastSyncAt         DateTime?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   mailItems          MailItem[]
   filterMoveRules    MailFilterRule[] @relation("MailFilterMoveTarget")
 
@@ -418,15 +421,15 @@ model MailFolder {
 }
 
 model MailItem {
-  id                 String           @id @default(cuid())
+  id                 String                @id @default(cuid())
   workspaceId        String
-  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   accountId          String
   accountWorkspaceId String
-  account            MailAccount      @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  account            MailAccount           @relation(fields: [accountId, accountWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   folderId           String
   folderWorkspaceId  String
-  folder             MailFolder       @relation(fields: [folderId, folderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  folder             MailFolder            @relation(fields: [folderId, folderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   uid                BigInt? // IMAP UID; null for webhook-ingested items
   messageId          String?
   fromAddress        String
@@ -441,12 +444,12 @@ model MailItem {
   draftReplyToId     String?
   draftForwardOfId   String?
   snippet            String?
-  isRead             Boolean          @default(false)
-  isAnswered         Boolean          @default(false)
-  isFlagged          Boolean          @default(false)
-  hasAttachments     Boolean          @default(false)
-  receivedAt         DateTime         @default(now())
-  createdAt          DateTime         @default(now())
+  isRead             Boolean               @default(false)
+  isAnswered         Boolean               @default(false)
+  isFlagged          Boolean               @default(false)
+  hasAttachments     Boolean               @default(false)
+  receivedAt         DateTime              @default(now())
+  createdAt          DateTime              @default(now())
   attachments        MailAttachment[]
   labels             MailItemLabel[]
   filterActionJobs   MailFilterActionJob[]
@@ -717,9 +720,9 @@ enum ServiceStatus {
 }
 
 model Service {
-  id                  String         @id @default(cuid())
+  id                  String                   @id @default(cuid())
   workspaceId         String
-  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace           Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name                String
   description         String?
   monitorType         MonitorType
@@ -727,18 +730,18 @@ model Service {
   host                String? // TCP, PING
   port                Int? // TCP required; PING optional (default 80 at check time)
   expectedStatusCodes String? // HTTP only, e.g. "200-299"
-  intervalSeconds     Int            @default(60)
-  timeoutMs           Int            @default(5000)
-  retries             Int            @default(1) // consecutive failures before flipping to DOWN
-  isActive            Boolean        @default(true)
-  currentStatus       ServiceStatus  @default(PENDING)
-  consecutiveFailures Int            @default(0)
+  intervalSeconds     Int                      @default(60)
+  timeoutMs           Int                      @default(5000)
+  retries             Int                      @default(1) // consecutive failures before flipping to DOWN
+  isActive            Boolean                  @default(true)
+  currentStatus       ServiceStatus            @default(PENDING)
+  consecutiveFailures Int                      @default(0)
   lastCheckedAt       DateTime?
   lastResponseTimeMs  Int?
   lastMessage         String?
-  nextCheckAt         DateTime       @default(now())
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  nextCheckAt         DateTime                 @default(now())
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
   checks              ServiceCheck[]
   labels              ServiceLabelAssignment[]
 
@@ -966,28 +969,28 @@ enum ProviderType {
 }
 
 model ProviderCredential {
-  id            String       @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  provider      ProviderType
-  label         String
-  encryptedData String
-  iv            String
-  authTag       String
-  maskedHint    String
-  allowInsecure Boolean      @default(false)
-  isValid         Boolean?
-  lastCheckedAt   DateTime?
-  lastSyncError   String?
-  lastSyncErrorAt DateTime?
-  lastSyncOkAt    DateTime?
+  id                 String       @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider           ProviderType
+  label              String
+  encryptedData      String
+  iv                 String
+  authTag            String
+  maskedHint         String
+  allowInsecure      Boolean      @default(false)
+  isValid            Boolean?
+  lastCheckedAt      DateTime?
+  lastSyncError      String?
+  lastSyncErrorAt    DateTime?
+  lastSyncOkAt       DateTime?
   // Per-credential kill switch for the background snapshot refresh
   // (provider-snapshot-scheduler.ts). Manual refresh and the very first
   // fetch ignore it — turning it off freezes the data, it never empties
   // the section.
-  autoRefreshEnabled Boolean   @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  autoRefreshEnabled Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   localServers LocalServer[]
   snapshots    ProviderSnapshot[]
@@ -1055,21 +1058,21 @@ enum ServerAddressSource {
 }
 
 model LocalServer {
-  id                            String              @id @default(cuid())
+  id                            String                @id @default(cuid())
   workspaceId                   String
-  workspace                     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace                     Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   origin                        LocalServerOrigin
   displayName                   String
   hostname                      String?
   providerCredentialId          String?
   providerCredentialWorkspaceId String?
-  providerCredential            ProviderCredential?  @relation(fields: [providerCredentialId, providerCredentialWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
+  providerCredential            ProviderCredential?   @relation(fields: [providerCredentialId, providerCredentialWorkspaceId], references: [id, workspaceId], onDelete: Restrict)
   providerRemoteId              String?
   providerLastSeenAt            DateTime?
   providerMissingAt             DateTime?
   metricsAlertState             String?
-  createdAt                     DateTime             @default(now())
-  updatedAt                     DateTime             @updatedAt
+  createdAt                     DateTime              @default(now())
+  updatedAt                     DateTime              @updatedAt
   addresses                     LocalServerAddress[]
   metricSnapshot                ServerMetricSnapshot?
   metricSamples                 ServerMetricSample[]

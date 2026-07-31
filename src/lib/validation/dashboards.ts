@@ -2,7 +2,10 @@ import { z } from "zod";
 import type { DashboardWidgetKind } from "@/generated/prisma/client";
 import { VALIDATION_RU } from "@/lib/validation/error-map";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
-import { WIDGET_KIND_ORDER } from "@/lib/dashboards/widget-kinds";
+import {
+  GRID_MAX_WIDGET_ROWS,
+  WIDGET_KIND_ORDER,
+} from "@/lib/dashboards/widget-kinds";
 
 // Zod schemas for the Dashboards section — the single source of input
 // validation for /api/dashboards/** (ADR-011), mirroring
@@ -325,7 +328,9 @@ const gridCellSchema = z.object({
     .number()
     .int()
     .min(1, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid })
-    .max(20, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid }),
+    .max(GRID_MAX_WIDGET_ROWS, {
+      error: () => VALIDATION_RU.dashboard.layoutCellInvalid,
+    }),
 });
 
 // PATCH /api/dashboards/:id/layout — the full post-drag layout of the

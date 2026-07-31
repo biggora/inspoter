@@ -75,13 +75,14 @@ function formatTimestamp(iso: string): string {
 // rationale as Logs — filterable/paginated). Category CRUD lives alongside
 // the list rather than as a separate page since Alerts has no persistent
 // category-tree screen.
-export function AlertsView() {
+export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   const t = useTranslations("alerts");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [severity, setSeverity] = useState("all");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
+  const [date, setDate] = useState(initialDate);
 
   const [pageCursors, setPageCursors] = useState<Array<string | undefined>>([
     undefined,
@@ -139,6 +140,7 @@ export function AlertsView() {
           severity: severity === "all" ? undefined : severity,
           query: query || undefined,
           sort,
+          date: date || undefined,
         });
         if (cancelled) return;
         setItems(result.items);
@@ -153,7 +155,7 @@ export function AlertsView() {
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, categoryId, severity, query, sort, t]);
+  }, [currentCursor, categoryId, severity, query, sort, date, t]);
 
   function resetToFirstPage() {
     setPageCursors([undefined]);
@@ -177,6 +179,11 @@ export function AlertsView() {
 
   function handleSortChange(value: "asc" | "desc") {
     setSort(value);
+    resetToFirstPage();
+  }
+
+  function handleDateChange(value: string) {
+    setDate(value);
     resetToFirstPage();
   }
 
@@ -215,7 +222,7 @@ export function AlertsView() {
   );
 
   const hasActiveFilters =
-    query !== "" || categoryId !== "all" || severity !== "all";
+    query !== "" || categoryId !== "all" || severity !== "all" || date !== "";
 
   return (
     <PageBody>
@@ -300,6 +307,14 @@ export function AlertsView() {
               </SelectGroup>
             </SelectContent>
           </Select>
+          <Input
+            type="date"
+            size="sm"
+            value={date}
+            onChange={(event) => handleDateChange(event.target.value)}
+            aria-label={t("dateFilterLabel")}
+            className="sm:w-auto"
+          />
         </FilterBar>
       </PageHeader>
 

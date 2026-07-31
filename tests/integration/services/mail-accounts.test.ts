@@ -180,6 +180,65 @@ describe("listAccounts", () => {
 });
 
 describe("updateAccount", () => {
+  it("keeps exactly one workspace default account", async () => {
+    const first = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-default-first` }),
+    );
+    const second = await mailAccountsService.createAccount(
+      workspaceId,
+      accountInput({ name: `${NAME_PREFIX}-default-second` }),
+    );
+
+    await mailAccountsService.updateAccount(workspaceId, first.id, {
+      isDefault: true,
+    });
+    const selected = await mailAccountsService.updateAccount(
+      workspaceId,
+      second.id,
+      { isDefault: true },
+    );
+
+    expect(selected.isDefault).toBe(true);
+    const defaults = await db.mailAccount.findMany({
+      where: { workspaceId, isDefault: true },
+    });
+    expect(defaults.map((account) => account.id)).toEqual([second.id]);
+  });
+
+  it("promotes the oldest remaining IMAP account when the default is deleted", async () => {
+    const workspace = await db.workspace.create({
+      data: {
+        name: "Default Mailbox Replacement",
+        slug: `default-mailbox-${randomUUID()}`,
+        updatedAt: new Date(),
+      },
+    });
+
+    try {
+      const first = await mailAccountsService.createAccount(
+        workspace.id,
+        accountInput({ name: `${NAME_PREFIX}-replacement-first` }),
+      );
+      const second = await mailAccountsService.createAccount(
+        workspace.id,
+        accountInput({ name: `${NAME_PREFIX}-replacement-second` }),
+      );
+      await mailAccountsService.updateAccount(workspace.id, second.id, {
+        isDefault: true,
+      });
+
+      await mailAccountsService.deleteAccount(workspace.id, second.id);
+
+      const replacement = await db.mailAccount.findFirstOrThrow({
+        where: { workspaceId: workspace.id, isDefault: true },
+      });
+      expect(replacement.id).toBe(first.id);
+    } finally {
+      await db.workspace.delete({ where: { id: workspace.id } });
+    }
+  });
+
   it("keeps the stored password when the input password is empty/absent", async () => {
     const created = await mailAccountsService.createAccount(
       workspaceId,

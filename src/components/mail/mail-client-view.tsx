@@ -278,8 +278,9 @@ function MailClientCoordinator({
     };
   }, [pendingFilterRunId]);
 
-  // Accounts: loaded on mount; the first IMAP account is preselected, the
-  // system webhook mailbox is the fallback when no IMAP account exists.
+  // Accounts: loaded on mount; the workspace default is preselected. Legacy
+  // data without one falls back to the first IMAP account, then the system
+  // webhook mailbox.
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -290,8 +291,9 @@ function MailClientCoordinator({
         setAccounts(list);
         setSelectedAccountId((prev) => {
           if (prev && list.some((account) => account.id === prev)) return prev;
+          const preferred = list.find((account) => account.isDefault);
           const imap = list.find((account) => account.kind !== "WEBHOOK");
-          return (imap ?? list[0])?.id ?? null;
+          return (preferred ?? imap ?? list[0])?.id ?? null;
         });
       } catch {
         if (!cancelled) {

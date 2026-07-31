@@ -22,6 +22,8 @@ export interface ListAlertsParams {
   severity?: string;
   query?: string;
   sort?: "asc" | "desc";
+  /** YYYY-MM-DD, interpreted as one UTC day like the dashboard calendar. */
+  date?: string;
 }
 
 export type AlertWithCategory = Alert & { alertCategory: AlertCategory | null };
@@ -120,6 +122,12 @@ export async function list(
   if (params.severity) where.severity = params.severity;
   if (params.query)
     where.message = { contains: params.query, mode: "insensitive" };
+  if (params.date) {
+    const from = new Date(`${params.date}T00:00:00.000Z`);
+    const to = new Date(from);
+    to.setUTCDate(to.getUTCDate() + 1);
+    where.timestamp = { gte: from, lt: to };
+  }
 
   const decoded = params.cursor ? decodeCursor(params.cursor) : null;
   const cursor = decoded && decoded.w === workspaceId ? decoded : null;

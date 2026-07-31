@@ -8,6 +8,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -87,6 +88,7 @@ export function MailAccountsView() {
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MailAccountDto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [defaultingId, setDefaultingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     return mailAccountsApi
@@ -115,6 +117,33 @@ export function MailAccountsView() {
       toast.error(t("deleteAccountError"));
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleSetDefault(account: MailAccountDto) {
+    if (account.isDefault || defaultingId) return;
+    setDefaultingId(account.id);
+    try {
+      const updated = await mailAccountsApi.update(account.id, {
+        isDefault: true,
+      });
+      setAccounts((current) =>
+        current
+          .map((item) => ({
+            ...item,
+            isDefault: item.id === updated.id,
+          }))
+          .sort(
+            (left, right) =>
+              Number(right.isDefault) - Number(left.isDefault) ||
+              left.createdAt.localeCompare(right.createdAt),
+          ),
+      );
+      toast.success(t("defaultMailboxSetToast", { name: account.name }));
+    } catch {
+      toast.error(t("defaultMailboxError"));
+    } finally {
+      setDefaultingId(null);
     }
   }
 
@@ -163,7 +192,14 @@ export function MailAccountsView() {
             {accounts.map((account) => (
               <TableRow key={account.id}>
                 <TableCell className="font-medium text-foreground">
-                  {account.name}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>{account.name}</span>
+                    {account.isDefault && (
+                      <Badge variant="secondary">
+                        {t("defaultMailboxBadge")}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {account.email || "—"}
@@ -179,6 +215,40 @@ export function MailAccountsView() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t(
+                        account.isDefault
+                          ? "defaultMailboxCurrentAria"
+                          : "setDefaultMailboxAria",
+                        { name: account.name },
+                      )}
+                      title={t(
+                        account.isDefault
+                          ? "defaultMailboxCurrentAria"
+                          : "setDefaultMailboxAria",
+                        { name: account.name },
+                      )}
+                      disabled={account.isDefault || defaultingId !== null}
+                      onClick={() => handleSetDefault(account)}
+                    >
+                      <Icon
+                        name={
+                          defaultingId === account.id
+                            ? "ri-loader-4-line"
+                            : account.isDefault
+                              ? "ri-star-fill"
+                              : "ri-star-line"
+                        }
+                        aria-hidden
+                        className={
+                          defaultingId === account.id
+                            ? "animate-spin text-base"
+                            : "text-base"
+                        }
+                      />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

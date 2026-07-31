@@ -386,6 +386,35 @@ describe("AC-ALR-001/002: createCategory / renameCategory / deleteCategory", () 
   });
 });
 
+describe("UTC day filtering", () => {
+  it("returns only alerts inside the linked calendar day", async () => {
+    const category = `${NAME_PREFIX}-calendar-day`;
+    const inside = await alertsService.create(workspaceId, {
+      category,
+      severity: "warning",
+      source: "calendar-test",
+      message: "inside linked day",
+      timestamp: "2026-07-31T23:59:59.000Z",
+    });
+    await alertsService.create(workspaceId, {
+      category,
+      severity: "warning",
+      source: "calendar-test",
+      message: "outside linked day",
+      timestamp: "2026-08-01T00:00:00.000Z",
+    });
+
+    const result = await alertsService.list(workspaceId, {
+      date: "2026-07-31",
+    });
+
+    expect(result.items.map((alert) => alert.id)).toContain(inside.id);
+    expect(result.items.map((alert) => alert.message)).not.toContain(
+      "outside linked day",
+    );
+  });
+});
+
 describe("Workspace isolation", () => {
   it("alerts and categories from workspace A are not visible in workspace B", async () => {
     const category = await alertsService.createCategory(

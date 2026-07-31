@@ -88,6 +88,7 @@ export const updateMailAccountSchema = z.object({
     .min(1, { error: () => VALIDATION_RU.mailAccount.usernameRequired })
     .optional(),
   password: z.string().optional(),
+  isDefault: z.literal(true).optional(),
 });
 
 export type UpdateMailAccountInput = z.infer<typeof updateMailAccountSchema>;

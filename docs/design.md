@@ -240,7 +240,7 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 **Layout/content:** page header with the board's name and, once two or more boards exist, a wrapping row of board links below it (the start board carries a home glyph with an accessible name, never colour alone). Header actions: «Редактировать» / «Готово», «Добавить виджет» (edit mode only), and a board action menu (create, rename, make start page, delete). The board itself is a 12-column grid of `--dashboard-row-height` rows. Each tile is a bordered card: header with the kind's outline Remix icon, the resolved title, and either the actions menu (edit mode) or a link into the widget's own section (view mode); below it a scrollable body that is a container-query context, so a widget adapts to its own tile width rather than the viewport.
 
-**Widget catalogue (10 kinds):** Часы и дата, Погода, Календарь, Заметка, Закладки, Статусы сервисов, Метрики серверов, Почта, Оповещения, Логи. Each kind declares a default, minimum, and maximum size in cells; the picker lists kind name plus one sentence of purpose.
+**Widget catalogue (10 kinds):** Часы и дата, Погода, Календарь, Заметка, Закладки, Статусы сервисов, Метрики серверов, Почта, Оповещения, Логи. Each kind declares a default and minimum size plus its own maximum width; every kind may grow vertically to the shared 20-row board limit, independent of neighbouring tile heights. The picker lists kind name plus one sentence of purpose.
 
 **Actions:** create/rename/delete a board; pin one board as the workspace start page; add a widget from the catalogue (the new tile's settings open immediately, so a widget that needs input is never left as an error card); configure or remove a widget; move a tile by dragging its handle; resize a tile from the corner grip by pointer or arrow keys. Drag and resize exist **only** in edit mode — in view mode tiles stay interactive and cannot be nudged by a stray press. A displaced tile is pushed down and freed space is pulled up, so the grid never keeps a floating hole. Every layout change persists immediately and optimistically; a failed save reverts the tile and shows a notice.
 
@@ -250,7 +250,7 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 **Mobile:** below 640px the grid collapses to one column in reading order, every tile spans the full width, and layout editing is unavailable with an explicit note saying so. Dialogs become sheets. No horizontal overflow at 375px.
 
-**Accessibility:** each tile is a labelled `section`; its drag handle, actions menu, and resize grip are separate focus stops with non-generic Russian accessible names that include the widget's title. The resize grip is a real button — arrow keys resize one cell per press through the same path the pointer uses, so a board can be arranged without a pointer. The clock does not announce every tick. The calendar grid is deliberately non-interactive: the per-day counts are printed as a list below it, so they are available without a pointer and do not add 31 focus stops per tile.
+**Accessibility:** each tile is a labelled `section`; its drag handle, actions menu, and resize grip are separate focus stops with non-generic Russian accessible names that include the widget's title. The resize grip is a real button — arrow keys resize one cell per press through the same path the pointer uses, so a board can be arranged without a pointer. The clock does not announce every tick. The calendar exposes highlighted days as focusable tooltip triggers and prints the same per-day counts as a list below. A list row containing alerts is a locale-aware link to `/alerts?date=YYYY-MM-DD`; Alerts renders that UTC day as a visible date filter, so following the link never lands on an unexplained hidden subset.
 
 **Acceptance:** board CRUD, start-page pinning, and the landing behaviour satisfy AC-DSH-001..006; adding, configuring, and removing widgets satisfies AC-DSH-007..010; pointer and keyboard layout changes and their persistence satisfy AC-DSH-011..014; per-widget failure isolation and refresh behaviour satisfy AC-DSH-015..016; the responsive collapse and edit-mode lockout satisfy AC-DSH-017..018; Russian-copy, Remix-only, 375px, and 1440px checks succeed.
 
@@ -352,12 +352,13 @@ Colour never carries a series alone: each is named in a legend with «мин · 
 
 **Layout/content (lg and up):** three columns — a 220px sidebar, a 420px message list, and a flexible reading pane.
 
-- **Sidebar:** «Написать» primary action; account switcher («Почтовый аккаунт» select; the webhook mailbox carries a «Системный» badge); «Синхронизировать» with pending state «Синхронизация…» and error state «Ошибка синхронизации»; «Папки» list with Russian special-use names (Входящие, Отправленные, Черновики, Корзина, Спам, Архив) and unread badges (aria-label «Непрочитанных: N»); footer link «Управление аккаунтами» → /settings/mail. Workspaces without an IMAP account show the hint «Добавьте IMAP-аккаунт, чтобы писать письма».
+- **Sidebar:** «Написать» primary action; account switcher («Почтовый аккаунт» select; the webhook mailbox carries a «Системный» badge); on first load it selects the workspace's persisted default mailbox, falling back to the first IMAP account and then the webhook mailbox only for legacy/unconfigured data. «Синхронизировать» has pending state «Синхронизация…» and error state «Ошибка синхронизации»; «Папки» lists Russian special-use names (Входящие, Отправленные, Черновики, Корзина, Спам, Архив) and unread badges (aria-label «Непрочитанных: N»); footer link «Управление аккаунтами» → /settings/mail. Workspaces without an IMAP account show the hint «Добавьте IMAP-аккаунт, чтобы писать письма».
 - **Message list:** search («Поиск по теме или отправителю...»), «Только непрочитанные» toggle, sort order («Сначала новые» / «Сначала старые»), keyset pagination footer. Rows show an initials avatar (deterministic oklch hash tone), sender, relative ru-RU time, subject (bold + unread dot for unread, indicator «Непрочитанное»), snippet, and an attachment glyph («Есть вложения»).
 - **Reading pane:** header with subject, sender, recipients, ru-RU timestamp; action bar Ответить / Переслать / В архив / Удалить / Прочитано; attachment chips with size and download; sanitized body. Empty selection shows «Выберите письмо» / «Нажмите на письмо слева, чтобы прочитать его».
 
 **Key behavior:**
 
+- `/settings/mail` marks the current workspace default with a visible badge and exposes a named star action on every other mailbox. Setting one mailbox clears the previous flag atomically; deleting the default promotes the oldest remaining IMAP account, or the webhook mailbox when none remains.
 - Opening an unread message optimistically marks it read (auto-PATCH) and decrements the folder badge (AC-MAIL-018/021).
 - «Удалить» is trash-first; inside Корзина it opens the confirm dialog «Удалить навсегда?» with Отмена/Удалить (AC-MAIL-019).
 - HTML bodies render only through DOMPurify sanitization (no styles/forms/inputs; links open in a new tab with rel=noopener); otherwise plain text in a preformatted block.
@@ -567,6 +568,12 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.20 — 2026-07-31 (dashboard links, vertical sizing, default mailbox)
+
+- Raises every dashboard widget kind to the shared 20-row vertical limit while preserving kind-specific width limits; resizing still pushes and compacts neighbours through the existing grid engine.
+- Makes calendar rows containing alerts locale-aware links into `/alerts?date=YYYY-MM-DD`; Alerts exposes the UTC day as a visible, clearable filter and applies the same UTC boundaries as the calendar buckets.
+- Adds one workspace default mailbox, selectable from `/settings/mail`, honored by the Mail client unless an explicit valid deep link is present, and reassigned deterministically when deleted.
 
 ### v2.19 — 2026-07-30 (Dashboards: widget boards on a 12-column grid)
 

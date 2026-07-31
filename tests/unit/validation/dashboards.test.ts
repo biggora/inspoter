@@ -10,7 +10,11 @@ import {
   WEATHER_DEFAULT_LOCATION,
   WIDGET_CONFIG_SCHEMAS,
 } from "@/lib/validation/dashboards";
-import { WIDGET_KIND_ORDER } from "@/lib/dashboards/widget-kinds";
+import {
+  GRID_MAX_WIDGET_ROWS,
+  WIDGET_KIND_ORDER,
+  WIDGET_KIND_SPECS,
+} from "@/lib/dashboards/widget-kinds";
 
 describe("dashboardSchema", () => {
   it("trims the name", () => {
@@ -213,5 +217,16 @@ describe("layoutSchema", () => {
     expect(
       layoutSchema.safeParse({ items: [{ ...cell, h: 1.5 }] }).success,
     ).toBe(false);
+  });
+
+  it("accepts every widget kind at the shared vertical resize limit", () => {
+    for (const kind of WIDGET_KIND_ORDER) {
+      expect(WIDGET_KIND_SPECS[kind].maxSize.h).toBe(GRID_MAX_WIDGET_ROWS);
+    }
+    expect(
+      layoutSchema.safeParse({
+        items: [{ ...cell, h: GRID_MAX_WIDGET_ROWS }],
+      }).success,
+    ).toBe(true);
   });
 });
