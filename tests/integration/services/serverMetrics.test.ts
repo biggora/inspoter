@@ -402,3 +402,152 @@ describe("processMetricsIngestion()", () => {
     expect(totalServersForHost).toBe(1);
   });
 });
+
+// The snapshot table holds the current reading; ServerMetricSample accumulates
+// the series the detail page charts. Both are written by the same ingest, so
+// what is true of one (out-of-order rejection, redelivery tolerance) has to be
+// true of the other.
+describe("processMetricsIngestion() metric history", () => {
+  let ctx: serverMetricsService.MetricsTokenContext;
+
+  beforeAll(async () => {
+    const created = await webhookTokensService.create(
+      workspaceId,
+      `${NAME_PREFIX}-history`,
+    );
+    ctx = { tokenId: created.id, workspaceId };
+  });
+
+  async function claimedServer(displayName: string, ip: string) {
+    const server = await db.localServer.create({
+      data: { workspaceId, origin: "AGENT", displayName },
+    });
+    await db.localServerAddress.create({
+      data: {
+        workspaceId,
+        localServerId: server.id,
+        address: ip,
+        family: "IPV4",
+        scope: "GLOBAL",
+        source: "AGENT",
+        matchKey: ip,
+        isCurrent: true,
+        isEnrollmentClaim: true,
+      },
+    });
+    return server;
+  }
+
+  it("records a sample for the enrolling push and for every later one", async () => {
+    const ip = "20.0.0.1";
+    const first = await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-host",
+        ips: [ip],
+        capturedAt: new Date(Date.now() - 120_000).toISOString(),
+        cpuUsagePercent: 10,
+      }),
+    );
+    expect(first.code).toBe("AGENT_ENROLLED");
+
+    await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-host",
+        ips: [ip],
+        capturedAt: new Date(Date.now() - 60_000).toISOString(),
+        cpuUsagePercent: 20,
+      }),
+    );
+
+    const samples = await db.serverMetricSample.findMany({
+      where: { workspaceId, localServerId: first.localServerId },
+      orderBy: { capturedAt: "asc" },
+    });
+    expect(samples.map((sample) => sample.cpuUsagePercent)).toEqual([10, 20]);
+    expect(samples[0].uptimeSeconds).toBe(3600n);
+  });
+
+  it("records no sample for an out-of-order payload", async () => {
+    const ip = "20.0.0.2";
+    const server = await claimedServer("history-ooo", ip);
+
+    await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-ooo-host",
+        ips: [ip],
+        capturedAt: new Date().toISOString(),
+        cpuUsagePercent: 30,
+      }),
+    );
+    const stale = await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-ooo-host",
+        ips: [ip],
+        capturedAt: new Date(Date.now() - 3_600_000).toISOString(),
+        cpuUsagePercent: 99,
+      }),
+    );
+    expect(stale.code).toBe("SNAPSHOT_IGNORED_OUT_OF_ORDER");
+
+    const samples = await db.serverMetricSample.findMany({
+      where: { workspaceId, localServerId: server.id },
+    });
+    expect(samples).toHaveLength(1);
+    expect(samples[0].cpuUsagePercent).toBe(30);
+  });
+
+  it("survives a redelivered payload without failing the ingest", async () => {
+    const ip = "20.0.0.3";
+    const server = await claimedServer("history-redelivery", ip);
+    const capturedAt = new Date().toISOString();
+
+    const first = await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-redelivery-host",
+        ips: [ip],
+        capturedAt,
+        cpuUsagePercent: 44,
+      }),
+    );
+    expect(first.code).toBe("SNAPSHOT_UPDATED");
+
+    // Same capture instant: the snapshot guard rejects it, and the sample
+    // insert must not raise a unique-constraint error that would surface as a
+    // misclassified ADDRESS_CONFLICT.
+    const repeat = await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({
+        hostname: "history-redelivery-host",
+        ips: [ip],
+        capturedAt,
+        cpuUsagePercent: 44,
+      }),
+    );
+    expect(repeat.code).toBe("SNAPSHOT_IGNORED_OUT_OF_ORDER");
+
+    const samples = await db.serverMetricSample.findMany({
+      where: { workspaceId, localServerId: server.id },
+    });
+    expect(samples).toHaveLength(1);
+  });
+
+  it("removes a server's history with the server", async () => {
+    const ip = "20.0.0.4";
+    const result = await serverMetricsService.processMetricsIngestion(
+      ctx,
+      parsePayload({ hostname: "history-cascade-host", ips: [ip] }),
+    );
+
+    await db.localServer.delete({ where: { id: result.localServerId } });
+
+    const remaining = await db.serverMetricSample.count({
+      where: { localServerId: result.localServerId },
+    });
+    expect(remaining).toBe(0);
+  });
+});

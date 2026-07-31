@@ -1072,6 +1072,7 @@ model LocalServer {
   updatedAt                     DateTime             @updatedAt
   addresses                     LocalServerAddress[]
   metricSnapshot                ServerMetricSnapshot?
+  metricSamples                 ServerMetricSample[]
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, providerCredentialId, providerRemoteId])
@@ -1124,4 +1125,37 @@ model ServerMetricSnapshot {
 
   @@unique([localServerId, workspaceId])
   @@index([workspaceId, receivedAt])
+}
+
+// Time series behind the server detail page's charts. ServerMetricSnapshot
+// above keeps exactly one row per server (the current state the cards read);
+// this table keeps every accepted push, so "what did CPU do over the last two
+// days" is answerable at all. Written only when a payload passes the
+// snapshot's out-of-order guard, and pruned by
+// server-metrics-retention-scheduler.ts.
+//
+// The unique key is (localServerId, capturedAt): a redelivered payload carries
+// the same capture instant, and the ingest inserts with ON CONFLICT DO NOTHING
+// so a retry can never abort the surrounding transaction.
+model ServerMetricSample {
+  id                       String      @id @default(cuid())
+  localServerId            String
+  workspaceId              String
+  localServer              LocalServer @relation(fields: [localServerId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  capturedAt               DateTime
+  cpuUsagePercent          Float
+  load1                    Float
+  load5                    Float
+  load15                   Float
+  memoryTotalBytes         BigInt
+  memoryAvailableBytes     BigInt
+  swapTotalBytes           BigInt
+  swapFreeBytes            BigInt
+  filesystemTotalBytes     BigInt
+  filesystemAvailableBytes BigInt
+  uptimeSeconds            BigInt
+
+  @@unique([localServerId, capturedAt])
+  @@index([workspaceId, localServerId, capturedAt])
+  @@index([capturedAt])
 }

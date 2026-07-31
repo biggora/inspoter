@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.14 (2026-07-31):** documents the server detail page as CURRENT: the `ServerMetricSample` time series (36 models) with migration `20260731120000_server_metric_samples`, written by the same ingest transaction that accepts a snapshot and pruned by a fourth in-process scheduler (`server-metrics-retention-scheduler.ts`, `SERVER_METRICS_RETENTION_*`); the bucket-aggregating history service (`src/lib/services/serverMetricsHistory.ts`, five ranges from 24 h to 30 d, 120–180 points each); the `local/[id]` read routes keyed by LocalServer id; and the dependency-free SVG chart (`src/components/ui/time-series-chart.tsx`). Updates §3.2, §4.1, and §7C. New section §7C.7.
 - **v1.13 (2026-07-30):** documents the Dashboards section as CURRENT: the `Dashboard`/`DashboardWidget` pair (35 models) with migration `20260730120000_dashboards` and its partial unique "one start dashboard per workspace" index; the dependency-free grid engine (`src/lib/dashboards/grid.ts`) shared by the client drag/resize path and server-side layout validation; the per-widget-isolated data resolver and the single polling endpoint `GET /api/dashboards/[id]/data`; the client-safe payload contract (`src/lib/dashboards/widget-payloads.ts`) that keeps Prisma out of the browser bundle; Open-Meteo as the only outbound call; and the post-login landing move from `/bookmarks` to `/dashboards`. Updates §3.1, §3.2, §3.4, §4.1, and §7B.3. New section §7E.
 - **v1.12 (2026-07-26):** records two field-verified corrections in §7C. The agent now sends `User-Agent: inspoter-metrics-agent/<version>`: urllib's default is a bot signature that Cloudflare's Browser Integrity Check answers with 403 (`error code: 1010`), so every push failed while the identical payload succeeded via `curl`. Hetzner server cards now report `primary_disk_size` (the VM's own disk) instead of `server_type.disk` (the plan's nominal disk), which diverge permanently after a keep-disk rescale. Updates §7C.3 and §7C.4.
 - **v1.11 (2026-07-24):** replaces the per-server `ServerAgentToken` state machine with universal API tokens. Migration `20260724100000_universal_api_tokens` drops the `ServerAgentToken` model and enum; workspace-level `WebhookToken` rows (`channelId: null`) now authenticate both webhook ingestion and `POST /api/server-metrics`, with member-level list/create/revoke/rotate lifecycle in Settings (new `POST /api/webhook-tokens/[id]/rotate`). Server identity is resolved per ingest from reported global IPv4 claims (claim match → provider discovery → agent-only auto-create), metrics states reduce to `not_configured`/`live`/`stale`, the ingestion response body is `{ code, localServerId }`, and the rate-limit key becomes `${tokenId}:${clientIp}`. Rewrites §7C.1–7C.3 and corrects the §4.1 model inventory (33 models).
@@ -121,6 +122,7 @@ flowchart LR
 | CURRENT | `/bookmarks`          | `src/app/(dashboard)/bookmarks/page.tsx`                  | Server Component; `requireAuth()` plus workspace-scoped service read                                           |
 | CURRENT | `/domains`            | `src/app/(dashboard)/domains/page.tsx`                    | Server Component; `requireAuth()` plus provider aggregation                                                    |
 | CURRENT | `/servers`            | `src/app/(dashboard)/servers/page.tsx`                    | Authenticated Server Component shell; Client view fetches API                                                  |
+| CURRENT | `/servers/[id]`       | `src/app/[locale]/(dashboard)/servers/[id]/page.tsx`      | Authenticated Server Component shell; Client detail view fetches server + metric history by LocalServer id     |
 | CURRENT | `/mail`               | `src/app/(dashboard)/mail/page.tsx`                       | Authenticated Server Component shell; Client three-pane mail client (`MailClientView`) fetches API             |
 | CURRENT | `/settings/mail`      | `src/app/(dashboard)/settings/mail/page.tsx`              | Authenticated Server Component shell; Client mail-account management (owner-gated mutations)                   |
 | CURRENT | `/messages`           | `src/app/(dashboard)/messages/page.tsx`                   | Authenticated Server Component shell; Client view fetches API                                                  |
@@ -227,6 +229,7 @@ flowchart LR
 33. `ServerMetricSnapshot` (VPS Metrics Agent — latest-only metrics upsert per server)
 34. `Dashboard` (Dashboards slice — named widget board, workspace-shared)
 35. `DashboardWidget` (Dashboards slice — one tile: kind, grid rectangle, per-kind `config` JSON)
+36. `ServerMetricSample` (VPS Metrics Agent — metric time series behind the server detail charts)
 
 **CURRENT — Dashboards cluster (2026-07-30):**
 
@@ -240,6 +243,7 @@ flowchart LR
 - `LocalServerAddress` — per-server IP addresses with `family` (IPV4/IPV6), `scope` (GLOBAL/PRIVATE/LINK_LOCAL/LOOPBACK/RESERVED/OTHER), `source` (AGENT/PROVIDER), and enrollment claim management (`isCurrent`, `retiredAt`, `matchKey`, `isEnrollmentClaim`). Partial unique index `local_server_address_one_current_ipv4_claim` ensures at most one current global IPv4 claim per address string per workspace.
 - Agent authentication — no dedicated token model. Migration `20260724100000_universal_api_tokens` dropped `ServerAgentToken` (and its state enum); metrics ingestion authenticates with universal API tokens: workspace-level `WebhookToken` rows with `channelId: null` (§7C.1). Server identity is resolved per ingest from reported global IPv4 claims, never from the token.
 - `ServerMetricSnapshot` — latest-only upsert per `localServerId` (1:1). Stores CPU usage, load averages, memory/swap/filesystem totals and available bytes (BigInt), uptime, hostname, agent version. `receivedAt` drives the 180-second stale threshold.
+- `ServerMetricSample` (2026-07-31) — append-only time series alongside the snapshot: the same metric columns keyed by `(localServerId, capturedAt)`. The snapshot answers "what is this server doing now" for the cards; this table answers "what did it do over the last two days" for the detail page's charts (§7C.7). A row is written only where the snapshot's out-of-order guard accepted the payload, with `ON CONFLICT DO NOTHING` so a redelivered push can never abort the ingestion transaction. `@@index([capturedAt])` serves the cross-workspace retention sweep; `@@index([workspaceId, localServerId, capturedAt])` serves the range query. Like `ServerMetricSnapshot` it is droppable data — reconstructible only by waiting, never by re-reading a provider — and cascades with its server.
   **CURRENT — P-1 note revision (2026-07-18):** the Slice-0 decision P-1 ("full schema in one initial migration, no per-slice incremental models") applied to the original 13-entity baseline. Later feature slices legitimately extend the schema with reviewed, hand-authored follow-on migrations (workspaces, Q-13 ownership, provider credentials, bookmark color, services, category hierarchy, external identity, and `20260718130000_mail_client_multi_account`). P-1 now means "no _unreviewed ad-hoc_ incremental models", not "the schema never grows"; the same note is updated in the `prisma/schema.prisma` header comment.
 
 **CURRENT — Q-14 mail cluster:**
@@ -799,6 +803,25 @@ Credential and workspace deletion now use ordered transactions to respect LocalS
 ### 7C.6 IP validation (`src/lib/validation/server-metrics.ts`)
 
 Uses `ipaddr.js` (not regex) for IP parsing and classification. Exported `parseAndClassifyAddress()` returns family, scope, and `matchKey` (non-null only for global IPv4 — enrollment-eligible). Payload validation via Zod enforces strict invariants: `schemaVersion === 1`, max 16 unique IPs, `0 ≤ cpuUsagePercent ≤ 100`, `availableBytes ≤ totalBytes`, non-negative load/uptime, UTC `capturedAt` within 5 minutes of server time.
+
+### 7C.7 Metric history and the server detail page (2026-07-31)
+
+`GET /servers/[id]` renders one machine: everything its card states, plus charts of CPU (average and peak), load average, memory and swap, and disk over a chosen range. The page is an auth gate only — the view fetches through the API with the tab's active-workspace header, like the grid, so a stale tab never renders another workspace's machine from the session.
+
+| Concern      | Decision                                                                                                                                                                                                                                                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Write path   | `insertSample()` in `serverMetrics.ts`, inside the existing ingestion transaction, only where `applySnapshot()` accepted the payload. Out-of-order pushes change neither the snapshot nor the series.                                                                                                                          |
+| Aggregation  | `src/lib/services/serverMetricsHistory.ts` buckets in PostgreSQL (`to_timestamp(floor(epoch/bucket)*bucket)`), casting every aggregate to `float8`. Five ranges — 24 h/48 h/5 d/7 d/30 d — each sized to 120–180 points, so a 30-day chart costs the browser no more than a 24-hour one. The window is closed at both ends.      |
+| Reboots      | A bucket whose minimum uptime is below the previous bucket's: uptime only counts up, so a drop means the machine restarted. Rendered as vertical markers on the CPU chart.                                                                                                                                                     |
+| Read routes  | `GET /api/servers/local/[id]` and `GET /api/servers/local/[id]/metrics?range=…`, both workspace-scoped. Keyed by LocalServer id, since an agent-only server has no provider/remote id pair; the static `local` segment avoids a second dynamic sibling next to `[providerId]`. The metrics route 404s before querying a foreign server. |
+| Retention    | `server-metrics-retention-scheduler.ts` — the fourth in-process scheduler, same guard/reentrancy pattern as the others, registered in `src/instrumentation.ts`. Deletes by `capturedAt` in batches (`SERVER_METRICS_RETENTION_BATCH`, at most 20 batches per tick) because one agent writes ~1440 rows a day.                     |
+| Chart        | `src/components/ui/time-series-chart.tsx` — inline SVG, no charting dependency. Fixed viewBox stretched with `preserveAspectRatio="none"` plus `vector-effect="non-scaling-stroke"`; series colours are existing palette tokens, so dark mode needs no chart-specific work. Every series states min/avg/max/now as text.          |
+
+| Env variable                       | Default | Purpose                    |
+| ---------------------------------- | ------- | -------------------------- |
+| `SERVER_METRICS_RETENTION_DAYS`    | 30      | history depth (0 disables) |
+| `SERVER_METRICS_RETENTION_BATCH`   | 5000    | rows deleted per batch     |
+| `SERVER_METRICS_RETENTION_TICK_MS` | 3600000 | retention sweep interval   |
 
 ## 7D. Mail labels and filtering — CURRENT (Q-15, Phases 2–5)
 
