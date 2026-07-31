@@ -122,7 +122,8 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
             const isToday = cell.date === todayIso;
             const cellClassName = cn(
               "flex aspect-square items-center justify-center rounded tabular-nums",
-              isToday && "font-semibold text-primary-600",
+              isToday &&
+                "font-semibold text-primary-600 ring-2 ring-inset ring-primary-500",
             );
 
             if (!bucket) {
