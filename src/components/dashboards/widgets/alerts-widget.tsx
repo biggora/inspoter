@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { SeverityBadge } from "@/components/alerts/severity-badge";
@@ -19,16 +20,20 @@ export function AlertsWidget({ data }: { data: AlertsPayload }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {data.items.map((item) => (
-        <li key={item.id} className="flex flex-col gap-0.5 text-xs">
-          <span className="flex items-center gap-1.5">
-            <SeverityBadge severity={item.severity} />
-            <span className="min-w-0 flex-1 truncate text-foreground-800">
-              {item.message}
-            </span>
-          </span>
-          <span className="truncate text-muted-foreground">
-            {item.source} · {relativeTime(item.timestamp)}
-          </span>
+        <li key={item.id}>
+          <Link href={`/alerts?highlightAlertId=${item.id}`}>
+            <div className="flex flex-col gap-0.5 text-xs cursor-pointer transition-opacity hover:opacity-70">
+              <span className="flex items-center gap-1.5">
+                <SeverityBadge severity={item.severity} />
+                <span className="min-w-0 flex-1 truncate text-foreground-800">
+                  {item.message}
+                </span>
+              </span>
+              <span className="truncate text-muted-foreground">
+                {item.source} · {relativeTime(item.timestamp)}
+              </span>
+            </div>
+          </Link>
         </li>
       ))}
     </ul>
