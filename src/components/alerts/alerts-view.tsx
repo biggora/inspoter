@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ function formatTimestamp(iso: string): string {
 // category-tree screen.
 export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   const t = useTranslations("alerts");
+  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -102,6 +104,12 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     null,
   );
 
+  const [highlightedAlertId, setHighlightedAlertId] = useState<string | null>(
+    null,
+  );
+  const [highlightFading, setHighlightFading] = useState(false);
+  const alertRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+
   function loadCategories() {
     alertCategoriesApi
       .list()
@@ -115,6 +123,21 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const highlightId = searchParams.get("highlightAlertId");
+      if (highlightId && !cancelled) {
+        setHighlightedAlertId(highlightId);
+        setHighlightFading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
@@ -156,6 +179,21 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
       cancelled = true;
     };
   }, [currentCursor, categoryId, severity, query, sort, date, t]);
+
+  useEffect(() => {
+    if (!highlightedAlertId) return;
+
+    const rowElement = alertRowRefs.current[highlightedAlertId];
+    if (!rowElement) return;
+
+    rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    const fadeTimer = setTimeout(() => {
+      setHighlightFading(true);
+    }, 5000);
+
+    return () => clearTimeout(fadeTimer);
+  }, [highlightedAlertId]);
 
   function resetToFirstPage() {
     setPageCursors([undefined]);
@@ -362,7 +400,19 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
             </TableHeader>
             <TableBody>
               {items.map((alert) => (
-                <TableRow key={alert.id}>
+                <TableRow
+                  key={alert.id}
+                  ref={(el) => {
+                    if (el) alertRowRefs.current[alert.id] = el;
+                  }}
+                  className={`transition-all ${
+                    highlightedAlertId === alert.id
+                      ? highlightFading
+                        ? "opacity-50 border-l-4 border-primary"
+                        : "opacity-100 border-l-4 border-primary bg-primary/5"
+                      : ""
+                  }`}
+                >
                   <TableCell>
                     <SeverityBadge severity={alert.severity} />
                   </TableCell>
