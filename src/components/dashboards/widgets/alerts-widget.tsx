@@ -30,6 +30,8 @@ export function AlertsWidget({ data }: { data: AlertsPayload }) {
                 </span>
               </span>
               <span className="truncate text-muted-foreground">
+                {item.categoryName && <span>{item.categoryName}</span>}
+                {item.categoryName && item.source && <span> · </span>}
                 {item.source} · {relativeTime(item.timestamp)}
               </span>
             </div>
