@@ -49,7 +49,7 @@ export function ServerMetricsWidget({ data }: { data: ServerMetricsPayload }) {
         return (
           <Link
             key={server.localServerId}
-            href="/servers"
+            href={`/servers/${server.localServerId}`}
             className="flex flex-col gap-1 rounded-md px-1 py-0.5 -mx-1 no-underline transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
           >
             <div className="flex items-center justify-between gap-2">
