@@ -1,8 +1,10 @@
 import type { ProviderType } from "@/generated/prisma/client";
 
+export type ProviderCategory = "DNS" | "HOSTING" | "LLM";
+
 export interface ProviderMeta {
   label: string;
-  category: "DNS" | "HOSTING";
+  category: ProviderCategory;
   fields: readonly string[];
   booleanFields?: readonly string[];
 }
@@ -40,6 +42,11 @@ export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
     category: "HOSTING",
     fields: ["hostname", "username", "apiToken"],
     booleanFields: ["allowInsecure"],
+  },
+  OPENAI_COMPATIBLE: {
+    label: "OpenAI-compatible",
+    category: "LLM",
+    fields: ["baseUrl", "model", "apiKey"],
   },
 } as const;
 

@@ -491,7 +491,8 @@ function toProviderResourceBindingRecord(
 
 // ProviderCredential -> one of the non-MAIL_PASSWORD/WEBHOOK_SECRET
 // CredentialData variants (CLOUDFLARE_DNS/HETZNER_DNS/HETZNER_CLOUD/
-// GODADDY_DNS/HOSTINGER/CPANEL_WHM/CPANEL_UAPI), matching row.provider.
+// GODADDY_DNS/HOSTINGER/CPANEL_WHM/CPANEL_UAPI/OPENAI_COMPATIBLE), matching
+// row.provider.
 function decryptProviderCredentialSecret(
   row: ProviderCredential,
 ): Record<string, unknown> {

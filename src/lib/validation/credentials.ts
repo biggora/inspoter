@@ -54,6 +54,17 @@ export const upsertCredentialSchema = z.discriminatedUnion("provider", [
     apiToken: z.string().min(1),
     allowInsecure: z.boolean().optional().default(false),
   }),
+  // `mode` is an API-level field, not a dialog field: the settings UI never
+  // sends it, so a credential created there is always REAL. Tests and the e2e
+  // suite post MOCK explicitly (same contract as mailAccount's `mode`).
+  z.object({
+    provider: z.literal("OPENAI_COMPATIBLE"),
+    label: z.string().trim().min(1).max(100),
+    baseUrl: z.string().trim().url().max(500),
+    model: z.string().trim().min(1).max(200),
+    apiKey: z.string().min(1),
+    mode: z.enum(["MOCK", "REAL"]).default("REAL"),
+  }),
 ]);
 
 export type UpsertCredentialInput = z.infer<typeof upsertCredentialSchema>;
@@ -89,6 +100,14 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
         username: input.username,
         apiToken: input.apiToken,
         allowInsecure: input.allowInsecure,
+      };
+    case "OPENAI_COMPATIBLE":
+      return {
+        type: "OPENAI_COMPATIBLE",
+        baseUrl: input.baseUrl,
+        model: input.model,
+        apiKey: input.apiKey,
+        mode: input.mode,
       };
   }
 }

@@ -380,6 +380,45 @@ describe("standardized form contracts", () => {
     expect(label).not.toHaveAttribute("aria-invalid", "true");
   });
 
+  it("submits an OpenAI-compatible credential with its base URL, model and key", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <ProviderCredentialDialog
+        open
+        mode="create"
+        existing={null}
+        onOpenChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "Провайдер" }));
+    await user.click(
+      await screen.findByRole("option", { name: "OpenAI-compatible (LLM)" }),
+    );
+
+    await user.type(screen.getByLabelText("Название"), "Локальная модель");
+    await user.type(
+      screen.getByLabelText("Базовый URL API"),
+      "http://127.0.0.1:11434/v1",
+    );
+    await user.type(screen.getByLabelText("Модель"), "llama3.1");
+    // The key is the only secret field of the three.
+    const apiKey = screen.getByLabelText("API-ключ");
+    expect(apiKey).toHaveAttribute("type", "password");
+    await user.type(apiKey, "llm-key-value");
+    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(mocks.credentialsCreate).toHaveBeenCalledWith({
+      provider: "OPENAI_COMPATIBLE",
+      label: "Локальная модель",
+      baseUrl: "http://127.0.0.1:11434/v1",
+      model: "llama3.1",
+      apiKey: "llm-key-value",
+    });
+  });
+
   it("renders generic provider API failures at form level without invalidating fields", async () => {
     const user = userEvent.setup();
     mocks.credentialsCreate.mockRejectedValueOnce(

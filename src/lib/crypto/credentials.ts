@@ -25,7 +25,17 @@ export type CredentialData =
       apiToken: string;
       allowInsecure?: boolean;
     }
-  | { type: "WEBHOOK_SECRET"; secret: string };
+  | { type: "WEBHOOK_SECRET"; secret: string }
+  // OpenAI-compatible LLM endpoint (src/lib/llm). `mode` selects the driver
+  // the same way MailAccount.mode does: MOCK is the deterministic in-process
+  // driver used by tests and e2e, REAL talks to baseUrl.
+  | {
+      type: "OPENAI_COMPATIBLE";
+      baseUrl: string;
+      model: string;
+      apiKey: string;
+      mode: "MOCK" | "REAL";
+    };
 
 export interface EncryptedPayload {
   encryptedData: string; // hex

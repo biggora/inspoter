@@ -84,6 +84,7 @@ function computeMaskedHint(data: CredentialData): string {
   // WEBHOOK_SECRET is stored on OutgoingWebhook, never as a ProviderCredential,
   // so this branch is unreachable here — kept only to satisfy the union.
   if (data.type === "WEBHOOK_SECRET") return maskSecret(data.secret);
+  if (data.type === "OPENAI_COMPATIBLE") return maskSecret(data.apiKey);
   return maskSecret(data.apiToken);
 }
 

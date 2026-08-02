@@ -43,6 +43,15 @@ export type UpsertCredentialInput =
       username: string;
       apiToken: string;
       allowInsecure?: boolean;
+    }
+  // `mode` is omitted by the dialog on purpose — the route defaults it to
+  // REAL, and only tests/e2e post MOCK.
+  | {
+      provider: "OPENAI_COMPATIBLE";
+      label: string;
+      baseUrl: string;
+      model: string;
+      apiKey: string;
     };
 
 export class ApiError extends Error {

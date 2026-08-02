@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.16 (2026-08-02):** documents the LLM provider scaffolding as CURRENT: `src/lib/llm/` (result contract with typed error categories, deterministic mock driver, single-attempt OpenAI-compatible REAL driver, workspace registry), the `OPENAI_COMPATIBLE` `ProviderType` value with migration `20260802120000_llm_provider` reusing the encrypted `ProviderCredential` store, the audit-and-limit seam `src/lib/services/llm.ts` (`Activity` row per model call, `LLM_CALL_RATE_LIMIT` window), and the new `LLM_*` environment variables. Records the model endpoint as the application's second outbound destination after Open-Meteo, with a local model as the recommended deployment. New section §7F.
 - **v1.15 (2026-07-31):** adds workspace default-mailbox persistence: `MailAccount.isDefault`, migration `20260731150000_default_mail_account`, a partial unique index enforcing one flagged account per workspace, atomic selection/replacement in `mail-accounts.ts`, default-first client selection with deep-link precedence, and backup portability that restores the flag only when the target has no existing default. Also records the calendar's validated `/alerts?date=YYYY-MM-DD` UTC-day query and the grid's shared 20-row vertical limit. Updates §4.1, §7A, §7B.5, and §7E.
 - **v1.14 (2026-07-31):** documents the server detail page as CURRENT: the `ServerMetricSample` time series (36 models) with migration `20260731120000_server_metric_samples`, written by the same ingest transaction that accepts a snapshot and pruned by a fourth in-process scheduler (`server-metrics-retention-scheduler.ts`, `SERVER_METRICS_RETENTION_*`); the bucket-aggregating history service (`src/lib/services/serverMetricsHistory.ts`, five ranges from 24 h to 30 d, 120–180 points each); the `local/[id]` read routes keyed by LocalServer id; and the dependency-free SVG chart (`src/components/ui/time-series-chart.tsx`). Updates §3.2, §4.1, and §7C. New section §7C.7.
 - **v1.13 (2026-07-30):** documents the Dashboards section as CURRENT: the `Dashboard`/`DashboardWidget` pair (35 models) with migration `20260730120000_dashboards` and its partial unique "one start dashboard per workspace" index; the dependency-free grid engine (`src/lib/dashboards/grid.ts`) shared by the client drag/resize path and server-side layout validation; the per-widget-isolated data resolver and the single polling endpoint `GET /api/dashboards/[id]/data`; the client-safe payload contract (`src/lib/dashboards/widget-payloads.ts`) that keeps Prisma out of the browser bundle; Open-Meteo as the only outbound call; and the post-login landing move from `/bookmarks` to `/dashboards`. Updates §3.1, §3.2, §3.4, §4.1, and §7B.3. New section §7E.
@@ -1054,6 +1055,110 @@ and `tests/integration/api/dashboards.test.ts` (CRUD, layout rejection, workspac
 isolation), `e2e/dashboards.spec.ts` (create → add → configure → drag → resize →
 reload → delete) and `e2e/dashboards-visual.spec.ts` (light/dark/phone with
 attached screenshots).
+
+## 7F. LLM provider scaffolding — CURRENT (2026-08-02)
+
+This slice is infrastructure only: `src/lib/llm/` exists, is tested, and has no
+feature calling it yet. Future AI features (mail summaries, suggested filter
+rules, alert/log digests) plug into `src/lib/services/llm.ts` and add nothing to
+the boundary described here.
+
+### 7F.1 Contract and drivers (`src/lib/llm/`)
+
+`contract.ts` mirrors `src/lib/providers/result.ts`: a driver never throws to
+its caller, and every outcome is one of `{ ok: true, data }`,
+`{ ok: false, kind: "error", category, message }`, or
+`{ ok: false, kind: "unsupported", operation }`. The one addition over
+`ProviderResult` is `category` — `auth`, `rate_limit`, `timeout`, `upstream`,
+`invalid_response` — so a caller can tell a retryable failure from a permanent
+one without matching on message text. `LlmProvider` has exactly two operations,
+`complete()` and `embed()`.
+
+`mock.ts` is the deterministic driver: no network, no mutable state, same input
+→ same output (FNV-1a fingerprint over system + prompt, fixed 8-dimensional
+embeddings). It is a hard requirement, not a convenience: a real model is
+non-deterministic by construction, so the Playwright suite must never reach one.
+
+`openai.ts` is the REAL driver for any OpenAI-compatible endpoint (Ollama,
+vLLM, LM Studio, OpenRouter, OpenAI) — `POST <baseUrl>/chat/completions` and
+`POST <baseUrl>/embeddings`. It deliberately does **not** reuse
+`src/lib/providers/http.ts`: that client retries three times, which is right for
+a listing call and wrong for a model call, where every attempt costs tokens or a
+GPU-minute and a timeout usually means the model is still generating. One
+attempt, `AbortSignal.timeout(env.LLM_REQUEST_TIMEOUT_MS)` for the deadline,
+`AbortSignal.any` when the caller supplies its own signal. Per §7.6: request
+headers and bodies are never logged or returned, upstream bodies are truncated
+to 200 characters, and the API key is scrubbed from every message that can reach
+a `LogEntry` or the UI.
+
+`registry.ts` resolves the driver from the active workspace's
+`OPENAI_COMPATIBLE` credential, exactly as `src/lib/providers/dns/index.ts`
+does — no env fallback and no default endpoint. Without that credential it
+returns `null` and the whole layer is off, which is the same "no provider →
+empty state, no error" behavior Domains and Hosting already have. A workspace
+has one active model: the store allows several credentials per type, so the
+oldest one wins rather than an arbitrary row.
+
+### 7F.2 Credential storage
+
+Reuses the existing encrypted `ProviderCredential` model. The migration
+`20260802120000_llm_provider` adds one `ProviderType` value,
+`OPENAI_COMPATIBLE`; no new table and no new column. Base URL, model name, API
+key and the driver `mode` live inside the AES-256-GCM payload
+(`CREDENTIAL_ENCRYPTION_KEY`), the key never leaves the database in plaintext,
+and the only thing exposed outward is `maskedHint` (last four characters).
+`mode` is `MOCK`/`REAL` in the credential payload for the same reason
+`MailAccount.mode` exists: the settings dialog never sends it (a UI-created
+credential is always REAL), while tests and e2e post `MOCK` explicitly.
+Management is the ordinary `/settings/providers` path — `PROVIDER_REGISTRY`
+gains an `LLM` category, `credentials.ts` computes the hint from `apiKey`, and
+`upsertCredentialSchema` gains one discriminated-union member.
+
+### 7F.3 Audit and limits (`src/lib/services/llm.ts`)
+
+The service is the only sanctioned entry point; feature code never calls a
+driver directly, so neither the audit entry nor the limit can be bypassed by a
+new caller. Every call that reached a model — successful or not — writes an
+`Activity` row (`llm_complete` / `llm_embed`, `entityType: "llm_provider"`,
+entity id = credential id) whose details carry the driver mode, the model that
+actually answered, the total token count, and the failure category when there
+was one. The token count is what explains a bill; the category is what explains
+a gap. A workspace fixed-window limiter (`LLM_CALL_RATE_LIMIT`,
+`LLM_CALL_RATE_WINDOW_MS`, default 60 calls per hour) is copied from
+`checkSendRateLimit` in `mail-actions.ts` and shares its single-process
+assumption; a refused call never reaches a model, so it is not journaled.
+
+No queue, no Redis, no worker: §1 still holds. If an AI feature later needs
+asynchronous work it follows the `MailFilterActionJob` + in-process scheduler
+pattern, like every other background task here.
+
+### 7F.4 Outbound calls
+
+This is the **second** outbound destination in the application, after the
+weather widget's `api.open-meteo.com` (§7E.4) — and the first one that leaves
+with workspace content in the request body. It is operator-configured: nothing
+leaves the machine until someone adds the credential, and the recommended
+deployment is a local model (`http://127.0.0.1:11434/v1` for Ollama), which
+keeps that content on the host. A cloud endpoint is equally supported and equally
+explicit — the base URL is whatever the operator typed, so the choice of who
+sees the data is theirs, made once, in the UI.
+
+Unlike the weather widget the base URL is operator-supplied text, so it is an
+SSRF surface by construction — a self-hosted operator can point the application
+at any address reachable from the container. That is the intended capability
+(the whole point is reaching a model on the LAN or on localhost), and it is the
+same trade-off already accepted for mail servers in §7A.6.
+
+### 7F.5 Tests
+
+`tests/unit/llm/mock.test.ts` (determinism as a property), `openai.test.ts`
+(status → category mapping, response parsing, transport failure, deadline, key
+redaction), `registry.test.ts` (no credential → `null`, driver selection, oldest
+credential wins), `tests/unit/services/llm.test.ts` (disabled layer, audit
+details, rate-limit window and its per-workspace isolation), and the
+`OPENAI_COMPATIBLE` lifecycle case in
+`tests/integration/services/credentials.test.ts` (encrypted round-trip through
+create → read → update → delete).
 
 ## 8. Request sequences
 
