@@ -14,6 +14,9 @@ export type OutgoingWebhookEventValue =
   | "LOG_CREATED"
   | "MAIL_RECEIVED";
 
+export type OutgoingWebhookFormatValue =
+  "INSPOT" | "DISCORD_EXECUTE" | "DISCORD_EVENTS";
+
 export type WebhookDeliveryStatusValue =
   "PENDING" | "DELIVERING" | "DELIVERED" | "FAILED";
 
@@ -24,6 +27,9 @@ export interface OutgoingWebhookDto {
   events: OutgoingWebhookEventValue[];
   isActive: boolean;
   secretPrefix: string;
+  format: OutgoingWebhookFormatValue;
+  publicKey: string | null;
+  consecutiveFailures: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +38,9 @@ export interface CreatedOutgoingWebhookDto {
   id: string;
   secret: string;
   secretPrefix: string;
+  // Ed25519 public key, present only for DISCORD_EVENTS. Unlike the secret it
+  // is not sensitive and stays visible in the list afterwards.
+  publicKey: string | null;
 }
 
 export interface WebhookDeliveryDto {
@@ -58,6 +67,7 @@ export interface OutgoingWebhookInput {
   url: string;
   events: OutgoingWebhookEventValue[];
   isActive: boolean;
+  format: OutgoingWebhookFormatValue;
 }
 
 export class ApiError extends Error {

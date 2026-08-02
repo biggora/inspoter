@@ -8,6 +8,7 @@ import {
   MessageOrigin,
   MonitorType,
   OutgoingWebhookEvent,
+  OutgoingWebhookFormat,
   ProviderMode,
   ProviderOperationState,
   ProviderResourceType,
@@ -124,6 +125,12 @@ const messageSchema = z.object({
   content: z.string(),
   author: z.string().nullable(),
   origin: z.enum(MessageOrigin),
+  // Discord Execute Webhook extras. Optional: archives written before Discord
+  // compatibility existed carry none of them and restore with the defaults.
+  embeds: z.unknown().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  tts: z.boolean().optional(),
+  flags: z.number().int().optional(),
   createdAt: isoDate,
 });
 
@@ -291,9 +298,14 @@ const outgoingWebhookSchema = z.object({
   events: z.array(z.enum(OutgoingWebhookEvent)),
   isActive: z.boolean(),
   // Decrypted signing secret; every OutgoingWebhook has one (encryptedData is
-  // non-nullable in the schema).
+  // non-nullable in the schema). For DISCORD_EVENTS it also carries the Ed25519
+  // private key, so the key pair survives an export/import round-trip.
   secretData: z.record(z.string(), z.unknown()),
   secretPrefix: z.string(),
+  // Optional: archives written before Discord compatibility existed have
+  // neither field and import as an INSPOT webhook with no key pair.
+  format: z.enum(OutgoingWebhookFormat).optional(),
+  publicKey: z.string().nullable().optional(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });

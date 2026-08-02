@@ -103,7 +103,8 @@
     "urlRequired": "URL is required",
     "urlInvalid": "Enter a valid HTTPS address",
     "eventsRequired": "Select at least one event",
-    "eventInvalid": "Invalid event"
+    "eventInvalid": "Invalid event",
+    "formatInvalid": "Invalid delivery format"
   },
   "backup": {
     "passphraseRequired": "Password is required",

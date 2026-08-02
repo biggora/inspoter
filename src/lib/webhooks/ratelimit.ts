@@ -10,12 +10,19 @@ interface WindowState {
   windowStart: number;
 }
 
-const windows = new Map<string, WindowState>();
-
-export function checkRateLimit(tokenId: string): {
+export interface RateLimitResult {
   allowed: boolean;
   retryAfterMs?: number;
-} {
+  // Window bookkeeping, needed by the Discord-compatible route to emit
+  // X-RateLimit-* on every response (specs/discord-webhook-compatibility.md §5).
+  limit: number;
+  remaining: number;
+  resetAtMs: number;
+}
+
+const windows = new Map<string, WindowState>();
+
+export function checkRateLimit(tokenId: string): RateLimitResult {
   const now = Date.now();
   const limit = env.WEBHOOK_RATE_LIMIT;
   const windowMs = env.WEBHOOK_RATE_WINDOW_MS;
@@ -23,13 +30,30 @@ export function checkRateLimit(tokenId: string): {
   const state = windows.get(tokenId);
   if (!state || now - state.windowStart >= windowMs) {
     windows.set(tokenId, { count: 1, windowStart: now });
-    return { allowed: true };
+    return {
+      allowed: true,
+      limit,
+      remaining: limit - 1,
+      resetAtMs: now + windowMs,
+    };
   }
 
+  const resetAtMs = state.windowStart + windowMs;
   if (state.count < limit) {
     state.count += 1;
-    return { allowed: true };
+    return {
+      allowed: true,
+      limit,
+      remaining: limit - state.count,
+      resetAtMs,
+    };
   }
 
-  return { allowed: false, retryAfterMs: state.windowStart + windowMs - now };
+  return {
+    allowed: false,
+    retryAfterMs: resetAtMs - now,
+    limit,
+    remaining: 0,
+    resetAtMs,
+  };
 }

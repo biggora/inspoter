@@ -37,7 +37,9 @@
                 "agentVersion": "1.0.0",
                 "capturedAt": "2026-07-20T12:00:00Z",
                 "hostname": "web-1.example.invalid",
-                "ips": ["198.51.100.10"],
+                "ips": [
+                  "198.51.100.10"
+                ],
                 "cpu": {
                   "usagePercent": 42.5,
                   "load1": 1.2,
@@ -223,7 +225,12 @@
             "description": "Webhook payload type.",
             "schema": {
               "type": "string",
-              "enum": ["log", "alert", "mail", "message"]
+              "enum": [
+                "log",
+                "alert",
+                "mail",
+                "message"
+              ]
             }
           },
           {
@@ -651,6 +658,572 @@
           }
         }
       }
+    },
+    "/api/discord/webhooks/{webhookId}/{token}": {
+      "post": {
+        "operationId": "executeDiscordWebhook",
+        "summary": "Execute a Discord-compatible channel webhook",
+        "description": "Creates a channel message from a Discord Execute Webhook payload. The secret token is carried in the URL and must not be logged, persisted, or exposed. Accepts application/json and multipart/form-data; in multipart the body is read from the payload_json part and file parts are ignored.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DiscordWebhookId"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWebhookToken"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWait"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordThreadId"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWithComponents"
+          },
+          {
+            "$ref": "#/components/parameters/ChannelIdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscordExecuteWebhookPayload"
+              },
+              "example": {
+                "username": "Continuous Integration",
+                "content": "Build 842 completed successfully.",
+                "embeds": [
+                  {
+                    "title": "Build 842",
+                    "description": "All checks passed.",
+                    "color": 5763719,
+                    "fields": [
+                      {
+                        "name": "branch",
+                        "value": "main",
+                        "inline": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "payload_json": {
+                    "type": "string",
+                    "description": "JSON-encoded Discord Execute Webhook payload."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The message was created and is returned as a Discord message object. Returned when wait is true.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordMessage"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The message was created. No body is returned.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            }
+          },
+          "400": {
+            "description": "The body could not be parsed, failed validation, or carried nothing displayable.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The webhook identifier or secret is invalid or revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the configured size limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The webhook exceeded its rate limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Scope": {
+                "$ref": "#/components/headers/RateLimitScope"
+              },
+              "X-RateLimit-Global": {
+                "$ref": "#/components/headers/RateLimitGlobal"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordRateLimitError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "get": {
+        "operationId": "getDiscordWebhook",
+        "summary": "Get a Discord-compatible channel webhook",
+        "description": "Returns the webhook as a Discord webhook object. Used by senders that probe the URL before their first delivery.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DiscordWebhookId"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWebhookToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The webhook object.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordWebhookObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The webhook identifier or secret is invalid or revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/discord/webhooks/{webhookId}/{token}/slack": {
+      "post": {
+        "operationId": "executeSlackCompatibleWebhook",
+        "summary": "Execute a Slack-compatible channel webhook",
+        "description": "Slack incoming-webhook form of the same credential: text becomes the message content and each attachment becomes an embed. As on Discord, wait defaults to true here.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DiscordWebhookId"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWebhookToken"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordWait"
+          },
+          {
+            "$ref": "#/components/parameters/DiscordThreadId"
+          },
+          {
+            "$ref": "#/components/parameters/ChannelIdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlackWebhookPayload"
+              },
+              "example": {
+                "text": "Build 842 completed successfully.",
+                "attachments": [
+                  {
+                    "title": "Build 842",
+                    "text": "All checks passed.",
+                    "color": "good",
+                    "fields": [
+                      {
+                        "title": "branch",
+                        "value": "main",
+                        "short": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The message was created and is returned as a Discord message object. Returned unless wait is explicitly false.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordMessage"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The message was created. No body is returned.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            }
+          },
+          "400": {
+            "description": "The body could not be parsed, failed validation, or carried nothing displayable.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The webhook identifier or secret is invalid or revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the configured size limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The webhook exceeded its rate limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              },
+              "X-Content-Type-Options": {
+                "$ref": "#/components/headers/XContentTypeOptions"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Reset-After": {
+                "$ref": "#/components/headers/RateLimitResetAfter"
+              },
+              "X-RateLimit-Bucket": {
+                "$ref": "#/components/headers/RateLimitBucket"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Scope": {
+                "$ref": "#/components/headers/RateLimitScope"
+              },
+              "X-RateLimit-Global": {
+                "$ref": "#/components/headers/RateLimitGlobal"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordRateLimitError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -681,6 +1254,53 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "DiscordWebhookId": {
+        "name": "webhookId",
+        "in": "path",
+        "required": true,
+        "description": "Channel webhook identifier. The same value the native channel route uses.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "DiscordWebhookToken": {
+        "name": "token",
+        "in": "path",
+        "required": true,
+        "description": "Sensitive channel webhook secret. Redact this value from logs and telemetry.",
+        "schema": {
+          "type": "string",
+          "format": "password",
+          "x-sensitive": true
+        }
+      },
+      "DiscordWait": {
+        "name": "wait",
+        "in": "query",
+        "required": false,
+        "description": "When true the response is 200 with the created message object; otherwise 204 with no body.",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "DiscordThreadId": {
+        "name": "thread_id",
+        "in": "query",
+        "required": false,
+        "description": "Accepted for Discord compatibility and ignored: Inspoter channels have no threads.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "DiscordWithComponents": {
+        "name": "with_components",
+        "in": "query",
+        "required": false,
+        "description": "Accepted for Discord compatibility and ignored: message components are not rendered.",
+        "schema": {
+          "type": "boolean"
         }
       }
     },
@@ -719,13 +1339,65 @@
           "type": "string",
           "const": "Bearer realm=\"inspoter-mcp\""
         }
+      },
+      "RateLimitLimit": {
+        "description": "Requests allowed inside the current fixed window.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "RateLimitRemaining": {
+        "description": "Requests still allowed inside the current window.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "RateLimitReset": {
+        "description": "Unix time at which the window resets, in seconds with millisecond precision.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RateLimitResetAfter": {
+        "description": "Seconds until the window resets, with millisecond precision.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RateLimitBucket": {
+        "description": "Opaque rate-limit bucket identifier. One channel webhook is one bucket.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RateLimitScope": {
+        "description": "Scope of the exceeded limit. Always user for a channel webhook.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "user"
+          ]
+        }
+      },
+      "RateLimitGlobal": {
+        "description": "Whether a global limit was hit. Always false: Inspoter has no global webhook limit.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "false"
+          ]
+        }
       }
     },
     "schemas": {
       "WebhookSuccess": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -736,12 +1408,17 @@
       "LegacyWebhookError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
               "code": {
                 "type": "string",
@@ -762,7 +1439,10 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["path", "issue"],
+                  "required": [
+                    "path",
+                    "issue"
+                  ],
                   "properties": {
                     "path": {
                       "type": "string"
@@ -780,7 +1460,9 @@
       "ChannelSimpleError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "string"
@@ -790,7 +1472,9 @@
       "ChannelValidationError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ZodIssueArray"
@@ -805,7 +1489,11 @@
       },
       "ZodIssue": {
         "type": "object",
-        "required": ["code", "message", "path"],
+        "required": [
+          "code",
+          "message",
+          "path"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -831,7 +1519,11 @@
       },
       "LogWebhookPayload": {
         "type": "object",
-        "required": ["level", "source", "message"],
+        "required": [
+          "level",
+          "source",
+          "message"
+        ],
         "properties": {
           "level": {
             "type": "string",
@@ -854,7 +1546,12 @@
       },
       "AlertWebhookPayload": {
         "type": "object",
-        "required": ["category", "severity", "source", "message"],
+        "required": [
+          "category",
+          "severity",
+          "source",
+          "message"
+        ],
         "properties": {
           "category": {
             "type": "string",
@@ -881,7 +1578,11 @@
       },
       "MailWebhookPayload": {
         "type": "object",
-        "required": ["sender", "subject", "body"],
+        "required": [
+          "sender",
+          "subject",
+          "body"
+        ],
         "properties": {
           "sender": {
             "type": "string",
@@ -904,7 +1605,10 @@
       },
       "MessageWebhookPayload": {
         "type": "object",
-        "required": ["channelId", "content"],
+        "required": [
+          "channelId",
+          "content"
+        ],
         "properties": {
           "channelId": {
             "type": "string",
@@ -923,7 +1627,9 @@
       "ChannelWebhookPayload": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["content"],
+        "required": [
+          "content"
+        ],
         "properties": {
           "content": {
             "type": "string",
@@ -941,7 +1647,10 @@
       },
       "JsonRpcRequest": {
         "type": "object",
-        "required": ["jsonrpc", "method"],
+        "required": [
+          "jsonrpc",
+          "method"
+        ],
         "properties": {
           "jsonrpc": {
             "type": "string",
@@ -949,7 +1658,10 @@
           },
           "id": {
             "description": "Omitted for notifications.",
-            "type": ["string", "number"]
+            "type": [
+              "string",
+              "number"
+            ]
           },
           "method": {
             "type": "string",
@@ -962,21 +1674,29 @@
       },
       "JsonRpcResponse": {
         "type": "object",
-        "required": ["jsonrpc"],
+        "required": [
+          "jsonrpc"
+        ],
         "properties": {
           "jsonrpc": {
             "type": "string",
             "const": "2.0"
           },
           "id": {
-            "type": ["string", "number"]
+            "type": [
+              "string",
+              "number"
+            ]
           },
           "result": {
             "type": "object"
           },
           "error": {
             "type": "object",
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
               "code": {
                 "type": "integer"
@@ -991,16 +1711,25 @@
       "McpError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
               "code": {
                 "type": "string",
-                "enum": ["UNAUTHORIZED", "RATE_LIMITED", "METHOD_NOT_ALLOWED"]
+                "enum": [
+                  "UNAUTHORIZED",
+                  "RATE_LIMITED",
+                  "METHOD_NOT_ALLOWED"
+                ]
               },
               "message": {
                 "type": "string"
@@ -1012,7 +1741,10 @@
       "MetricsError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["error", "message"],
+        "required": [
+          "error",
+          "message"
+        ],
         "properties": {
           "error": {
             "type": "string"
@@ -1025,7 +1757,10 @@
       "MetricsSuccess": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "localServerId"],
+        "required": [
+          "code",
+          "localServerId"
+        ],
         "properties": {
           "code": {
             "type": "string",
@@ -1055,31 +1790,74 @@
           "uptimeSeconds"
         ],
         "properties": {
-          "schemaVersion": { "type": "integer", "const": 1 },
-          "agentVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "capturedAt": { "type": "string", "format": "date-time" },
-          "hostname": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1
+          },
+          "agentVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hostname": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
           "ips": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "minItems": 1,
             "maxItems": 16
           },
-          "cpu": { "$ref": "#/components/schemas/MetricsCpu" },
-          "memory": { "$ref": "#/components/schemas/MetricsMemory" },
-          "filesystem": { "$ref": "#/components/schemas/MetricsFilesystem" },
-          "uptimeSeconds": { "type": "integer", "minimum": 0 }
+          "cpu": {
+            "$ref": "#/components/schemas/MetricsCpu"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/MetricsMemory"
+          },
+          "filesystem": {
+            "$ref": "#/components/schemas/MetricsFilesystem"
+          },
+          "uptimeSeconds": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "MetricsCpu": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["usagePercent", "load1", "load5", "load15"],
+        "required": [
+          "usagePercent",
+          "load1",
+          "load5",
+          "load15"
+        ],
         "properties": {
-          "usagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
-          "load1": { "type": "number", "minimum": 0 },
-          "load5": { "type": "number", "minimum": 0 },
-          "load15": { "type": "number", "minimum": 0 }
+          "usagePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "load1": {
+            "type": "number",
+            "minimum": 0
+          },
+          "load5": {
+            "type": "number",
+            "minimum": 0
+          },
+          "load15": {
+            "type": "number",
+            "minimum": 0
+          }
         }
       },
       "MetricsMemory": {
@@ -1092,20 +1870,554 @@
           "swapFreeBytes"
         ],
         "properties": {
-          "totalBytes": { "type": "integer", "minimum": 0 },
-          "availableBytes": { "type": "integer", "minimum": 0 },
-          "swapTotalBytes": { "type": "integer", "minimum": 0 },
-          "swapFreeBytes": { "type": "integer", "minimum": 0 }
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "swapTotalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "swapFreeBytes": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "MetricsFilesystem": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["mount", "totalBytes", "availableBytes"],
+        "required": [
+          "mount",
+          "totalBytes",
+          "availableBytes"
+        ],
         "properties": {
-          "mount": { "type": "string", "const": "/" },
-          "totalBytes": { "type": "integer", "minimum": 0 },
-          "availableBytes": { "type": "integer", "minimum": 0 }
+          "mount": {
+            "type": "string",
+            "const": "/"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableBytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DiscordEmbedField": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "inline": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DiscordEmbedFooter": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "icon_url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "proxy_icon_url": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        }
+      },
+      "DiscordEmbedAuthor": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "icon_url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "proxy_icon_url": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        }
+      },
+      "DiscordEmbedMedia": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "proxy_url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "height": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          }
+        }
+      },
+      "DiscordEmbed": {
+        "type": "object",
+        "description": "Discord embed object. The combined length of every title, description, footer text, author name and field name/value across all embeds of one request must not exceed 6000 characters.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "color": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16777215
+          },
+          "footer": {
+            "$ref": "#/components/schemas/DiscordEmbedFooter"
+          },
+          "image": {
+            "$ref": "#/components/schemas/DiscordEmbedMedia"
+          },
+          "thumbnail": {
+            "$ref": "#/components/schemas/DiscordEmbedMedia"
+          },
+          "video": {
+            "$ref": "#/components/schemas/DiscordEmbedMedia"
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "url": {
+                "type": "string",
+                "maxLength": 2048
+              }
+            }
+          },
+          "author": {
+            "$ref": "#/components/schemas/DiscordEmbedAuthor"
+          },
+          "fields": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/DiscordEmbedField"
+            }
+          }
+        }
+      },
+      "DiscordAllowedMentions": {
+        "type": "object",
+        "description": "Validated for shape and then ignored: Inspoter sends no mention notifications.",
+        "properties": {
+          "parse": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "roles",
+                "users",
+                "everyone"
+              ]
+            }
+          },
+          "roles": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            }
+          },
+          "users": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            }
+          },
+          "replied_user": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DiscordExecuteWebhookPayload": {
+        "type": "object",
+        "description": "Discord Execute Webhook body. Unknown properties are ignored, matching Discord. At least one of content, embeds, components or poll must be present.",
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Shown as the message author. Defaults to the webhook name."
+          },
+          "avatar_url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "tts": {
+            "type": "boolean",
+            "description": "Stored, never spoken."
+          },
+          "embeds": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/DiscordEmbed"
+            }
+          },
+          "allowed_mentions": {
+            "$ref": "#/components/schemas/DiscordAllowedMentions"
+          },
+          "flags": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Message flags bitfield. SUPPRESS_EMBEDS (4) drops the embeds before storage."
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {},
+            "description": "Accepted and ignored: channel messages have no attachment storage."
+          },
+          "components": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {},
+            "description": "Accepted and ignored."
+          },
+          "thread_name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Accepted and ignored."
+          },
+          "applied_tags": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "string"
+            },
+            "description": "Accepted and ignored."
+          },
+          "poll": {
+            "description": "Accepted and ignored."
+          }
+        }
+      },
+      "SlackWebhookPayload": {
+        "type": "object",
+        "description": "Slack incoming-webhook body. text becomes the message content and each attachment becomes an embed. channel, icon_emoji, mrkdwn and mrkdwn_in are not supported.",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "icon_url": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "title_link": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "pretext": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string"
+                },
+                "author_name": {
+                  "type": "string"
+                },
+                "author_link": {
+                  "type": "string"
+                },
+                "footer": {
+                  "type": "string"
+                },
+                "ts": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      },
+                      "short": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DiscordMessage": {
+        "type": "object",
+        "description": "Discord message object. Fields Inspoter has no equivalent for are null or empty.",
+        "required": [
+          "id",
+          "type",
+          "channel_id",
+          "content",
+          "timestamp"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Surrogate snowflake derived from the internal identifier. Not reversible and never accepted as input."
+          },
+          "type": {
+            "type": "integer",
+            "enum": [
+              0
+            ]
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "webhook_id": {
+            "type": "string"
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string",
+                "nullable": true
+              },
+              "discriminator": {
+                "type": "string"
+              },
+              "bot": {
+                "type": "boolean"
+              }
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "edited_timestamp": {
+            "type": "string",
+            "nullable": true
+          },
+          "tts": {
+            "type": "boolean"
+          },
+          "mention_everyone": {
+            "type": "boolean"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {}
+          },
+          "mention_roles": {
+            "type": "array",
+            "items": {}
+          },
+          "attachments": {
+            "type": "array",
+            "items": {}
+          },
+          "embeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscordEmbed"
+            }
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "integer"
+          }
+        }
+      },
+      "DiscordWebhookObject": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "channel_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "guild_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "application_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "token": {
+            "type": "string",
+            "format": "password",
+            "x-sensitive": true
+          },
+          "url": {
+            "type": "string",
+            "format": "password",
+            "x-sensitive": true
+          }
+        }
+      },
+      "DiscordError": {
+        "type": "object",
+        "required": [
+          "message",
+          "code"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "integer",
+            "description": "Discord JSON error code: 50035 invalid form body, 50006 empty message, 40005 body too large, 10015 unknown webhook, 0 general."
+          },
+          "errors": {
+            "type": "object",
+            "description": "Per-field error tree. Every leaf is an _errors array of { code, message } entries.",
+            "additionalProperties": true
+          }
+        }
+      },
+      "DiscordRateLimitError": {
+        "type": "object",
+        "required": [
+          "message",
+          "retry_after",
+          "global"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "retry_after": {
+            "type": "number",
+            "description": "Seconds to wait before retrying."
+          },
+          "global": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "code": {
+            "type": "integer"
+          }
         }
       }
     }

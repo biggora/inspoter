@@ -48,6 +48,9 @@ const envSchema = z
       .positive()
       .default(30_000),
     WEBHOOK_DELIVERY_BATCH: z.coerce.number().int().positive().default(50),
+    // Consecutive terminal failures before an outgoing webhook is disabled
+    // automatically (specs/discord-webhook-compatibility.md §7).
+    WEBHOOK_AUTO_DISABLE_AFTER: z.coerce.number().int().positive().default(10),
     WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce
       .number()
       .int()

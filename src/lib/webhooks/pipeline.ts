@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { getWebhookSchema } from "@/lib/validation/webhooks";
 import { checkRateLimit } from "@/lib/webhooks/ratelimit";
+import { readBodyLimited } from "@/lib/webhooks/body";
 import {
   checkIdempotency,
   recordIdempotency,
@@ -41,39 +42,6 @@ function errorResponse(
     { error: { code, message, ...(details ? { details } : {}) } },
     { status },
   );
-}
-
-// Reads the request body while enforcing WEBHOOK_MAX_BODY_BYTES, checking
-// Content-Length up front and also capping the actual stream read so a
-// lying/absent header can't bypass the limit (architecture.md §3.6).
-async function readBodyLimited(
-  request: NextRequest,
-  maxBytes: number,
-): Promise<{ ok: true; text: string } | { ok: false }> {
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > maxBytes) {
-    return { ok: false };
-  }
-
-  const reader = request.body?.getReader();
-  if (!reader) return { ok: true, text: "" };
-
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return { ok: false };
-      }
-      chunks.push(value);
-    }
-  }
-
-  return { ok: true, text: Buffer.concat(chunks).toString("utf-8") };
 }
 
 export async function processWebhook(

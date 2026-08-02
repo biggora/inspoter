@@ -37,6 +37,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LoadingRegion } from "@/components/ui/loading";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { Spinner } from "@/components/ui/spinner";
@@ -55,8 +63,15 @@ import {
   type CreatedOutgoingWebhookDto,
   type OutgoingWebhookDto,
   type OutgoingWebhookEventValue,
+  type OutgoingWebhookFormatValue,
 } from "./outgoing-webhooks-api";
-import { ALL_EVENTS, EVENT_LABEL_KEY } from "./outgoing-webhooks-format";
+import {
+  ALL_EVENTS,
+  ALL_FORMATS,
+  EVENT_LABEL_KEY,
+  FORMAT_HINT_KEY,
+  FORMAT_LABEL_KEY,
+} from "./outgoing-webhooks-format";
 import { OutgoingWebhookDeliveries } from "./outgoing-webhook-deliveries";
 
 function formatDate(iso: string): string {
@@ -100,6 +115,7 @@ export function OutgoingWebhooksView() {
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<OutgoingWebhookEventValue[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [format, setFormat] = useState<OutgoingWebhookFormatValue>("INSPOT");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -117,6 +133,7 @@ export function OutgoingWebhooksView() {
   const nameId = useId();
   const urlId = useId();
   const isActiveId = useId();
+  const formatId = useId();
 
   const load = useCallback(() => {
     return outgoingWebhooksApi
@@ -144,11 +161,13 @@ export function OutgoingWebhooksView() {
       setUrl(webhook.url);
       setEvents(webhook.events);
       setIsActive(webhook.isActive);
+      setFormat(webhook.format);
     } else if (formState?.mode === "create") {
       setName("");
       setUrl("");
       setEvents([]);
       setIsActive(true);
+      setFormat("INSPOT");
     }
     setErrors({});
     setCreatedSecret(null);
@@ -193,6 +212,7 @@ export function OutgoingWebhooksView() {
           url: trimmedUrl,
           events,
           isActive,
+          format,
         });
         toast.success(t("webhookUpdatedToast"));
         setFormState(null);
@@ -203,6 +223,7 @@ export function OutgoingWebhooksView() {
           url: trimmedUrl,
           events,
           isActive,
+          format,
         });
         setCreatedSecret(created);
         toast.success(t("webhookCreatedToast"));
@@ -306,7 +327,14 @@ export function OutgoingWebhooksView() {
             {webhooks.map((webhook) => (
               <TableRow key={webhook.id}>
                 <TableCell className="font-medium text-foreground">
-                  {webhook.name}
+                  <div className="flex flex-col gap-1">
+                    <span>{webhook.name}</span>
+                    {webhook.format !== "INSPOT" && (
+                      <Badge className="w-fit bg-muted text-muted-foreground">
+                        {t(FORMAT_LABEL_KEY[webhook.format])}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="max-w-[16rem] truncate font-mono text-xs text-muted-foreground">
                   {webhook.url}
@@ -324,9 +352,18 @@ export function OutgoingWebhooksView() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <StatusIndicator
-                    status={webhook.isActive ? "up" : "disabled"}
-                  />
+                  <div className="flex flex-col gap-1">
+                    <StatusIndicator
+                      status={webhook.isActive ? "up" : "disabled"}
+                    />
+                    {!webhook.isActive && webhook.consecutiveFailures > 0 && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {t("autoDisabledHint", {
+                          count: webhook.consecutiveFailures,
+                        })}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(webhook.createdAt)}
@@ -419,6 +456,53 @@ export function OutgoingWebhooksView() {
                     <FieldError id={`${urlId}-error`}>{errors.url}</FieldError>
                   </Field>
 
+                  <Field>
+                    <FieldLabel htmlFor={formatId}>
+                      {t("formatLabel")}
+                    </FieldLabel>
+                    <Select
+                      value={format}
+                      onValueChange={(next) =>
+                        setFormat(next as OutgoingWebhookFormatValue)
+                      }
+                      items={ALL_FORMATS.map((value) => ({
+                        value,
+                        label: t(FORMAT_LABEL_KEY[value]),
+                      }))}
+                    >
+                      <SelectTrigger id={formatId} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {ALL_FORMATS.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {t(FORMAT_LABEL_KEY[value])}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t(FORMAT_HINT_KEY[format])}
+                    </p>
+                  </Field>
+
+                  {formState?.mode === "edit" &&
+                    formState.webhook.publicKey && (
+                      <Field>
+                        <FieldLabel>{t("publicKeyLabel")}</FieldLabel>
+                        <div className="rounded-md border border-border bg-(--bg-sunken) p-3">
+                          <code className="block break-all font-mono text-xs text-foreground">
+                            {formState.webhook.publicKey}
+                          </code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t("publicKeyHint")}
+                        </p>
+                      </Field>
+                    )}
+
                   <Field data-invalid={!!errors.events || undefined}>
                     <FieldLabel>{t("eventsLabel")}</FieldLabel>
                     <div className="flex flex-col gap-2">
@@ -510,6 +594,21 @@ export function OutgoingWebhooksView() {
                   />
                   {copied ? t("copiedLabel") : t("copyButton")}
                 </Button>
+                {createdSecret.publicKey && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {t("publicKeyLabel")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("publicKeyHint")}
+                    </p>
+                    <div className="rounded-md border border-border bg-(--bg-sunken) p-3">
+                      <code className="block break-all font-mono text-sm text-foreground">
+                        {createdSecret.publicKey}
+                      </code>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <DialogClose render={<Button type="button" />}>

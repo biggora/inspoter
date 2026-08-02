@@ -279,6 +279,13 @@ model Message {
   content            String
   author             String? // source label from webhook payload
   origin             MessageOrigin @default(LEGACY)
+  // Discord Execute Webhook compatibility (specs/discord-webhook-compatibility.md
+  // §2.3). All four are optional: nothing but the Discord ingress route writes
+  // them, and every pre-existing row keeps its defaults.
+  embeds             Json? // array of Discord embed objects, at most 10
+  avatarUrl          String? // payload `avatar_url`, shown next to the author
+  tts                Boolean       @default(false) // stored, never spoken
+  flags              Int           @default(0) // Discord message flags bitfield
   createdAt          DateTime      @default(now())
 
   @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
@@ -862,6 +869,15 @@ enum WebhookDeliveryStatus {
   FAILED
 }
 
+// Wire format of an outgoing delivery (specs/discord-webhook-compatibility.md
+// §6-§7). INSPOT is the original envelope + HMAC-SHA256 signature and stays the
+// default, so existing subscriptions are untouched.
+enum OutgoingWebhookFormat {
+  INSPOT
+  DISCORD_EXECUTE
+  DISCORD_EVENTS
+}
+
 // A subscription/endpoint an operator configures. Signing secret is stored
 // encrypted (AES-256-GCM, same scheme as ProviderCredential/MailAccount) and
 // shown once at creation; secretPrefix is display-only.
@@ -877,6 +893,15 @@ model OutgoingWebhook {
   iv            String
   authTag       String
   secretPrefix  String // first chars, for UI identification only
+  format        OutgoingWebhookFormat  @default(INSPOT)
+  // Ed25519 public key (64 hex chars), DISCORD_EVENTS only. The matching
+  // private key rides inside the encrypted payload above as a
+  // WEBHOOK_ED25519_KEY member; the public half is shown to the operator so the
+  // receiver can verify signatures.
+  publicKey     String?
+  // Consecutive terminal failures; reset on every delivered attempt. Reaching
+  // WEBHOOK_AUTO_DISABLE_AFTER flips isActive to false (Discord parity).
+  consecutiveFailures Int              @default(0)
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
   deliveries    WebhookDelivery[]

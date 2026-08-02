@@ -8,6 +8,13 @@ import {
   idempotencyKeySchema,
 } from "@/lib/validation/webhookTokens";
 import { validateMetricsPayload } from "@/lib/validation/server-metrics";
+import {
+  EMBED_TOTAL_LIMIT,
+  exceedsEmbedBudget,
+  executeWebhookSchema,
+  hasDisplayableContent,
+  slackWebhookSchema,
+} from "@/lib/validation/discord";
 
 interface SchemaObject {
   $ref?: string;
@@ -20,6 +27,8 @@ interface SchemaObject {
   properties?: Record<string, SchemaObject>;
   minLength?: number;
   maxLength?: number;
+  maxItems?: number;
+  description?: string;
   pattern?: string;
   format?: string;
   "x-sensitive"?: boolean;
@@ -84,6 +93,20 @@ const metricsPath = "/api/server-metrics";
 const metrics = spec.paths[metricsPath].post;
 const mcpPath = "/api/mcp";
 const mcp = spec.paths[mcpPath].post;
+const discordPath = "/api/discord/webhooks/{webhookId}/{token}";
+const discordSlackPath = `${discordPath}/slack`;
+const discord = spec.paths[discordPath].post;
+const discordGet = spec.paths[discordPath].get;
+const discordSlack = spec.paths[discordSlackPath].post;
+const discordResponseStatuses = [
+  "200",
+  "204",
+  "400",
+  "401",
+  "413",
+  "429",
+  "500",
+];
 const mcpResponseStatuses = ["200", "401", "405", "429", "500"];
 const metricsResponseStatuses = [
   "200",
@@ -170,12 +193,23 @@ function forbiddenExampleEntries(
 }
 
 describe("public OpenAPI contract", () => {
-  it("contains exactly the expected public POST paths", () => {
+  it("contains exactly the expected public paths and methods", () => {
     expect(Object.keys(spec.paths).sort()).toEqual(
-      [metricsPath, channelPath, typedPath, mcpPath].sort(),
+      [
+        metricsPath,
+        channelPath,
+        typedPath,
+        mcpPath,
+        discordPath,
+        discordSlackPath,
+      ].sort(),
     );
-    for (const pathItem of Object.values(spec.paths)) {
-      expect(Object.keys(pathItem)).toEqual(["post"]);
+    for (const [name, pathItem] of Object.entries(spec.paths)) {
+      // Only the Discord webhook itself is readable (Get Webhook with Token);
+      // every other public operation is POST-only.
+      expect(Object.keys(pathItem).sort()).toEqual(
+        name === discordPath ? ["get", "post"] : ["post"],
+      );
     }
   });
 
@@ -316,6 +350,106 @@ describe("public OpenAPI contract", () => {
       for (const header of securityHeaders) {
         expect(channel.responses?.[status]?.headers?.[header]).toBeTruthy();
       }
+    }
+  });
+
+  it("documents the Discord payload and validates its example", () => {
+    const media = discord.requestBody?.content?.["application/json"];
+    const schema = resolveRef(media?.schema ?? {});
+    expect(discord.requestBody?.required).toBe(true);
+    // Unlike the native channel payload, Discord ignores unknown keys — the
+    // schema must not lock additionalProperties to false.
+    expect(schema.additionalProperties).not.toBe(false);
+    expect(schema.properties?.content).toMatchObject({ maxLength: 2000 });
+    expect(schema.properties?.username).toMatchObject({ maxLength: 80 });
+    expect(schema.properties?.embeds).toMatchObject({ maxItems: 10 });
+    expect(discord.security).toEqual([]);
+    expect(discordSlack.security).toEqual([]);
+
+    const parsed = executeWebhookSchema.safeParse(media?.example);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(hasDisplayableContent(parsed.data)).toBe(true);
+      expect(exceedsEmbedBudget(parsed.data)).toBe(false);
+    }
+    expect(
+      slackWebhookSchema.safeParse(
+        discordSlack.requestBody?.content?.["application/json"]?.example,
+      ).success,
+    ).toBe(true);
+  });
+
+  it("mirrors the embed limits the runtime schema enforces", () => {
+    const embed = spec.components?.schemas?.DiscordEmbed;
+    expect(embed?.properties?.title).toMatchObject({ maxLength: 256 });
+    expect(embed?.properties?.description).toMatchObject({ maxLength: 4096 });
+    expect(embed?.properties?.fields).toMatchObject({ maxItems: 25 });
+
+    const field = spec.components?.schemas?.DiscordEmbedField;
+    expect(field?.properties?.name).toMatchObject({ maxLength: 256 });
+    expect(field?.properties?.value).toMatchObject({ maxLength: 1024 });
+    expect(embed?.description).toContain(String(EMBED_TOTAL_LIMIT));
+  });
+
+  it("answers Discord requests with Discord-shaped bodies and rate headers", () => {
+    for (const operation of [discord, discordSlack]) {
+      expect(Object.keys(operation.responses ?? {})).toEqual(
+        discordResponseStatuses,
+      );
+      expect(responseSchema(operation, "200")).toBe(
+        spec.components?.schemas?.DiscordMessage,
+      );
+      // 204 is the default success and must carry no body at all.
+      expect(operation.responses?.["204"]?.content).toBeUndefined();
+      for (const status of ["400", "401", "413"]) {
+        expect(responseSchema(operation, status)).toBe(
+          spec.components?.schemas?.DiscordError,
+        );
+      }
+      expect(responseSchema(operation, "429")).toBe(
+        spec.components?.schemas?.DiscordRateLimitError,
+      );
+      expect(operation.responses?.["500"]?.content).toBeUndefined();
+
+      for (const status of ["200", "204", "400", "429"]) {
+        for (const header of [
+          "X-RateLimit-Limit",
+          "X-RateLimit-Remaining",
+          "X-RateLimit-Reset",
+          "X-RateLimit-Reset-After",
+          "X-RateLimit-Bucket",
+        ]) {
+          expect(operation.responses?.[status]?.headers?.[header]).toBeTruthy();
+        }
+      }
+      expect(
+        operation.responses?.["429"]?.headers?.["Retry-After"],
+      ).toBeTruthy();
+      // Rejected before the limiter runs, so no window bookkeeping exists yet.
+      expect(
+        operation.responses?.["401"]?.headers?.["X-RateLimit-Limit"],
+      ).toBeUndefined();
+    }
+
+    expect(responseSchema(discordGet, "200")).toBe(
+      spec.components?.schemas?.DiscordWebhookObject,
+    );
+  });
+
+  it("marks the Discord path token and returned URL as sensitive", () => {
+    const token = parameter(discord, "token", "path");
+    expect(token.required).toBe(true);
+    expect(token.schema).toMatchObject({
+      format: "password",
+      "x-sensitive": true,
+    });
+    expect(token.schema?.example).toBeUndefined();
+
+    const webhookObject = spec.components?.schemas?.DiscordWebhookObject;
+    for (const property of ["token", "url"] as const) {
+      expect(webhookObject?.properties?.[property]).toMatchObject({
+        "x-sensitive": true,
+      });
     }
   });
 

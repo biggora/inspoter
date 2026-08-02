@@ -6,12 +6,20 @@ import {
   type OutgoingWebhook,
   type WebhookDelivery,
   type OutgoingWebhookEvent,
+  type OutgoingWebhookFormat,
 } from "@/generated/prisma/client";
 import {
   encrypt,
   decrypt,
   isEncryptionConfigured,
 } from "@/lib/crypto/credentials";
+import {
+  buildEventsRequest,
+  buildExecuteRequest,
+  generateEd25519KeyPair,
+  parseRetryAfterMs,
+  DISCORD_EVENTS_BACKOFF_MS,
+} from "@/lib/discord/delivery";
 import type {
   CreateOutgoingWebhookInput,
   UpdateOutgoingWebhookInput,
@@ -55,6 +63,9 @@ export interface OutgoingWebhookSummary {
   events: OutgoingWebhookEvent[];
   isActive: boolean;
   secretPrefix: string;
+  format: OutgoingWebhookFormat;
+  publicKey: string | null;
+  consecutiveFailures: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +100,9 @@ function toSummary(webhook: OutgoingWebhook): OutgoingWebhookSummary {
     events: webhook.events,
     isActive: webhook.isActive,
     secretPrefix: webhook.secretPrefix,
+    format: webhook.format,
+    publicKey: webhook.publicKey,
+    consecutiveFailures: webhook.consecutiveFailures,
     createdAt: webhook.createdAt,
     updatedAt: webhook.updatedAt,
   };
@@ -120,35 +134,66 @@ export function signPayload(secret: string, rawBody: string): string {
   return `sha256=${crypto.createHmac("sha256", secret).update(rawBody).digest("hex")}`;
 }
 
-function decryptSecret(webhook: {
+interface KeyMaterial {
+  secret: string;
+  privateKey: string | null;
+}
+
+// A webhook stores either a plain HMAC secret (INSPOT/DISCORD_EXECUTE) or that
+// secret plus an Ed25519 private key (DISCORD_EVENTS). Both shapes decrypt here
+// so switching formats never orphans the other one's credential.
+function decryptKeyMaterial(webhook: {
   encryptedData: string;
   iv: string;
   authTag: string;
-}): string {
+}): KeyMaterial {
   const data = decrypt({
     encryptedData: webhook.encryptedData,
     iv: webhook.iv,
     authTag: webhook.authTag,
   });
-  if (data.type !== "WEBHOOK_SECRET") {
-    throw new Error("Decrypted payload is not a webhook secret");
+  if (data.type === "WEBHOOK_SECRET") {
+    return { secret: data.secret, privateKey: null };
   }
-  return data.secret;
+  if (data.type === "WEBHOOK_ED25519_KEY") {
+    return { secret: data.secret, privateKey: data.privateKey };
+  }
+  throw new Error("Decrypted payload is not a webhook secret");
 }
 
 // --- CRUD ---
 
+// DISCORD_EVENTS signs with Ed25519, every other format with the HMAC secret.
+// The key pair is minted alongside the secret so a later format switch never
+// has to re-key a live subscription.
+function buildCredential(format: OutgoingWebhookFormat, secret: string) {
+  if (format !== "DISCORD_EVENTS") {
+    return {
+      payload: encrypt({ type: "WEBHOOK_SECRET", secret }),
+      publicKey: null,
+    };
+  }
+  const { privateKey, publicKey } = generateEd25519KeyPair();
+  return {
+    payload: encrypt({ type: "WEBHOOK_ED25519_KEY", privateKey, secret }),
+    publicKey,
+  };
+}
+
 export async function create(
   workspaceId: string,
   input: CreateOutgoingWebhookInput,
-): Promise<{ id: string; secret: string; secretPrefix: string }> {
+): Promise<{
+  id: string;
+  secret: string;
+  secretPrefix: string;
+  publicKey: string | null;
+}> {
   if (!isEncryptionConfigured()) throw new EncryptionNotConfiguredError();
 
   const { secret, secretPrefix } = generateSecret();
-  const { encryptedData, iv, authTag } = encrypt({
-    type: "WEBHOOK_SECRET",
-    secret,
-  });
+  const format = input.format ?? "INSPOT";
+  const { payload, publicKey } = buildCredential(format, secret);
 
   const created = await db.outgoingWebhook.create({
     data: {
@@ -157,14 +202,31 @@ export async function create(
       url: input.url,
       events: input.events,
       isActive: input.isActive ?? true,
-      encryptedData,
-      iv,
-      authTag,
+      encryptedData: payload.encryptedData,
+      iv: payload.iv,
+      authTag: payload.authTag,
       secretPrefix,
+      format,
+      publicKey,
     },
   });
 
-  return { id: created.id, secret, secretPrefix };
+  // Discord's own receivers are verified with a PING before any real event; do
+  // the same so a misconfigured endpoint surfaces immediately in the history.
+  if (format === "DISCORD_EVENTS") {
+    await db.webhookDelivery.create({
+      data: {
+        workspaceId,
+        webhookId: created.id,
+        webhookWorkspaceId: workspaceId,
+        event: "ALERT_CREATED",
+        payload: { ping: true } as Prisma.InputJsonValue,
+        nextAttemptAt: new Date(),
+      },
+    });
+  }
+
+  return { id: created.id, secret, secretPrefix, publicKey };
 }
 
 export async function list(
@@ -194,9 +256,23 @@ export async function update(
 ): Promise<OutgoingWebhookSummary> {
   const existing = await db.outgoingWebhook.findFirst({
     where: { id, workspaceId },
-    select: { id: true },
   });
   if (!existing) throw new OutgoingWebhookNotFoundError();
+
+  // Switching to DISCORD_EVENTS on a webhook created in another format mints
+  // the missing key pair; the HMAC secret is carried over untouched, so the
+  // operator never has to re-issue it.
+  let credential: ReturnType<typeof buildCredential> | null = null;
+  if (
+    input.format === "DISCORD_EVENTS" &&
+    (existing.format !== "DISCORD_EVENTS" || !existing.publicKey)
+  ) {
+    if (!isEncryptionConfigured()) throw new EncryptionNotConfiguredError();
+    credential = buildCredential(
+      "DISCORD_EVENTS",
+      decryptKeyMaterial(existing).secret,
+    );
+  }
 
   const updated = await db.outgoingWebhook.update({
     where: { id },
@@ -205,6 +281,18 @@ export async function update(
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.events !== undefined ? { events: input.events } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.format !== undefined ? { format: input.format } : {}),
+      // Re-enabling by hand clears the auto-disable counter, otherwise the
+      // very next failure would trip the threshold again.
+      ...(input.isActive === true ? { consecutiveFailures: 0 } : {}),
+      ...(credential
+        ? {
+            encryptedData: credential.payload.encryptedData,
+            iv: credential.payload.iv,
+            authTag: credential.payload.authTag,
+            publicKey: credential.publicKey,
+          }
+        : {}),
     },
   });
   return toSummary(updated);
@@ -351,9 +439,16 @@ export async function createTestDelivery(
 ): Promise<{ deliveryId: string }> {
   const webhook = await db.outgoingWebhook.findFirst({
     where: { id: webhookId, workspaceId },
-    select: { id: true },
+    select: { id: true, format: true },
   });
   if (!webhook) throw new OutgoingWebhookNotFoundError();
+
+  // A DISCORD_EVENTS receiver is verified with a PING (type 0), exactly as
+  // Discord does — sending it a fake ALERT_CREATED would test the wrong thing.
+  const payload =
+    webhook.format === "DISCORD_EVENTS"
+      ? { ping: true }
+      : { test: true, message: "Inspot outgoing webhook test delivery" };
 
   const created = await db.webhookDelivery.create({
     data: {
@@ -361,10 +456,7 @@ export async function createTestDelivery(
       webhookId,
       webhookWorkspaceId: workspaceId,
       event: "ALERT_CREATED",
-      payload: {
-        test: true,
-        message: "Inspot outgoing webhook test delivery",
-      } as Prisma.InputJsonValue,
+      payload: payload as Prisma.InputJsonValue,
       nextAttemptAt: new Date(),
     },
   });
@@ -415,6 +507,78 @@ export async function claimDueDeliveries(
   return claimed;
 }
 
+// Builds the exact bytes and headers this webhook's format puts on the wire
+// (specs/discord-webhook-compatibility.md §6-§7). Exported for tests.
+export function buildDeliveryRequest(claimed: ClaimedDelivery): {
+  body: string;
+  headers: Record<string, string>;
+  timeoutMs: number;
+} {
+  const { delivery, webhook } = claimed;
+  const data = (delivery.payload ?? {}) as Record<string, unknown>;
+
+  if (webhook.format === "DISCORD_EXECUTE") {
+    const request = buildExecuteRequest({
+      webhookName: webhook.name,
+      event: delivery.event,
+      data,
+      timestamp: delivery.createdAt,
+    });
+    return { ...request, timeoutMs: env.WEBHOOK_DELIVERY_TIMEOUT_MS };
+  }
+
+  if (webhook.format === "DISCORD_EVENTS") {
+    const { privateKey } = decryptKeyMaterial(webhook);
+    if (!privateKey) {
+      throw new Error("DISCORD_EVENTS webhook has no Ed25519 private key");
+    }
+    const request = buildEventsRequest({
+      webhookId: webhook.id,
+      webhookCreatedAt: webhook.createdAt,
+      privateKey,
+      // A PING carries no event body; it is enqueued as a synthetic row.
+      event: data.ping === true ? null : delivery.event,
+      data,
+      timestamp: delivery.createdAt,
+    });
+    return {
+      ...request,
+      timeoutMs: request.timeoutMs ?? env.WEBHOOK_DELIVERY_TIMEOUT_MS,
+    };
+  }
+
+  const envelope: WebhookEnvelope = {
+    id: delivery.id,
+    event: delivery.event,
+    workspaceId: delivery.workspaceId,
+    timestamp: delivery.createdAt.toISOString(),
+    data,
+  };
+  const body = JSON.stringify(envelope);
+  return {
+    body,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Inspot-Signature": signPayload(
+        decryptKeyMaterial(webhook).secret,
+        body,
+      ),
+      "X-Inspot-Event": delivery.event,
+      "X-Inspot-Delivery": delivery.id,
+      "User-Agent": "Inspot-Webhooks/1",
+    },
+    timeoutMs: env.WEBHOOK_DELIVERY_TIMEOUT_MS,
+  };
+}
+
+function backoffMs(format: OutgoingWebhookFormat, attempt: number): number {
+  // Discord gives an events receiver ~10 minutes of retries, far tighter than
+  // the generic 30s→6h ladder.
+  const ladder =
+    format === "DISCORD_EVENTS" ? DISCORD_EVENTS_BACKOFF_MS : BACKOFF_MS;
+  return ladder[Math.min(attempt - 1, ladder.length - 1)];
+}
+
 // Send one claimed delivery, then record the outcome. Never throws — a single
 // bad endpoint must not stall the queue.
 export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
@@ -422,32 +586,18 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
   const attempt = delivery.attempts + 1;
   const now = new Date();
 
-  const envelope: WebhookEnvelope = {
-    id: delivery.id,
-    event: delivery.event,
-    workspaceId: delivery.workspaceId,
-    timestamp: delivery.createdAt.toISOString(),
-    data: (delivery.payload ?? {}) as Record<string, unknown>,
-  };
-  const rawBody = JSON.stringify(envelope);
-
   let statusCode: number | null = null;
   let errorMessage: string | null = null;
   let permanent = false;
+  let retryAfterMs: number | null = null;
 
   try {
-    const secret = decryptSecret(webhook);
+    const request = buildDeliveryRequest(claimed);
     const response = await fetch(webhook.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Inspot-Signature": signPayload(secret, rawBody),
-        "X-Inspot-Event": delivery.event,
-        "X-Inspot-Delivery": delivery.id,
-        "User-Agent": "Inspot-Webhooks/1",
-      },
-      body: rawBody,
-      signal: AbortSignal.timeout(env.WEBHOOK_DELIVERY_TIMEOUT_MS),
+      headers: request.headers,
+      body: request.body,
+      signal: AbortSignal.timeout(request.timeoutMs),
     });
     statusCode = response.status;
     if (response.ok) {
@@ -463,9 +613,19 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
           deliveredAt: now,
         },
       });
+      await db.outgoingWebhook
+        .update({ where: { id: webhook.id }, data: { consecutiveFailures: 0 } })
+        .catch(() => {});
       return;
     }
     errorMessage = `HTTP ${statusCode}`;
+    if (statusCode === 429) {
+      // Discord answers 429 with the exact wait; honour it over the ladder.
+      retryAfterMs = parseRetryAfterMs(
+        await response.text().catch(() => ""),
+        response.headers.get("retry-after"),
+      );
+    }
     // 4xx (except 429) is the receiver rejecting us — retrying won't help.
     permanent = statusCode >= 400 && statusCode < 500 && statusCode !== 429;
   } catch (error) {
@@ -486,10 +646,10 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
         leaseExpiresAt: null,
       },
     });
+    await registerFailure(webhook.id);
     return;
   }
 
-  const backoff = BACKOFF_MS[Math.min(attempt - 1, BACKOFF_MS.length - 1)];
   await db.webhookDelivery.update({
     where: { id: delivery.id },
     data: {
@@ -499,9 +659,30 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
       lastStatusCode: statusCode,
       lastError: errorMessage,
       leaseExpiresAt: null,
-      nextAttemptAt: new Date(now.getTime() + backoff),
+      nextAttemptAt: new Date(
+        now.getTime() + (retryAfterMs ?? backoffMs(webhook.format, attempt)),
+      ),
     },
   });
+}
+
+// Discord stops sending — and emails the owner — once a receiver fails too
+// often. Inspoter flips isActive instead; the settings list shows the state and
+// the operator re-enables by hand.
+async function registerFailure(webhookId: string): Promise<void> {
+  const updated = await db.outgoingWebhook
+    .update({
+      where: { id: webhookId },
+      data: { consecutiveFailures: { increment: 1 } },
+      select: { consecutiveFailures: true },
+    })
+    .catch(() => null);
+  if (!updated) return;
+  if (updated.consecutiveFailures >= env.WEBHOOK_AUTO_DISABLE_AFTER) {
+    await db.outgoingWebhook
+      .update({ where: { id: webhookId }, data: { isActive: false } })
+      .catch(() => {});
+  }
 }
 
 // --- Retention cleanup (called by webhook-retention-scheduler.ts) ---
