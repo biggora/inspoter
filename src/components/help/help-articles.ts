@@ -1,11 +1,26 @@
 import { SECTION_NAV_ITEMS } from "@/components/shell/nav-items";
 
+export interface HelpWebhook {
+  /** Displayed endpoint, e.g. "POST /api/webhooks/log". */
+  endpoint: string;
+  /**
+   * Ready-to-paste sample request. Absent where the body is produced by an
+   * agent rather than a human (Servers): the article then documents only the
+   * endpoint, with no sample and no field list.
+   */
+  curl?: string;
+}
+
 export interface HelpArticle {
   slug: string;
   href: string;
   icon: string;
   titleKey: string;
   cardDescriptionKey: string;
+  /** Section accepts data pushed in from the outside. */
+  webhook?: HelpWebhook;
+  /** Section emits outgoing-webhook events (Settings > Outgoing webhooks). */
+  outgoing?: boolean;
 }
 
 function iconFor(key: string): string {
@@ -43,6 +58,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("servers"),
     titleKey: "serversTitle",
     cardDescriptionKey: "serversCardDescription",
+    // No sample: the body is assembled by the metrics agent, not by hand.
+    webhook: { endpoint: "POST /api/server-metrics" },
   },
   {
     slug: "hosting",
@@ -57,6 +74,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("services"),
     titleKey: "servicesTitle",
     cardDescriptionKey: "servicesCardDescription",
+    outgoing: true,
   },
   {
     slug: "mail",
@@ -64,6 +82,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("mail"),
     titleKey: "mailTitle",
     cardDescriptionKey: "mailCardDescription",
+    webhook: {
+      endpoint: "POST /api/webhooks/mail",
+      curl: `curl -X POST http://your-host/api/webhooks/mail \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sender":"noreply@example.com","subject":"Test","body":"Hello"}'`,
+    },
+    outgoing: true,
   },
   {
     slug: "messages",
@@ -71,6 +97,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("messages"),
     titleKey: "messagesTitle",
     cardDescriptionKey: "messagesCardDescription",
+    // Only the workspace-wide endpoint is printed: a channel webhook URL
+    // carries its credential in the path and must stay out of docs and logs.
+    webhook: {
+      endpoint: "POST /api/webhooks/message",
+      curl: `curl -X POST http://your-host/api/webhooks/message \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"channelId":"CHANNEL_ID","content":"Hello","author":"deploy-bot"}'`,
+    },
+    outgoing: true,
   },
   {
     slug: "activity",
@@ -85,6 +121,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("logs"),
     titleKey: "logsTitle",
     cardDescriptionKey: "logsCardDescription",
+    webhook: {
+      endpoint: "POST /api/webhooks/log",
+      curl: `curl -X POST http://your-host/api/webhooks/log \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"level":"info","source":"test","message":"Hello"}'`,
+    },
+    outgoing: true,
   },
   {
     slug: "alerts",
@@ -92,6 +136,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("alerts"),
     titleKey: "alertsTitle",
     cardDescriptionKey: "alertsCardDescription",
+    webhook: {
+      endpoint: "POST /api/webhooks/alert",
+      curl: `curl -X POST http://your-host/api/webhooks/alert \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"category":"deploy","severity":"warning","source":"test","message":"Hello"}'`,
+    },
+    outgoing: true,
   },
 ];
 
