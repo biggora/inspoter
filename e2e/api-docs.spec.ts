@@ -64,19 +64,63 @@ test("authenticated operator opens the documented Swagger reference without exte
   await page.locator('a[href$="/settings/api-docs"]').click();
   await expect(page).toHaveURL(new RegExp(`${API_DOCS_PATH}$`));
 
+  // The public OpenAPI spec (specs/openapi.json) is the single source of truth
+  // for what the Swagger reference documents. It is asserted verbatim by
+  // scripts/check-public-openapi.mjs, so mirror that surface here: every path
+  // and method the spec declares must render in the UI, and nothing else.
+  const expectedPaths = [
+    "/api/server-metrics",
+    "/api/webhooks/{type}",
+    "/api/webhooks/channels/{webhookId}/{token}",
+    "/api/mcp",
+    "/api/discord/webhooks/{webhookId}/{token}",
+    "/api/discord/webhooks/{webhookId}/{token}/slack",
+    "/api/v1/messages/categories",
+    "/api/v1/messages/categories/{categoryId}",
+    "/api/v1/messages/channels",
+    "/api/v1/messages/channels/{channelId}",
+    "/api/v1/messages/channels/{channelId}/messages",
+    "/api/v1/messages/channels/{channelId}/webhooks",
+    "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}",
+  ];
+  const expectedOperations = {
+    "/api/server-metrics": ["post"],
+    "/api/webhooks/{type}": ["post"],
+    "/api/webhooks/channels/{webhookId}/{token}": ["post"],
+    "/api/mcp": ["post"],
+    "/api/discord/webhooks/{webhookId}/{token}": ["get", "post"],
+    "/api/discord/webhooks/{webhookId}/{token}/slack": ["post"],
+    "/api/v1/messages/categories": ["get", "post"],
+    "/api/v1/messages/categories/{categoryId}": ["patch"],
+    "/api/v1/messages/channels": ["post"],
+    "/api/v1/messages/channels/{channelId}": ["patch"],
+    "/api/v1/messages/channels/{channelId}/messages": ["get", "post"],
+    "/api/v1/messages/channels/{channelId}/webhooks": ["get", "post"],
+    "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}": ["delete"],
+  };
+  const expectedOperationCount = Object.values(expectedOperations).reduce(
+    (sum, methods) => sum + methods.length,
+    0,
+  );
+
   const operationPaths = page.locator(".swagger-ui .opblock-summary-path");
-  await expect(operationPaths).toHaveCount(4);
+  await expect(operationPaths).toHaveCount(expectedPaths.length);
   expect(
     (await operationPaths.allTextContents()).map((path) => path.trim()).sort(),
-  ).toEqual(
-    [
-      "/api/server-metrics",
-      "/api/webhooks/{type}",
-      "/api/webhooks/channels/{webhookId}/{token}",
-      "/api/mcp",
-    ].sort(),
-  );
-  await expect(page.locator(".swagger-ui .opblock-post")).toHaveCount(4);
+  ).toEqual([...expectedPaths].sort());
+
+  for (const [path, methods] of Object.entries(expectedOperations)) {
+    for (const method of methods) {
+      await expect(
+        page.locator(`.swagger-ui .opblock-${method}`).filter({
+          has: page.locator(".opblock-summary-path", { hasText: path }),
+        }),
+      ).toHaveCount(1);
+    }
+  }
+  expect(
+    await page.locator(".swagger-ui .opblock-summary").count(),
+  ).toBe(expectedOperationCount);
   await expect(page.getByText("/api/services", { exact: false })).toHaveCount(
     0,
   );
