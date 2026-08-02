@@ -40,7 +40,9 @@ export default async function DashboardLayout({
             unreadCounts={unreadCounts}
             hiddenSections={workspace.hiddenSections}
           />
-          <main className="w-full flex-1 p-6">{children}</main>
+          <main className="w-full min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">
+            {children}
+          </main>
         </SidebarInset>
       </RouteProgressProvider>
     </SidebarProvider>

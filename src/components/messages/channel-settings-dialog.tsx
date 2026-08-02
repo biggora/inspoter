@@ -396,8 +396,8 @@ export function ChannelSettingsDialog({
                           <Icon name="ri-file-copy-line" aria-hidden />
                         )}
                         {copied === "discord"
-                          ? t("urlCopiedButton")
-                          : t("copyUrlButton")}
+                          ? t("discordUrlCopiedButton")
+                          : t("copyDiscordUrlButton")}
                       </Button>
                     </div>
                   </AlertDescription>

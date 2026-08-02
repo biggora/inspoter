@@ -37,10 +37,12 @@ export function DashboardTopbar({
   const title = activeNavItem ? t(activeNavItem.labelKey) : "Inspoter";
 
   return (
-    <header className="sticky top-0 z-10 flex h-[var(--topbar-height)] shrink-0 items-center gap-3 border-b border-background-200 bg-background-50 px-[var(--space-4)]">
+    <header className="sticky top-0 z-10 flex h-[var(--topbar-height)] shrink-0 items-center gap-3 overflow-hidden border-b border-background-200 bg-background-50 px-[var(--space-4)]">
       <SidebarTrigger aria-label={t("toggleNavigation")} />
-      <span className="text-sm font-semibold text-foreground">{title}</span>
-      <div className="ml-auto flex items-center gap-1">
+      <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+        {title}
+      </span>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
         <NotificationIndicators
           initialCounts={unreadCounts}
           hiddenSections={hiddenSections}
