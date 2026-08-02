@@ -130,6 +130,17 @@ const envSchema = z
       .int()
       .positive()
       .default(60_000),
+    // --- LLM provider (src/lib/llm) ---
+    // The endpoint and its API key are per-workspace credentials, never env
+    // vars; only these transport/abuse bounds are deployment-wide. The rate
+    // limit follows MAIL_SEND_RATE_LIMIT: a fixed window per workspace.
+    LLM_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+    LLM_CALL_RATE_LIMIT: z.coerce.number().int().positive().default(60),
+    LLM_CALL_RATE_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000),
     // --- Backup import limits ---
     BACKUP_MAX_IMPORT_BYTES: z.coerce
       .number()

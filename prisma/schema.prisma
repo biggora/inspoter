@@ -966,6 +966,9 @@ enum ProviderType {
   HOSTINGER
   CPANEL_WHM
   CPANEL_UAPI
+  // OpenAI-compatible chat/embeddings endpoint (Ollama, vLLM, LM Studio,
+  // OpenRouter, OpenAI itself) — see src/lib/llm.
+  OPENAI_COMPATIBLE
 }
 
 model ProviderCredential {

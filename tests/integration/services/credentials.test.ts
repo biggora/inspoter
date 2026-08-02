@@ -104,6 +104,74 @@ describe("createCredential + getDecryptedCredentials", () => {
   });
 });
 
+describe("OPENAI_COMPATIBLE credential lifecycle", () => {
+  it("creates, reads back, updates and deletes an LLM credential", async () => {
+    const created = await credentialsService.createCredential(
+      workspaceId,
+      "OPENAI_COMPATIBLE",
+      `${NAME_PREFIX}-llm`,
+      {
+        type: "OPENAI_COMPATIBLE",
+        baseUrl: "http://127.0.0.1:11434/v1",
+        model: "llama3.1",
+        apiKey: "llm-secret-key-value",
+        mode: "REAL",
+      },
+    );
+
+    // The hint is derived from the API key, not from the base URL or model.
+    expect(created.provider).toBe("OPENAI_COMPATIBLE");
+    expect(created.maskedHint).toBe("****alue");
+
+    const decrypted = await credentialsService.getDecryptedCredentials(
+      workspaceId,
+      "OPENAI_COMPATIBLE",
+    );
+    expect(decrypted.find((c) => c.id === created.id)).toEqual({
+      id: created.id,
+      label: `${NAME_PREFIX}-llm`,
+      type: "OPENAI_COMPATIBLE",
+      baseUrl: "http://127.0.0.1:11434/v1",
+      model: "llama3.1",
+      apiKey: "llm-secret-key-value",
+      mode: "REAL",
+    });
+
+    const updated = await credentialsService.updateCredential(
+      created.id,
+      workspaceId,
+      `${NAME_PREFIX}-llm-v2`,
+      {
+        type: "OPENAI_COMPATIBLE",
+        baseUrl: "https://openrouter.ai/api/v1",
+        model: "gpt-4o-mini",
+        apiKey: "llm-rotated-key",
+        mode: "REAL",
+      },
+    );
+    expect(updated.id).toBe(created.id);
+    expect(
+      await credentialsService.getDecryptedCredentialById(
+        created.id,
+        workspaceId,
+      ),
+    ).toMatchObject({
+      label: `${NAME_PREFIX}-llm-v2`,
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "gpt-4o-mini",
+      apiKey: "llm-rotated-key",
+    });
+
+    await credentialsService.deleteCredential(created.id, workspaceId);
+    expect(
+      await credentialsService.getDecryptedCredentialById(
+        created.id,
+        workspaceId,
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("createCredential same provider twice", () => {
   it("creates two independent credentials instead of upserting", async () => {
     const first = await credentialsService.createCredential(

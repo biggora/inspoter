@@ -98,6 +98,8 @@
   "fieldApiSecret": "API secret",
   "fieldHostname": "Host / URL",
   "fieldUsername": "Username",
+  "fieldBaseUrl": "API base URL",
+  "fieldModel": "Model",
   "selectProviderPlaceholder": "Select a provider",
   "selectProviderError": "Select a provider.",
   "fieldRequiredError": "Field \"{field}\" is required.",

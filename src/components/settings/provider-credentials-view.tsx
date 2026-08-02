@@ -31,26 +31,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
+import {
+  PROVIDER_REGISTRY,
+  type ProviderCategory,
+} from "@/lib/providers/registry";
 import { credentialsApi, type CredentialDto } from "./credentials-api";
 import { ProviderCredentialDialog } from "./provider-credential-dialog";
 
-// "DNS" isn't Russian prose so it stays as a plain literal string; "Хостинг"
-// does need translation and holds a translation key instead, resolved via
-// categoryLabel() below (same convention as services/format.ts's
+// "DNS" and "LLM" aren't Russian prose so they stay plain literal strings;
+// "Хостинг" does need translation and holds a translation key instead,
+// resolved via categoryLabel() below (same convention as services/format.ts's
 // MONITOR_TYPE_LABELS/getMonitorTypeLabel).
-const CATEGORY_LABELS: Record<"DNS" | "HOSTING", string> = {
+const CATEGORY_LABELS: Record<ProviderCategory, string> = {
   DNS: "DNS",
   HOSTING: "categoryHosting",
+  LLM: "LLM",
 };
 
 function categoryLabel(
-  category: "DNS" | "HOSTING",
+  category: ProviderCategory,
   t: (key: string) => string,
 ): string {
   return category === "HOSTING"
     ? t(CATEGORY_LABELS.HOSTING)
-    : CATEGORY_LABELS.DNS;
+    : CATEGORY_LABELS[category];
 }
 
 type DialogState =
