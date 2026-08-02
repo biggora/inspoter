@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  AlertCategorySource,
   DashboardWidgetKind,
   MailAccountKind,
   MailSecurity,
@@ -230,16 +231,23 @@ const logEntrySchema = z.object({
   createdAt: isoDate,
 });
 
+// normalizedName is deliberately absent: it is derived from `name` and is
+// recomputed at import, so an archive can never carry a stale encoding.
 const alertCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
+  description: z.string().nullable().optional(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });
 
+// categorySource/categoryConfidence are optional: archives written before
+// alert provenance existed have neither, and import fills the source in.
 const alertSchema = z.object({
   id: z.string(),
   alertCategoryId: z.string().nullable(),
+  categorySource: z.enum(AlertCategorySource).nullable().optional(),
+  categoryConfidence: z.number().nullable().optional(),
   severity: z.string(),
   source: z.string(),
   message: z.string(),

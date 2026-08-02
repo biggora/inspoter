@@ -207,7 +207,11 @@ beforeAll(async () => {
 
   // --- alerts: AlertCategory + Alert (direct db, mirrors alerts.ts internals) ---
   const alertCategory = await db.alertCategory.create({
-    data: { workspaceId: workspaceA.id, name: `Alert Category ${RUN_ID}` },
+    data: {
+      workspaceId: workspaceA.id,
+      name: `Alert Category ${RUN_ID}`,
+      normalizedName: `alert category ${RUN_ID}`.toLowerCase(),
+    },
   });
   await db.alert.create({
     data: {

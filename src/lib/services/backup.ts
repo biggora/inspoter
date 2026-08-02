@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma } from "@/generated/prisma/client";
+import { AlertCategorySource, Prisma } from "@/generated/prisma/client";
 import type {
   Category,
   Bookmark,
@@ -24,6 +24,7 @@ import type {
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
+import { normalizeLabelName } from "@/lib/label-normalization";
 import {
   sealArchive,
   openArchive,
@@ -370,6 +371,7 @@ function toAlertCategoryRecord(row: AlertCategory): BackupAlertCategoryRecord {
   return {
     id: row.id,
     name: row.name,
+    description: row.description,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -379,6 +381,8 @@ function toAlertRecord(row: Alert): BackupAlertRecord {
   return {
     id: row.id,
     alertCategoryId: row.alertCategoryId,
+    categorySource: row.categorySource,
+    categoryConfidence: row.categoryConfidence,
     severity: row.severity,
     source: row.source,
     message: row.message,
@@ -997,6 +1001,10 @@ export async function importWorkspace(
       }
 
       if (payload.data.alertCategories) {
+        // Matched on the case-folded name, not the literal one: the target
+        // workspace unique index is [workspaceId, normalizedName], so an
+        // archived "Availability" must merge into an existing "availability"
+        // instead of colliding on insert.
         const existingByName =
           mode === "merge" && payload.data.alertCategories.length > 0
             ? new Map(
@@ -1004,12 +1012,14 @@ export async function importWorkspace(
                   await tx.alertCategory.findMany({
                     where: {
                       workspaceId,
-                      name: {
-                        in: payload.data.alertCategories.map((c) => c.name),
+                      normalizedName: {
+                        in: payload.data.alertCategories.map((c) =>
+                          normalizeLabelName(c.name),
+                        ),
                       },
                     },
                   })
-                ).map((c) => [c.name, c.id]),
+                ).map((c) => [c.normalizedName, c.id]),
               )
             : new Map<string, string>();
 
@@ -1017,21 +1027,29 @@ export async function importWorkspace(
           id: string;
           workspaceId: string;
           name: string;
+          normalizedName: string;
+          description: string | null;
           createdAt: string;
           updatedAt: string;
         }> = [];
         for (const row of payload.data.alertCategories) {
-          const existingId = existingByName.get(row.name);
+          const normalizedName = normalizeLabelName(row.name);
+          const existingId = existingByName.get(normalizedName);
           if (existingId) {
             alertCategoryIdMap.set(row.id, existingId);
             continue;
           }
           const newId = crypto.randomUUID();
           alertCategoryIdMap.set(row.id, newId);
+          // Two archived categories can differ only in case (they predate the
+          // unique index); the first one wins and the rest map onto it.
+          existingByName.set(normalizedName, newId);
           inserts.push({
             id: newId,
             workspaceId,
             name: row.name,
+            normalizedName,
+            description: row.description ?? null,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
           });
@@ -1444,6 +1462,15 @@ export async function importWorkspace(
             alertCategoryId,
             alertCategoryWorkspaceId:
               alertCategoryId !== null ? workspaceId : null,
+            // Provenance follows the category: no category, no source. An
+            // archive written before provenance existed carries none, and its
+            // categories all came through ingest.
+            categorySource:
+              alertCategoryId === null
+                ? null
+                : (row.categorySource ?? AlertCategorySource.WEBHOOK),
+            categoryConfidence:
+              alertCategoryId === null ? null : (row.categoryConfidence ?? null),
             severity: row.severity,
             source: row.source,
             message: row.message,

@@ -402,6 +402,66 @@ describe("write tools", () => {
       0,
     );
   });
+
+  it("categorizes an alert and records the assignment as model-made", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "warning",
+      source: "mcp-test",
+      message: "uncategorized event for the assistant",
+    });
+    const category = await callTool(fullToken, "alert_category_create", {
+      name: "Capacity",
+    });
+    const alertCategoryId = (category.payload as { id: string }).id;
+
+    const { payload } = await callTool(fullToken, "alerts_set_category", {
+      id: created.id,
+      categoryId: alertCategoryId,
+      confidence: 0.7,
+    });
+
+    expect((payload as { alertCategoryId: string }).alertCategoryId).toBe(
+      alertCategoryId,
+    );
+    const stored = await db.alert.findUnique({ where: { id: created.id } });
+    expect(stored?.categorySource).toBe("MODEL");
+    expect(stored?.categoryConfidence).toBeCloseTo(0.7);
+  });
+
+  it("refuses to categorize an alert in another workspace", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "info",
+      source: "mcp-test",
+      message: "not reachable from the other tenant",
+    });
+
+    const result = await callTool(otherWorkspaceToken, "alerts_set_category", {
+      id: created.id,
+      categoryId: null,
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  it("denies the write tools to a read-only alerts token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "alerts-ro", [
+        "alerts:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "alert_categories_list",
+      "alerts_get",
+      "alerts_search",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "alerts_set_category",
+      arguments: { id: "whatever", categoryId: null },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+  });
 });
 
 describe("workspace isolation", () => {

@@ -226,12 +226,20 @@ describe("public OpenAPI contract", () => {
       expect(resolveRef(alternative).additionalProperties).not.toBe(false);
     }
 
-    expect(Object.keys(media?.examples ?? {}).sort()).toEqual(
-      [...SUPPORTED_TYPES].sort(),
-    );
+    // Every supported type is exemplified. Extra examples are allowed for
+    // variants worth showing (an alert without a category, say), as long as
+    // they are named after the type they illustrate and still validate.
+    const exampleKeys = Object.keys(media?.examples ?? {});
     for (const typeName of SUPPORTED_TYPES) {
-      const example = media?.examples?.[typeName]?.value;
-      expect(getWebhookSchema(typeName)?.safeParse(example).success).toBe(true);
+      expect(exampleKeys).toContain(typeName);
+    }
+    for (const key of exampleKeys) {
+      const typeName = SUPPORTED_TYPES.find((type) => key.startsWith(type));
+      expect(typeName).toBeDefined();
+      const example = media?.examples?.[key]?.value;
+      expect(getWebhookSchema(typeName as string)?.safeParse(example).success).toBe(
+        true,
+      );
     }
   });
 
