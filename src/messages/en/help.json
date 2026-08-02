@@ -6,6 +6,8 @@
   "webhookHeading": "Sending data in by webhook",
   "webhookExampleLabel": "Example webhook request",
   "outgoingWebhookHeading": "Outgoing webhooks",
+  "discordWebhookHeading": "Discord compatibility",
+  "outgoingFormatsNote": "Every outgoing webhook has a delivery format, chosen in <outgoing>Settings → Outgoing webhooks</outgoing>. “Inspoter” is our own envelope signed with HMAC-SHA256. “Discord” posts the event as an embed card straight into a Discord channel: point it at a Discord webhook URL and nothing else is needed. “Discord Webhook Events” suits receivers written against Discord: an envelope signed with Ed25519, with the verifying public key shown alongside.",
 
   "dashboardsTitle": "Dashboards",
   "dashboardsCardDescription": "Build your own overview from widgets — clock, weather, calendar, and data from any section.",
@@ -114,11 +116,22 @@
     "Open a channel's settings (gear icon) to rename it or manage its incoming webhook, used by external systems to post into it.",
     "Use the category or channel context menu to rename or delete it."
   ],
-  "messagesWebhookIntro": "External systems can post into a channel two ways. A channel webhook, created from the channel's settings (gear icon), gets its own URL with the credential built into it and needs no token header and no channelId — treat that URL as a password and keep it out of logs and screenshots. A workspace API token from <tokens>Settings → Webhooks</tokens> instead posts to the shared endpoint below and names the target channel in the body. Both are described in <apiDocs>Settings → API Documentation</apiDocs>. The same channel webhook also accepts a Discord payload: the channel settings dialog shows a Discord-compatible URL next to the native one — use it in place of a discord.com link and content, embeds, username and avatar_url are parsed the Discord way.",
+  "messagesWebhookIntro": "External systems can post into a channel two ways. A channel webhook, created from the channel's settings (gear icon), gets its own URL with the credential built into it and needs no token header and no channelId — treat that URL as a password and keep it out of logs and screenshots. A workspace API token from <tokens>Settings → Webhooks</tokens> instead posts to the shared endpoint below and names the target channel in the body. Both are described in <apiDocs>Settings → API Documentation</apiDocs>.",
   "messagesWebhookFields": [
     "channelId — required: internal id of the target channel; it is not shown in the interface, which is why a channel webhook is usually the easier route.",
     "content — required: the message text, up to 4000 characters.",
     "author — optional: the sender name shown in the timeline; defaults to the webhook's name."
+  ],
+  "messagesDiscordIntro": "A channel webhook also understands Discord's format. If an integration already posts to a Discord channel — CI, Grafana, Sentry, Uptime Kuma, GitHub Actions — just point it at the Discord-compatible URL instead of the discord.com link: the request body needs no rewriting. The address is revealed once in the channel settings dialog next to the native one and carries the same secret, so handle it just as carefully. The full specification with limits and error codes lives in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "messagesDiscordFields": [
+    "content — the message text, up to 2000 characters.",
+    "embeds — up to 10 cards with a colour bar, title, description and fields. At most 6000 characters across all of them.",
+    "username — the sender name; the webhook's own name is used when it is absent.",
+    "avatar_url — the sender avatar shown beside the message.",
+    "The default response is 204 with no body, as on Discord. Add ?wait=true to get 200 and the created message object.",
+    "Errors use Discord's shape: 50006 for an empty message, 50035 for a broken limit, 401 for an unknown or revoked webhook, and 429 with retry_after when the rate limit is hit.",
+    "The /slack suffix accepts Slack's format: text and attachments become the message text and cards.",
+    "File attachments are accepted but not stored; threads, components and polls are ignored."
   ],
   "messagesOutgoingWebhook": "Every posted message also fires a MESSAGE_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
 

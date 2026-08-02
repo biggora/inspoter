@@ -19,6 +19,12 @@ export interface HelpArticle {
   cardDescriptionKey: string;
   /** Section accepts data pushed in from the outside. */
   webhook?: HelpWebhook;
+  /**
+   * Section also accepts the Discord wire format on a second route
+   * (specs/discord-webhook-compatibility.md). Documented as its own block
+   * because the payload and the response codes differ from `webhook` above.
+   */
+  discord?: HelpWebhook;
   /** Section emits outgoing-webhook events (Settings > Outgoing webhooks). */
   outgoing?: boolean;
 }
@@ -105,6 +111,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"channelId":"CHANNEL_ID","content":"Hello","author":"deploy-bot"}'`,
+    },
+    // Placeholders, not a real credential: the Discord form carries its secret
+    // in the path, so the sample must stay as unusable as the endpoint above.
+    discord: {
+      endpoint: "POST /api/discord/webhooks/{webhook-id}/{token}",
+      curl: `curl -X POST http://your-host/api/discord/webhooks/WEBHOOK_ID/WEBHOOK_TOKEN \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"CI","content":"Build 842 passed","embeds":[{"title":"Build 842","description":"All checks passed.","color":3066993,"fields":[{"name":"branch","value":"main","inline":true}]}]}'`,
     },
     outgoing: true,
   },

@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.19
+**Version:** v2.21
 **Status:** Dashboards section (widget boards) specified and implemented
 **Owner:** UI/UX Designer
 **Date:** 2026-07-30
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.11, docs/architecture.md v1.8, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.16, docs/architecture.md v1.17, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -202,6 +202,8 @@ Routes: /settings, /settings/workspace, and /settings/webhooks.
 Workspace settings provide complete CRUD and membership management: create, rename, delete, list members, add an existing operator, create an invite-only operator, and remove a member. Workspace deletion sits in a visually separated danger zone, requires explicit confirmation, states that workspace-scoped database content is removed, and states that provider/external resources are not removed. If the active workspace is deleted, the shell resolves another membership or returns to the permitted selection/login flow.
 
 Workspace-wide webhook-token settings are active, not a placeholder. They retain the legacy null-channel list/create/one-time reveal/copy/revoke flow and never expose channel-scoped credentials. Channel-scoped webhooks are managed inside the owning channel's settings (§5.5). Never reveal a stored secret again. Use Russian labels; token values and API examples are monospace. Both token families follow the active workspace.
+
+**Outgoing webhooks — delivery format (2026-08-02):** the create/edit dialog at /settings/outgoing-webhooks carries a «Формат доставки» select with three options — Inspoter, Discord, Discord Webhook Events — and a one-line hint under it that changes with the selection, so the operator never has to open the spec to know what goes on the wire. The list marks any non-default format with a badge beside the name. `DISCORD_EVENTS` additionally reveals the Ed25519 public key: once in the creation result next to the signing secret, and permanently in the edit dialog, both as monospace text explicitly labeled as _not_ a secret — the receiver has to be able to read it back. A webhook the scheduler disabled after repeated failures shows its disabled state plus a short reason line with the failure count; re-enabling is a deliberate operator action and clears that counter.
 
 ### 4.4 Shared states
 
@@ -458,11 +460,13 @@ input. Closing a sheet, picker, or dialog restores focus to its exact opener.
 
 **Route and scope:** /messages; active-workspace content. Trace: AC-MSG-001..007, AC-MSG-009..014; AC-MSG-008 is inactive.
 
-**Layout/content:** desktop uses category/channel navigation, a selected-channel header, a chronological server-paginated feed, and a composer anchored after the feed. When the current selection is missing, select the first available channel. Each record renders one text label: `OPERATOR` → «Оператор», `WEBHOOK` → «Внешний источник», `LEGACY`/missing → «Источник не определён»; author is the immutable display-name snapshot.
+**Layout/content:** desktop uses category/channel navigation, a selected-channel header, a chronological server-paginated feed, and a composer anchored after the feed. When the current selection is missing, select the first available channel. Each record renders one text label: `OPERATOR` → «Оператор», `WEBHOOK` → «Внешний источник», `LEGACY`/missing → «Источник не определён»; author is the immutable display-name snapshot. A record whose sender supplied `avatar_url` shows that image in place of the generated initials tile; any non-`http(s)` value falls back to the tile.
+
+**Embed cards (2026-08-02):** a record ingested through the Discord-compatible route (§6.4 of architecture, `specs/discord-webhook-compatibility.md`) may carry up to ten embeds, rendered under the message text as bordered cards. Each card shows a 4px accent bar coloured from the embed's `color` integer (a neutral token when absent or unusable), then author, linked title, description, an inline/full-width field grid, image, and a footer line joining footer text and timestamp. Text stays selectable and wraps; nothing is colour-only. Sender-supplied URLs become links or image sources **only** when they are `http(s)`, and links carry `rel="noopener noreferrer"`; an unparseable embed timestamp renders nothing rather than «Invalid Date». A message may legitimately have empty content and only embeds — the text paragraph is then omitted, not rendered blank. The `thumbnail` slot is deliberately not rendered: Discord floats it beside the description, which fights the single-column feed.
 
 **Actions:** create and rename categories/channels; delete either only after explicit confirmation; select channel; prepend older pages through «Загрузить предыдущие» while preserving scroll position; submit non-empty operator text to an existing channel. A confirmed send explicitly refetches the feed and clears the draft; a failed send retains the draft. The composer uses a labeled multiline textarea and Отправить button; Ctrl+Enter submits while Enter inserts a newline. No attachment affordance exists.
 
-**Channel settings:** both the channel-row action menu and selected-channel header expose «Настройки канала». The dialog has «Обзор» for rename/delete and «Вебхуки» with independent loading, empty, error/retry, create, list, and revoke states. Creation accepts a 1–80-character name and transiently shows the same-origin tokenized URL plus ready cURL; copy success/fallback is explicit and the warning states that closing the dialog destroys the only reveal. The URL is never placed in toast text or browser storage. Revocation requires destructive confirmation, is irreversible, and updates only the affected row. Closing settings restores focus to a settings trigger for that channel.
+**Channel settings:** both the channel-row action menu and selected-channel header expose «Настройки канала». The dialog has «Обзор» for rename/delete and «Вебхуки» with independent loading, empty, error/retry, create, list, and revoke states. Creation accepts a 1–80-character name and transiently shows three same-origin values built from the one credential: the native tokenized URL, a ready cURL, and the Discord-compatible URL («Discord-совместимый URL») with one sentence explaining that it replaces a `discord.com` link and accepts `content`, `embeds`, `username` and `avatar_url`. Each has its own labeled copy control; copy success/fallback is explicit and the warning states that closing the dialog destroys the only reveal. No URL is ever placed in toast text or browser storage — the Discord form carries the same secret and the same handling rules as the native one. Revocation requires destructive confirmation, is irreversible, and updates only the affected row. Closing settings restores focus to a settings trigger for that channel.
 
 **States:** navigation/feed skeletons; no categories; category with no channels; selected empty channel; no selection; page loading; compose pending; empty-content validation; missing-channel rejection; persistence failure. Do not insert a sent record until persistence is confirmed; on failure retain draft and confirmed feed.
 
@@ -472,7 +476,7 @@ input. Closing a sheet, picker, or dialog restores focus to its exact opener.
 
 **Acceptance:** structure/feed/pagination satisfy AC-MSG-001..007; real compose, exactly-one persistence, attribution, origin visibility, validation, missing channel, and failure behavior satisfy AC-MSG-009..014. Ingested and operator records are distinguishable in the same feed. No auto-create, attachment, or emoji UI renders.
 
-**Exclusions:** auto-created channels, file attachments, reactions, decorative emoji, typing indicators/presence, message edit/delete, threads, realtime push, calls, Discord wire compatibility, and false demo submission.
+**Exclusions:** auto-created channels, file attachments, reactions, decorative emoji, typing indicators/presence, message edit/delete, threads, realtime push, calls, and false demo submission. Discord **wire** compatibility is no longer an exclusion (2026-08-02): the ingress route accepts Discord payloads and the feed renders their embeds. What stays excluded is Discord's _interaction_ surface — the fields listed as accepted-and-ignored in `specs/discord-webhook-compatibility.md` §8 (components, polls, threads, attachments) render nothing.
 
 ## 5.6 Logs
 
@@ -568,6 +572,22 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.21 — 2026-08-02 (Discord embeds in the feed, delivery format in settings)
+
+- Messages renders Discord embeds as bordered cards under the message text: accent
+  bar from the embed colour, author, linked title, description, field grid, image,
+  and a footer joining footer text and timestamp. Sender-supplied URLs become links
+  or images only when `http(s)`; a message may now legitimately have embeds and no
+  text. Adds `avatar_url` as the record avatar with a fallback to the initials tile.
+- Channel settings reveal a third value beside URL and cURL: the Discord-compatible
+  URL, with its own copy control and the same one-reveal secret handling.
+- Outgoing webhooks gain a «Формат доставки» select (Inspoter / Discord / Discord
+  Webhook Events) with a per-option hint, a list badge for non-default formats, the
+  Ed25519 public key surfaced as explicitly non-secret text, and a visible
+  auto-disabled state with its failure count.
+- Retires «Discord wire compatibility» from the §5.5 exclusion list; Discord's
+  interaction surface (components, polls, threads, attachments) stays excluded.
 
 ### v2.20 — 2026-07-31 (dashboard links, vertical sizing, default mailbox)
 

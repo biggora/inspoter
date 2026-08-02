@@ -890,7 +890,7 @@ Explicitly **not** part of this work (prevents scope creep):
 - **Advanced or private label models.** Nested labels and per-user private labels are excluded.
 - **Advanced filter expressions and actions.** Regex, arbitrary OR groups, body-content matching, forwarding, deletion, archiving, spam, and read-state rule actions are excluded; each rule only assigns one label.
 - **Webhook channel auto-create**; AC-MSG-008 remains inactive under Q-8.
-- **Discord parity beyond the channel/feed/settings subset:** reactions, attachments, threads, message editing, presence, voice/video calls, realtime push delivery, and Discord wire compatibility are excluded from v1.
+- **Discord parity beyond the channel/feed/settings subset:** reactions, attachments, threads, message editing, presence, voice/video calls, and realtime push delivery are excluded from v1. **Discord wire compatibility is no longer excluded** (FR-WH-003, 2026-08-02): Inspoter accepts Discord Execute Webhook payloads and delivers events in Discord's formats. The deliberate gaps inside that compatibility — stored-but-unrendered and accepted-but-ignored fields — are enumerated in `specs/discord-webhook-compatibility.md` §8 and are the authoritative list, not this bullet.
 - **Channel-webhook secret recovery, re-reveal, automatic rotation/expiry, un-revoke, or hard-delete UI.** Rotation is create-new, sender cutover, then irreversible revoke-old.
 - **VPS provisioning / resizing / rebuilding / snapshots / creating new servers.** Only list + status + start/stop/restart (HC-7, A-7).
 - **Domain registration/transfer/purchase.** Only inventory + DNS record management for already-owned domains.
@@ -959,7 +959,7 @@ No v3.14 requirement is gated by an unresolved product question. Q-1…Q-13, Q-1
 
 ## Appendix B — AC-ID index and source traceability
 
-All IDs are stable and must not be renumbered, reused, or transferred. v3.15 has exactly **185 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 202 unique criteria** (v3.12's 184 plus AC-DSH-001..018):
+All IDs are stable and must not be renumbered, reused, or transferred. v3.16 has exactly **189 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 206 unique criteria** (v3.15's 202 plus AC-WH-012..015):
 
 - Shell: AC-SHELL-001..004
 - Dashboards: AC-DSH-001..018, added by the Dashboards amendment (boards 001..006, widgets 007..010, grid layout 011..014, data/refresh 015..016, responsive/keyboard 017..018)
@@ -971,7 +971,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.15 has
 - Messages: AC-MSG-001..014, with AC-MSG-008 INACTIVE under Q-8; AC-MSG-009..014 added by Q-4
 - Logs: AC-LOG-001..005
 - Alerts: AC-ALR-001..008, with AC-ALR-008 added by Q-7
-- Webhook: AC-WH-001..011
+- Webhook: AC-WH-001..011; Discord compatibility AC-WH-012..015
 - Provider abstraction: AC-PROV-001..003
 - Workspaces: AC-WS-001..011
 - Real providers: AC-REAL-CF-001..004, AC-REAL-HC-001..004, AC-REAL-HD-001..004, AC-REAL-GD-001..004
