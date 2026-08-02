@@ -40,7 +40,7 @@ export interface MessageDto {
   channelId: string;
   content: string;
   author: string | null;
-  origin: "LEGACY" | "OPERATOR" | "WEBHOOK";
+  origin: "LEGACY" | "OPERATOR" | "WEBHOOK" | "AGENT";
   embeds?: MessageEmbedDto[] | null;
   avatarUrl?: string | null;
   createdAt: string;

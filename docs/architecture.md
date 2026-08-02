@@ -512,13 +512,21 @@ Two shared modules were extracted rather than copied: `src/lib/webhooks/body.ts`
 
 ### 6.5 Public OpenAPI and protected Swagger UI
 
-**CURRENT:** `specs/openapi.json` is the repository artifact for OpenAPI 3.1.1. It declares `POST /api/webhooks/{type}`, `POST /api/webhooks/channels/{webhookId}/{token}`, `POST /api/server-metrics`, `POST /api/mcp`, and the Discord operations of §6.4. Internal dashboard APIs, Authentik OIDC, and webhook-management routes are outside its scope. Every ingress route derives the workspace from its credential and omits `X-Inspoter-Workspace`.
+**CURRENT:** `specs/openapi.json` is the repository artifact for OpenAPI 3.1.1. It declares `POST /api/webhooks/{type}`, `POST /api/webhooks/channels/{webhookId}/{token}`, `POST /api/server-metrics`, `POST /api/mcp`, the Discord operations of §6.4, and the Messages management family `/api/v1/messages/**` (§6.6). Internal dashboard APIs, Authentik OIDC, and webhook-management routes are outside its scope. Every ingress route derives the workspace from its credential and omits `X-Inspoter-Workspace`.
 
 The localized `/settings/api-docs` page stays inside the authenticated dashboard layout. Its Server Component imports the JSON artifact and passes the object to a Client Swagger component; the client bundle does not import the specification directly. The application exposes no `/openapi.json`, `url`, or `configUrl` endpoint. Swagger receives `spec` with POST-only submission, disabled authorization persistence and query configuration, and no external validator.
 
 The legacy operation uses HTTP Bearer authentication. The channel and Discord operations declare `security: []` because their credential is the required path `token`; the schema marks that parameter as sensitive and supplies no example or default. API descriptions and examples are English, while the surrounding page follows the dashboard locale. Channel webhook URLs remain secrets and must stay out of logs, storage, snapshots, screenshots, and CI artifacts.
 
-`scripts/check-public-openapi.mjs` pins the path inventory, confirms every declared route file exports `POST`, and rejects workspace headers, external server URLs, and secret examples; `tests/unit/openapi/public-openapi.test.ts` carries the per-operation assertions, including the Discord payload limits and rate-limit headers. The full CI profile runs this gate before lint, type checking, database setup, tests, and build; the e2e-only profile remains unchanged.
+`scripts/check-public-openapi.mjs` pins the path inventory and the methods allowed per path, confirms every declared ingest route file exports `POST`, and rejects workspace headers, external server URLs, and secret examples; `tests/unit/openapi/public-openapi.test.ts` carries the per-operation assertions, including the Discord payload limits and rate-limit headers. The full CI profile runs this gate before lint, type checking, database setup, tests, and build; the e2e-only profile remains unchanged.
+
+### 6.6 Messages management API — CURRENT (2026-08-05)
+
+**CURRENT:** `/api/v1/messages/**` lets an AI agent or a script run the Messages section over plain REST: list categories and channels, get-or-create either by name, rename them, read and post messages, and issue or revoke a channel ingest webhook. The same capability is exposed as MCP tools (`src/lib/mcp/tools/messages.ts`) under the `messages:read` and `messages:write` scopes — both surfaces call the same `src/lib/services/messages.ts` and `src/lib/services/webhookTokens.ts` functions, so behaviour cannot drift between them.
+
+Authorization lives in `src/lib/api/token-auth.ts` and mirrors the fail-closed order of `/api/mcp`: authenticate the bearer token, check the required scope (`403` when it is missing), apply the shared per-token rate limit (`429` with `Retry-After`), then serve. The workspace comes from the token only; `X-Inspoter-Workspace` plays no part, and `src/proxy.ts` exempts the `/api/v1/` prefix from the session-cookie redirect alongside `/api/mcp`, `/api/server-metrics`, and the webhook paths — a fifth NFR-SEC-001 exception. Responses use `{ error: { code, message } }` with plain `Cache-Control: no-store`.
+
+Two deliberate limits: deletion of a category or channel is not exposed at all (it cascades to the whole message history and stays an operator action in the dashboard), and every message written through either surface is stored with `MessageOrigin.AGENT` so the timeline labels it. Writes through the REST family are journalled in `Activity` under the token's id and name; MCP tool calls are not, matching every pre-existing tool.
 
 ## 7. Provider architecture
 

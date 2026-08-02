@@ -7,7 +7,7 @@
       "name": "UNLICENSED",
       "identifier": "LicenseRef-UNLICENSED"
     },
-    "description": "Public endpoints for ingesting workspace events, channel messages, and server metrics."
+    "description": "Public endpoints for ingesting workspace events, channel messages, and server metrics, plus the token-authenticated API for managing the Messages section."
   },
   "servers": [
     {
@@ -37,9 +37,7 @@
                 "agentVersion": "1.0.0",
                 "capturedAt": "2026-07-20T12:00:00Z",
                 "hostname": "web-1.example.invalid",
-                "ips": [
-                  "198.51.100.10"
-                ],
+                "ips": ["198.51.100.10"],
                 "cpu": {
                   "usagePercent": 42.5,
                   "load1": 1.2,
@@ -225,12 +223,7 @@
             "description": "Webhook payload type.",
             "schema": {
               "type": "string",
-              "enum": [
-                "log",
-                "alert",
-                "mail",
-                "message"
-              ]
+              "enum": ["log", "alert", "mail", "message"]
             }
           },
           {
@@ -1232,6 +1225,1219 @@
           }
         }
       }
+    },
+    "/api/v1/messages/categories": {
+      "get": {
+        "operationId": "listMessageCategories",
+        "summary": "List message categories and their channels",
+        "description": "Requires the messages:read scope. The token identifies the workspace, so no workspace parameter is involved.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's categories, each with its channels.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageCategoryWithChannels"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMessageCategory",
+        "summary": "Create a message category",
+        "description": "Requires the messages:write scope. Get-or-create by name: names are matched case-insensitively, so repeating a request answers 200 with the existing category instead of duplicating it.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCategoryNameInput"
+              },
+              "example": {
+                "name": "Incidents"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A category with this name already existed and was returned unchanged.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageCategory"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The category was created.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageCategory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/categories/{categoryId}": {
+      "patch": {
+        "operationId": "renameMessageCategory",
+        "summary": "Rename a message category",
+        "description": "Requires the messages:write scope. Deleting a category is deliberately not part of this API — it would cascade to every channel and message inside it.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesCategoryId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCategoryNameInput"
+              },
+              "example": {
+                "name": "Incidents (archive)"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The renamed category.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageCategory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/channels": {
+      "post": {
+        "operationId": "createChannel",
+        "summary": "Create a channel",
+        "description": "Requires the messages:write scope. Get-or-create by name within the category, so repeating a request answers 200 with the existing channel.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelCreateInput"
+              },
+              "example": {
+                "categoryId": "clw0category0id",
+                "name": "database"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A channel with this name already existed in the category.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The channel was created.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/channels/{channelId}": {
+      "patch": {
+        "operationId": "renameChannel",
+        "summary": "Rename a channel",
+        "description": "Requires the messages:write scope. Deleting a channel is deliberately not part of this API — it would take the channel's message history with it.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelNameInput"
+              },
+              "example": {
+                "name": "database-prod"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The renamed channel.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/channels/{channelId}/messages": {
+      "get": {
+        "operationId": "listChannelMessages",
+        "summary": "Read a channel's messages",
+        "description": "Requires the messages:read scope. Keyset pagination: pass the previous response's nextCursor to continue.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from a previous response's nextCursor.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Ordering by creation time; defaults to desc.",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of messages.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelMessagePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "post": {
+        "operationId": "postChannelMessage",
+        "summary": "Post a message to a channel",
+        "description": "Requires the messages:write scope. The message is stored with origin AGENT, so the dashboard shows it came from an API token. Messages cannot be edited or deleted afterwards.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelMessageInput"
+              },
+              "example": {
+                "content": "Deploy finished on web-01.",
+                "author": "release-bot"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The message was stored.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelMessageCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/channels/{channelId}/webhooks": {
+      "get": {
+        "operationId": "listChannelWebhooks",
+        "summary": "List a channel's ingest webhooks",
+        "description": "Requires the messages:read scope. Secrets are never returned — only the prefix and the usage timestamps.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The channel's webhooks, newest first.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelWebhook"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createChannelWebhook",
+        "summary": "Create a channel ingest webhook",
+        "description": "Requires the messages:write scope. The response carries the only copy of the webhook URL with its secret; it cannot be retrieved again afterwards.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelWebhookCreateInput"
+              },
+              "example": {
+                "name": "CI pipeline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The webhook was created; url contains the secret and is shown once.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/ReferrerPolicy"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelWebhookCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}": {
+      "delete": {
+        "operationId": "revokeChannelWebhook",
+        "summary": "Revoke a channel ingest webhook",
+        "description": "Requires the messages:write scope. Calls made with the webhook URL stop working immediately; the row itself is kept, and messages already posted are untouched.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MessagesChannelId"
+          },
+          {
+            "$ref": "#/components/parameters/MessagesWebhookId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The webhook is revoked.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelWebhookRevoked"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such category, channel, or webhook exists in the token's workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1310,6 +2516,33 @@
         "schema": {
           "type": "boolean"
         }
+      },
+      "MessagesCategoryId": {
+        "name": "categoryId",
+        "in": "path",
+        "required": true,
+        "description": "Message category id.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "MessagesChannelId": {
+        "name": "channelId",
+        "in": "path",
+        "required": true,
+        "description": "Channel id.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "MessagesWebhookId": {
+        "name": "webhookId",
+        "in": "path",
+        "required": true,
+        "description": "Channel webhook id.",
+        "schema": {
+          "type": "string"
+        }
       }
     },
     "headers": {
@@ -1384,18 +2617,14 @@
         "description": "Scope of the exceeded limit. Always user for a channel webhook.",
         "schema": {
           "type": "string",
-          "enum": [
-            "user"
-          ]
+          "enum": ["user"]
         }
       },
       "RateLimitGlobal": {
         "description": "Whether a global limit was hit. Always false: Inspoter has no global webhook limit.",
         "schema": {
           "type": "string",
-          "enum": [
-            "false"
-          ]
+          "enum": ["false"]
         }
       }
     },
@@ -1403,9 +2632,7 @@
       "WebhookSuccess": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id"
-        ],
+        "required": ["id"],
         "properties": {
           "id": {
             "type": "string",
@@ -1416,17 +2643,12 @@
       "LegacyWebhookError": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "code",
-              "message"
-            ],
+            "required": ["code", "message"],
             "properties": {
               "code": {
                 "type": "string",
@@ -1447,10 +2669,7 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "path",
-                    "issue"
-                  ],
+                  "required": ["path", "issue"],
                   "properties": {
                     "path": {
                       "type": "string"
@@ -1468,9 +2687,7 @@
       "ChannelSimpleError": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "string"
@@ -1480,9 +2697,7 @@
       "ChannelValidationError": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ZodIssueArray"
@@ -1497,11 +2712,7 @@
       },
       "ZodIssue": {
         "type": "object",
-        "required": [
-          "code",
-          "message",
-          "path"
-        ],
+        "required": ["code", "message", "path"],
         "properties": {
           "code": {
             "type": "string"
@@ -1527,11 +2738,7 @@
       },
       "LogWebhookPayload": {
         "type": "object",
-        "required": [
-          "level",
-          "source",
-          "message"
-        ],
+        "required": ["level", "source", "message"],
         "properties": {
           "level": {
             "type": "string",
@@ -1554,11 +2761,7 @@
       },
       "AlertWebhookPayload": {
         "type": "object",
-        "required": [
-          "severity",
-          "source",
-          "message"
-        ],
+        "required": ["severity", "source", "message"],
         "properties": {
           "category": {
             "type": "string",
@@ -1586,11 +2789,7 @@
       },
       "MailWebhookPayload": {
         "type": "object",
-        "required": [
-          "sender",
-          "subject",
-          "body"
-        ],
+        "required": ["sender", "subject", "body"],
         "properties": {
           "sender": {
             "type": "string",
@@ -1613,10 +2812,7 @@
       },
       "MessageWebhookPayload": {
         "type": "object",
-        "required": [
-          "channelId",
-          "content"
-        ],
+        "required": ["channelId", "content"],
         "properties": {
           "channelId": {
             "type": "string",
@@ -1635,9 +2831,7 @@
       "ChannelWebhookPayload": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "properties": {
           "content": {
             "type": "string",
@@ -1655,10 +2849,7 @@
       },
       "JsonRpcRequest": {
         "type": "object",
-        "required": [
-          "jsonrpc",
-          "method"
-        ],
+        "required": ["jsonrpc", "method"],
         "properties": {
           "jsonrpc": {
             "type": "string",
@@ -1666,10 +2857,7 @@
           },
           "id": {
             "description": "Omitted for notifications.",
-            "type": [
-              "string",
-              "number"
-            ]
+            "type": ["string", "number"]
           },
           "method": {
             "type": "string",
@@ -1682,29 +2870,21 @@
       },
       "JsonRpcResponse": {
         "type": "object",
-        "required": [
-          "jsonrpc"
-        ],
+        "required": ["jsonrpc"],
         "properties": {
           "jsonrpc": {
             "type": "string",
             "const": "2.0"
           },
           "id": {
-            "type": [
-              "string",
-              "number"
-            ]
+            "type": ["string", "number"]
           },
           "result": {
             "type": "object"
           },
           "error": {
             "type": "object",
-            "required": [
-              "code",
-              "message"
-            ],
+            "required": ["code", "message"],
             "properties": {
               "code": {
                 "type": "integer"
@@ -1719,25 +2899,16 @@
       "McpError": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "code",
-              "message"
-            ],
+            "required": ["code", "message"],
             "properties": {
               "code": {
                 "type": "string",
-                "enum": [
-                  "UNAUTHORIZED",
-                  "RATE_LIMITED",
-                  "METHOD_NOT_ALLOWED"
-                ]
+                "enum": ["UNAUTHORIZED", "RATE_LIMITED", "METHOD_NOT_ALLOWED"]
               },
               "message": {
                 "type": "string"
@@ -1749,10 +2920,7 @@
       "MetricsError": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "error",
-          "message"
-        ],
+        "required": ["error", "message"],
         "properties": {
           "error": {
             "type": "string"
@@ -1765,10 +2933,7 @@
       "MetricsSuccess": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "code",
-          "localServerId"
-        ],
+        "required": ["code", "localServerId"],
         "properties": {
           "code": {
             "type": "string",
@@ -1842,12 +3007,7 @@
       "MetricsCpu": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "usagePercent",
-          "load1",
-          "load5",
-          "load15"
-        ],
+        "required": ["usagePercent", "load1", "load5", "load15"],
         "properties": {
           "usagePercent": {
             "type": "number",
@@ -1899,11 +3059,7 @@
       "MetricsFilesystem": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "mount",
-          "totalBytes",
-          "availableBytes"
-        ],
+        "required": ["mount", "totalBytes", "availableBytes"],
         "properties": {
           "mount": {
             "type": "string",
@@ -1921,10 +3077,7 @@
       },
       "DiscordEmbedField": {
         "type": "object",
-        "required": [
-          "name",
-          "value"
-        ],
+        "required": ["name", "value"],
         "properties": {
           "name": {
             "type": "string",
@@ -1941,9 +3094,7 @@
       },
       "DiscordEmbedFooter": {
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "properties": {
           "text": {
             "type": "string",
@@ -1961,9 +3112,7 @@
       },
       "DiscordEmbedAuthor": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string",
@@ -2076,11 +3225,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": [
-                "roles",
-                "users",
-                "everyone"
-              ]
+              "enum": ["roles", "users", "everyone"]
             }
           },
           "roles": {
@@ -2245,13 +3390,7 @@
       "DiscordMessage": {
         "type": "object",
         "description": "Discord message object. Fields Inspoter has no equivalent for are null or empty.",
-        "required": [
-          "id",
-          "type",
-          "channel_id",
-          "content",
-          "timestamp"
-        ],
+        "required": ["id", "type", "channel_id", "content", "timestamp"],
         "properties": {
           "id": {
             "type": "string",
@@ -2259,9 +3398,7 @@
           },
           "type": {
             "type": "integer",
-            "enum": [
-              0
-            ]
+            "enum": [0]
           },
           "channel_id": {
             "type": "string"
@@ -2335,21 +3472,14 @@
       },
       "DiscordWebhookObject": {
         "type": "object",
-        "required": [
-          "id",
-          "type",
-          "name",
-          "channel_id"
-        ],
+        "required": ["id", "type", "name", "channel_id"],
         "properties": {
           "id": {
             "type": "string"
           },
           "type": {
             "type": "integer",
-            "enum": [
-              1
-            ]
+            "enum": [1]
           },
           "name": {
             "type": "string"
@@ -2383,10 +3513,7 @@
       },
       "DiscordError": {
         "type": "object",
-        "required": [
-          "message",
-          "code"
-        ],
+        "required": ["message", "code"],
         "properties": {
           "message": {
             "type": "string"
@@ -2404,11 +3531,7 @@
       },
       "DiscordRateLimitError": {
         "type": "object",
-        "required": [
-          "message",
-          "retry_after",
-          "global"
-        ],
+        "required": ["message", "retry_after", "global"],
         "properties": {
           "message": {
             "type": "string"
@@ -2419,12 +3542,327 @@
           },
           "global": {
             "type": "boolean",
-            "enum": [
-              false
-            ]
+            "enum": [false]
           },
           "code": {
             "type": "integer"
+          }
+        }
+      },
+      "MessagesApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "VALIDATION_FAILED",
+                  "RATE_LIMITED"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "issues": {
+                "$ref": "#/components/schemas/ZodIssueArray"
+              }
+            }
+          }
+        }
+      },
+      "MessageCategory": {
+        "type": "object",
+        "required": ["id", "workspaceId", "name", "createdAt", "updatedAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MessageCategoryWithChannels": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MessageCategory"
+          },
+          {
+            "type": "object",
+            "required": ["channels"],
+            "properties": {
+              "channels": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Channel": {
+        "type": "object",
+        "required": [
+          "id",
+          "workspaceId",
+          "messageCategoryId",
+          "name",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "messageCategoryId": {
+            "type": "string"
+          },
+          "messageCategoryWorkspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChannelMessage": {
+        "type": "object",
+        "required": ["id", "channelId", "content", "origin", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "author": {
+            "type": ["string", "null"]
+          },
+          "origin": {
+            "type": "string",
+            "enum": ["LEGACY", "OPERATOR", "WEBHOOK", "AGENT"],
+            "description": "AGENT marks a message written by an API token, whether over this API or the MCP endpoint."
+          },
+          "embeds": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/DiscordEmbed"
+            }
+          },
+          "avatarUrl": {
+            "type": ["string", "null"]
+          },
+          "tts": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChannelMessagePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "nextCursor"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelMessage"
+            }
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "description": "Opaque cursor for the next page, or null when the last page was returned."
+          }
+        }
+      },
+      "ChannelMessageCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "ChannelWebhook": {
+        "type": "object",
+        "required": ["id", "channelId", "name", "tokenPrefix", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tokenPrefix": {
+            "type": "string",
+            "description": "First characters of the secret, for identification in the dashboard only."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ChannelWebhookCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["webhook", "url"],
+        "properties": {
+          "webhook": {
+            "$ref": "#/components/schemas/ChannelWebhook"
+          },
+          "url": {
+            "type": "string",
+            "format": "password",
+            "x-sensitive": true,
+            "description": "Relative ingest URL containing the webhook secret. Returned once, at creation, and never again."
+          }
+        }
+      },
+      "ChannelWebhookRevoked": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "revoked"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revoked": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "MessageCategoryNameInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "ChannelCreateInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["categoryId", "name"],
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "ChannelNameInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "ChannelMessageInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "author": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Display name for the message; defaults to the API token's name."
+          }
+        }
+      },
+      "ChannelWebhookCreateInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           }
         }
       }

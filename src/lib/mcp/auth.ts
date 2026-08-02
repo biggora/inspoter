@@ -10,6 +10,9 @@ import { parseScopes, type McpScope } from "@/lib/mcp/scopes";
 
 export interface McpTokenContext {
   tokenId: string;
+  // The operator-chosen token name, used to attribute what the token writes
+  // (message author, Activity journal entry).
+  tokenName: string;
   workspaceId: string;
   scopes: McpScope[];
 }
@@ -38,5 +41,10 @@ export async function authenticateApiToken(
     .update({ where: { id: token.id }, data: { lastUsedAt: new Date() } })
     .catch(() => {});
 
-  return { tokenId: token.id, workspaceId: token.workspaceId, scopes };
+  return {
+    tokenId: token.id,
+    tokenName: token.name,
+    workspaceId: token.workspaceId,
+    scopes,
+  };
 }

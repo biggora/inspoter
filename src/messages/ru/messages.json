@@ -29,6 +29,7 @@
   "unknownAuthor": "Неизвестно",
   "originOperator": "Оператор",
   "originWebhook": "Внешний источник",
+  "originAgent": "Агент",
   "originUnknown": "Источник не определён",
   "sidebarNavLabel": "Каналы сообщений",
   "channelsHeading": "Каналы",

@@ -20,26 +20,31 @@ describe("McpScopeFields", () => {
   it("names each domain group so its checkboxes are distinguishable", () => {
     renderWithIntl(<McpScopeFields value={[]} onChange={vi.fn()} />);
 
-    // Six domains share the plain "Поиск и чтение" label; the enclosing
+    // Every domain shares the plain "Поиск и чтение" label; the enclosing
     // fieldset legend is what tells them apart for assistive technology.
-    for (const label of [
+    const groups = [
       "Почта",
       "Алерты",
       "Закладки",
+      "Сообщения",
       "Серверы",
       "Сервисы",
       "Логи",
-    ]) {
+    ];
+    for (const label of groups) {
       expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
     }
     expect(
       screen.getAllByRole("checkbox", { name: "Поиск и чтение" }),
-    ).toHaveLength(6);
+    ).toHaveLength(groups.length);
     expect(
       screen.getByRole("checkbox", { name: "Черновики и отправка" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Создание" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Управление и отправка" }),
     ).toBeInTheDocument();
   });
 

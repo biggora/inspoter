@@ -9,6 +9,13 @@ import {
 } from "@/lib/validation/webhookTokens";
 import { validateMetricsPayload } from "@/lib/validation/server-metrics";
 import {
+  categoryNameSchema,
+  channelNameSchema,
+  createChannelSchema,
+  createWebhookSchema,
+  sendMessageSchema,
+} from "@/lib/validation/messagesApi";
+import {
   EMBED_TOTAL_LIMIT,
   exceedsEmbedBudget,
   executeWebhookSchema,
@@ -108,6 +115,24 @@ const discordResponseStatuses = [
   "500",
 ];
 const mcpResponseStatuses = ["200", "401", "405", "429", "500"];
+const messagesBase = "/api/v1/messages";
+// Pinned per path: the ingest and MCP surfaces are POST-only, the Discord
+// webhook is also readable, and the Messages management API is a REST family.
+const expectedMethods: Record<string, string[]> = {
+  [metricsPath]: ["post"],
+  [channelPath]: ["post"],
+  [typedPath]: ["post"],
+  [mcpPath]: ["post"],
+  [discordPath]: ["get", "post"],
+  [discordSlackPath]: ["post"],
+  [`${messagesBase}/categories`]: ["get", "post"],
+  [`${messagesBase}/categories/{categoryId}`]: ["patch"],
+  [`${messagesBase}/channels`]: ["post"],
+  [`${messagesBase}/channels/{channelId}`]: ["patch"],
+  [`${messagesBase}/channels/{channelId}/messages`]: ["get", "post"],
+  [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
+  [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
+};
 const metricsResponseStatuses = [
   "200",
   "201",
@@ -195,20 +220,11 @@ function forbiddenExampleEntries(
 describe("public OpenAPI contract", () => {
   it("contains exactly the expected public paths and methods", () => {
     expect(Object.keys(spec.paths).sort()).toEqual(
-      [
-        metricsPath,
-        channelPath,
-        typedPath,
-        mcpPath,
-        discordPath,
-        discordSlackPath,
-      ].sort(),
+      Object.keys(expectedMethods).sort(),
     );
     for (const [name, pathItem] of Object.entries(spec.paths)) {
-      // Only the Discord webhook itself is readable (Get Webhook with Token);
-      // every other public operation is POST-only.
       expect(Object.keys(pathItem).sort()).toEqual(
-        name === discordPath ? ["get", "post"] : ["post"],
+        [...expectedMethods[name]].sort(),
       );
     }
   });
@@ -237,9 +253,9 @@ describe("public OpenAPI contract", () => {
       const typeName = SUPPORTED_TYPES.find((type) => key.startsWith(type));
       expect(typeName).toBeDefined();
       const example = media?.examples?.[key]?.value;
-      expect(getWebhookSchema(typeName as string)?.safeParse(example).success).toBe(
-        true,
-      );
+      expect(
+        getWebhookSchema(typeName as string)?.safeParse(example).success,
+      ).toBe(true);
     }
   });
 
@@ -538,6 +554,82 @@ describe("public OpenAPI contract", () => {
         metrics.responses?.[status]?.headers?.["Retry-After"],
       ).toBeUndefined();
     }
+  });
+
+  it("keeps the Messages API request bodies aligned with runtime validation", () => {
+    const cases = [
+      [`${messagesBase}/categories`, "post", categoryNameSchema],
+      [`${messagesBase}/categories/{categoryId}`, "patch", categoryNameSchema],
+      [`${messagesBase}/channels`, "post", createChannelSchema],
+      [`${messagesBase}/channels/{channelId}`, "patch", channelNameSchema],
+      [
+        `${messagesBase}/channels/{channelId}/messages`,
+        "post",
+        sendMessageSchema,
+      ],
+      [
+        `${messagesBase}/channels/{channelId}/webhooks`,
+        "post",
+        createWebhookSchema,
+      ],
+    ] as const;
+
+    for (const [name, method, schema] of cases) {
+      const operation = spec.paths[name][method];
+      const media = operation.requestBody?.content?.["application/json"];
+      expect(operation.requestBody?.required).toBe(true);
+      // Every input schema is strict at runtime, so an unknown key must be
+      // documented as rejected rather than silently accepted.
+      expect(resolveRef(media?.schema ?? {}).additionalProperties).toBe(false);
+      expect(schema.safeParse(media?.example).success).toBe(true);
+      expect(
+        schema.safeParse({
+          ...(media?.example as Record<string, unknown>),
+          unexpected: true,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("authenticates every Messages API operation with the same envelope", () => {
+    const error = spec.components?.schemas?.MessagesApiError;
+    const operations = Object.entries(spec.paths)
+      .filter(([name]) => name.startsWith(messagesBase))
+      .flatMap(([, item]) => Object.values(item));
+    expect(operations).toHaveLength(10);
+
+    for (const operation of operations) {
+      expect(operation.security).toEqual([{ WebhookBearer: [] }]);
+      for (const status of ["401", "403", "429"]) {
+        expect(responseSchema(operation, status)).toBe(error);
+      }
+      expect(
+        operation.responses?.["401"]?.headers?.["WWW-Authenticate"],
+      ).toBeTruthy();
+      expect(
+        operation.responses?.["429"]?.headers?.["Retry-After"],
+      ).toBeTruthy();
+      expect(operation.responses?.["500"]?.content).toBeUndefined();
+    }
+  });
+
+  it("marks the issued channel webhook url as sensitive and example-free", () => {
+    const created = spec.components?.schemas?.ChannelWebhookCreated;
+    expect(created?.properties?.url).toMatchObject({
+      format: "password",
+      "x-sensitive": true,
+    });
+    expect(created?.properties?.url?.example).toBeUndefined();
+
+    // The list response never carries a secret at all — only the prefix.
+    const webhook = spec.components?.schemas?.ChannelWebhook;
+    expect(Object.keys(webhook?.properties ?? {})).not.toContain("url");
+  });
+
+  it("documents the agent origin a token-written message carries", () => {
+    expect(
+      spec.components?.schemas?.ChannelMessage?.properties?.origin?.enum,
+    ).toEqual(["LEGACY", "OPERATOR", "WEBHOOK", "AGENT"]);
   });
 
   it("uses bearer auth for the MCP endpoint", () => {

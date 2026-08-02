@@ -12,7 +12,7 @@ Inspoter — self-hosted панель для управления доменам
 - почтовые аккаунты IMAP/SMTP, сообщения и вложения;
 - каналы сообщений, входящие и исходящие webhook, совместимые с Discord;
 - закладки, логи и оповещения;
-- MCP-сервер для ИИ-ассистентов с правами на уровне API-токена;
+- MCP-сервер и REST API управления разделом «Сообщения» для ИИ-ассистентов, с правами на уровне API-токена;
 - рабочие пространства, участники и переключение между командами;
 - интерфейс на английском и русском языках;
 - вход по паролю или через Authentik OIDC.
@@ -241,7 +241,7 @@ Discord-URL — такой же секрет, как обычный: обрат�
 
 ## MCP (Model Context Protocol)
 
-`POST /api/mcp` — эндпоинт Model Context Protocol: ИИ-ассистент (Claude Code и Claude Desktop, Cursor, VS Code) получает доступ к почте, оповещениям, закладкам, серверам, сервисам и логам рабочего пространства. Транспорт — Streamable HTTP без сессий; авторизация — тот же универсальный API-токен, что и у webhook, через заголовок `Authorization: Bearer <токен>`.
+`POST /api/mcp` — эндпоинт Model Context Protocol: ИИ-ассистент (Claude Code и Claude Desktop, Cursor, VS Code) получает доступ к почте, оповещениям, закладкам, сообщениям, серверам, сервисам и логам рабочего пространства. Транспорт — Streamable HTTP без сессий; авторизация — тот же универсальный API-токен, что и у webhook, через заголовок `Authorization: Bearer <токен>`.
 
 ### Выдача токена
 
@@ -277,6 +277,8 @@ Discord-URL — такой же секрет, как обычный: обрат�
 | `alerts:write`    | `alerts_set_category`, `alert_category_create`                                           |
 | `bookmarks:read`  | `bookmarks_search`, `bookmarks_get`, `bookmark_categories_list`                          |
 | `bookmarks:write` | `bookmark_create`                                                                        |
+| `messages:read`   | `message_categories_list`, `messages_list`, `channel_webhooks_list`                      |
+| `messages:write`  | `message_category_create`, `message_category_rename`, `message_channel_create`, `message_channel_rename`, `message_send`, `channel_webhook_create`, `channel_webhook_revoke` |
 | `servers:read`    | `servers_list`, `server_get`                                                             |
 | `services:read`   | `services_list`, `service_get`, `service_checks`                                         |
 | `logs:read`       | `logs_search`                                                                            |
@@ -287,7 +289,44 @@ Discord-URL — такой же секрет, как обычный: обрат�
 
 Показатели серверов (CPU, load, память, swap, диск, uptime) приходят прямо в ответе `servers_list` и `server_get` в поле `metrics`; история проверок сервисов — в `service_checks`.
 
+Раздел «Сообщения»: `message_categories_list` возвращает дерево категорий с каналами, `message_category_create` и `message_channel_create` работают по принципу get-or-create (совпадение имени без учёта регистра, поэтому повторный запуск того же сценария ничего не дублирует), `message_send` пишет в канал. Удаления категорий и каналов у агента нет — оно уносит всю переписку и остаётся действием оператора в интерфейсе. Право `messages:write` включает и управление вебхуками канала: `channel_webhook_create` возвращает URL с секретом один раз, `channel_webhook_revoke` его отзывает.
+
 Rate limit общий с webhook-эндпоинтами и настраивается через `WEBHOOK_RATE_LIMIT` и `WEBHOOK_RATE_WINDOW_MS`. `GET` и `DELETE` на `/api/mcp` отвечают `405`: сессии протокола не поддерживаются.
+
+## API управления разделом «Сообщения»
+
+`/api/v1/messages/**` — то же самое, что даёт MCP, но обычным REST: для клиентов и скриптов без поддержки MCP. Авторизация — тот же bearer-токен и те же права `messages:read` / `messages:write`; рабочее пространство берётся из токена, сессионная cookie и заголовок `X-Inspoter-Workspace` не участвуют. Полная схема — в **Настройки → Документация API** (`/settings/api-docs`).
+
+| Метод и путь                                                       | Право            | Действие                                                       |
+| ------------------------------------------------------------------ | ---------------- | -------------------------------------------------------------- |
+| `GET /api/v1/messages/categories`                                   | `messages:read`  | категории с каналами                                            |
+| `POST /api/v1/messages/categories`                                  | `messages:write` | get-or-create категории: `201` — создана, `200` — уже была      |
+| `PATCH /api/v1/messages/categories/{categoryId}`                    | `messages:write` | переименование категории                                        |
+| `POST /api/v1/messages/channels`                                    | `messages:write` | get-or-create канала в категории                                |
+| `PATCH /api/v1/messages/channels/{channelId}`                       | `messages:write` | переименование канала                                           |
+| `GET /api/v1/messages/channels/{channelId}/messages`                | `messages:read`  | лента канала с курсорной пагинацией                             |
+| `POST /api/v1/messages/channels/{channelId}/messages`               | `messages:write` | отправка сообщения                                              |
+| `GET /api/v1/messages/channels/{channelId}/webhooks`                | `messages:read`  | вебхуки канала без секретов                                     |
+| `POST /api/v1/messages/channels/{channelId}/webhooks`               | `messages:write` | новый вебхук канала; URL с секретом отдаётся один раз           |
+| `DELETE /api/v1/messages/channels/{channelId}/webhooks/{webhookId}` | `messages:write` | отзыв вебхука                                                   |
+
+```bash
+curl -X POST https://dashboard.example.com/api/v1/messages/categories \
+  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
+  -d '{"name":"Deployments"}'
+
+curl -X POST https://dashboard.example.com/api/v1/messages/channels \
+  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
+  -d '{"categoryId":"<id категории>","name":"releases"}'
+
+curl -X POST https://dashboard.example.com/api/v1/messages/channels/<id канала>/messages \
+  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
+  -d '{"content":"Деплой завершён на web-01."}'
+```
+
+Ошибки приходят в виде `{ "error": { "code", "message" } }`: `401` — токена нет либо он отозван, канальный или без прав MCP; `403` — не хватает нужного права; `404` — объекта нет в рабочем пространстве токена; `400` (`VALIDATION_FAILED`) — тело не прошло проверку, поле `issues` указывает на конкретное поле; `429` — превышен общий с webhook rate limit.
+
+Сообщения, отправленные по токену (и через REST, и через MCP), сохраняются с признаком `AGENT` и в ленте помечаются как «Агент»; автором становится имя токена, если явный `author` не передан. Изменения, сделанные REST-маршрутами, попадают в журнал действий под именем токена — MCP-инструменты в журнал не пишут, как и остальные существующие инструменты.
 
 ## Метрики серверов (VPS Metrics Agent)
 

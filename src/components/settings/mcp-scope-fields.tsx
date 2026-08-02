@@ -45,6 +45,14 @@ const SCOPE_GROUPS: ReadonlyArray<{
     ],
   },
   {
+    key: "messages",
+    labelKey: "scopeGroupMessages",
+    scopes: [
+      { scope: "messages:read", accessKey: "scopeAccessRead" },
+      { scope: "messages:write", accessKey: "scopeAccessManage" },
+    ],
+  },
+  {
     key: "servers",
     labelKey: "scopeGroupServers",
     scopes: [{ scope: "servers:read", accessKey: "scopeAccessRead" }],

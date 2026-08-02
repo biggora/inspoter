@@ -24,7 +24,8 @@ import { routing } from "@/i18n/routing";
 // itself (AC-AUTH-001 exception, NFR-SEC-001, C-2), as do
 // /api/auth/authentik/:path* (Authentik login-initiation/callback — reached
 // before any session cookie exists), /api/webhooks/:path*,
-// /api/discord/webhooks/:path*, /api/server-metrics and /api/mcp. The last four
+// /api/discord/webhooks/:path*, /api/server-metrics, /api/mcp and
+// /api/v1/:path* (the token-authenticated agent API). The last five
 // authenticate with an API token (bearer header or tokenized path) and never
 // carry a session cookie, so without the exemption they
 // would be redirected to /login instead of reaching their handler. Renamed from
@@ -73,6 +74,7 @@ export function proxy(request: NextRequest) {
     localizedPathname === "/login" ||
     pathname === "/api/server-metrics" ||
     pathname === "/api/mcp" ||
+    pathname.startsWith("/api/v1/") ||
     pathname.startsWith("/api/auth/authentik") ||
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/discord/webhooks");

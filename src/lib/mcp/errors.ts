@@ -20,6 +20,8 @@ import {
   AlertNotFoundError,
 } from "@/lib/services/alerts";
 import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
+import { ChannelNotFoundError } from "@/lib/services/messages";
+import { ChannelWebhookNotFoundError } from "@/lib/services/webhookTokens";
 import { logError } from "@/lib/services/logs";
 
 // Domain errors a tool call can legitimately hit (bad id, wrong account kind,
@@ -54,6 +56,8 @@ const EXPECTED_ERRORS = [
   CategoryHierarchyValidationError,
   AlertNotFoundError,
   AlertCategoryNotFoundError,
+  ChannelNotFoundError,
+  ChannelWebhookNotFoundError,
 ] as const;
 
 const STACK_TRUNCATE_LENGTH = 1000;

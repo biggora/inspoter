@@ -15,6 +15,8 @@ import { toToolError } from "@/lib/mcp/errors";
 export interface McpToolContext {
   workspaceId: string;
   scopes: readonly McpScope[];
+  /** Presenting token's name — what a tool writes as the author of its work. */
+  tokenName: string;
 }
 
 export interface McpToolDefinition {

@@ -109,6 +109,8 @@ let channelToken: string;
 let otherWorkspaceToken: string;
 let categoryId: string;
 let serviceId: string;
+let messageCategoryId: string;
+let channelId: string;
 
 beforeAll(async () => {
   const [workspace, otherWorkspace] = await Promise.all([
@@ -153,6 +155,7 @@ beforeAll(async () => {
   const messageCategory = await db.messageCategory.create({
     data: { workspaceId, name: `mcp-cat-${randomUUID()}` },
   });
+  messageCategoryId = messageCategory.id;
   const channel = await db.channel.create({
     data: {
       workspaceId,
@@ -161,6 +164,7 @@ beforeAll(async () => {
       name: `mcp-channel-${randomUUID()}`,
     },
   });
+  channelId = channel.id;
   channelToken = (
     await webhookTokensService.createForChannel(
       channel.id,
@@ -461,6 +465,146 @@ describe("write tools", () => {
       arguments: { id: "whatever", categoryId: null },
     });
     expect(body.error ?? body.result?.isError).toBeTruthy();
+  });
+});
+
+// The Messages tools are the agent's own workspace: it lays out categories and
+// channels, wires a webhook, and posts — all under one write scope.
+describe("messages tools", () => {
+  it("lists categories with their channels", async () => {
+    const { payload } = await callTool(fullToken, "message_categories_list");
+    const categories = payload as Array<{
+      id: string;
+      channels: Array<{ id: string }>;
+    }>;
+
+    const seeded = categories.find((entry) => entry.id === messageCategoryId);
+    expect(seeded?.channels.map((channel) => channel.id)).toContain(channelId);
+  });
+
+  it("creates a category once and returns the same row on a repeat call", async () => {
+    const first = await callTool(fullToken, "message_category_create", {
+      name: "Deployments",
+    });
+    const second = await callTool(fullToken, "message_category_create", {
+      // Matching is case-insensitive, so this must not create a second row.
+      name: "deployments",
+    });
+
+    expect(first.payload).toMatchObject({ created: true });
+    expect(second.payload).toMatchObject({
+      created: false,
+      id: (first.payload as { id: string }).id,
+    });
+  });
+
+  it("creates and renames a channel inside a category", async () => {
+    const created = await callTool(fullToken, "message_channel_create", {
+      categoryId: messageCategoryId,
+      name: "releases",
+    });
+    const id = (created.payload as { id: string }).id;
+
+    const renamed = await callTool(fullToken, "message_channel_rename", {
+      id,
+      name: "releases-prod",
+    });
+
+    expect(renamed.payload).toMatchObject({ id, name: "releases-prod" });
+  });
+
+  it("refuses to create a channel in another workspace's category", async () => {
+    const result = await callTool(
+      otherWorkspaceToken,
+      "message_channel_create",
+      { categoryId: messageCategoryId, name: "cross-tenant" },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(await db.channel.count({ where: { name: "cross-tenant" } })).toBe(0);
+  });
+
+  it("posts a message stamped as agent-written and reads it back", async () => {
+    const sent = await callTool(fullToken, "message_send", {
+      channelId,
+      content: "Deploy finished on web-01.",
+    });
+    const id = (sent.payload as { id: string }).id;
+
+    const stored = await db.message.findUnique({ where: { id } });
+    expect(stored?.origin).toBe("AGENT");
+    // No explicit author, so the token's name identifies the writer.
+    expect(stored?.author).toBe("full");
+
+    const listed = await callTool(fullToken, "messages_list", { channelId });
+    const items = (listed.payload as { items: Array<{ id: string }> }).items;
+    expect(items.map((item) => item.id)).toContain(id);
+  });
+
+  it("refuses to post into another workspace's channel", async () => {
+    const result = await callTool(otherWorkspaceToken, "message_send", {
+      channelId,
+      content: "cross-tenant message",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(
+      await db.message.count({ where: { content: "cross-tenant message" } }),
+    ).toBe(0);
+  });
+
+  it("issues a channel webhook once and revokes it", async () => {
+    const created = await callTool(fullToken, "channel_webhook_create", {
+      channelId,
+      name: "CI pipeline",
+    });
+    const { webhook, url } = created.payload as {
+      webhook: { id: string; tokenPrefix: string };
+      url: string;
+    };
+
+    expect(url).toContain(`/api/webhooks/channels/${webhook.id}/`);
+    // The secret rides in the url only — the webhook object carries a prefix.
+    expect(url).not.toBe(webhook.tokenPrefix);
+
+    const listed = await callTool(fullToken, "channel_webhooks_list", {
+      channelId,
+    });
+    expect(
+      (listed.payload as Array<{ id: string }>).map((entry) => entry.id),
+    ).toContain(webhook.id);
+
+    await callTool(fullToken, "channel_webhook_revoke", {
+      channelId,
+      webhookId: webhook.id,
+    });
+    const stored = await db.webhookToken.findUnique({
+      where: { id: webhook.id },
+    });
+    expect(stored?.revokedAt).not.toBeNull();
+  });
+
+  it("denies the write tools to a read-only messages token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "messages-ro", [
+        "messages:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "channel_webhooks_list",
+      "message_categories_list",
+      "messages_list",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "message_send",
+      arguments: { channelId, content: "should not be stored" },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(
+      await db.message.count({ where: { content: "should not be stored" } }),
+    ).toBe(0);
   });
 });
 

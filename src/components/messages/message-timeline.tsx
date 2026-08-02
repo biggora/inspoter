@@ -93,6 +93,7 @@ function originLabel(
 ): string {
   if (origin === "OPERATOR") return t("originOperator");
   if (origin === "WEBHOOK") return t("originWebhook");
+  if (origin === "AGENT") return t("originAgent");
   return t("originUnknown");
 }
 

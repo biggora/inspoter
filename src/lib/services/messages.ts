@@ -66,11 +66,48 @@ export async function listCategories(
   });
 }
 
+// Ownership lookups for callers that must answer 404 before touching a
+// category or channel. Both are workspace-scoped by their compound unique
+// key, so a foreign id is indistinguishable from a missing one.
+export async function getCategoryForWorkspace(
+  workspaceId: string,
+  categoryId: string,
+): Promise<MessageCategory | null> {
+  return db.messageCategory.findUnique({
+    where: { id: categoryId, workspaceId },
+  });
+}
+
+export async function getChannelForWorkspace(
+  workspaceId: string,
+  channelId: string,
+): Promise<Channel | null> {
+  return db.channel.findUnique({ where: { id: channelId, workspaceId } });
+}
+
 export async function createCategory(
   workspaceId: string,
   name: string,
 ): Promise<MessageCategory> {
   return db.messageCategory.create({ data: { name, workspaceId } });
+}
+
+// Idempotent variant for API callers (MCP tools and /api/v1/messages/**): an
+// agent re-running the same setup must not end up with three "Incidents"
+// categories. Unlike alertsService.upsertCategoryByName there is no
+// normalizedName column to upsert on, so the match is a case-insensitive
+// lookup followed by a create — a concurrent duplicate is possible in theory
+// and harmless in practice.
+export async function findOrCreateCategoryByName(
+  workspaceId: string,
+  name: string,
+): Promise<{ category: MessageCategory; created: boolean }> {
+  const existing = await db.messageCategory.findFirst({
+    where: { workspaceId, name: { equals: name, mode: "insensitive" } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (existing) return { category: existing, created: false };
+  return { category: await createCategory(workspaceId, name), created: true };
 }
 
 export async function renameCategory(
@@ -104,6 +141,28 @@ export async function createChannel(
       messageCategoryWorkspaceId: workspaceId,
     },
   });
+}
+
+// Idempotent channel creation within one category — the get-or-create half of
+// findOrCreateCategoryByName, with the same rationale.
+export async function findOrCreateChannelByName(
+  workspaceId: string,
+  categoryId: string,
+  name: string,
+): Promise<{ channel: Channel; created: boolean }> {
+  const existing = await db.channel.findFirst({
+    where: {
+      workspaceId,
+      messageCategoryId: categoryId,
+      name: { equals: name, mode: "insensitive" },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  if (existing) return { channel: existing, created: false };
+  return {
+    channel: await createChannel(workspaceId, categoryId, name),
+    created: true,
+  };
 }
 
 export async function renameChannel(

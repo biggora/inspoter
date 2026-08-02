@@ -29,6 +29,7 @@
   "unknownAuthor": "Unknown",
   "originOperator": "Operator",
   "originWebhook": "External source",
+  "originAgent": "Agent",
   "originUnknown": "Source unknown",
   "sidebarNavLabel": "Message channels",
   "channelsHeading": "Channels",

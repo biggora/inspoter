@@ -93,14 +93,26 @@ try {
 }
 
 const discordPath = "/api/discord/webhooks/{webhookId}/{token}";
-const expectedPaths = [
-  discordPath,
-  `${discordPath}/slack`,
-  "/api/mcp",
-  "/api/server-metrics",
-  "/api/webhooks/channels/{webhookId}/{token}",
-  "/api/webhooks/{type}",
-];
+const messagesBase = "/api/v1/messages";
+// The ingest and MCP surfaces are POST-only; the Discord webhook is also
+// readable (Get Webhook with Token), and the Messages management API is a
+// regular REST family, so the allowed methods are pinned per path.
+const expectedMethods = {
+  [discordPath]: ["get", "post"],
+  [`${discordPath}/slack`]: ["post"],
+  "/api/mcp": ["post"],
+  "/api/server-metrics": ["post"],
+  "/api/webhooks/channels/{webhookId}/{token}": ["post"],
+  "/api/webhooks/{type}": ["post"],
+  [`${messagesBase}/categories`]: ["get", "post"],
+  [`${messagesBase}/categories/{categoryId}`]: ["patch"],
+  [`${messagesBase}/channels`]: ["post"],
+  [`${messagesBase}/channels/{channelId}`]: ["patch"],
+  [`${messagesBase}/channels/{channelId}/messages`]: ["get", "post"],
+  [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
+  [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
+};
+const expectedPaths = Object.keys(expectedMethods).sort();
 const actualPaths = Object.keys(spec.paths ?? {}).sort();
 check(
   sameJson(actualPaths, expectedPaths),
@@ -117,9 +129,7 @@ check(
 
 for (const publicPath of expectedPaths) {
   const methods = Object.keys(spec.paths?.[publicPath] ?? {}).sort();
-  // Only the Discord webhook is readable (Get Webhook with Token); every other
-  // public operation is POST-only.
-  const allowed = publicPath === discordPath ? ["get", "post"] : ["post"];
+  const allowed = [...expectedMethods[publicPath]].sort();
   check(
     sameJson(methods, allowed),
     `${publicPath} must contain only ${allowed.join(" and ")}; found ${methods.join(", ") || "none"}`,
@@ -132,20 +142,81 @@ const channelPath = "/api/webhooks/channels/{webhookId}/{token}";
 const metrics = spec.paths?.[metricsPath]?.post;
 const typed = spec.paths?.[typedPath]?.post;
 const channel = spec.paths?.[channelPath]?.post;
-const operations = [metrics, typed, channel].filter(Boolean);
-const operationIds = operations.map((operation) => operation.operationId);
+const allOperations = Object.entries(spec.paths ?? {}).flatMap(
+  ([publicPath, item]) =>
+    Object.entries(item).map(([method, operation]) => ({
+      label: `${method.toUpperCase()} ${publicPath}`,
+      publicPath,
+      operation,
+    })),
+);
+const operationIds = allOperations.map(
+  ({ operation }) => operation.operationId,
+);
 check(
-  operationIds.length === 3 &&
-    operationIds.every(
-      (operationId) =>
-        typeof operationId === "string" && operationId.trim().length > 0,
-    ),
-  "all POST operations must have non-empty operationId values",
+  operationIds.every(
+    (operationId) =>
+      typeof operationId === "string" && operationId.trim().length > 0,
+  ),
+  "all operations must have non-empty operationId values",
 );
 check(
   new Set(operationIds).size === operationIds.length,
-  "POST operationId values must be unique",
+  "operationId values must be unique",
 );
+
+// The Messages management API is one uniform family: every operation is bearer
+// authenticated, answers the same auth/limit statuses, and never leaks a
+// response body on 500.
+const messagesApiError = spec.components?.schemas?.MessagesApiError;
+check(
+  messagesApiError?.type === "object" &&
+    sameJson(messagesApiError?.required, ["error"]) &&
+    messagesApiError?.properties?.error?.type === "object" &&
+    sameJson(messagesApiError.properties.error.required, ["code", "message"]),
+  "components.schemas.MessagesApiError must be a nested error envelope requiring string code and message",
+);
+for (const { label, publicPath, operation } of allOperations) {
+  if (!publicPath.startsWith(messagesBase)) continue;
+  check(
+    sameJson(operation.security, [{ WebhookBearer: [] }]),
+    `${label} security must be exactly [{"WebhookBearer":[]}]`,
+  );
+  for (const status of ["401", "403", "429"]) {
+    check(
+      jsonResponseSchema(operation.responses?.[status]) === messagesApiError,
+      `${label} response ${status} must resolve to components.schemas.MessagesApiError`,
+    );
+  }
+  check(
+    Boolean(operation.responses?.["401"]?.headers?.["WWW-Authenticate"]),
+    `${label} response 401 must define WWW-Authenticate`,
+  );
+  check(
+    Boolean(operation.responses?.["429"]?.headers?.["Retry-After"]),
+    `${label} response 429 must define Retry-After`,
+  );
+  for (const [status, response] of Object.entries(operation.responses ?? {})) {
+    if (status === "500") {
+      check(
+        typeof response.description === "string" &&
+          response.description.trim().length > 0 &&
+          response.content === undefined &&
+          response.headers === undefined,
+        `${label} response 500 must have a description, no content, and no headers`,
+      );
+      continue;
+    }
+    check(
+      Boolean(response.headers?.["Cache-Control"]),
+      `${label} response ${status} must define Cache-Control`,
+    );
+    check(
+      status === "429" || response.headers?.["Retry-After"] === undefined,
+      `${label} response ${status} must not define Retry-After`,
+    );
+  }
+}
 
 const routeSources = [
   [metricsPath, "src/app/api/server-metrics/route.ts"],

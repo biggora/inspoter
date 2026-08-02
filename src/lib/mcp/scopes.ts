@@ -10,6 +10,11 @@ export const MCP_SCOPES = [
   "alerts:write",
   "bookmarks:read",
   "bookmarks:write",
+  "messages:read",
+  // Covers channel webhook management too: issuing a channel webhook hands the
+  // caller a secret URL, which is the same class of irreversible action as
+  // mail:write's send, so it stays inside the single write scope.
+  "messages:write",
   "servers:read",
   "services:read",
   "logs:read",

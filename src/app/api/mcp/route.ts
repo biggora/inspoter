@@ -57,7 +57,11 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const handler = createMcpHandler(() =>
-    buildMcpServer({ workspaceId: token.workspaceId, scopes: token.scopes }),
+    buildMcpServer({
+      workspaceId: token.workspaceId,
+      scopes: token.scopes,
+      tokenName: token.tokenName,
+    }),
   );
 
   try {

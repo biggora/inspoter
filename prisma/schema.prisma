@@ -267,6 +267,7 @@ enum MessageOrigin {
   LEGACY
   OPERATOR
   WEBHOOK
+  AGENT // written by an API token over /api/mcp or /api/v1/messages/**
 }
 
 model Message {
