@@ -92,6 +92,7 @@
   "subjectLabel": "Subject",
   "noSubjectLabel": "(No subject)",
   "bodyLabel": "Message body",
+  "emptyBodyLabel": "This message has no text content.",
   "sendingLabel": "Sending…",
   "sendButton": "Send",
   "replyDialogTitle": "Reply",

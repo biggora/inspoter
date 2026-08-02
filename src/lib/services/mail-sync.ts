@@ -142,6 +142,7 @@ async function reconcileFlags(
       isRead: true,
       isAnswered: true,
       isFlagged: true,
+      hasAttachments: true,
     },
   });
 
@@ -157,6 +158,29 @@ async function reconcileFlags(
       if (!flags) {
         deletedIds.push(item.id);
         continue;
+      }
+      if (!item.hasAttachments && flags.attachments.length > 0) {
+        await db.$transaction(async (tx) => {
+          await tx.mailAttachment.createMany({
+            data: flags.attachments.map((attachment) => ({
+              mailItemId: item.id,
+              partId: attachment.partId,
+              filename: attachment.filename,
+              contentType: attachment.contentType,
+              sizeBytes: attachment.sizeBytes,
+              contentId: attachment.contentId,
+              isInline: attachment.isInline,
+            })),
+          });
+          await tx.mailItem.updateMany({
+            where: {
+              id: item.id,
+              workspaceId: account.workspaceId,
+              hasAttachments: false,
+            },
+            data: { hasAttachments: true },
+          });
+        });
       }
       if (
         flags.isRead !== item.isRead ||

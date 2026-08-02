@@ -61,6 +61,14 @@ export function MailBody({ bodyText, bodyHtml }: MailBodyProps) {
     );
   }
 
+  if (!bodyText.trim()) {
+    return (
+      <p className="text-sm text-foreground-400" role="status">
+        {t("emptyBodyLabel")}
+      </p>
+    );
+  }
+
   return (
     <pre
       className="font-sans text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800"
