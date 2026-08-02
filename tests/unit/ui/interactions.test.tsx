@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   listChannelWebhooks: vi.fn(),
   createChannelWebhook: vi.fn(),
   revokeChannelWebhook: vi.fn(),
+  markChannelRead: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -56,6 +57,7 @@ vi.mock("@/components/messages/api", () => {
   return {
     ApiError,
     fetchMessages: mocks.fetchMessages,
+    markChannelRead: mocks.markChannelRead,
     sendMessage: mocks.sendMessage,
     messageCategoriesApi: {
       list: mocks.listCategories,
@@ -81,6 +83,7 @@ describe("standardized UI interactions", () => {
     vi.clearAllMocks();
     mocks.isMobile.mockReturnValue(false);
     mocks.listChannelWebhooks.mockResolvedValue([]);
+    mocks.markChannelRead.mockResolvedValue({ updated: 0 });
   });
 
   it("keeps ColorPicker controlled, arrow-navigable, and looping", async () => {

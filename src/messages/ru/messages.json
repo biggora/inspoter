@@ -32,6 +32,7 @@
   "originUnknown": "Источник не определён",
   "sidebarNavLabel": "Каналы сообщений",
   "channelsHeading": "Каналы",
+  "channelUnreadAriaLabel": "{count, plural, one {# новое сообщение} few {# новых сообщения} many {# новых сообщений} other {# новых сообщения}}",
   "noCategoriesSidebarText": "Категорий пока нет.",
   "newChannelInCategoryLabel": "Новый канал в «{name}»",
   "renameCategoryLabel": "Переименовать «{name}»",

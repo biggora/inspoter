@@ -11,6 +11,11 @@ import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 export type CategoryWithChannels = MessageCategory & { channels: Channel[] };
 
+export type ChannelWithUnread = Channel & { unreadCount: number };
+export type CategoryWithUnread = MessageCategory & {
+  channels: ChannelWithUnread[];
+};
+
 export interface ListMessagesParams {
   cursor?: string;
   pageSize?: number;
@@ -64,6 +69,50 @@ export async function listCategories(
     include: { channels: { orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });
+}
+
+// Same list, plus the per-channel unread count the sidebar badges. Kept
+// separate from listCategories() because the other four callers only need the
+// tree to authorize a channel id and should not pay for the aggregate.
+// The groupBy + Map join mirrors listFoldersForAccount() in mail-accounts.ts.
+export async function listCategoriesWithUnread(
+  workspaceId: string,
+): Promise<CategoryWithUnread[]> {
+  const [categories, unreadCounts] = await Promise.all([
+    listCategories(workspaceId),
+    db.message.groupBy({
+      by: ["channelId"],
+      where: { workspaceId, isRead: false },
+      _count: true,
+    }),
+  ]);
+  const unreadByChannel = new Map(
+    unreadCounts.map((row) => [row.channelId, row._count]),
+  );
+
+  return categories.map((category) => ({
+    ...category,
+    channels: category.channels.map((channel) => ({
+      ...channel,
+      unreadCount: unreadByChannel.get(channel.id) ?? 0,
+    })),
+  }));
+}
+
+/**
+ * Clears one channel's unread messages. Called when the channel is opened —
+ * per channel rather than per section, so opening channel A does not silently
+ * mark channels B..E as seen.
+ */
+export async function markChannelRead(
+  workspaceId: string,
+  channelId: string,
+): Promise<{ updated: number }> {
+  const result = await db.message.updateMany({
+    where: { workspaceId, channelId, isRead: false },
+    data: { isRead: true },
+  });
+  return { updated: result.count };
 }
 
 export async function createCategory(

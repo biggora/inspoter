@@ -32,6 +32,7 @@
   "originUnknown": "Source unknown",
   "sidebarNavLabel": "Message channels",
   "channelsHeading": "Channels",
+  "channelUnreadAriaLabel": "{count, plural, one {# new message} other {# new messages}}",
   "noCategoriesSidebarText": "No categories yet.",
   "newChannelInCategoryLabel": "New channel in \"{name}\"",
   "renameCategoryLabel": "Rename \"{name}\"",

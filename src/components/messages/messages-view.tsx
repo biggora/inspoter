@@ -16,8 +16,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { notifyUnreadCountsStale } from "@/components/shell/notifications-api";
 import {
   fetchMessages,
+  markChannelRead,
   messageCategoriesApi,
   sendMessage,
   type ChannelDto,
@@ -115,6 +117,19 @@ function MessagesCoordinator() {
     void loadCategories();
   }, [loadCategories]);
 
+  // Drops one channel's badge without refetching the whole tree — the server
+  // already agreed the rows are read by the time this runs.
+  const clearChannelUnread = useCallback((channelId: string) => {
+    setCategories((current) =>
+      current.map((category) => ({
+        ...category,
+        channels: category.channels.map((channel) =>
+          channel.id === channelId ? { ...channel, unreadCount: 0 } : channel,
+        ),
+      })),
+    );
+  }, []);
+
   useEffect(() => {
     if (!selectedChannelId) {
       return;
@@ -145,10 +160,26 @@ function MessagesCoordinator() {
     }
 
     void loadLatest();
+
+    // Opening the channel is what marks it read — per channel, so the other
+    // channels keep their badges. Runs independently of loadLatest: the
+    // operator is on this channel whether or not the timeline request
+    // succeeded. A repeat visit updates zero rows and stays silent.
+    markChannelRead(channelId)
+      .then(({ updated }) => {
+        if (cancelled || updated === 0) return;
+        clearChannelUnread(channelId);
+        notifyUnreadCountsStale();
+      })
+      .catch(() => {
+        // Same reasoning as the alerts section: a missed mark-read only means
+        // the badge lingers, which is not worth interrupting the operator.
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [selectedChannelId, messagesReloadToken, t]);
+  }, [selectedChannelId, messagesReloadToken, clearChannelUnread, t]);
 
   function toggleCategory(categoryId: string) {
     setCollapsedCategories((current) => {
