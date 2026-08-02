@@ -46,7 +46,12 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   const name = renameForm.getByLabel("Название рабочего пространства", {
     exact: true,
   });
-  await name.focus();
+  // Click (rather than `.focus()`) to commit focus reliably after the
+  // selectTheme reload: on CI's headless Chromium, React hydration of the
+  // client components plus the browser's post-reload focus restoration can
+  // race with `.focus()` and leave the input unfocused. A user-style click
+  // wins that race consistently. See ui-visual.spec.ts:25.
+  await name.click();
   await expect(name).toBeFocused();
   const focusStyle = await name.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -79,7 +84,7 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   const darkName = page.getByLabel("Название рабочего пространства", {
     exact: true,
   });
-  await darkName.focus();
+  await darkName.click();
   await expect(darkName).toBeFocused();
   await expectNoHorizontalOverflow(page);
   await testInfo.attach(`${testInfo.project.name}-dark-reduced`, {
