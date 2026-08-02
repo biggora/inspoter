@@ -287,9 +287,15 @@ model Message {
   avatarUrl          String? // payload `avatar_url`, shown next to the author
   tts                Boolean       @default(false) // stored, never spoken
   flags              Int           @default(0) // Discord message flags bitfield
+  // Workspace-wide, not per-operator — same semantics as MailItem.isRead:
+  // whoever opens the channel clears it for the whole workspace. Feeds the
+  // topbar indicator and the per-channel badge in the channel sidebar.
+  isRead             Boolean       @default(false)
   createdAt          DateTime      @default(now())
 
   @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
+  @@index([workspaceId, isRead]) // topbar unread count
+  @@index([workspaceId, channelId, isRead]) // per-channel unread badges + mark-channel-read
 }
 
 // --- Mail (FR-MAIL-001..002; multi-account mail client) ---
@@ -727,9 +733,13 @@ model Alert {
   severity                 String
   source                   String
   message                  String
+  // Workspace-wide, not per-operator — same semantics as MailItem.isRead.
+  // Opening the Alerts section clears every unread row at once.
+  isRead                   Boolean        @default(false)
   timestamp                DateTime       @default(now())
   createdAt                DateTime       @default(now())
 
+  @@index([workspaceId, isRead]) // topbar unread count + mark-all-read
   @@index([workspaceId, timestamp, id]) // sort + keyset pagination (AC-ALR-005/006)
   @@index([workspaceId, alertCategoryId, timestamp, id]) // filter by category (AC-ALR-004)
   @@index([workspaceId, severity, timestamp, id]) // filter by severity (AC-ALR-004)

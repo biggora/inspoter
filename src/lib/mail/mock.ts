@@ -228,6 +228,7 @@ export class MockMailDriver implements MailDriver {
         isRead: message.isRead,
         isAnswered: message.isAnswered,
         isFlagged: message.isFlagged,
+        attachments: [...message.attachments],
       });
     }
     return result;

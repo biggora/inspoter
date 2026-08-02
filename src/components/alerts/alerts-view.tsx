@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Pagination } from "@/components/shell/pagination";
+import { notifyUnreadCountsStale } from "@/components/shell/notifications-api";
 import {
   Select,
   SelectContent,
@@ -135,6 +136,17 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
 
   useEffect(() => {
     loadCategories();
+  }, []);
+
+  // Reaching this section is the acknowledgement: the operator is looking at
+  // the list, so the topbar indicator has nothing left to report. Fire and
+  // forget — a failed call only means the badge clears a minute later, which
+  // is not worth a toast.
+  useEffect(() => {
+    alertsApi
+      .markAllRead()
+      .then(notifyUnreadCountsStale)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

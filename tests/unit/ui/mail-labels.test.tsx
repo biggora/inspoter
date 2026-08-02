@@ -763,6 +763,36 @@ describe("Mail label chips", () => {
     expect(sortControl).not.toHaveTextContent("▼");
   });
 
+  it("shows an accessible attachment marker in the message list", () => {
+    renderWithIntl(
+      <MessageList
+        items={[{ ...ITEM, hasAttachments: true }]}
+        loading={false}
+        error={null}
+        onRetry={vi.fn()}
+        selectedMessageId={null}
+        onSelectMessage={vi.fn()}
+        searchInput=""
+        onSearchChange={vi.fn()}
+        unreadOnly={false}
+        onUnreadOnlyChange={vi.fn()}
+        sort="desc"
+        onSortChange={vi.fn()}
+        page={1}
+        hasPrevious={false}
+        hasNext={false}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        hasActiveFilters={false}
+        isWebhookAccount
+        onOpenSidebar={vi.fn()}
+      />,
+    );
+
+    const row = screen.getByRole("button", { name: /Deployment complete/ });
+    expect(row).toContainElement(screen.getByLabelText("Есть вложения"));
+  });
+
   it("filters from the sidebar and resets only through All labels", async () => {
     const user = userEvent.setup();
     const onSelectLabel = vi.fn();

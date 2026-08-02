@@ -1,19 +1,15 @@
 import { ImapFlow } from "imapflow";
-import type {
-  FetchMessageObject,
-  MessageAddressObject,
-  MessageStructureObject,
-} from "imapflow";
+import type { FetchMessageObject, MessageAddressObject } from "imapflow";
 import { simpleParser } from "mailparser";
 import { createTransport, type Transporter } from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type { MailSpecialUse } from "@/generated/prisma/client";
+import { collectAttachments } from "@/lib/mail/attachment-metadata";
 import {
   MailTransportError,
   type MailConnectionConfig,
   type MailDriver,
   type OutgoingMessage,
-  type RemoteAttachment,
   type RemoteFolder,
   type RemoteMessage,
   type RemoteMessageFlags,
@@ -70,39 +66,6 @@ function toMailAddresses(entries: MessageAddressObject[] | undefined) {
   return (entries ?? [])
     .map(toMailAddress)
     .filter((a): a is NonNullable<typeof a> => a !== null);
-}
-
-// Attachment metadata straight from BODYSTRUCTURE — partId is the IMAP body
-// part number used later by downloadAttachment. Content is never fetched here.
-function collectAttachments(
-  node: MessageStructureObject | undefined,
-  out: RemoteAttachment[] = [],
-): RemoteAttachment[] {
-  if (!node) return out;
-  if (node.childNodes) {
-    for (const child of node.childNodes) collectAttachments(child, out);
-    return out;
-  }
-  if (!node.part) return out;
-  const filename =
-    node.dispositionParameters?.filename ?? node.parameters?.name;
-  const isInline = node.disposition === "inline";
-  const isAttachment =
-    node.disposition === "attachment" ||
-    (isInline &&
-      Boolean(filename ?? node.id) &&
-      !node.type.startsWith("text/"));
-  if (isAttachment) {
-    out.push({
-      partId: node.part,
-      filename: filename ?? "attachment",
-      contentType: node.type,
-      sizeBytes: node.size ?? 0,
-      contentId: node.id ? node.id.replace(/^<|>$/g, "") : null,
-      isInline,
-    });
-  }
-  return out;
 }
 
 export class ImapSmtpMailDriver implements MailDriver {
@@ -322,7 +285,7 @@ export class ImapSmtpMailDriver implements MailDriver {
       const result = new Map<bigint, RemoteMessageFlags>();
       for await (const msg of client.fetch(
         range,
-        { uid: true, flags: true },
+        { uid: true, flags: true, bodyStructure: true },
         { uid: true },
       )) {
         const flags = msg.flags ?? new Set<string>();
@@ -330,6 +293,7 @@ export class ImapSmtpMailDriver implements MailDriver {
           isRead: flags.has("\\Seen"),
           isAnswered: flags.has("\\Answered"),
           isFlagged: flags.has("\\Flagged"),
+          attachments: collectAttachments(msg.bodyStructure),
         });
       }
       return result;

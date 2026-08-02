@@ -6,9 +6,11 @@ import { usePathname } from "@/i18n/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationIndicators } from "./notification-indicators";
 import { OperatorMenu } from "./operator-menu";
 import { RouteProgressBar } from "./route-progress";
 import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
+import type { UnreadCountsDto } from "./notifications-api";
 
 // Module-scope so it isn't recomputed on every render.
 const ALL_NAV_ITEMS = [...SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM];
@@ -18,7 +20,15 @@ const ALL_NAV_ITEMS = [...SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM];
 // shadcn Sidebar's `useSidebar().toggleSidebar()` already dispatches to
 // whichever behavior applies at the current breakpoint (Simplicity First: a
 // single control instead of two separate "«" / "≡" affordances).
-export function DashboardTopbar({ username }: { username: string }) {
+export function DashboardTopbar({
+  username,
+  unreadCounts,
+  hiddenSections = [],
+}: {
+  username: string;
+  unreadCounts: UnreadCountsDto;
+  hiddenSections?: string[];
+}) {
   const t = useTranslations("shell");
   const pathname = usePathname();
   const activeNavItem = ALL_NAV_ITEMS.find(
@@ -31,6 +41,10 @@ export function DashboardTopbar({ username }: { username: string }) {
       <SidebarTrigger aria-label={t("toggleNavigation")} />
       <span className="text-sm font-semibold text-foreground">{title}</span>
       <div className="ml-auto flex items-center gap-1">
+        <NotificationIndicators
+          initialCounts={unreadCounts}
+          hiddenSections={hiddenSections}
+        />
         <LanguageSwitcher />
         <ThemeToggle />
         <OperatorMenu username={username} />

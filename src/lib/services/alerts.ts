@@ -297,6 +297,21 @@ async function assertCategoryInWorkspace(
   if (!category) throw new AlertCategoryNotFoundError();
 }
 
+/**
+ * Clears the topbar alert indicator. Entering the Alerts section is the only
+ * caller — an operator who is looking at the list has, by definition, seen it.
+ * Scoped to unread rows so the write touches nothing on a repeat visit.
+ */
+export async function markAllRead(
+  workspaceId: string,
+): Promise<{ updated: number }> {
+  const result = await db.alert.updateMany({
+    where: { workspaceId, isRead: false },
+    data: { isRead: true },
+  });
+  return { updated: result.count };
+}
+
 /** AC-ALR-008: an operator can delete an alert. */
 export async function remove(id: string, workspaceId: string): Promise<void> {
   const deleted = await db.alert.deleteMany({ where: { id, workspaceId } });

@@ -123,6 +123,8 @@ export const alertsApi = {
       method: "POST",
       body: JSON.stringify({ ids, alertCategoryId }),
     }),
+  markAllRead: () =>
+    request<{ updated: number }>("/api/alerts/read-all", { method: "POST" }),
 };
 
 export const alertCategoriesApi = {

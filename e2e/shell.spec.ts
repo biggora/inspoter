@@ -52,6 +52,26 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
   expect(markerSurvived).toBe(true);
 });
 
+// Topbar shortcuts to the three sections that accumulate unread items. The
+// count lives in the accessible name (the badge itself is aria-hidden), so the
+// prefix match works whether or not the workspace has anything unread.
+test("topbar exposes mail, alert and message indicators that route to their sections", async ({
+  page,
+}) => {
+  await login(page);
+  const topbar = page.getByRole("banner");
+
+  for (const prefix of ["Почта:", "Оповещения:", "Сообщения:"]) {
+    await expect(
+      topbar.getByLabel(new RegExp(`^${prefix}`)),
+      `${prefix} indicator should be visible`,
+    ).toBeVisible();
+  }
+
+  await topbar.getByLabel(/^Оповещения:/).click();
+  await expect(page).toHaveURL(/\/alerts$/);
+});
+
 interface Readiness {
   name: string;
   // Optional ARIA role. When omitted, the readiness marker is matched by

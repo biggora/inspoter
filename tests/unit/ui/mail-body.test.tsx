@@ -44,4 +44,12 @@ describe("MailBody", () => {
       "text-foreground-800",
     );
   });
+
+  it("explains attachment-only messages instead of rendering blank space", () => {
+    renderWithIntl(<MailBody bodyText="" bodyHtml={null} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "В этом письме нет текстового содержимого.",
+    );
+  });
 });

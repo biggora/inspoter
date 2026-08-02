@@ -143,6 +143,40 @@ describe("syncAccount — initial sync", () => {
       30,
     );
   });
+
+  it("repairs missing attachment metadata on an already-synced message", async () => {
+    const account = await createMockAccount("repair-attachment-metadata");
+    await syncAccount(account.id, workspaceId);
+
+    const item = await db.mailItem.findFirstOrThrow({
+      where: { accountId: account.id, uid: 1n },
+      include: { attachments: true },
+    });
+    expect(item.attachments).toHaveLength(1);
+
+    await db.$transaction([
+      db.mailAttachment.deleteMany({ where: { mailItemId: item.id } }),
+      db.mailItem.update({
+        where: { id: item.id },
+        data: { hasAttachments: false },
+      }),
+    ]);
+
+    const outcome = await syncAccount(account.id, workspaceId);
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 0 });
+
+    const repaired = await db.mailItem.findUniqueOrThrow({
+      where: { id: item.id },
+      include: { attachments: true },
+    });
+    expect(repaired.hasAttachments).toBe(true);
+    expect(repaired.attachments).toHaveLength(1);
+    expect(repaired.attachments[0]).toMatchObject({
+      partId: "2",
+      filename: "document-1.txt",
+      contentType: "text/plain",
+    });
+  });
 });
 
 describe("syncAccount — incremental sync", () => {
