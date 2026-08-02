@@ -19,7 +19,11 @@ const logSchema = z.object({
 });
 
 const alertSchema = z.object({
-  category: z.string().trim().min(1, "category is required"),
+  // Optional on purpose: monitoring systems that have no concept of a
+  // category (Alertmanager, Zabbix, UptimeRobot) used to get a 400 and lose
+  // the event entirely. Without it the alert lands uncategorized, which an
+  // operator can fix — or, later, a classifier can.
+  category: z.string().trim().min(1).optional(),
   severity: z.string().trim().min(1, "severity is required"),
   source: z.string().trim().min(1, "source is required"),
   message: z.string().trim().min(1, "message is required"),

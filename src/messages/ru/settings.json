@@ -134,6 +134,7 @@
   "scopeAccessRead": "Поиск и чтение",
   "scopeAccessSend": "Черновики и отправка",
   "scopeAccessCreate": "Создание",
+  "scopeAccessCategorize": "Категоризация",
   "editScopesButton": "Права",
   "editScopesTitle": "Права токена «{name}»",
   "scopesUpdatedToast": "Права токена обновлены.",

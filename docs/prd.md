@@ -472,6 +472,7 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 - Acceptance Criteria:
   - **AC-ALR-001**: Given the Alerts section, When the user creates an alert category, Then it is persisted and available for grouping/filtering alerts.
   - **AC-ALR-002**: Given an existing alert category, When the user renames or deletes it, Then the change is persisted; when a category with alerts is deleted, its alerts are either reassigned to uncategorized or cascaded (deleted) — implementation may choose either strategy; the executable assertion is the no-orphan invariant only (no alert remains pointing to a deleted category).
+  - **AC-ALR-009**: Given two category names that differ only in case or surrounding whitespace, When either is created or arrives in an ingest payload, Then they resolve to a single category.
 
 **FR-ALR-002: Alert viewing, filtering, sorting**
 
@@ -479,7 +480,8 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 - Priority: Must Have (Later)
 - Acceptance Criteria:
   - **AC-ALR-003**: Given alerts exist, When the user opens the Alerts section, Then a paginated list is displayed with, per alert, category, severity, source, message, and timestamp.
-  - **AC-ALR-004**: Given the alert list, When the user filters by category, severity, or a text query, Then only matching alerts are shown.
+  - **AC-ALR-004**: Given the alert list, When the user filters by category, severity, or a text query, Then only matching alerts are shown; filtering by "no category" returns exactly the alerts that have none.
+  - **AC-ALR-010**: Given an alert, When an authenticated operator assigns it to a category or clears its category, Then the change is persisted, recorded in Activity, and the alert's category provenance becomes "manual".
   - **AC-ALR-005**: Given the alert list, When the user sorts by a supported criterion (e.g., timestamp or severity), Then the order updates accordingly.
   - **AC-ALR-006**: Given more alerts than one page, When the user views the list, Then pagination limits page size and allows navigation (see NFR-PERF-001).
   - **AC-ALR-008**: Given an existing alert, When an authenticated operator confirms deletion, Then the alert is deleted and no longer appears in the list; acknowledge and resolve actions are unavailable.
@@ -489,7 +491,7 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 - Description: External systems send alerts via the unified webhook ingest API. Alerts use the `alert` webhook ingest `type`.
 - Priority: Must Have (Later)
 - Acceptance Criteria:
-  - **AC-ALR-007**: Given a valid webhook request with an alert payload (category, severity, source, message, optional timestamp), When it is accepted, Then an alert is created and visible in the Alerts section.
+  - **AC-ALR-007**: Given a valid webhook request with an alert payload (severity, source, message, optional category, optional timestamp), When it is accepted, Then an alert is created and visible in the Alerts section; a payload without a category yields an alert with no category rather than a rejection.
 
 ---
 
@@ -970,7 +972,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.15 has
 - Mail: AC-MAIL-001..045, with AC-MAIL-007..030 added by Q-14 (accounts 007..011, sync 012..017, actions 018..021, send 022..025, attachments 026..028, folders/switching 029..030) and AC-MAIL-031..045 added by Q-15 (labels 031..038, automatic rules/backfill 039..045)
 - Messages: AC-MSG-001..014, with AC-MSG-008 INACTIVE under Q-8; AC-MSG-009..014 added by Q-4
 - Logs: AC-LOG-001..005
-- Alerts: AC-ALR-001..008, with AC-ALR-008 added by Q-7
+- Alerts: AC-ALR-001..010, with AC-ALR-008 added by Q-7 and AC-ALR-009..010 added alongside the category-provenance work (case-folded category names, operator reassignment)
 - Webhook: AC-WH-001..011
 - Provider abstraction: AC-PROV-001..003
 - Workspaces: AC-WS-001..011

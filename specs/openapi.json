@@ -276,6 +276,14 @@
                     "message": "Response time is above the target"
                   }
                 },
+                "alertWithoutCategory": {
+                  "summary": "Service alert from a sender that has no categories",
+                  "value": {
+                    "severity": "critical",
+                    "source": "alertmanager",
+                    "message": "HighErrorRate firing on checkout-api"
+                  }
+                },
                 "mail": {
                   "summary": "Inbound mail",
                   "value": {
@@ -1547,7 +1555,6 @@
       "AlertWebhookPayload": {
         "type": "object",
         "required": [
-          "category",
           "severity",
           "source",
           "message"
@@ -1555,7 +1562,8 @@
         "properties": {
           "category": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Optional. Matched case-insensitively against existing categories and created on first use. Omit it and the alert is stored without a category, ready to be assigned in the dashboard."
           },
           "severity": {
             "type": "string",

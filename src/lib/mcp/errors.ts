@@ -15,6 +15,10 @@ import {
   MailDraftNotFoundError,
 } from "@/lib/services/mail-drafts";
 import { ServiceNotFoundError } from "@/lib/services/services";
+import {
+  AlertCategoryNotFoundError,
+  AlertNotFoundError,
+} from "@/lib/services/alerts";
 import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
 import { logError } from "@/lib/services/logs";
 
@@ -48,6 +52,8 @@ const EXPECTED_ERRORS = [
   MailTransportError,
   ServiceNotFoundError,
   CategoryHierarchyValidationError,
+  AlertNotFoundError,
+  AlertCategoryNotFoundError,
 ] as const;
 
 const STACK_TRUNCATE_LENGTH = 1000;

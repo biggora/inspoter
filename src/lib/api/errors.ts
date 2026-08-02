@@ -4,6 +4,10 @@ import {
   WorkspaceContextRequiredError,
   WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
+import {
+  AlertCategoryNotFoundError,
+  AlertNotFoundError,
+} from "@/lib/services/alerts";
 import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
 import {
   DashboardLayoutValidationError,
@@ -78,6 +82,12 @@ export function toErrorResponse(
   }
   if (error instanceof CategoryHierarchyValidationError) {
     return jsonResponse({ error: error.message }, { status: 400 });
+  }
+  if (
+    error instanceof AlertNotFoundError ||
+    error instanceof AlertCategoryNotFoundError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
   }
   if (
     error instanceof DashboardNotFoundError ||

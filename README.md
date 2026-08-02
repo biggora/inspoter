@@ -194,6 +194,8 @@ Swagger UI доступен авторизованным пользовател�
 - `POST /api/server-metrics` с Bearer-токеном;
 - `POST /api/mcp` с Bearer-токеном.
 
+Поле `category` в payload типа `alert` необязательно: отправитель без понятия категорий (Alertmanager, Zabbix, UptimeRobot) получает `201`, а оповещение попадает в раздел без категории — оператор проставляет её в таблице. Имя категории сопоставляется без учёта регистра, поэтому `availability` и `Availability` от разных систем попадают в одну категорию. У подписчиков исходящих webhook это значит, что поле `category` в событии `ALERT_CREATED` может быть `null`.
+
 Все они определяют рабочее пространство по API-токену и не используют `X-Inspoter-Workspace`. Описания операций и примеры в Swagger UI написаны на английском. Внутренние dashboard API, OIDC и маршруты управления токенами не входят в публичную спецификацию. Не сохраняйте и не передавайте channel webhook URL через логи: URL содержит секрет.
 
 Проверить спецификацию можно командами:
@@ -239,11 +241,14 @@ pnpm openapi:check      # обе проверки последовательно
 | `mail:read`       | `mail_accounts_list`, `mail_folders_list`, `mail_labels_list`, `mail_search`, `mail_get` |
 | `mail:write`      | `mail_draft_save`, `mail_send`                                                           |
 | `alerts:read`     | `alerts_search`, `alerts_get`, `alert_categories_list`                                   |
+| `alerts:write`    | `alerts_set_category`, `alert_category_create`                                           |
 | `bookmarks:read`  | `bookmarks_search`, `bookmarks_get`, `bookmark_categories_list`                          |
 | `bookmarks:write` | `bookmark_create`                                                                        |
 | `servers:read`    | `servers_list`, `server_get`                                                             |
 | `services:read`   | `services_list`, `service_get`, `service_checks`                                         |
 | `logs:read`       | `logs_search`                                                                            |
+
+Категоризация оповещений: `alerts_search` с `categoryId: "none"` возвращает оповещения без категории, `alert_category_create` заводит категорию (существующая по такому же имени переиспользуется), `alerts_set_category` привязывает оповещение к категории или снимает привязку при `categoryId: null`. Проставленная так категория помечается в интерфейсе как «Поставлено моделью», и оператор может её изменить.
 
 Черновики и отправка работают с любого IMAP-аккаунта рабочего пространства: `mail_accounts_list` возвращает доступные аккаунты, их `id` передаётся в `mail_draft_save` и `mail_send`. Системный аккаунт `WEBHOOK` только принимает почту и отправлять через него нельзя.
 

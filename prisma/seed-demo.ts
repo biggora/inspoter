@@ -325,15 +325,15 @@ async function seedAlerts(client: ClientLike, workspaceId: string) {
   for (const category of categories) {
     const categoryId = randomUUID();
     await client.query(
-      'INSERT INTO "AlertCategory" (id, "workspaceId", name, "createdAt", "updatedAt") VALUES ($1, $2, $3, now(), now())',
-      [categoryId, workspaceId, category.name],
+      'INSERT INTO "AlertCategory" (id, "workspaceId", name, "normalizedName", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, now(), now())',
+      [categoryId, workspaceId, category.name, category.name.toLowerCase()],
     );
 
     for (const alert of category.alerts) {
       alertIndex++;
       const timestamp = new Date(now - alertIndex * 20 * 60 * 1000);
       await client.query(
-        'INSERT INTO "Alert" (id, "workspaceId", "alertCategoryId", "alertCategoryWorkspaceId", severity, source, message, timestamp, "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())',
+        'INSERT INTO "Alert" (id, "workspaceId", "alertCategoryId", "alertCategoryWorkspaceId", "categorySource", severity, source, message, timestamp, "createdAt") VALUES ($1, $2, $3, $4, \'WEBHOOK\', $5, $6, $7, $8, now())',
         [
           randomUUID(),
           workspaceId,

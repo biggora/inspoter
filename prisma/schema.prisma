@@ -681,17 +681,34 @@ model LogEntry {
 }
 
 // --- Alerts (FR-ALR-001..003) ---
+// Who decided an alert's category. Recorded so an automatic classifier can
+// never silently overwrite an operator's decision, and so the UI can tell a
+// human's choice from a guess.
+enum AlertCategorySource {
+  WEBHOOK // came in the ingest payload
+  MANUAL // set by an operator
+  RULE // deterministic rule (no such engine yet)
+  MODEL // proposed by a model (no such caller yet)
+}
+
 model AlertCategory {
   id          String    @id @default(cuid())
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
+  // Case-folded name, same encoding as MailLabel/ServiceLabel. Third-party
+  // senders spell one category three ways ("availability", "Availability",
+  // "AVAILABILITY "), and upsert-by-name alone would create three categories.
+  normalizedName String
+  // Free-form hint about what belongs here — the only context a classifier
+  // gets beyond the bare name.
+  description String?
   alerts      Alert[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@unique([id, workspaceId])
-  @@unique([workspaceId, name])
+  @@unique([workspaceId, normalizedName])
 }
 
 model Alert {
@@ -701,6 +718,11 @@ model Alert {
   alertCategoryId          String?
   alertCategoryWorkspaceId String?
   alertCategory            AlertCategory? @relation(fields: [alertCategoryId, alertCategoryWorkspaceId], references: [id, workspaceId], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
+  // Null exactly when alertCategoryId is null (including after AC-ALR-002
+  // category deletion, which reassigns to uncategorized).
+  categorySource           AlertCategorySource?
+  // Only ever written together with categorySource = MODEL.
+  categoryConfidence       Float?
   severity                 String
   source                   String
   message                  String

@@ -490,3 +490,219 @@ describe("Cursor workspace-binding", () => {
     );
   });
 });
+
+describe("category provenance and reassignment", () => {
+  it("AC-ALR-007: an ingest payload without a category still produces an alert", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "critical",
+      source: "alertmanager",
+      message: "HighErrorRate firing",
+    });
+
+    const alert = await alertsService.getById(created.id, workspaceId);
+    expect(alert?.alertCategoryId).toBeNull();
+    expect(alert?.categorySource).toBeNull();
+  });
+
+  it("AC-ALR-009: names differing only in case or whitespace resolve to one category", async () => {
+    const base = `${NAME_PREFIX}-Folded`;
+    await alertsService.create(workspaceId, {
+      category: base,
+      severity: "info",
+      source: "sender-a",
+      message: "first",
+    });
+    await alertsService.create(workspaceId, {
+      category: `  ${base.toUpperCase()}  `,
+      severity: "info",
+      source: "sender-b",
+      message: "second",
+    });
+
+    const categories = await alertsService.listCategories(workspaceId);
+    const matching = categories.filter(
+      (c) => c.normalizedName === base.toLowerCase(),
+    );
+    expect(matching).toHaveLength(1);
+    // The display name of the first writer wins.
+    expect(matching[0].name).toBe(base);
+  });
+
+  it("AC-ALR-004: categoryId 'none' returns only the uncategorized alerts", async () => {
+    const uncategorized = await alertsService.create(workspaceId, {
+      severity: "warning",
+      source: "no-category-filter",
+      message: "uncategorized row",
+    });
+    const categorized = await alertsService.create(workspaceId, {
+      category: `${NAME_PREFIX}-has-category`,
+      severity: "warning",
+      source: "no-category-filter",
+      message: "categorized row",
+    });
+
+    const { items } = await alertsService.list(workspaceId, {
+      categoryId: alertsService.UNCATEGORIZED,
+    });
+    const ids = items.map((a) => a.id);
+    expect(ids).toContain(uncategorized.id);
+    expect(ids).not.toContain(categorized.id);
+    expect(items.every((a) => a.alertCategoryId === null)).toBe(true);
+  });
+
+  it("AC-ALR-010: setCategory assigns, records the source, and clears with null", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "error",
+      source: "assign-test",
+      message: "needs a category",
+    });
+    const category = await alertsService.createCategory(
+      workspaceId,
+      `${NAME_PREFIX}-assign-target`,
+    );
+
+    const assigned = await alertsService.setCategory(
+      created.id,
+      workspaceId,
+      category.id,
+      "MANUAL",
+    );
+    expect(assigned.alertCategoryId).toBe(category.id);
+    expect(assigned.alertCategoryWorkspaceId).toBe(workspaceId);
+    expect(assigned.categorySource).toBe("MANUAL");
+
+    const cleared = await alertsService.setCategory(
+      created.id,
+      workspaceId,
+      null,
+      "MANUAL",
+    );
+    expect(cleared.alertCategoryId).toBeNull();
+    expect(cleared.alertCategoryWorkspaceId).toBeNull();
+    expect(cleared.categorySource).toBeNull();
+  });
+
+  it("keeps confidence only for a MODEL assignment", async () => {
+    const category = await alertsService.createCategory(
+      workspaceId,
+      `${NAME_PREFIX}-confidence`,
+    );
+    const created = await alertsService.create(workspaceId, {
+      severity: "info",
+      source: "confidence-test",
+      message: "guess me",
+    });
+
+    const guessed = await alertsService.setCategory(
+      created.id,
+      workspaceId,
+      category.id,
+      "MODEL",
+      0.82,
+    );
+    expect(guessed.categoryConfidence).toBeCloseTo(0.82);
+
+    // An operator overriding the guess leaves no stale confidence behind.
+    const corrected = await alertsService.setCategory(
+      created.id,
+      workspaceId,
+      category.id,
+      "MANUAL",
+    );
+    expect(corrected.categorySource).toBe("MANUAL");
+    expect(corrected.categoryConfidence).toBeNull();
+  });
+
+  it("setCategory refuses an alert from another workspace", async () => {
+    const created = await alertsService.create(workspaceBId, {
+      severity: "info",
+      source: "cross-ws",
+      message: "belongs to B",
+    });
+
+    await expect(
+      alertsService.setCategory(created.id, workspaceId, null, "MANUAL"),
+    ).rejects.toBeInstanceOf(alertsService.AlertNotFoundError);
+  });
+
+  it("setCategory refuses a category from another workspace", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "info",
+      source: "cross-ws-category",
+      message: "belongs to A",
+    });
+    const foreign = await alertsService.createCategory(
+      workspaceBId,
+      `${NAME_PREFIX}-foreign-category`,
+    );
+
+    await expect(
+      alertsService.setCategory(created.id, workspaceId, foreign.id, "MANUAL"),
+    ).rejects.toBeInstanceOf(alertsService.AlertCategoryNotFoundError);
+
+    const untouched = await alertsService.getById(created.id, workspaceId);
+    expect(untouched?.alertCategoryId).toBeNull();
+  });
+
+  it("setCategoryBulk only touches the caller's workspace", async () => {
+    const mine = await alertsService.create(workspaceId, {
+      severity: "info",
+      source: "bulk",
+      message: "mine",
+    });
+    const theirs = await alertsService.create(workspaceBId, {
+      severity: "info",
+      source: "bulk",
+      message: "theirs",
+    });
+    const category = await alertsService.createCategory(
+      workspaceId,
+      `${NAME_PREFIX}-bulk-target`,
+    );
+
+    const result = await alertsService.setCategoryBulk(
+      workspaceId,
+      [mine.id, theirs.id],
+      category.id,
+      "MANUAL",
+    );
+    expect(result.updated).toBe(1);
+
+    const untouched = await alertsService.getById(theirs.id, workspaceBId);
+    expect(untouched?.alertCategoryId).toBeNull();
+  });
+
+  it("deleteCategory clears the provenance of the alerts it orphans", async () => {
+    const categoryName = `${NAME_PREFIX}-provenance-cleanup`;
+    const created = await alertsService.create(workspaceId, {
+      category: categoryName,
+      severity: "info",
+      source: "provenance",
+      message: "loses its category",
+    });
+    const category = await db.alertCategory.findFirstOrThrow({
+      where: { workspaceId, normalizedName: categoryName.toLowerCase() },
+    });
+
+    await alertsService.deleteCategory(category.id, workspaceId);
+
+    const orphaned = await alertsService.getById(created.id, workspaceId);
+    expect(orphaned?.alertCategoryId).toBeNull();
+    expect(orphaned?.categorySource).toBeNull();
+  });
+
+  it("AC-ALR-008: remove() deletes the alert and rejects a foreign one", async () => {
+    const created = await alertsService.create(workspaceId, {
+      severity: "info",
+      source: "delete-test",
+      message: "delete me",
+    });
+
+    await expect(
+      alertsService.remove(created.id, workspaceBId),
+    ).rejects.toBeInstanceOf(alertsService.AlertNotFoundError);
+
+    await alertsService.remove(created.id, workspaceId);
+    expect(await alertsService.getById(created.id, workspaceId)).toBeNull();
+  });
+});

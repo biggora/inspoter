@@ -7,6 +7,7 @@ export const MCP_SCOPES = [
   "mail:read",
   "mail:write",
   "alerts:read",
+  "alerts:write",
   "bookmarks:read",
   "bookmarks:write",
   "servers:read",

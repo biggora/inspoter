@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,9 @@ import {
 } from "@/components/ui/table";
 import {
   alertCategoriesApi,
+  alertsApi,
   fetchAlerts,
+  UNCATEGORIZED_FILTER,
   type AlertCategoryDto,
   type AlertDto,
 } from "./api";
@@ -41,6 +44,7 @@ import {
   CategoryFormDialog,
   type CategoryFormState,
 } from "./category-form-dialog";
+import { DeleteAlertDialog } from "./delete-alert-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
@@ -103,6 +107,15 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   const [deleteTarget, setDeleteTarget] = useState<AlertCategoryDto | null>(
     null,
   );
+  const [deleteAlertTarget, setDeleteAlertTarget] = useState<AlertDto | null>(
+    null,
+  );
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  // Bumped after a mutation to re-run the list effect; the alternative
+  // (splicing rows locally) would drift from the active filters — deleting an
+  // alert can change which page the cursor points at.
+  const [reloadToken, setReloadToken] = useState(0);
 
   const [highlightedAlertId, setHighlightedAlertId] = useState<string | null>(
     null,
@@ -178,7 +191,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, categoryId, severity, query, sort, date, t]);
+  }, [currentCursor, categoryId, severity, query, sort, date, reloadToken, t]);
 
   useEffect(() => {
     if (!highlightedAlertId) return;
@@ -244,10 +257,44 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     setDeleteTarget(null);
     if (categoryId === deleteTarget?.id) setCategoryId("all");
     loadCategories();
+    setReloadToken((prev) => prev + 1);
+  }
+
+  function handleAlertDeleted() {
+    setDeleteAlertTarget(null);
+    setReloadToken((prev) => prev + 1);
+  }
+
+  async function handleAssignCategory(alertId: string, value: string) {
+    setAssigningId(alertId);
+    try {
+      const updated = await alertsApi.setCategory(
+        alertId,
+        value === UNCATEGORIZED_FILTER ? null : value,
+      );
+      // The row is patched in place instead of refetching: the alert may no
+      // longer match an active category filter, and yanking it out from under
+      // the pointer the moment it is reassigned reads as a bug.
+      setItems((prev) =>
+        prev.map((item) => (item.id === alertId ? updated : item)),
+      );
+      toast.success(t("categoryAssignedToast"));
+    } catch {
+      toast.error(t("assignCategoryError"));
+    } finally {
+      setAssigningId(null);
+    }
   }
 
   const categoryItems: Record<string, string> = {
     all: t("allCategoriesOption"),
+    [UNCATEGORIZED_FILTER]: t("uncategorizedOption"),
+    ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
+  };
+
+  // Same options minus "all": a row is either in one category or in none.
+  const assignItems: Record<string, string> = {
+    [UNCATEGORIZED_FILTER]: t("uncategorizedOption"),
     ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
   };
 
@@ -396,6 +443,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                 <TableHead>{t("sourceColumn")}</TableHead>
                 <TableHead>{t("messageColumn")}</TableHead>
                 <TableHead>{t("timeColumn")}</TableHead>
+                <TableHead className="sr-only">{t("actionsColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -416,8 +464,41 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                   <TableCell>
                     <SeverityBadge severity={alert.severity} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {alert.alertCategory?.name ?? t("noCategoryLabel")}
+                  <TableCell>
+                    <Select
+                      value={alert.alertCategoryId ?? UNCATEGORIZED_FILTER}
+                      onValueChange={(v) =>
+                        handleAssignCategory(alert.id, v as string)
+                      }
+                      items={assignItems}
+                      disabled={assigningId === alert.id}
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        aria-label={t("assignCategoryLabel")}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {Object.entries(assignItems).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {/* Provenance is only worth showing when a machine chose
+                        it — WEBHOOK and MANUAL are the unremarkable cases. */}
+                    {(alert.categorySource === "MODEL" ||
+                      alert.categorySource === "RULE") && (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {alert.categorySource === "MODEL"
+                          ? t("categorySourceModelLabel")
+                          : t("categorySourceRuleLabel")}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono">{alert.source}</TableCell>
                   <TableCell className="max-w-md truncate font-mono">
@@ -425,6 +506,16 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {formatTimestamp(alert.timestamp)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("deleteAlertLabel")}
+                      onClick={() => setDeleteAlertTarget(alert)}
+                    >
+                      <Icon name="ri-delete-bin-line" aria-hidden />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -458,6 +549,11 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
         category={deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onDeleted={handleCategoryDeleted}
+      />
+      <DeleteAlertDialog
+        alert={deleteAlertTarget}
+        onOpenChange={(open) => !open && setDeleteAlertTarget(null)}
+        onDeleted={handleAlertDeleted}
       />
     </PageBody>
   );

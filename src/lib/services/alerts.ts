@@ -1,14 +1,41 @@
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import {
+  AlertCategorySource,
   Prisma,
   type Alert,
   type AlertCategory,
 } from "@/generated/prisma/client";
+import {
+  normalizeLabelDisplayName,
+  normalizeLabelName,
+} from "@/lib/label-normalization";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
+import { MAX_BULK_ALERTS } from "@/lib/validation/alerts";
+
+/** Sentinel for `categoryId`, meaning "alertCategoryId IS NULL". */
+export const UNCATEGORIZED = "none";
+
+export class AlertNotFoundError extends Error {
+  code = "ALERT_NOT_FOUND" as const;
+  constructor() {
+    super("Alert not found");
+  }
+}
+
+export class AlertCategoryNotFoundError extends Error {
+  code = "ALERT_CATEGORY_NOT_FOUND" as const;
+  constructor() {
+    super("Category not found");
+  }
+}
 
 export interface CreateAlertInput {
-  category: string;
+  /**
+   * Optional: a third-party sender that has no notion of categories still
+   * gets its alert stored, uncategorized, rather than a 400.
+   */
+  category?: string;
   severity: string;
   source: string;
   message: string;
@@ -18,6 +45,7 @@ export interface CreateAlertInput {
 export interface ListAlertsParams {
   cursor?: string;
   pageSize?: number;
+  /** A category id, or `UNCATEGORIZED` for the alerts that have none. */
   categoryId?: string;
   severity?: string;
   query?: string;
@@ -71,24 +99,16 @@ export async function create(
   workspaceId: string,
   input: CreateAlertInput,
 ): Promise<{ id: string }> {
-  // Atomic get-or-create on @@unique([workspaceId, name]). A find-then-create
-  // pair would lose the race whenever several services flip inside one
-  // scheduler tick (scheduler.ts checks a chunk via Promise.all) on a
-  // workspace that has no such category yet: every loser fails with P2002 and
-  // its alert is dropped. `update` is a no-op write rather than `{}` so the
-  // query compiles to INSERT ... ON CONFLICT DO UPDATE.
-  const category = await db.alertCategory.upsert({
-    where: { workspaceId_name: { workspaceId, name: input.category } },
-    create: { name: input.category, workspaceId },
-    update: { name: input.category },
-  });
-  const alertCategoryId = category.id;
+  const category = input.category
+    ? await upsertCategoryByName(workspaceId, input.category)
+    : null;
 
   const entry = await db.alert.create({
     data: {
       workspaceId,
-      alertCategoryId,
-      alertCategoryWorkspaceId: workspaceId,
+      alertCategoryId: category?.id ?? null,
+      alertCategoryWorkspaceId: category ? workspaceId : null,
+      categorySource: category ? AlertCategorySource.WEBHOOK : null,
       severity: input.severity,
       source: input.source,
       message: input.message,
@@ -100,9 +120,34 @@ export async function create(
     severity: input.severity,
     source: input.source,
     message: input.message,
-    category: input.category,
+    // Null for a payload that carried no category — subscribers that used to
+    // rely on this field always being present must tolerate it.
+    category: category?.name ?? null,
   });
   return { id: entry.id };
+}
+
+// Atomic get-or-create on @@unique([workspaceId, normalizedName]). A
+// find-then-create pair would lose the race whenever several services flip
+// inside one scheduler tick (scheduler.ts checks a chunk via Promise.all) on a
+// workspace that has no such category yet: every loser fails with P2002 and
+// its alert is dropped. `update` is a no-op write rather than `{}` so the
+// query compiles to INSERT ... ON CONFLICT DO UPDATE.
+//
+// Matching on the folded name is what keeps "availability", "Availability" and
+// "AVAILABILITY " from three different senders in one category; the display
+// name of the first writer wins.
+export async function upsertCategoryByName(
+  workspaceId: string,
+  rawName: string,
+): Promise<AlertCategory> {
+  const name = normalizeLabelDisplayName(rawName);
+  const normalizedName = normalizeLabelName(rawName);
+  return db.alertCategory.upsert({
+    where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
+    create: { name, normalizedName, workspaceId },
+    update: { normalizedName },
+  });
 }
 
 export async function list(
@@ -118,7 +163,8 @@ export async function list(
   // promises to keep after a category is deleted. Filtering on the model's own
   // columns also lets the [workspaceId, ...] indexes serve the query.
   const where: Prisma.AlertWhereInput = { workspaceId };
-  if (params.categoryId) where.alertCategoryId = params.categoryId;
+  if (params.categoryId === UNCATEGORIZED) where.alertCategoryId = null;
+  else if (params.categoryId) where.alertCategoryId = params.categoryId;
   if (params.severity) where.severity = params.severity;
   if (params.query)
     where.message = { contains: params.query, mode: "insensitive" };
@@ -171,6 +217,92 @@ export async function getById(
   });
 }
 
+/**
+ * The single place an alert's category is written after creation. `source`
+ * records who decided it, so a future classifier can be told to leave MANUAL
+ * rows alone; `confidence` belongs to MODEL and is dropped for every other
+ * source.
+ */
+export async function setCategory(
+  id: string,
+  workspaceId: string,
+  categoryId: string | null,
+  source: AlertCategorySource,
+  confidence?: number,
+): Promise<AlertWithCategory> {
+  await assertCategoryInWorkspace(workspaceId, categoryId);
+
+  // updateMany, not update: `where` on the primary key alone would let a
+  // caller reach another workspace's alert.
+  const updated = await db.alert.updateMany({
+    where: { id, workspaceId },
+    data: categoryAssignment(categoryId, workspaceId, source, confidence),
+  });
+  if (updated.count === 0) throw new AlertNotFoundError();
+
+  const alert = await getById(id, workspaceId);
+  if (!alert) throw new AlertNotFoundError();
+  return alert;
+}
+
+/**
+ * Bulk variant for reclassifying a backlog. Bounded by MAX_BULK_ALERTS so one
+ * request cannot rewrite the whole table; the caller pages through.
+ */
+export async function setCategoryBulk(
+  workspaceId: string,
+  ids: string[],
+  categoryId: string | null,
+  source: AlertCategorySource,
+  confidence?: number,
+): Promise<{ updated: number }> {
+  if (ids.length === 0) return { updated: 0 };
+  await assertCategoryInWorkspace(workspaceId, categoryId);
+
+  const result = await db.alert.updateMany({
+    where: { id: { in: ids.slice(0, MAX_BULK_ALERTS) }, workspaceId },
+    data: categoryAssignment(categoryId, workspaceId, source, confidence),
+  });
+  return { updated: result.count };
+}
+
+// Keeps the three category columns consistent: no category means no source
+// and no confidence, and confidence only survives for MODEL.
+function categoryAssignment(
+  categoryId: string | null,
+  workspaceId: string,
+  source: AlertCategorySource,
+  confidence?: number,
+): Prisma.AlertUncheckedUpdateManyInput {
+  return {
+    alertCategoryId: categoryId,
+    alertCategoryWorkspaceId: categoryId === null ? null : workspaceId,
+    categorySource: categoryId === null ? null : source,
+    categoryConfidence:
+      categoryId !== null && source === AlertCategorySource.MODEL
+        ? (confidence ?? null)
+        : null,
+  };
+}
+
+async function assertCategoryInWorkspace(
+  workspaceId: string,
+  categoryId: string | null,
+): Promise<void> {
+  if (categoryId === null) return;
+  const category = await db.alertCategory.findFirst({
+    where: { id: categoryId, workspaceId },
+    select: { id: true },
+  });
+  if (!category) throw new AlertCategoryNotFoundError();
+}
+
+/** AC-ALR-008: an operator can delete an alert. */
+export async function remove(id: string, workspaceId: string): Promise<void> {
+  const deleted = await db.alert.deleteMany({ where: { id, workspaceId } });
+  if (deleted.count === 0) throw new AlertNotFoundError();
+}
+
 export async function listCategories(
   workspaceId: string,
 ): Promise<AlertCategory[]> {
@@ -183,8 +315,16 @@ export async function listCategories(
 export async function createCategory(
   workspaceId: string,
   name: string,
+  description?: string,
 ): Promise<AlertCategory> {
-  return db.alertCategory.create({ data: { name, workspaceId } });
+  return db.alertCategory.create({
+    data: {
+      workspaceId,
+      name: normalizeLabelDisplayName(name),
+      normalizedName: normalizeLabelName(name),
+      ...(description !== undefined ? { description } : {}),
+    },
+  });
 }
 
 export async function renameCategory(
@@ -194,7 +334,13 @@ export async function renameCategory(
 ): Promise<AlertCategory> {
   const cat = await db.alertCategory.findFirst({ where: { id, workspaceId } });
   if (!cat) throw new Error("Category not found");
-  return db.alertCategory.update({ where: { id }, data: { name } });
+  return db.alertCategory.update({
+    where: { id },
+    data: {
+      name: normalizeLabelDisplayName(name),
+      normalizedName: normalizeLabelName(name),
+    },
+  });
 }
 
 export async function deleteCategory(
@@ -203,5 +349,14 @@ export async function deleteCategory(
 ): Promise<void> {
   const cat = await db.alertCategory.findFirst({ where: { id, workspaceId } });
   if (!cat) throw new Error("Category not found");
-  await db.alertCategory.delete({ where: { id } });
+  // The FK clears alertCategoryId on its own (onDelete: SetNull, AC-ALR-002),
+  // but it knows nothing about categorySource — without this the surviving
+  // rows would claim a provenance for a category they no longer have.
+  await db.$transaction([
+    db.alert.updateMany({
+      where: { workspaceId, alertCategoryId: id },
+      data: { categorySource: null, categoryConfidence: null },
+    }),
+    db.alertCategory.delete({ where: { id } }),
+  ]);
 }

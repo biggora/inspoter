@@ -14,15 +14,22 @@ export interface AlertCategoryDto {
   name: string;
 }
 
+/** Mirrors AlertCategorySource in prisma/schema.prisma. */
+export type AlertCategorySourceDto = "WEBHOOK" | "MANUAL" | "RULE" | "MODEL";
+
 export interface AlertDto {
   id: string;
   alertCategoryId: string | null;
   alertCategory: AlertCategoryDto | null;
+  categorySource: AlertCategorySourceDto | null;
   severity: string;
   source: string;
   message: string;
   timestamp: string;
 }
+
+/** Sentinel accepted by the list filter, meaning "has no category". */
+export const UNCATEGORIZED_FILTER = "none";
 
 export interface FetchAlertsParams {
   cursor?: string;
@@ -102,6 +109,21 @@ export function fetchAlerts(
   if (params.date) searchParams.set("date", params.date);
   return request(`/api/alerts?${searchParams}`);
 }
+
+export const alertsApi = {
+  setCategory: (id: string, alertCategoryId: string | null) =>
+    request<AlertDto>(`/api/alerts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ alertCategoryId }),
+    }),
+  remove: (id: string) =>
+    request<void>(`/api/alerts/${id}`, { method: "DELETE" }),
+  setCategoryBulk: (ids: string[], alertCategoryId: string | null) =>
+    request<{ updated: number }>("/api/alerts/bulk", {
+      method: "POST",
+      body: JSON.stringify({ ids, alertCategoryId }),
+    }),
+};
 
 export const alertCategoriesApi = {
   list: () => request<AlertCategoryDto[]>("/api/alert-categories"),

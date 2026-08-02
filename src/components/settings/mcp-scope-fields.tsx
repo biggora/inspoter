@@ -31,7 +31,10 @@ const SCOPE_GROUPS: ReadonlyArray<{
   {
     key: "alerts",
     labelKey: "scopeGroupAlerts",
-    scopes: [{ scope: "alerts:read", accessKey: "scopeAccessRead" }],
+    scopes: [
+      { scope: "alerts:read", accessKey: "scopeAccessRead" },
+      { scope: "alerts:write", accessKey: "scopeAccessCategorize" },
+    ],
   },
   {
     key: "bookmarks",
