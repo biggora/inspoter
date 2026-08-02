@@ -66,6 +66,7 @@ export interface RemoteMessageFlags {
   isRead: boolean;
   isAnswered: boolean;
   isFlagged: boolean;
+  attachments: RemoteAttachment[];
 }
 
 export interface MailMoveResult {

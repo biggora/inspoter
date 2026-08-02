@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "../../test-utils";
@@ -139,6 +139,32 @@ describe("WeatherWidget", () => {
 });
 
 describe("CalendarWidget", () => {
+  it("moves the today marker at local midnight without a parent render", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 3, 23, 59, 59, 900));
+
+    const view = renderWithIntl(
+      <CalendarWidget
+        data={{ month: "2026-07-01", days: [], truncated: [] }}
+      />,
+    );
+
+    try {
+      expect(
+        view.container.querySelector('[data-today="true"]'),
+      ).toHaveTextContent("3");
+
+      act(() => vi.advanceTimersByTime(200));
+
+      expect(
+        view.container.querySelector('[data-today="true"]'),
+      ).toHaveTextContent("4");
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps the event list in the widget frame scroll flow", () => {
     const { container } = renderWithIntl(
       <CalendarWidget

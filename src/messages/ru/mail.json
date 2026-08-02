@@ -92,6 +92,7 @@
   "subjectLabel": "Тема",
   "noSubjectLabel": "(Без темы)",
   "bodyLabel": "Текст письма",
+  "emptyBodyLabel": "В этом письме нет текстового содержимого.",
   "sendingLabel": "Отправка…",
   "sendButton": "Отправить",
   "replyDialogTitle": "Ответить",

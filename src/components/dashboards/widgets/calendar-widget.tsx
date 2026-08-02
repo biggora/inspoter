@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
@@ -29,6 +29,7 @@ import type { CalendarEventSource } from "@/lib/validation/dashboards";
 // query, and this tile is an at-a-glance summary, not a calendar application.
 
 const WEEK_START_MONDAY_OFFSET = 1;
+const MIDNIGHT_GRACE_MS = 50;
 const EVENT_SOURCES = [
   "alerts",
   "serviceIncidents",
@@ -78,9 +79,60 @@ function populatedSources(bucket: CalendarDayBucket): CalendarEventSource[] {
   return EVENT_SOURCES.filter((source) => bucket.counts[source] > 0);
 }
 
+function localDayKey(date: Date = new Date()): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function subscribeToLocalDay(onStoreChange: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout>;
+
+  const scheduleMidnight = () => {
+    clearTimeout(timer);
+    const now = new Date();
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+    timer = setTimeout(
+      () => {
+        onStoreChange();
+        scheduleMidnight();
+      },
+      nextMidnight.getTime() - now.getTime() + MIDNIGHT_GRACE_MS,
+    );
+  };
+  const refresh = () => {
+    onStoreChange();
+    scheduleMidnight();
+  };
+  const refreshWhenVisible = () => {
+    if (document.visibilityState === "visible") refresh();
+  };
+
+  scheduleMidnight();
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", refreshWhenVisible);
+
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener("focus", refresh);
+    document.removeEventListener("visibilitychange", refreshWhenVisible);
+  };
+}
+
+function useLocalDay(): string | null {
+  return useSyncExternalStore(subscribeToLocalDay, localDayKey, () => null);
+}
+
 export function CalendarWidget({ data }: { data: CalendarMonthData }) {
   const t = useTranslations("dashboards");
   const locale = useLocale();
+  const todayIso = useLocalDay();
 
   const cells = useMemo(() => buildCells(data.month), [data.month]);
   const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
@@ -99,8 +151,6 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
     month: "short",
     timeZone: "UTC",
   });
-
-  const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
     <div data-slot="calendar-widget" className="flex flex-col gap-2">
