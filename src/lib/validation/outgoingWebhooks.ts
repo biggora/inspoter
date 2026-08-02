@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { VALIDATION_RU } from "@/lib/validation/error-map";
-import { OutgoingWebhookEvent } from "@/generated/prisma/client";
+import {
+  OutgoingWebhookEvent,
+  OutgoingWebhookFormat,
+} from "@/generated/prisma/client";
 
 // UI-facing (settings > outgoing webhooks form) — Russian messages surface as
 // fieldErrors there. Mirrors src/lib/validation/webhookTokens.ts.
@@ -46,6 +49,13 @@ export const createOutgoingWebhookSchema = z
       .array(eventSchema)
       .min(1, { error: () => VALIDATION_RU.outgoingWebhook.eventsRequired }),
     isActive: z.boolean().default(true),
+    // Wire format (specs/discord-webhook-compatibility.md §6-§7). Optional so
+    // the pre-Discord request body still validates unchanged.
+    format: z
+      .enum(OutgoingWebhookFormat, {
+        error: () => VALIDATION_RU.outgoingWebhook.formatInvalid,
+      })
+      .optional(),
   })
   .strict();
 

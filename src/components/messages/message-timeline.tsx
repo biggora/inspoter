@@ -11,6 +11,7 @@ import { LoadingRegion } from "@/components/ui/loading";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { formatRelativeTime, type Format } from "@/lib/format/relative-time";
 import type { MessageDto } from "./api";
+import { MessageEmbeds } from "./message-embed";
 
 const AUTHOR_COLOR_PALETTE = [
   "oklch(0.55 0.18 20)",
@@ -69,6 +70,12 @@ function getAuthorInitials(author: string | null): string {
   return parts.length >= 2
     ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
     : name.slice(0, 2).toUpperCase();
+}
+
+// A webhook may supply avatar_url; anything that isn't a plain http(s) URL
+// falls back to the generated initials tile.
+function isSafeAvatar(url: string | null | undefined): url is string {
+  return typeof url === "string" && /^https?:\/\//i.test(url);
 }
 
 function getAuthorColor(author: string | null): string {
@@ -200,13 +207,26 @@ export function MessageTimeline({
                   </div>
                 )}
                 <article className="group -mx-2 flex gap-3 rounded-md px-2 py-1 transition-colors hover:bg-background-100/50 focus-within:bg-background-100/50">
-                  <div
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background-50"
-                    style={{ backgroundColor: getAuthorColor(message.author) }}
-                    aria-hidden
-                  >
-                    {initials}
-                  </div>
+                  {isSafeAvatar(message.avatarUrl) ? (
+                    // Sender-supplied external host; next/image would need
+                    // per-host remotePatterns (same call as bookmark-icon.tsx).
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={message.avatarUrl ?? undefined}
+                      alt=""
+                      className="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background-50"
+                      style={{
+                        backgroundColor: getAuthorColor(message.author),
+                      }}
+                      aria-hidden
+                    >
+                      {initials}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-semibold text-foreground-900">
@@ -226,9 +246,12 @@ export function MessageTimeline({
                         {formatMessageTime(message.createdAt, t, format)}
                       </time>
                     </div>
-                    <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800">
-                      {message.content}
-                    </p>
+                    {message.content && (
+                      <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800">
+                        {message.content}
+                      </p>
+                    )}
+                    <MessageEmbeds embeds={message.embeds ?? null} />
                   </div>
                 </article>
               </div>

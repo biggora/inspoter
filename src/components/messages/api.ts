@@ -20,12 +20,29 @@ export interface MessageCategoryDto {
   channels: ChannelDto[];
 }
 
+// Discord embed, as accepted by the Discord-compatible webhook route and
+// stored on Message.embeds (specs/discord-webhook-compatibility.md §3.1).
+export interface MessageEmbedDto {
+  title?: string;
+  description?: string;
+  url?: string;
+  timestamp?: string;
+  color?: number;
+  author?: { name: string; url?: string; icon_url?: string };
+  footer?: { text: string; icon_url?: string };
+  image?: { url?: string };
+  thumbnail?: { url?: string };
+  fields?: Array<{ name: string; value: string; inline?: boolean }>;
+}
+
 export interface MessageDto {
   id: string;
   channelId: string;
   content: string;
   author: string | null;
   origin: "LEGACY" | "OPERATOR" | "WEBHOOK";
+  embeds?: MessageEmbedDto[] | null;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 

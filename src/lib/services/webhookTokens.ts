@@ -276,6 +276,10 @@ export async function authenticateChannelWebhook(
   workspaceId: string;
   channelId: string;
   name: string;
+  createdAt: Date;
+  // The channel's own creation time, so a Discord-shaped response can derive a
+  // properly time-ordered snowflake for `channel_id` instead of a stub.
+  channelCreatedAt: Date | null;
 } | null> {
   const tokenHash = crypto.createHash("sha256").update(secret).digest("hex");
   const token = await db.webhookToken.findFirst({
@@ -285,8 +289,20 @@ export async function authenticateChannelWebhook(
       revokedAt: null,
       channelId: { not: null },
     },
-    select: { id: true, workspaceId: true, channelId: true, name: true },
+    select: {
+      id: true,
+      workspaceId: true,
+      channelId: true,
+      name: true,
+      createdAt: true,
+      channel: { select: { createdAt: true } },
+    },
   });
   if (!token?.channelId) return null;
-  return { ...token, channelId: token.channelId };
+  const { channel, ...rest } = token;
+  return {
+    ...rest,
+    channelId: token.channelId,
+    channelCreatedAt: channel?.createdAt ?? null,
+  };
 }

@@ -26,6 +26,11 @@ export type CredentialData =
       allowInsecure?: boolean;
     }
   | { type: "WEBHOOK_SECRET"; secret: string }
+  // Ed25519 private key (PKCS#8, base64) of a DISCORD_EVENTS outgoing webhook.
+  // The public half lives unencrypted in OutgoingWebhook.publicKey so the
+  // operator can configure it on the receiving side
+  // (specs/discord-webhook-compatibility.md §7).
+  | { type: "WEBHOOK_ED25519_KEY"; privateKey: string; secret: string }
   // OpenAI-compatible LLM endpoint (src/lib/llm). `mode` selects the driver
   // the same way MailAccount.mode does: MOCK is the deterministic in-process
   // driver used by tests and e2e, REAL talks to baseUrl.

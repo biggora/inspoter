@@ -232,6 +232,10 @@ function toMessageRecord(row: Message): BackupMessageRecord {
     content: row.content,
     author: row.author,
     origin: row.origin,
+    embeds: row.embeds,
+    avatarUrl: row.avatarUrl,
+    tts: row.tts,
+    flags: row.flags,
     createdAt: iso(row.createdAt),
   };
 }
@@ -460,6 +464,8 @@ function toOutgoingWebhookRecord(
     isActive: row.isActive,
     secretData: decryptOutgoingWebhookSecret(row),
     secretPrefix: row.secretPrefix,
+    format: row.format,
+    publicKey: row.publicKey,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -1171,6 +1177,8 @@ export async function importWorkspace(
             iv: secret.iv,
             authTag: secret.authTag,
             secretPrefix: row.secretPrefix,
+            format: row.format ?? "INSPOT",
+            publicKey: row.publicKey ?? null,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
           };
@@ -1525,6 +1533,10 @@ export async function importWorkspace(
             content: row.content,
             author: row.author,
             origin: row.origin,
+            embeds: (row.embeds ?? null) as Prisma.InputJsonValue,
+            avatarUrl: row.avatarUrl ?? null,
+            tts: row.tts ?? false,
+            flags: row.flags ?? 0,
             createdAt: row.createdAt,
           };
         });

@@ -92,7 +92,11 @@ try {
   process.exit(1);
 }
 
+const discordPath = "/api/discord/webhooks/{webhookId}/{token}";
 const expectedPaths = [
+  discordPath,
+  `${discordPath}/slack`,
+  "/api/mcp",
   "/api/server-metrics",
   "/api/webhooks/channels/{webhookId}/{token}",
   "/api/webhooks/{type}",
@@ -112,10 +116,13 @@ check(
 );
 
 for (const publicPath of expectedPaths) {
-  const methods = Object.keys(spec.paths?.[publicPath] ?? {});
+  const methods = Object.keys(spec.paths?.[publicPath] ?? {}).sort();
+  // Only the Discord webhook is readable (Get Webhook with Token); every other
+  // public operation is POST-only.
+  const allowed = publicPath === discordPath ? ["get", "post"] : ["post"];
   check(
-    sameJson(methods, ["post"]),
-    `${publicPath} must contain only a post operation; found ${methods.join(", ") || "none"}`,
+    sameJson(methods, allowed),
+    `${publicPath} must contain only ${allowed.join(" and ")}; found ${methods.join(", ") || "none"}`,
   );
 }
 
@@ -144,6 +151,11 @@ const routeSources = [
   [metricsPath, "src/app/api/server-metrics/route.ts"],
   [typedPath, "src/app/api/webhooks/[type]/route.ts"],
   [channelPath, "src/app/api/webhooks/channels/[webhookId]/[token]/route.ts"],
+  [discordPath, "src/app/api/discord/webhooks/[webhookId]/[token]/route.ts"],
+  [
+    `${discordPath}/slack`,
+    "src/app/api/discord/webhooks/[webhookId]/[token]/slack/route.ts",
+  ],
 ];
 for (const [publicPath, relativeSource] of routeSources) {
   const sourcePath = path.join(repoRoot, relativeSource);
@@ -579,6 +591,9 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+// The Discord-compatible operations carry their own contract assertions in
+// tests/unit/openapi/public-openapi.test.ts; this script pins the path
+// inventory and the pre-Discord operations.
 console.log(
-  "Public OpenAPI contract check passed (3 paths, 3 POST operations).",
+  `Public OpenAPI contract check passed (${expectedPaths.length} paths).`,
 );

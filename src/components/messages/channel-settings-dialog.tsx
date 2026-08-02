@@ -51,6 +51,9 @@ import {
 interface OneTimeSecret {
   url: string;
   curl: string;
+  // Same credential on the Discord-compatible route
+  // (specs/discord-webhook-compatibility.md §2.1) — no separate webhook needed.
+  discordUrl: string;
 }
 
 interface ChannelSettingsDialogProps {
@@ -87,9 +90,14 @@ function buildOneTimeSecret(
     throw new Error(t("invalidWebhookUrlError"));
   }
   const absoluteUrl = url.toString();
+  const discordUrl = absoluteUrl.replace(
+    "/api/webhooks/channels/",
+    "/api/discord/webhooks/",
+  );
   return {
     url: absoluteUrl,
     curl: `curl -X POST '${absoluteUrl}' -H 'Content-Type: application/json' -d '{"content":"${t("integrationMessagePlaceholder")}"}'`,
+    discordUrl,
   };
 }
 
@@ -105,6 +113,7 @@ export function ChannelSettingsDialog({
   const nameErrorId = useId();
   const urlRef = useRef<HTMLTextAreaElement>(null);
   const curlRef = useRef<HTMLTextAreaElement>(null);
+  const discordRef = useRef<HTMLTextAreaElement>(null);
   const [webhooks, setWebhooks] = useState<ChannelWebhookDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -112,7 +121,7 @@ export function ChannelSettingsDialog({
   const [nameError, setNameError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [secret, setSecret] = useState<OneTimeSecret | null>(null);
-  const [copied, setCopied] = useState<"url" | "curl" | null>(null);
+  const [copied, setCopied] = useState<"url" | "curl" | "discord" | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<ChannelWebhookDto | null>(
     null,
   );
@@ -195,7 +204,7 @@ export function ChannelSettingsDialog({
   }
 
   async function copyValue(
-    kind: "url" | "curl",
+    kind: "url" | "curl" | "discord",
     value: string,
     target: RefObject<HTMLTextAreaElement | null>,
   ) {
@@ -355,6 +364,40 @@ export function ChannelSettingsDialog({
                         {copied === "curl"
                           ? t("curlCopiedButton")
                           : t("copyCurlButton")}
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`${nameId}-discord`}
+                        className="font-medium"
+                      >
+                        {t("discordUrlLabel")}
+                      </Label>
+                      <p className="text-xs">{t("discordUrlDescription")}</p>
+                      <Textarea
+                        ref={discordRef}
+                        id={`${nameId}-discord`}
+                        value={secret.discordUrl}
+                        readOnly
+                        rows={2}
+                        className="min-h-16 resize-none break-all font-mono text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          copyValue("discord", secret.discordUrl, discordRef)
+                        }
+                      >
+                        {copied === "discord" ? (
+                          <Icon name="ri-check-line" aria-hidden />
+                        ) : (
+                          <Icon name="ri-file-copy-line" aria-hidden />
+                        )}
+                        {copied === "discord"
+                          ? t("urlCopiedButton")
+                          : t("copyUrlButton")}
                       </Button>
                     </div>
                   </AlertDescription>

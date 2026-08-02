@@ -97,6 +97,8 @@
   "urlCopiedButton": "URL copied",
   "copyUrlButton": "Copy URL",
   "curlLabel": "Ready-made cURL command",
+  "discordUrlLabel": "Discord-compatible URL",
+  "discordUrlDescription": "The same webhook accepts a Discord Execute Webhook payload: content, embeds, username, avatar_url. Use this address in place of a discord.com link.",
   "curlCopiedButton": "cURL copied",
   "copyCurlButton": "Copy cURL",
   "webhookNameLabel": "Webhook name",

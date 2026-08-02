@@ -104,7 +104,8 @@
     "urlRequired": "URL обязателен",
     "urlInvalid": "Укажите корректный HTTPS-адрес",
     "eventsRequired": "Выберите хотя бы одно событие",
-    "eventInvalid": "Недопустимое событие"
+    "eventInvalid": "Недопустимое событие",
+    "formatInvalid": "Недопустимый формат доставки"
   },
   "backup": {
     "passphraseRequired": "Укажите пароль",
