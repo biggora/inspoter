@@ -1,7 +1,7 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.16
-**Status:** Dashboards section (widget boards) specified and implemented
+**Version:** v3.17
+**Status:** Agent-facing Messages management API specified and implemented
 **Owner:** Product Analyst
 **Date:** 2026-07-30
 **Source of truth for:** architect, ui-ux-designer, planner, tester
@@ -50,8 +50,8 @@ Vertical slices. **Slice 1 (tracer bullet) = dashboard shell + minimal single-op
 
 ### Secondary actor — "External System" (machine, not a human)
 
-- **Who:** Third-party services, scripts, monitoring tools, or CI pipelines.
-- **Context:** Authenticate with a token and POST payloads to the webhook ingest API to create mail entries, messages, logs, or alerts.
+- **Who:** Third-party services, scripts, monitoring tools, CI pipelines, and — since FR-MSG-004 — AI assistants acting for the operator.
+- **Context:** Authenticate with a token and POST payloads to the webhook ingest API to create mail entries, messages, logs, or alerts. A scoped token additionally lets the caller arrange the Messages section it posts into (FR-MSG-004), so an assistant can set up its own categories, channels, and integrations instead of asking the operator to click through them first.
 - **Skill level:** N/A (programmatic).
 
 ---
@@ -438,7 +438,20 @@ The visible UI defaults to English, with Russian fully supported and operator-se
   - **AC-MSG-013**: Given an authenticated operator, When they submit a message to a channel that does not exist, Then the request is rejected with a client error, no message or channel is created, and channel auto-create remains disabled.
   - **AC-MSG-014**: Given an operator post cannot be persisted, When the attempt fails, Then the API returns a non-success response, the UI shows the failure without an optimistic success state, and the feed contains only messages confirmed as persisted.
 
-**Messages interaction contract (channel-webhook amendment, 2026-07-18):** The first available channel is selected when the current selection is absent; older pages prepend above the current feed without moving the reader away from the same content; a confirmed operator send refetches the feed, clears the draft only after success, and retains it on failure. The labeled multiline composer uses Enter for a newline and Ctrl+Enter to send. The feed renders `OPERATOR` as «Оператор», `WEBHOOK` as «Внешний источник», and historic/default `LEGACY` as «Источник не определён». Mobile navigation uses one Sheet, while channel actions remain keyboard-accessible in both sidebar and header. The channel settings dialog contains «Обзор» (rename/delete) and «Вебхуки» (independent loading, empty, error, create, one-time copy, list, and irreversible revoke states).
+**FR-MSG-004: Agent-facing Messages management API (2026-08-05)**
+
+- Description: An API token, rather than a browser session, can run the Messages section end to end: read the category/channel tree, create and rename categories and channels, read a channel's feed, post messages, and issue, list and revoke that channel's ingest webhooks. The capability is published twice over one service layer — as MCP tools on `POST /api/mcp` and as the REST family `/api/v1/messages/**` — so an assistant that speaks MCP and a script that speaks plain HTTP obtain identical behavior. Two exclusions are deliberate: deleting a category or channel is not exposed at all (it would cascade to the channel's whole message history, which stays an operator decision under AC-MSG-003), and channel auto-create on ingest remains rejected under Q-8/AC-MSG-006 — a channel must be created through this API before a message can reach it. Permission is carried by two scopes on the existing workspace token (FR-WH-002): `messages:read` and `messages:write`, the latter also covering channel-webhook issuance because handing out a credential is the same class of irreversible action as posting.
+- Priority: Should Have
+- Acceptance Criteria:
+  - **AC-MSG-015** (Scoped token access): Given a request to either surface, When it presents no token, an unknown or revoked token, a channel-scoped webhook token, or a token carrying no MCP scope, Then it is rejected with `401` and a bearer challenge; When it presents a token whose scopes lack the operation's requirement, Then it is rejected with `403`; and in both cases nothing is created, renamed, or posted.
+  - **AC-MSG-016** (Idempotent structural creation): Given a category or channel name, When the same name is submitted twice differing only in case, Then exactly one record exists afterwards — the first call reports creation (`201`) and the second returns the existing record unchanged (`200`) — so an agent re-running its own setup never duplicates the structure.
+  - **AC-MSG-017** (Agent origin and authorship): Given a message posted through either surface, When it is persisted, Then its stored origin is `AGENT` — distinct from the operator and webhook origins of AC-MSG-010 — its author defaults to the presenting token's name when the caller supplies none, and the feed labels it visibly and distinguishably without opening another view.
+  - **AC-MSG-018** (No destructive structural operations): Given either surface, When its operation catalogue is enumerated, Then it exposes no way to delete a category or a channel, and a token holding every scope cannot remove either.
+  - **AC-MSG-019** (Channel webhook lifecycle): Given a channel, When a webhook is issued through this API, Then the response carries the tokenized URL exactly once and no later read returns the secret; When the webhook is revoked, Then a subsequent delivery to that URL is rejected with `401` while messages already posted through it remain.
+  - **AC-MSG-020** (Workspace isolation): Given an identifier belonging to another workspace, When it is used against either surface, Then the response is a non-disclosing `404` (REST) or a tool error (MCP), and no record is read, created, or modified in either workspace.
+  - **AC-MSG-021** (Validation and abuse limits): Given a malformed body, an unknown field, or content outside the documented bounds, When it is submitted, Then the request is rejected with `400` carrying machine-readable issues and nothing is persisted; Given the per-token rate limit is exceeded, Then the response is `429` with `Retry-After`, sharing the limiter and configuration of the webhook ingest API (NFR-SEC-003).
+
+**Messages interaction contract (channel-webhook amendment, 2026-07-18):** The first available channel is selected when the current selection is absent; older pages prepend above the current feed without moving the reader away from the same content; a confirmed operator send refetches the feed, clears the draft only after success, and retains it on failure. The labeled multiline composer uses Enter for a newline and Ctrl+Enter to send. The feed renders `OPERATOR` as «Оператор», `WEBHOOK` as «Внешний источник», `AGENT` as «Агент» (FR-MSG-004), and historic/default `LEGACY` as «Источник не определён». Mobile navigation uses one Sheet, while channel actions remain keyboard-accessible in both sidebar and header. The channel settings dialog contains «Обзор» (rename/delete) and «Вебхуки» (independent loading, empty, error, create, one-time copy, list, and irreversible revoke states).
 
 ---
 
@@ -661,13 +674,13 @@ Each provider selects its mode independently under AC-PROV-001..002: an absent c
 
 **NFR-DEPLOY-001 (Self-hosted / Docker):** The application must be deployable as a self-hosted service via Docker on a single host, backed by PostgreSQL. _Verification:_ a documented `docker`-based startup brings up the app + database and serves the login screen. (Traces to Decisions log: self-hosted, single deploy, PostgreSQL + Prisma.)
 
-**NFR-SEC-001 (Panel authentication):** All dashboard routes and data APIs require an authenticated session; only the login route and the webhook ingest API (token-authenticated) are reachable unauthenticated. _Verification:_ AC-AUTH-001, AC-WH-001.
+**NFR-SEC-001 (Panel authentication):** All dashboard routes and browser data APIs require an authenticated session. The only session-free surfaces are the login route and the token-authenticated machine surfaces, each of which derives its workspace from the presented credential and never from a header: the webhook ingest API (FR-WH-001, FR-WH-003), server-metrics ingestion, `POST /api/mcp`, and the `/api/v1/**` management API (FR-MSG-004). A token surface is reachable without a session but never without a credential. _Verification:_ AC-AUTH-001, AC-WH-001, AC-MSG-015.
 
 **NFR-SEC-002 (Provider/webhook secret handling):** Provider API keys and webhook token secrets must be sourced from environment variables or stored such that secret values are never returned in list/detail API responses or rendered in the UI after creation. Channel-webhook creation and public-delivery responses are non-cacheable; the UI keeps the returned URL only in transient dialog state and never in storage, RSC props, toast text, analytics, or logs. Because the channel webhook credential is embedded in the URL, reverse proxies **MUST redact the full request path for `/api/webhooks/channels/*`** in access and error logs. _Verification:_ inspect persistence and API responses for raw secret values (absent except the one-time creation response), inspect cache/referrer headers, close/reopen the dialog to prove non-reveal, and verify proxy-log fixtures contain no tokenized path.
 
 **NFR-SEC-003 (Webhook abuse resistance):** The webhook ingest API must enforce token auth (AC-WH-001), payload validation (AC-WH-002), body-size/parse limits (AC-WH-011), and rate limiting (AC-WH-005) to resist unauthorized or abusive ingestion. Aligns with OWASP API Top 10 (broken auth, unrestricted resource consumption).
 
-**NFR-SEC-004 (Workspace-context precondition):** Every session-authenticated browser API request, including workspace list/create/admin/switch, must present the non-empty ASCII `X-Inspoter-Workspace` value rendered with the page (maximum 128 bytes). The server first authenticates and resolves membership, then compares the header with the session workspace before any business query, cache, write, binding lookup, or provider call. Missing or malformed context returns `400 WORKSPACE_CONTEXT_REQUIRED`; stale or inaccessible context returns `409 WORKSPACE_CONTEXT_STALE`. The header never selects or authorizes a workspace. Login, logout, public webhooks, assets, and direct Server Component reads are excluded. A stale mutation is never retried automatically.
+**NFR-SEC-004 (Workspace-context precondition):** Every session-authenticated browser API request, including workspace list/create/admin/switch, must present the non-empty ASCII `X-Inspoter-Workspace` value rendered with the page (maximum 128 bytes). The server first authenticates and resolves membership, then compares the header with the session workspace before any business query, cache, write, binding lookup, or provider call. Missing or malformed context returns `400 WORKSPACE_CONTEXT_REQUIRED`; stale or inaccessible context returns `409 WORKSPACE_CONTEXT_STALE`. The header never selects or authorizes a workspace. Login, logout, public webhooks, the token-authenticated machine surfaces of NFR-SEC-001 (`/api/server-metrics`, `/api/mcp`, `/api/v1/**`), assets, and direct Server Component reads are excluded — a bearer token already names its own workspace, so the header would add nothing to authorize. A stale mutation is never retried automatically.
 
 **NFR-PERF-001 (List pagination):** All potentially unbounded lists (Mail, Logs, Alerts, and Messages within a channel) must be paginated (server-side), returning a bounded page size (default target: 50 items/page, configurable) so a single request never loads the entire table; Mail historical-label application uses separately bounded 200-message batches. _Verification:_ AC-MAIL-005/036/045, AC-LOG-004, AC-ALR-006, AC-MSG-007; list response payload item count ≤ configured page size and each backfill batch ≤ 200 messages.
 
@@ -696,6 +709,7 @@ Each provider selects its mode independently under AC-PROV-001..002: an absent c
 - **US-5 (Servers):** As an operator, I want to see my Hetzner VPS statuses and start/stop/restart them, so that I can manage compute without the Hetzner console. → FR-SRV-001..002
 - **US-6 (Mail):** As an operator, I want to view, filter, sort, and label incoming mail—and let account-scoped rules apply visible labels automatically—so that important messages stand out beside their subjects and remain easy to find. → FR-MAIL-001, FR-MAIL-008..009
 - **US-7 (Messages):** As an operator, I want Discord-style categories and channels that both external systems and authenticated operators can post into, so that notifications and operator notes are organized by topic. → FR-MSG-001..003
+- **US-7a (Messages, AI assistant):** As an operator, I want to hand an assistant a scoped token and have it build the categories, channels and webhooks it needs and post into them, so that setting up a new integration does not require me to click through the UI first — and I want to see at a glance which messages it wrote. → FR-MSG-004
 - **US-8 (Logs):** As an operator, I want to browse, filter, and sort logs pushed from my systems, so that I can investigate incidents in one place. → FR-LOG-001..002
 - **US-9 (Alerts):** As an operator, I want categorized alerts that I can filter and sort, fed by my monitoring systems, so that I can respond to problems quickly. → FR-ALR-001..003
 - **US-10 (Webhook, external system):** As an external system, I want to POST mail/messages/logs/alerts to the dashboard with a token, so that my events show up in the operator's dashboard reliably — and **without duplicates when I supply an idempotency key** (delivery without a key is at-least-once and may duplicate, per AC-WH-010). → FR-WH-001..002
@@ -961,7 +975,7 @@ No v3.14 requirement is gated by an unresolved product question. Q-1…Q-13, Q-1
 
 ## Appendix B — AC-ID index and source traceability
 
-All IDs are stable and must not be renumbered, reused, or transferred. v3.16 has exactly **189 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 206 unique criteria** (v3.15's 202 plus AC-WH-012..015):
+All IDs are stable and must not be renumbered, reused, or transferred. v3.17 has exactly **196 unconditional active criteria + 16 conditionally applicable AC-REAL criteria + 1 inactive criterion = 213 unique criteria** (v3.16's 206 plus AC-MSG-015..021):
 
 - Shell: AC-SHELL-001..004
 - Dashboards: AC-DSH-001..018, added by the Dashboards amendment (boards 001..006, widgets 007..010, grid layout 011..014, data/refresh 015..016, responsive/keyboard 017..018)
@@ -970,7 +984,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.16 has
 - Domains: AC-DOM-001..009
 - Servers: AC-SRV-001..008
 - Mail: AC-MAIL-001..045, with AC-MAIL-007..030 added by Q-14 (accounts 007..011, sync 012..017, actions 018..021, send 022..025, attachments 026..028, folders/switching 029..030) and AC-MAIL-031..045 added by Q-15 (labels 031..038, automatic rules/backfill 039..045)
-- Messages: AC-MSG-001..014, with AC-MSG-008 INACTIVE under Q-8; AC-MSG-009..014 added by Q-4
+- Messages: AC-MSG-001..021, with AC-MSG-008 INACTIVE under Q-8; AC-MSG-009..014 added by Q-4; AC-MSG-015..021 added by the agent-facing management API (scoped access 015, idempotent creation 016, agent origin 017, no destructive operations 018, webhook lifecycle 019, isolation 020, validation/limits 021)
 - Logs: AC-LOG-001..005
 - Alerts: AC-ALR-001..010, with AC-ALR-008 added by Q-7 and AC-ALR-009..010 added alongside the category-provenance work (case-folded category names, operator reassignment)
 - Webhook: AC-WH-001..011; Discord compatibility AC-WH-012..015
@@ -994,6 +1008,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.16 has
 | FR-MAIL-008..009 / AC-MAIL-031..045 | Verbatim Mail-label request; Q-15; reviewed `specs/mail-label-filtering-plan.md` v0.3                                                                                                                              | Implemented and final-gate verified; migration/performance/rollback/restart/regression/review evidence is recorded in `docs/test-plan.md` and `docs/progress.md`; user verification remains                                                                 |
 | FR-MSG-001..002                     | `docs/idea.md` Messages; `specs/ui.md` Messages; Q-8                                                                                                                                                               | Active; AC-MSG-008 inactive                                                                                                                                                                                                                                 |
 | FR-MSG-003 / AC-MSG-009..014        | Q-4; Q-8                                                                                                                                                                                                           | Active; supersedes only the read-only Messages statement in `specs/ui.md`                                                                                                                                                                                   |
+| FR-MSG-004 / AC-MSG-015..021        | User request 2026-08-05 (управление разделом Messages через API для ИИ-агента); FR-WH-002 token model; `docs/architecture.md` §6.6                                                                                 | Active; extends FR-MSG-001..003 to a token-authenticated caller without changing any existing contract; deletion and channel auto-create stay excluded (AC-MSG-003, Q-8/AC-MSG-006)                                                                         |
 | FR-LOG-001..002                     | `docs/idea.md` Logs; `specs/ui.md` Logs                                                                                                                                                                            | Active                                                                                                                                                                                                                                                      |
 | FR-ALR-001..003 / AC-ALR-008        | `docs/idea.md` Alerts; `specs/ui.md` Alerts; Q-7                                                                                                                                                                   | Active; acknowledge/resolve excluded                                                                                                                                                                                                                        |
 | FR-WH-001..002                      | `docs/idea.md` webhook requirements; `docs/plan.md` §6; Q-9; channel-webhook amendment (2026-07-18)                                                                                                                | Active; legacy null-channel tokens remain workspace-wide, new channel webhooks are channel-scoped                                                                                                                                                           |
@@ -1025,6 +1040,14 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.17 — 2026-08-05 (agent-facing Messages management API)
+
+- Added **FR-MSG-004** and **AC-MSG-015..021**: a scoped API token can read the category/channel tree, create (get-or-create by name) and rename categories and channels, read a feed, post messages, and issue, list and revoke channel webhooks — published as MCP tools on `POST /api/mcp` and as the REST family `/api/v1/messages/**` over one service layer. Deleting categories and channels is deliberately not exposed, and Q-8's no-auto-create rule (AC-MSG-006) is unchanged.
+- Messages written by a token carry the new `AGENT` origin, distinct from the operator and webhook origins of AC-MSG-010; the interaction contract now renders it as «Агент». No existing origin, contract, or route changed.
+- **NFR-SEC-001** reworded: its session-free list was stale — it named only login and webhook ingest, while `/api/server-metrics` and `/api/mcp` had already joined them. It now enumerates every token surface, including `/api/v1/**`, and states the invariant that each derives its workspace from the credential. **NFR-SEC-004**'s exclusion list gains the same surfaces for the same reason.
+- Added **US-7a**; the "External System" persona now names AI assistants explicitly.
+- No AC ID was renumbered, reused, or retired. Appendix B's running total moves from 206 to 213 unique criteria.
 
 ### v3.16 — 2026-07-31 (dashboard interactions and default mailbox)
 

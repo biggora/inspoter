@@ -17,6 +17,9 @@ const locales = [
 
 const withWebhook = HELP_ARTICLES.filter((article) => article.webhook);
 const withDiscord = HELP_ARTICLES.filter((article) => article.discord);
+const withManagementApi = HELP_ARTICLES.filter(
+  (article) => article.managementApi,
+);
 const withOutgoing = HELP_ARTICLES.filter((article) => article.outgoing);
 
 // The only tag handlers help-article-body.tsx passes to t.rich. next-intl throws
@@ -59,6 +62,16 @@ describe("help webhook documentation", () => {
       },
     );
 
+    it.each(withManagementApi.map((article) => article.slug))(
+      "%s has a management API intro and notes",
+      (slug) => {
+        expect(messages[`${slug}ManagementApiIntro`]).toBeTypeOf("string");
+        const fields = messages[`${slug}ManagementApiFields`];
+        expect(Array.isArray(fields)).toBe(true);
+        expect(fields as string[]).not.toHaveLength(0);
+      },
+    );
+
     it.each(withOutgoing.map((article) => article.slug))(
       "%s describes its outgoing event",
       (slug) => {
@@ -76,6 +89,9 @@ describe("help webhook documentation", () => {
         "outgoingFormatsNote",
         ...withWebhook.map((article) => `${article.slug}WebhookIntro`),
         ...withDiscord.map((article) => `${article.slug}DiscordIntro`),
+        ...withManagementApi.map(
+          (article) => `${article.slug}ManagementApiIntro`,
+        ),
         ...withOutgoing.map((article) => `${article.slug}OutgoingWebhook`),
       ];
 
@@ -114,6 +130,17 @@ describe("help webhook documentation", () => {
       expect(article.webhook?.curl ?? "").not.toContain(
         "/api/webhooks/channels",
       );
+    }
+  });
+
+  it("keeps the management API sample on a header token, never a tokenized path", () => {
+    for (const article of withManagementApi) {
+      const { endpoint, curl = "" } = article.managementApi!;
+      expect(endpoint).toContain("/api/v1/");
+      // The credential belongs in the Authorization header here; a tokenized
+      // path would make the printed sample a secret, as it is for Discord.
+      expect(curl).toContain("Authorization: Bearer YOUR_TOKEN");
+      expect(curl).not.toMatch(/[0-9a-f]{48}/);
     }
   });
 

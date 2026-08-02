@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.21
-**Status:** Dashboards section (widget boards) specified and implemented
+**Version:** v2.22
+**Status:** Agent origin and Messages token permissions specified and implemented
 **Owner:** UI/UX Designer
-**Date:** 2026-07-30
+**Date:** 2026-08-05
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.16, docs/architecture.md v1.17, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.17, docs/architecture.md v1.18, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -460,7 +460,7 @@ input. Closing a sheet, picker, or dialog restores focus to its exact opener.
 
 **Route and scope:** /messages; active-workspace content. Trace: AC-MSG-001..007, AC-MSG-009..014; AC-MSG-008 is inactive.
 
-**Layout/content:** desktop uses category/channel navigation, a selected-channel header, a chronological server-paginated feed, and a composer anchored after the feed. When the current selection is missing, select the first available channel. Each record renders one text label: `OPERATOR` → «Оператор», `WEBHOOK` → «Внешний источник», `LEGACY`/missing → «Источник не определён»; author is the immutable display-name snapshot. A record whose sender supplied `avatar_url` shows that image in place of the generated initials tile; any non-`http(s)` value falls back to the tile.
+**Layout/content:** desktop uses category/channel navigation, a selected-channel header, a chronological server-paginated feed, and a composer anchored after the feed. When the current selection is missing, select the first available channel. Each record renders one text label: `OPERATOR` → «Оператор», `WEBHOOK` → «Внешний источник», `AGENT` → «Агент» (a message written through the token API of FR-MSG-004, authored by the token's name unless the caller supplied one), `LEGACY`/missing → «Источник не определён»; author is the immutable display-name snapshot. A record whose sender supplied `avatar_url` shows that image in place of the generated initials tile; any non-`http(s)` value falls back to the tile.
 
 **Embed cards (2026-08-02):** a record ingested through the Discord-compatible route (§6.4 of architecture, `specs/discord-webhook-compatibility.md`) may carry up to ten embeds, rendered under the message text as bordered cards. Each card shows a 4px accent bar coloured from the embed's `color` integer (a neutral token when absent or unusable), then author, linked title, description, an inline/full-width field grid, image, and a footer line joining footer text and timestamp. Text stays selectable and wraps; nothing is colour-only. Sender-supplied URLs become links or image sources **only** when they are `http(s)`, and links carry `rel="noopener noreferrer"`; an unparseable embed timestamp renders nothing rather than «Invalid Date». A message may legitimately have empty content and only embeds — the text paragraph is then omitted, not rendered blank. The `thumbnail` slot is deliberately not rendered: Discord floats it beside the description, which fights the single-column feed.
 
@@ -572,6 +572,21 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.22 — 2026-08-05 (agent origin in the feed, Messages permissions in token settings)
+
+- The Messages feed gains a fourth origin label: `AGENT` → «Агент», for messages
+  written through the token API of FR-MSG-004. It reads as one more plain badge
+  beside «Оператор» and «Внешний источник» (§5.4 keeps origin a badge, not a
+  state chip), stays text rather than colour-only, and needs no new control —
+  the operator only reads it.
+- The API-token permission picker gains a «Сообщения» group with «Поиск и
+  чтение» and «Управление и отправка», matching the existing per-domain
+  read/write pairs. Its nested fieldset legend is what distinguishes its
+  read checkbox from the six identically labelled ones.
+- No screen, flow, or dialog is added: the management API has no UI of its own,
+  and everything an agent creates through it appears in the existing sidebar,
+  feed, and channel-settings surfaces exactly as operator-created records do.
 
 ### v2.21 — 2026-08-02 (Discord embeds in the feed, delivery format in settings)
 

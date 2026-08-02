@@ -7,6 +7,7 @@
   "webhookExampleLabel": "Example webhook request",
   "outgoingWebhookHeading": "Outgoing webhooks",
   "discordWebhookHeading": "Discord compatibility",
+  "managementApiHeading": "Managing the section over the API",
   "outgoingFormatsNote": "Every outgoing webhook has a delivery format, chosen in <outgoing>Settings → Outgoing webhooks</outgoing>. “Inspoter” is our own envelope signed with HMAC-SHA256. “Discord” posts the event as an embed card straight into a Discord channel: point it at a Discord webhook URL and nothing else is needed. “Discord Webhook Events” suits receivers written against Discord: an envelope signed with Ed25519, with the verifying public key shown alongside.",
 
   "dashboardsTitle": "Dashboards",
@@ -132,6 +133,14 @@
     "Errors use Discord's shape: 50006 for an empty message, 50035 for a broken limit, 401 for an unknown or revoked webhook, and 429 with retry_after when the rate limit is hit.",
     "The /slack suffix accepts Slack's format: text and attachments become the message text and cards.",
     "File attachments are accepted but not stored; threads, components and polls are ignored."
+  ],
+  "messagesManagementApiIntro": "The webhooks above only write into a channel that already exists. When an external system or an AI assistant should lay out the section itself — create categories and channels, wire up webhooks and post into them — grant a token the Messages permissions under <tokens>Settings → Webhooks</tokens>. The same token works over plain REST (sample below) and over MCP: an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "messagesManagementApiFields": [
+    "The permissions split in two: \"Search and read\" grants reading only, while \"Manage and post\" is required for every change and for issuing channel webhooks.",
+    "Creating a category or a channel is idempotent: repeating the request with the same name (case is ignored) returns the existing record instead of duplicating it.",
+    "Messages posted with a token are labelled \"Agent\" in the timeline and authored by the token's name, so it is clear a human did not write them.",
+    "Deleting categories and channels is deliberately absent from the API: a category takes its whole message history with it, so that stays an operator action in the interface.",
+    "Errors come back as {\"error\":{\"code\",\"message\"}}: 401 when the token is missing or revoked, 403 when a permission is lacking, 404 when the object is not in your workspace, and 429 when the rate limit is hit."
   ],
   "messagesOutgoingWebhook": "Every posted message also fires a MESSAGE_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
 

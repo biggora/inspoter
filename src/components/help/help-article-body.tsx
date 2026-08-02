@@ -25,7 +25,7 @@ const settingsLinks = {
 
 export async function HelpArticleBody({ article }: { article: HelpArticle }) {
   const t = await getTranslations("help");
-  const { slug, webhook, discord, outgoing } = article;
+  const { slug, webhook, discord, managementApi, outgoing } = article;
   const steps = t.raw(`${slug}Steps`) as string[];
 
   return (
@@ -102,6 +102,38 @@ export async function HelpArticleBody({ article }: { article: HelpArticle }) {
             )}
             <ul className="flex list-inside list-disc flex-col gap-2">
               {(t.raw(`${slug}DiscordFields`) as string[]).map(
+                (field, index) => (
+                  <li key={index}>{field}</li>
+                ),
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+      {managementApi && (
+        <div>
+          <h2 className="mb-2 text-base font-semibold text-foreground">
+            {t("managementApiHeading")}
+          </h2>
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p>{t.rich(`${slug}ManagementApiIntro`, settingsLinks)}</p>
+            <p>
+              <code className="rounded-sm bg-background-100 px-1.5 py-0.5 font-mono text-xs text-foreground">
+                {managementApi.endpoint}
+              </code>
+            </p>
+            {managementApi.curl && (
+              <pre
+                className="w-full overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs"
+                tabIndex={0}
+                role="region"
+                aria-label={t("webhookExampleLabel")}
+              >
+                {managementApi.curl}
+              </pre>
+            )}
+            <ul className="flex list-inside list-disc flex-col gap-2">
+              {(t.raw(`${slug}ManagementApiFields`) as string[]).map(
                 (field, index) => (
                   <li key={index}>{field}</li>
                 ),

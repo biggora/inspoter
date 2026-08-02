@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.8
-**Status:** Dashboards section coverage recorded and green.
+**Version:** 1.9
+**Status:** Messages management API coverage recorded; its two database-backed suites remain PENDING until the test database is migrated.
 **Owner:** tester
-**Date:** 2026-07-30
-**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13) + Discord webhook compatibility (§14). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.15, `docs/architecture.md` v1.13, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
+**Date:** 2026-08-05
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13) + Discord webhook compatibility (§14) + agent-facing Messages management API (§15). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Normative inputs:** `docs/prd.md` v3.17, `docs/architecture.md` v1.18, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.9 — 2026-08-05:** added §15 for the agent-facing Messages management API (AC-MSG-015..021): the scope/contract/presentation units, the REST and MCP integration suites asserted separately so the two surfaces cannot drift, and the dated live run against a real server with a real token. Records honestly that both database-backed suites are authored but unexecuted — the test database was never started because the `test:db:*` guard blocked it — and names the exact commands and the migration they need first.
 - **v1.8 — 2026-08-02:** added §14 for Discord webhook compatibility (AC-WH-012..015): the payload/snowflake/error/embed/delivery unit suites, the ingress pipeline suite over a real database, the egress format suite including Ed25519 verification and auto-disable, and the embed-card and published-contract checks. Records that the untouched pre-Discord webhook suites are themselves the backward-compatibility evidence, and that no browser-level spec covers the new route.
 - **v1.7 — 2026-07-30:** added §13 for the Dashboards section (AC-DSH-001..018): grid-engine, weather-cache, calendar-bucketing and per-kind config unit suites, the ten widget render suites, DB-backed service/API suites including layout rejection and workspace isolation, and two Playwright specs (functional flow plus light/dark/phone visual acceptance). Records the full-suite result and the three pre-existing failures that are outside this section.
 - **v1.6 — 2026-07-24:** opened Mail label definitions, automatic filter rules, and backfill controls to every authenticated active-workspace member; retained membership and workspace-isolation checks.
@@ -751,3 +752,89 @@ above, and a browser case would only re-assert them through a slower harness.
 The credentialed screenshot of an embed card in the running application is
 therefore the one piece of visual evidence still owed at the next demo
 checkpoint.
+
+---
+
+## 15. Agent-facing Messages management API (2026-08-05)
+
+Covers AC-MSG-015..021 (`docs/prd.md` FR-MSG-004, `docs/architecture.md` §6.6).
+The section publishes one capability through two surfaces, so the coverage is
+deliberately paired: every property that could drift between the MCP tools and
+the REST family is asserted on both sides rather than on the shared service
+they call. Authorization is the highest-risk property here — this is the first
+non-ingest surface reachable without a session — and is therefore tested with
+real tokens against the real handlers rather than with a mocked auth layer.
+
+### 15.1 Contract and presentation units (no database)
+
+| ID          | Acceptance/evidence target                                                                                                                                                              | Trace         | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------ |
+| MGA-SCP-001 | `MCP_SCOPES` gains `messages:read`/`messages:write`; `parseScopes` still drops unknown persisted values, and a token holding every scope sees exactly `ALL_TOOLS`.                        | AC-MSG-015    | PASS   |
+| MGA-SCP-002 | A full-scope Messages token is advertised exactly ten tools, listed by name — the absence of any delete operation is pinned as an exact catalogue, so adding one has to fail here first.  | AC-MSG-018    | PASS   |
+| MGA-UI-001  | The token permission picker renders one checkbox per declared scope and names each domain group, so the seven identically labelled read boxes stay distinguishable to assistive tech.     | AC-MSG-015    | PASS   |
+| MGA-UI-002  | The feed labels all four origins distinctly — `AGENT` → «Агент» beside operator, webhook and legacy — in one rendered timeline.                                                          | AC-MSG-017    | PASS   |
+| MGA-DOC-001 | `specs/openapi.json` declares all ten operations with bearer security, the shared error envelope, `WWW-Authenticate` on 401, `Retry-After` on 429, and no body on 500.                    | AC-MSG-015/021 | PASS   |
+| MGA-DOC-002 | Each documented request example validates against the runtime zod schema and is rejected once an unknown field is added, proving the published contract is the strict one.                | AC-MSG-021    | PASS   |
+| MGA-DOC-003 | The issued webhook URL is marked sensitive with no example, and the listing schema carries no `url` property at all.                                                                      | AC-MSG-019    | PASS   |
+| MGA-DOC-004 | `scripts/check-public-openapi.mjs` pins the 13-path inventory and the methods allowed per path, and every operation id is present and unique.                                             | AC-MSG-015    | PASS   |
+
+### 15.2 REST family over the real handlers (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                                                                                | Trace      | Status  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------- |
+| MGA-API-001 | No token, an unknown secret, a revoked token, a channel-scoped webhook token and a scopeless ingest token each answer 401 with a bearer challenge and `no-store`.                          | AC-MSG-015 | PENDING |
+| MGA-API-002 | A `messages:read` token answers 403 `FORBIDDEN` on a write and creates nothing.                                                                                                            | AC-MSG-015 | PENDING |
+| MGA-API-003 | An empty name answers 400 `VALIDATION_FAILED` with issues; an unknown field is rejected rather than ignored.                                                                               | AC-MSG-021 | PENDING |
+| MGA-API-004 | Category and channel creation answer 201 once and 200 with the same id on a case-differing repeat.                                                                                         | AC-MSG-016 | PENDING |
+| MGA-API-005 | Rename returns the new name for both a category and a channel; the listing carries each category's channels.                                                                              | AC-MSG-015 | PENDING |
+| MGA-API-006 | A posted message stores origin `AGENT` and the token's name as author; an explicit author is kept; the message is readable through the listing.                                            | AC-MSG-017 | PENDING |
+| MGA-API-007 | A foreign-workspace category or channel id answers 404 and nothing is created in either workspace.                                                                                         | AC-MSG-020 | PENDING |
+| MGA-API-008 | Webhook creation answers 201 with `Referrer-Policy: no-referrer` and the tokenized URL; the listing exposes neither `url` nor `tokenHash`; revoke answers 200 and stamps `revokedAt`.      | AC-MSG-019 | PENDING |
+
+### 15.3 MCP tools over the real JSON-RPC endpoint (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                                                          | Trace      | Status  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| MGA-MCP-001 | `message_categories_list` returns the seeded category with its channel; `messages_list` pages the same feed the REST surface serves.                                | AC-MSG-015 | PENDING |
+| MGA-MCP-002 | `message_category_create` reports `created: true` once and `created: false` with the same id for a case-differing repeat.                                           | AC-MSG-016 | PENDING |
+| MGA-MCP-003 | `message_channel_create` followed by `message_channel_rename` persists the new name.                                                                                 | AC-MSG-015 | PENDING |
+| MGA-MCP-004 | A foreign-workspace category or channel yields a tool error and writes nothing — asserted for both channel creation and `message_send`.                             | AC-MSG-020 | PENDING |
+| MGA-MCP-005 | `message_send` stores origin `AGENT` with the token name as author and the message is readable back through `messages_list`.                                        | AC-MSG-017 | PENDING |
+| MGA-MCP-006 | `channel_webhook_create` returns a URL under the created webhook's id, the listing carries no secret, and `channel_webhook_revoke` stamps `revokedAt`.              | AC-MSG-019 | PENDING |
+| MGA-MCP-007 | A `messages:read` token is advertised exactly the three read tools, and calling `message_send` with it errors without storing the message.                          | AC-MSG-015 | PENDING |
+
+### 15.4 Live verification against a running server (manual, dated)
+
+Recorded 2026-08-05 against the dev server on port 3801 with a real scoped
+token issued directly into the dev database and deleted afterwards. This is
+evidence of the assembled system, not a substitute for §15.2/§15.3.
+
+| ID          | Acceptance/evidence target                                                                                                                                       | Trace          | Status |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- | ------ |
+| MGA-RUN-001 | Unauthenticated read answers 401 with a bearer challenge; the proxy does not redirect `/api/v1/**` to `/login`.                                                  | AC-MSG-015     | PASS   |
+| MGA-RUN-002 | Category create answers 201 then 200 with the same id for a case-differing name; channel create and rename answer 201/200.                                       | AC-MSG-016     | PASS   |
+| MGA-RUN-003 | A posted message reads back with `origin=AGENT` and the token name as author, through both the REST listing and `messages_list`.                                  | AC-MSG-017     | PASS   |
+| MGA-RUN-004 | The issued webhook URL accepts a real delivery (201), is absent from the listing, and answers 401 for the same delivery after revocation.                        | AC-MSG-019     | PASS   |
+| MGA-RUN-005 | An empty name answers 400 `VALIDATION_FAILED`; an unknown id answers 404 `NOT_FOUND`; `tools/list` advertises exactly the ten Messages tools for a scoped token. | AC-MSG-020/021 | PASS   |
+
+**Why §15.2 and §15.3 are PENDING.** Both suites are authored, collected and
+type-checked, and neither has been executed: the test database was never
+started in the session that wrote them, because every `test:db:*` script
+refuses to run without `ALLOW_TEST_DB_RESET=1`, which that session could not
+set. They become PASS after:
+
+```
+ALLOW_TEST_DB_RESET=1 pnpm test:db:up && ALLOW_TEST_DB_RESET=1 pnpm test:db:migrate
+pnpm test:integration
+```
+
+The migration step is not optional — `MessageOrigin.AGENT` does not exist in a
+test database created before `20260805120000_message_origin_agent`, so
+MGA-API-006 and MGA-MCP-005 would fail at the enum rather than at the assertion.
+
+**Not covered.** No Playwright spec drives this API: it has no UI of its own,
+and the two visible consequences it does have — the «Агент» badge and the
+«Сообщения» permission group — are asserted by MGA-UI-002 and MGA-UI-001 at the
+component level. The Activity journal entries the REST writes produce are
+verified only by reading the code path; no case asserts a stored `Activity`
+row, which is the one gap worth closing if this API grows further.

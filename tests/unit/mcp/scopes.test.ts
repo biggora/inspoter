@@ -64,6 +64,29 @@ describe("tool selection", () => {
     expect(names).toEqual(["logs_search"]);
   });
 
+  // AC-MSG-018: an agent may build the Messages section but never demolish it —
+  // deleting a category takes every channel and message inside it with it. The
+  // guarantee is the absence of a tool, so it is pinned as an exact catalogue:
+  // adding a delete tool later has to fail here first.
+  it("gives a full-scope Messages token exactly the ten non-destructive tools", () => {
+    const names = selectTools(["messages:read", "messages:write"])
+      .map((tool) => tool.name)
+      .sort();
+
+    expect(names).toEqual([
+      "channel_webhook_create",
+      "channel_webhook_revoke",
+      "channel_webhooks_list",
+      "message_categories_list",
+      "message_category_create",
+      "message_category_rename",
+      "message_channel_create",
+      "message_channel_rename",
+      "message_send",
+      "messages_list",
+    ]);
+  });
+
   it("declares a known scope for every tool and no duplicate names", () => {
     const names = ALL_TOOLS.map((tool) => tool.name);
 

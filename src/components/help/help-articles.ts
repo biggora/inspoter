@@ -25,6 +25,13 @@ export interface HelpArticle {
    * because the payload and the response codes differ from `webhook` above.
    */
   discord?: HelpWebhook;
+  /**
+   * Section can also be *managed* by a token, not merely written into
+   * (docs/prd.md FR-MSG-004). Separate from `webhook` because it answers a
+   * different question: not "how do I push an event here" but "how does an
+   * assistant set this section up on its own".
+   */
+  managementApi?: HelpWebhook;
   /** Section emits outgoing-webhook events (Settings > Outgoing webhooks). */
   outgoing?: boolean;
 }
@@ -119,6 +126,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
       curl: `curl -X POST http://your-host/api/discord/webhooks/WEBHOOK_ID/WEBHOOK_TOKEN \\
   -H "Content-Type: application/json" \\
   -d '{"username":"CI","content":"Build 842 passed","embeds":[{"title":"Build 842","description":"All checks passed.","color":3066993,"fields":[{"name":"branch","value":"main","inline":true}]}]}'`,
+    },
+    // The workspace token goes in a header here, so unlike the two blocks
+    // above this sample is safe to print in full.
+    managementApi: {
+      endpoint: "POST /api/v1/messages/categories",
+      curl: `curl -X POST http://your-host/api/v1/messages/categories \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name":"Deployments"}'`,
     },
     outgoing: true,
   },
