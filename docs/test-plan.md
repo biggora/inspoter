@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.7
+**Version:** 1.8
 **Status:** Dashboards section coverage recorded and green.
 **Owner:** tester
 **Date:** 2026-07-30
-**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
+**Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13) + Discord webhook compatibility (§14). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
 **Normative inputs:** `docs/prd.md` v3.15, `docs/architecture.md` v1.13, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.8 — 2026-08-02:** added §14 for Discord webhook compatibility (AC-WH-012..015): the payload/snowflake/error/embed/delivery unit suites, the ingress pipeline suite over a real database, the egress format suite including Ed25519 verification and auto-disable, and the embed-card and published-contract checks. Records that the untouched pre-Discord webhook suites are themselves the backward-compatibility evidence, and that no browser-level spec covers the new route.
 - **v1.7 — 2026-07-30:** added §13 for the Dashboards section (AC-DSH-001..018): grid-engine, weather-cache, calendar-bucketing and per-kind config unit suites, the ten widget render suites, DB-backed service/API suites including layout rejection and workspace isolation, and two Playwright specs (functional flow plus light/dark/phone visual acceptance). Records the full-suite result and the three pre-existing failures that are outside this section.
 - **v1.6 — 2026-07-24:** opened Mail label definitions, automatic filter rules, and backfill controls to every authenticated active-workspace member; retained membership and workspace-isolation checks.
 - **v1.5 — 2026-07-21:** reconciled public OpenAPI, VPS Metrics Agent, and implemented Q-15 behavior; retained the guarded Phase 5 migration/performance/backup/rollback/restart evidence and final regression/review gate. User verification remains required.
@@ -683,3 +684,70 @@ files as pre-existing and outside this section:
   webhook-delivery visibility assertion) failed because the spec leaked
   fixtures into the shared test database — fixed in `2504807`, with the
   fixture teardown hardened in `283788a`.
+
+## 14. Discord webhook compatibility (2026-08-02)
+
+Covers AC-WH-012..015 (`docs/prd.md` FR-WH-003, `docs/architecture.md` §6.4,
+`specs/discord-webhook-compatibility.md`). Two properties carry most of the
+risk and are tested directly rather than inferred: that a Discord client can
+parse every response we emit, and that the pre-Discord contracts did not move.
+The second is asserted by leaving `tests/integration/webhooks/channelPipeline.test.ts`
+and `tests/integration/services/outgoingWebhooks.test.ts` untouched and green —
+an edit to either would itself have been the regression.
+
+### 14.1 Payload, identity and delivery units (no database)
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                          | Trace         | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------ |
+| DIS-VAL-001 | Per-field Discord limits: content 2000, username 80, ten embeds, embed title 256 / description 4096 / 25 fields / field name 256 / value 1024 / footer 2048 / author 256.                                                           | AC-WH-013     | PASS   |
+| DIS-VAL-002 | The 6000-character budget counts across all embeds over exactly the budgeted fields, passes at the limit and fails one character over; url/timestamp/color are excluded.                                                            | AC-WH-013     | PASS   |
+| DIS-VAL-003 | Unknown properties are accepted, matching Discord, where the strict native schema rejects them.                                                                                                                                     | AC-WH-012     | PASS   |
+| DIS-VAL-004 | "Nothing displayable" is detected for an empty body, whitespace-only content and tts-only, and cleared by content, embeds, a poll or a file part.                                                                                   | AC-WH-013     | PASS   |
+| DIS-SNW-001 | Surrogate snowflakes are decimal, fit 64 bits, are deterministic per id+timestamp, differ for distinct ids at one instant, order by creation time, encode the timestamp in the high bits, and clamp pre-epoch dates.                | AC-WH-012     | PASS   |
+| DIS-ERR-001 | Zod issues become the Discord errors tree keyed by path with _errors leaves; a missing field maps to BASE_TYPE_REQUIRED; several paths coexist; the error helpers emit the documented bodies and no-store.                          | AC-WH-013     | PASS   |
+| DIS-EMB-001 | Event-to-embed mapping for all five events: severity/status/level colour selection, the synthetic test-delivery card, omission of fields whose source value is absent, and clamping of oversized data back inside the embed limits. | AC-WH-014     | PASS   |
+| DIS-EMB-002 | Slack attachments become embeds: text, named and hex colours, epoch ts to ISO timestamp, and a cap at ten cards.                                                                                                                    | AC-WH-012     | PASS   |
+| DIS-DLV-001 | DISCORD_EXECUTE builds a username+embed body and sends no signature header; DISCORD_EVENTS builds the type-1 envelope, the type-0 PING, and a signature a Discord-style receiver verifies, failing on a tampered body or timestamp. | AC-WH-014/015 | PASS   |
+| DIS-DLV-002 | retry_after is read from the 429 body first, then the header, and is null when neither is usable — a missing header must not read as "retry now".                                                                                   | AC-WH-014     | PASS   |
+
+### 14.2 Ingress over the pipeline (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                                                                                       | Trace     | Status |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------ |
+| DIS-ING-001 | Default success is 204 with an empty body and one stored message; wait=true returns 200 and a Discord message object whose id and channel_id are numeric strings.                                | AC-WH-012 | PASS   |
+| DIS-ING-002 | embeds, avatar_url, tts and flags are persisted on the row; SUPPRESS_EMBEDS drops embeds while keeping the content; an absent username falls back to the webhook name.                           | AC-WH-012 | PASS   |
+| DIS-ING-003 | An unknown webhook id and a bad secret both answer 401 with the Discord body and create nothing.                                                                                                 | AC-WH-013 | PASS   |
+| DIS-ING-004 | 50006 for nothing displayable, 50035 with a field tree for a broken limit, 50035 on the embeds path for the 6000-character budget, 400 code 0 for unparseable JSON, 40005 for an oversized body. | AC-WH-013 | PASS   |
+| DIS-ING-005 | X-RateLimit-* on success; 429 carries Retry-After, X-RateLimit-Scope and a body with message, numeric retry_after and global false.                                                              | AC-WH-013 | PASS   |
+| DIS-ING-006 | Idempotency-Key creates once and replays the same id; a non-ASCII key is a 50035 form-body error.                                                                                                | AC-WH-012 | PASS   |
+| DIS-ING-007 | multipart/form-data reads the body from payload_json; a file-only request succeeds with empty content and an empty attachments array (accepted, not stored).                                     | AC-WH-012 | PASS   |
+| DIS-ING-008 | GET returns a Discord webhook object (type 1, null guild/application, self URL); a bad secret answers 401.                                                                                       | AC-WH-012 | PASS   |
+| DIS-ING-009 | The /slack suffix turns text and attachments into content and embeds and defaults wait to true, while an explicit wait=false still answers 204.                                                  | AC-WH-012 | PASS   |
+
+### 14.3 Egress formats (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                                                 | Trace     | Status |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ |
+| DIS-EGR-001 | Format defaults to INSPOT with no key pair; DISCORD_EVENTS mints an Ed25519 pair, keeps the public half out of the stored ciphertext, and enqueues a PING. | AC-WH-015 | PASS   |
+| DIS-EGR-002 | Switching an existing webhook to DISCORD_EVENTS mints the missing key pair without re-issuing the signing secret.                                          | AC-WH-015 | PASS   |
+| DIS-EGR-003 | DISCORD_EXECUTE posts a one-embed body with no signature header, marks the delivery DELIVERED and clears the failure counter.                              | AC-WH-014 | PASS   |
+| DIS-EGR-004 | A 429 carrying retry_after 42 schedules the retry about 42 s out, not on the generic 30 s to 6 h ladder.                                                   | AC-WH-014 | PASS   |
+| DIS-EGR-005 | DISCORD_EVENTS posts a signed type-1 envelope verifiable with the published public key, a type-0 PING with no event body, and retries on the 1 s ladder.   | AC-WH-015 | PASS   |
+| DIS-EGR-006 | Auto-disable trips exactly at WEBHOOK_AUTO_DISABLE_AFTER; a manual re-enable clears the counter; a merely retrying delivery does not increment it.         | AC-WH-015 | PASS   |
+| DIS-EGR-007 | INSPOT still sends the original envelope with X-Inspot-Signature and X-Inspot-Event and the delivery id in the body.                                       | AC-WH-014 | PASS   |
+
+### 14.4 UI and published contract
+
+| ID          | Acceptance/evidence target                                                                                                                                                                                                    | Trace         | Status |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------ |
+| DIS-UI-001  | Embed cards: nothing rendered for an empty list, every part of a full embed rendered, one card per embed, accent bar coloured from the integer with a neutral fallback.                                                       | AC-WH-012     | PASS   |
+| DIS-UI-002  | Hostile input degrades: a javascript: title URL renders as text with no anchor, a data: image URL renders no img, an unparseable timestamp renders no time element and never "Invalid Date".                                  | AC-WH-012     | PASS   |
+| DIS-DOC-001 | specs/openapi.json declares the Discord operations with the documented limits, the 200/204/400/401/413/429/500 response set, rate-limit headers and a sensitive path token; its example validates against the runtime schema. | AC-WH-012/013 | PASS   |
+| DIS-DOC-002 | Help documents the Discord block for Messages in both locales, keeps the en and ru key sets identical, and keeps the sample on placeholders with no 48-hex token.                                                             | AC-WH-012     | PASS   |
+
+**Not covered.** No Playwright spec exercises the Discord route end to end in a
+browser. The surface is a server API plus a presentational card, both covered
+above, and a browser case would only re-assert them through a slower harness.
+The credentialed screenshot of an embed card in the running application is
+therefore the one piece of visual evidence still owed at the next demo
+checkpoint.

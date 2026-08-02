@@ -4,7 +4,7 @@
 **Status:** Dashboards section (widget boards) implemented and verified
 **Owner:** Architect
 **Date:** 2026-07-30
-**Normative inputs:** `docs/prd.md` v3.11, `docs/design.md` v2.12, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
+**Normative inputs:** `docs/prd.md` v3.16, `docs/design.md` v2.21, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
 ## 0. Reading contract

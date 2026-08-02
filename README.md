@@ -10,7 +10,7 @@ Inspoter — self-hosted панель для управления доменам
 - HTTP-, TCP- и PING-мониторинг сервисов;
 - мониторинг метрик VPS: CPU, память, swap, load, диск и uptime через Docker-агент;
 - почтовые аккаунты IMAP/SMTP, сообщения и вложения;
-- каналы сообщений, входящие и исходящие webhook;
+- каналы сообщений, входящие и исходящие webhook, совместимые с Discord;
 - закладки, логи и оповещения;
 - MCP-сервер для ИИ-ассистентов с правами на уровне API-токена;
 - рабочие пространства, участники и переключение между командами;
@@ -91,6 +91,7 @@ docker compose exec app pnpm db:seed
 | `AUTHENTIK_ISSUER`, `AUTHENTIK_CLIENT_ID`, `AUTHENTIK_CLIENT_SECRET`, `AUTHENTIK_REDIRECT_URI` | необязательны, задаются вместе | Включают вход через Authentik OIDC. Если группа не задана, доступен вход по паролю.                                                                                                         |
 | `LIST_PAGE_SIZE`                                                                               | необязательна                  | Размер страницы; значение по умолчанию — `50`.                                                                                                                                              |
 | `WEBHOOK_RATE_LIMIT`, `WEBHOOK_RATE_WINDOW_MS`, `WEBHOOK_MAX_BODY_BYTES`                       | необязательны                  | Ограничения для входящих webhook.                                                                                                                                                           |
+| `WEBHOOK_AUTO_DISABLE_AFTER`                                                                   | необязательна                  | Сколько неудачных доставок подряд отключают исходящий webhook (по умолчанию 10). Счётчик обнуляется успешной доставкой и ручным включением.                                                  |
 | `BACKUP_MAX_IMPORT_BYTES`, `BACKUP_IMPORT_TX_TIMEOUT_MS`                                       | необязательны                  | Резервное копирование (`/settings/backup`): максимальный размер импортируемого архива (по умолчанию 512 МиБ) и таймаут транзакции импорта (по умолчанию 5 минут).                           |
 | `SERVER_METRICS_RATE_LIMIT`, `SERVER_METRICS_RATE_WINDOW_MS`                                   | необязательны                  | Rate limiting для публичного метрик-эндпоинта: максимум запросов на пару «токен + IP-адрес источника» (по умолчанию 12) и окно в мс (по умолчанию 60 000).                                  |
 | `LLM_REQUEST_TIMEOUT_MS`, `LLM_CALL_RATE_LIMIT`, `LLM_CALL_RATE_WINDOW_MS`                     | необязательны                  | Модели ИИ: таймаут одного запроса к модели (по умолчанию 60 000 мс) и лимит вызовов на рабочее пространство (по умолчанию 60 вызовов в час). Адрес модели и ключ задаются в UI, а не здесь. |
@@ -191,18 +192,50 @@ Swagger UI доступен авторизованным пользовател�
 
 - `POST /api/webhooks/{type}` с Bearer-токеном;
 - `POST /api/webhooks/channels/{webhookId}/{token}` с секретным токеном в URL;
+- `POST` и `GET /api/discord/webhooks/{webhookId}/{token}` — Discord-совместимый приём, секрет в URL;
+- `POST /api/discord/webhooks/{webhookId}/{token}/slack` — форма Slack;
 - `POST /api/server-metrics` с Bearer-токеном;
 - `POST /api/mcp` с Bearer-токеном.
 
 Все они определяют рабочее пространство по API-токену и не используют `X-Inspoter-Workspace`. Описания операций и примеры в Swagger UI написаны на английском. Внутренние dashboard API, OIDC и маршруты управления токенами не входят в публичную спецификацию. Не сохраняйте и не передавайте channel webhook URL через логи: URL содержит секрет.
 
-Проверить спецификацию можно командами:
+Проверить спецификацию можно так:
 
 ```bash
-pnpm openapi:lint       # правила OpenAPI через Redocly CLI
-pnpm openapi:contract   # соответствие двум публичным route-контрактам
-pnpm openapi:check      # обе проверки последовательно
+node scripts/check-public-openapi.mjs
 ```
+
+Скрипт фиксирует список публичных путей, проверяет, что каждый объявленный маршрут действительно экспортирует `POST`, и отклоняет workspace-заголовки, внешние URL серверов и секреты в примерах. Пооперационные утверждения — включая лимиты Discord-payload и rate-limit-заголовки — живут в `tests/unit/openapi/public-openapi.test.ts` и выполняются вместе с `pnpm test:unit`.
+
+## Совместимость с Discord
+
+Вебхуки Inspoter говорят на проводном формате Discord в обе стороны. Нормативный контракт — [`specs/discord-webhook-compatibility.md`](specs/discord-webhook-compatibility.md); ниже только то, что нужно оператору.
+
+### Приём: Discord → Inspoter
+
+Канальный вебхук создаётся в настройках канала (значок шестерёнки → «Вебхуки»). Диалог показывает три значения, построенных из одного секрета: обычный URL, готовый cURL и **Discord-совместимый URL**. Любая интеграция, умеющая писать в Discord-канал — CI, Grafana, Sentry, Uptime Kuma, GitHub Actions — начинает писать в Inspoter подстановкой этого адреса вместо ссылки на `discord.com`. Тело запроса переписывать не нужно.
+
+```bash
+curl -X POST 'http://your-host/api/discord/webhooks/WEBHOOK_ID/WEBHOOK_TOKEN?wait=true' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"username":"CI","content":"Build 842 passed","embeds":[{"title":"Build 842","color":3066993}]}'
+```
+
+Поддерживаются `content` (≤2000), `embeds` (≤10 карточек, ≤6000 символов суммарно), `username`, `avatar_url`, `tts`, `flags`, `application/json` и `multipart/form-data` с `payload_json`. Ответ по умолчанию — `204` без тела; `?wait=true` даёт `200` и объект сообщения. Ошибки приходят в форме Discord (`50006`, `50035`, `40005`, `401`, `429` с `retry_after`). Embeds отображаются в канале карточками.
+
+Discord-URL — такой же секрет, как обычный: обратный прокси обязан вырезать путь `/api/discord/webhooks/*` из логов.
+
+### Отправка: Inspoter → Discord
+
+У каждого исходящего вебхука в **Настройках → Исходящих вебхуках** есть формат доставки:
+
+| Формат                  | Что уходит на провод                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `INSPOT` (по умолчанию) | Собственный конверт с подписью HMAC-SHA256 в `X-Inspot-Signature`. Существующие подписки не меняются.          |
+| `DISCORD_EXECUTE`       | Тело Discord Execute Webhook: событие уходит карточкой embed. Указывайте URL вебхука Discord-канала.           |
+| `DISCORD_EVENTS`        | Конверт Discord Webhook Events с подписью Ed25519, PING при создании, таймаут 3 с. Публичный ключ виден в UI.  |
+
+`DISCORD_EXECUTE` уважает `retry_after` из ответа `429`. После `WEBHOOK_AUTO_DISABLE_AFTER` неудачных доставок подряд вебхук отключается автоматически, а ручное включение обнуляет счётчик.
 
 ## MCP (Model Context Protocol)
 

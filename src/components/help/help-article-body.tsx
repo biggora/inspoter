@@ -25,7 +25,7 @@ const settingsLinks = {
 
 export async function HelpArticleBody({ article }: { article: HelpArticle }) {
   const t = await getTranslations("help");
-  const { slug, webhook, outgoing } = article;
+  const { slug, webhook, discord, outgoing } = article;
   const steps = t.raw(`${slug}Steps`) as string[];
 
   return (
@@ -78,14 +78,49 @@ export async function HelpArticleBody({ article }: { article: HelpArticle }) {
           </div>
         </div>
       )}
+      {discord && (
+        <div>
+          <h2 className="mb-2 text-base font-semibold text-foreground">
+            {t("discordWebhookHeading")}
+          </h2>
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p>{t.rich(`${slug}DiscordIntro`, settingsLinks)}</p>
+            <p>
+              <code className="rounded-sm bg-background-100 px-1.5 py-0.5 font-mono text-xs text-foreground">
+                {discord.endpoint}
+              </code>
+            </p>
+            {discord.curl && (
+              <pre
+                className="w-full overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs"
+                tabIndex={0}
+                role="region"
+                aria-label={t("webhookExampleLabel")}
+              >
+                {discord.curl}
+              </pre>
+            )}
+            <ul className="flex list-inside list-disc flex-col gap-2">
+              {(t.raw(`${slug}DiscordFields`) as string[]).map(
+                (field, index) => (
+                  <li key={index}>{field}</li>
+                ),
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
       {outgoing && (
         <div>
           <h2 className="mb-2 text-base font-semibold text-foreground">
             {t("outgoingWebhookHeading")}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {t.rich(`${slug}OutgoingWebhook`, settingsLinks)}
-          </p>
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p>{t.rich(`${slug}OutgoingWebhook`, settingsLinks)}</p>
+            {/* One shared note: the delivery format is a per-webhook setting,
+                not a per-section one, so every outgoing article says it once. */}
+            <p>{t.rich("outgoingFormatsNote", settingsLinks)}</p>
+          </div>
         </div>
       )}
     </div>
