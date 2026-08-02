@@ -3,6 +3,7 @@
 import { useId, useRef } from "react";
 import { useTranslations } from "next-intl";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -178,7 +179,22 @@ export function ChannelSidebar({
                           >
                             #
                           </span>
-                          <span className="truncate">{channel.name}</span>
+                          <span className="min-w-0 flex-1 truncate text-left">
+                            {channel.name}
+                          </span>
+                          {/* Tells the operator which channel the topbar
+                              indicator is pointing at, same as the unread
+                              badge on a mail folder. */}
+                          {(channel.unreadCount ?? 0) > 0 && (
+                            <Badge
+                              aria-label={t("channelUnreadAriaLabel", {
+                                count: channel.unreadCount ?? 0,
+                              })}
+                              className="ml-auto shrink-0 tabular-nums"
+                            >
+                              {channel.unreadCount}
+                            </Badge>
+                          )}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger

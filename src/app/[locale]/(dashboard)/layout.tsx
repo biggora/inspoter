@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
 import { RouteProgressProvider } from "@/components/shell/route-progress";
+import { getUnreadCounts } from "@/lib/services/notification-counts";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ export default async function DashboardLayout({
   const { operator, workspace } = await requireAuth();
   const cookieStore = await cookies();
   const sidebarOpen = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value !== "false";
+  // Seeds the topbar badges so they are right on first paint; the client keeps
+  // them current from there (notification-indicators.tsx).
+  const unreadCounts = await getUnreadCounts(workspace.id);
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
@@ -31,7 +35,11 @@ export default async function DashboardLayout({
           hiddenSections={workspace.hiddenSections}
         />
         <SidebarInset>
-          <DashboardTopbar username={operator.username} />
+          <DashboardTopbar
+            username={operator.username}
+            unreadCounts={unreadCounts}
+            hiddenSections={workspace.hiddenSections}
+          />
           <main className="w-full flex-1 p-6">{children}</main>
         </SidebarInset>
       </RouteProgressProvider>

@@ -12,6 +12,8 @@ export interface ChannelDto {
   id: string;
   messageCategoryId: string;
   name: string;
+  /** Unread messages in this channel; absent on responses that don't count. */
+  unreadCount?: number;
 }
 
 export interface MessageCategoryDto {
@@ -138,6 +140,15 @@ export const messageCategoriesApi = {
   remove: (id: string) =>
     request<void>(`/api/message-categories/${id}`, { method: "DELETE" }),
 };
+
+/** Clears one channel's unread messages once the operator opens it. */
+export function markChannelRead(
+  channelId: string,
+): Promise<{ updated: number }> {
+  return request<{ updated: number }>(`/api/channels/${channelId}/read`, {
+    method: "POST",
+  });
+}
 
 export const channelsApi = {
   create: (categoryId: string, name: string) =>

@@ -16,7 +16,12 @@ export async function GET(request: NextRequest) {
   );
   if (authResult instanceof NextResponse) return authResult;
   const { workspace } = authResult;
-  const categories = await messagesService.listCategories(workspace.id);
+  // With unread counts: this is the route the messages sidebar reads, and the
+  // per-channel badge is what tells the operator which channel the topbar
+  // indicator is pointing at.
+  const categories = await messagesService.listCategoriesWithUnread(
+    workspace.id,
+  );
   return jsonResponse(categories);
 }
 
