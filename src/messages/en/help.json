@@ -3,6 +3,9 @@
   "pageDescription": "How each part of the dashboard works.",
   "backToHelp": "Back to Help",
   "howToUseHeading": "How to use it",
+  "webhookHeading": "Sending data in by webhook",
+  "webhookExampleLabel": "Example webhook request",
+  "outgoingWebhookHeading": "Outgoing webhooks",
 
   "dashboardsTitle": "Dashboards",
   "dashboardsCardDescription": "Build your own overview from widgets — clock, weather, calendar, and data from any section.",
@@ -52,6 +55,7 @@
     "Click \"Refresh\" to force a live re-fetch of every provider instead of the cached snapshot.",
     "For a server without live metrics, click \"Set up monitoring\" to enroll it with the metrics agent."
   ],
+  "serversWebhookIntro": "Live metrics arrive over HTTP as well, but the body is assembled by the InSpoter metrics agent rather than by hand: install it with \"Set up monitoring\" on a server card, give it an API token from <tokens>Settings → Webhooks</tokens>, and it posts CPU, memory, disk, and uptime on its own schedule. Each submission is matched to a server by the IP addresses the agent reports. The endpoint is described in <apiDocs>Settings → API Documentation</apiDocs>.",
 
   "hostingTitle": "Hosting",
   "hostingCardDescription": "Track shared hosting accounts across connected providers.",
@@ -76,6 +80,7 @@
     "Use \"Manage labels\" to create labels, then the search box and label filter to narrow the list.",
     "Click a card's title to open its detail page, or use the card menu to edit or delete it."
   ],
+  "servicesOutgoingWebhook": "Services have no incoming webhook — the dashboard runs the checks itself. Status changes do fire a SERVICE_STATUS event outwards, though: subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing> to forward them to a chat, pager, or automation.",
 
   "mailTitle": "Mail",
   "mailCardDescription": "A three-pane webmail client for connected IMAP accounts.",
@@ -89,6 +94,14 @@
     "Use \"Manage labels\" to create colored labels and apply them to messages, and \"Filter rules\" to auto-label future mail matching a sender or subject.",
     "Click \"Compose\" to write new mail; unsent drafts are saved and reopened from the Drafts folder."
   ],
+  "mailWebhookIntro": "Besides IMAP accounts, mail can be pushed in over HTTP: the message lands in the Inbox of the built-in webhook mailbox, with no mail server involved. Authenticate with an API token from <tokens>Settings → Webhooks</tokens> and POST a JSON body; the full contract is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "mailWebhookFields": [
+    "sender — required: the From address.",
+    "subject — required: the subject line.",
+    "body — required: the message text.",
+    "receivedAt — optional: ISO 8601 date-time; defaults to the moment the request arrives."
+  ],
+  "mailOutgoingWebhook": "Mail arriving in a mailbox also fires a MAIL_RECEIVED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
 
   "messagesTitle": "Messages",
   "messagesCardDescription": "Slack-style channels for internal chat and incoming webhooks.",
@@ -101,6 +114,13 @@
     "Open a channel's settings (gear icon) to rename it or manage its incoming webhook, used by external systems to post into it.",
     "Use the category or channel context menu to rename or delete it."
   ],
+  "messagesWebhookIntro": "External systems can post into a channel two ways. A channel webhook, created from the channel's settings (gear icon), gets its own URL with the credential built into it and needs no token header and no channelId — treat that URL as a password and keep it out of logs and screenshots. A workspace API token from <tokens>Settings → Webhooks</tokens> instead posts to the shared endpoint below and names the target channel in the body. Both are described in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "messagesWebhookFields": [
+    "channelId — required: internal id of the target channel; it is not shown in the interface, which is why a channel webhook is usually the easier route.",
+    "content — required: the message text, up to 4000 characters.",
+    "author — optional: the sender name shown in the timeline; defaults to the webhook's name."
+  ],
+  "messagesOutgoingWebhook": "Every posted message also fires a MESSAGE_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
 
   "activityTitle": "Activity",
   "activityCardDescription": "Audit log of every action taken in the workspace.",
@@ -124,6 +144,14 @@
     "Click the chevron on a row to expand its full message and details.",
     "Use Previous/Next to page through results."
   ],
+  "logsWebhookIntro": "Any script, cron job, or service can push entries in over HTTP. Create an API token under <tokens>Settings → Webhooks</tokens>, send it in the Authorization header, and POST a JSON body to the log endpoint. The full contract is also available in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "logsWebhookFields": [
+    "level — required: severity of the entry, for example info, warn, or error.",
+    "source — required: what produced the entry, for example backup.sh or api-gateway.",
+    "message — required: the log line itself.",
+    "timestamp — optional: ISO 8601 date-time; defaults to the moment the request arrives."
+  ],
+  "logsOutgoingWebhook": "Every new entry also fires a LOG_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
 
   "alertsTitle": "Alerts",
   "alertsCardDescription": "Categorized alert inbox fed by the incoming webhook API.",
@@ -135,5 +163,14 @@
     "Use the search box, Category filter, and Severity filter to narrow the table.",
     "Use the sort control and Previous/Next to page through results.",
     "Use \"Manage categories\" to rename or delete alert categories."
-  ]
+  ],
+  "alertsWebhookIntro": "Alerts arrive the same way log entries do: an API token from <tokens>Settings → Webhooks</tokens> in the Authorization header plus a JSON POST. The category is matched by name and created automatically when it does not exist yet, so a monitoring system can send its own labels without setting them up first. The full contract is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "alertsWebhookFields": [
+    "category — required: category name; created automatically if there is no such category yet.",
+    "severity — required: info, warning, error, or critical.",
+    "source — required: what raised the alert.",
+    "message — required: the alert text.",
+    "timestamp — optional: ISO 8601 date-time; defaults to the moment the request arrives."
+  ],
+  "alertsOutgoingWebhook": "Every alert also fires an ALERT_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>."
 }

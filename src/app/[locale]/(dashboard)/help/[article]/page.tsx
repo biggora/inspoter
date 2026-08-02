@@ -28,7 +28,7 @@ export default async function HelpArticlePage({
         title={t(article.titleKey)}
         back={{ href: "/help", label: t("backToHelp") }}
       />
-      <HelpArticleBody slug={article.slug} />
+      <HelpArticleBody article={article} />
     </PageBody>
   );
 }
