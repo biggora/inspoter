@@ -119,11 +119,19 @@ test("authenticated operator opens the documented Swagger reference without exte
     ).sort(),
   ).toEqual([...expectedPaths].sort());
 
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const [path, methods] of Object.entries(expectedOperations)) {
+    // hasText is a substring match, so longer sibling paths (e.g. the
+    // `/slack` variant of `/api/discord/webhooks/{webhookId}/{token}`) would
+    // shadow shorter ones. Anchor the regex to the full path text instead.
+    const pathLocator = page.locator(".opblock-summary-path", {
+      hasText: new RegExp(`^${escapeRegExp(path)}$`),
+    });
     for (const method of methods) {
       await expect(
         page.locator(`.swagger-ui .opblock-${method}`).filter({
-          has: page.locator(".opblock-summary-path", { hasText: path }),
+          has: pathLocator,
         }),
       ).toHaveCount(1);
     }
