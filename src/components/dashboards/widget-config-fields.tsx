@@ -21,6 +21,7 @@ import {
   ALERT_SEVERITIES,
   CALENDAR_EVENT_SOURCES,
   LOG_LEVELS,
+  readServerSelection,
   type CalendarEventSource,
 } from "@/lib/validation/dashboards";
 import type { WidgetTargets } from "@/lib/services/dashboard-widget-targets";
@@ -448,16 +449,24 @@ export function WidgetConfigFields({
       );
     }
 
-    case "SERVER_METRICS":
+    case "SERVER_METRICS": {
+      // Read through the schema's helper, so a widget still holding the
+      // pre-multi-select `localServerId` opens with that server ticked.
+      const serverIds = readServerSelection(config);
       return (
         <FieldGroup>
           {title}
-          <TargetSelect
-            label={t("serverMetrics.serverLabel")}
-            allOption={t("serverMetrics.allServersOption")}
-            options={targets.servers}
-            value={config.localServerId}
-            onChange={(id) => onChange({ localServerId: id })}
+          <CheckboxList
+            legend={t("serverMetrics.serversLabel")}
+            hint={t("serverMetrics.allServersHint")}
+            options={targets.servers.map((server) => ({
+              value: server.id,
+              label: server.name,
+            }))}
+            selected={serverIds}
+            onToggle={(value, on) =>
+              onChange({ localServerIds: toggle(serverIds, value, on) })
+            }
           />
           <LimitField
             value={config.limit}
@@ -465,6 +474,7 @@ export function WidgetConfigFields({
           />
         </FieldGroup>
       );
+    }
 
     case "MAIL":
       return (

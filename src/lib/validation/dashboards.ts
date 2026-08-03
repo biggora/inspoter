@@ -192,11 +192,42 @@ const serviceStatusConfigSchema = z.object({
   limit: listLimitField,
 });
 
-const serverMetricsConfigSchema = z.object({
-  title: titleField,
-  localServerId: z.string().min(1).nullable().default(null),
-  limit: listLimitField,
-});
+/**
+ * Reads the server selection out of a stored SERVER_METRICS config, lifting the
+ * pre-multi-select `localServerId` into the array the widget uses today. The
+ * settings form calls it too, so a tile configured before multi-select opens
+ * with its server already ticked.
+ */
+export function readServerSelection(raw: unknown): string[] {
+  if (!raw || typeof raw !== "object") return [];
+  const config = raw as Record<string, unknown>;
+  const ids = config.localServerIds;
+  if (Array.isArray(ids)) {
+    return ids.filter((id): id is string => typeof id === "string");
+  }
+  const legacy = config.localServerId;
+  return typeof legacy === "string" && legacy.length > 0 ? [legacy] : [];
+}
+
+// Only fills in the array when the new key is absent: a stored
+// `localServerIds: "nope"` must still fail validation rather than be quietly
+// replaced by an empty selection.
+function withLegacyServerSelection(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  if ("localServerIds" in raw) return raw;
+  const selection = readServerSelection(raw);
+  return selection.length > 0 ? { ...raw, localServerIds: selection } : raw;
+}
+
+// An empty `localServerIds` means "every server", same rationale as serviceIds.
+const serverMetricsConfigSchema = z.preprocess(
+  withLegacyServerSelection,
+  z.object({
+    title: titleField,
+    localServerIds: z.array(z.string().min(1)).default([]),
+    limit: listLimitField,
+  }),
+);
 
 const mailConfigSchema = z.object({
   title: titleField,

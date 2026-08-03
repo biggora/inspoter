@@ -184,8 +184,8 @@
   },
 
   "serverMetrics": {
-    "serverLabel": "Сервер",
-    "allServersOption": "Все серверы",
+    "serversLabel": "Серверы",
+    "allServersHint": "Ничего не выбрано — показываются все серверы.",
     "cpuLabel": "Процессор",
     "memoryLabel": "Память",
     "diskLabel": "Диск",
