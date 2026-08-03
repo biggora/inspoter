@@ -103,10 +103,20 @@ test("authenticated operator opens the documented Swagger reference without exte
     0,
   );
 
+  // Swagger UI renders one operation block (and therefore one
+  // `.opblock-summary-path`) per HTTP method on every path, so a path with
+  // both GET and POST contributes two summaries. Assert the operation count
+  // and that the rendered paths — deduplicated — are exactly the spec's set.
   const operationPaths = page.locator(".swagger-ui .opblock-summary-path");
-  await expect(operationPaths).toHaveCount(expectedPaths.length);
+  await expect(operationPaths).toHaveCount(expectedOperationCount);
   expect(
-    (await operationPaths.allTextContents()).map((path) => path.trim()).sort(),
+    Array.from(
+      new Set(
+        (await operationPaths.allTextContents()).map((path) =>
+          path.trim(),
+        ),
+      ),
+    ).sort(),
   ).toEqual([...expectedPaths].sort());
 
   for (const [path, methods] of Object.entries(expectedOperations)) {
