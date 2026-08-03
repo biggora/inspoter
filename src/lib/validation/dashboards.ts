@@ -236,6 +236,18 @@ const mailConfigSchema = z.object({
   limit: listLimitField,
 });
 
+// Two ways to point the tile at a source, in one form. An empty `channelIds`
+// means "the whole selected category"; a null `categoryId` alongside it means
+// every channel of the workspace — so a channel added later shows up without
+// anyone reconfiguring the widget.
+const messagesConfigSchema = z.object({
+  title: titleField,
+  categoryId: z.string().min(1).nullable().default(null),
+  channelIds: z.array(z.string().min(1)).default([]),
+  unreadOnly: z.boolean().default(false),
+  limit: listLimitField,
+});
+
 // The same value sets the Alerts and Logs pages filter by
 // (src/components/alerts/alerts-view.tsx, src/components/logs/logs-view.tsx),
 // so a widget filter and a section filter can never disagree.
@@ -269,6 +281,7 @@ export const WIDGET_CONFIG_SCHEMAS = {
   SERVICE_STATUS: serviceStatusConfigSchema,
   SERVER_METRICS: serverMetricsConfigSchema,
   MAIL: mailConfigSchema,
+  MESSAGES: messagesConfigSchema,
   ALERTS: alertsConfigSchema,
   LOGS: logsConfigSchema,
 } as const satisfies Record<DashboardWidgetKind, z.ZodType>;
@@ -285,6 +298,7 @@ export type BookmarksConfig = WidgetConfig["BOOKMARKS"];
 export type ServiceStatusConfig = WidgetConfig["SERVICE_STATUS"];
 export type ServerMetricsConfig = WidgetConfig["SERVER_METRICS"];
 export type MailConfig = WidgetConfig["MAIL"];
+export type MessagesConfig = WidgetConfig["MESSAGES"];
 export type AlertsConfig = WidgetConfig["ALERTS"];
 export type LogsConfig = WidgetConfig["LOGS"];
 

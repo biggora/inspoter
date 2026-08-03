@@ -123,6 +123,25 @@ export interface MailPayload {
   items: MailEntry[];
 }
 
+export interface MessageEntry {
+  id: string;
+  /** Which channel the message was posted in — the tile labels every row with
+   *  it and deep-links into that channel. */
+  channelId: string;
+  channelName: string;
+  categoryName: string;
+  author: string | null;
+  /** Truncated server-side: the tile clamps to two lines anyway, and the whole
+   *  payload is re-fetched every minute. */
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface MessagesPayload {
+  items: MessageEntry[];
+}
+
 export interface AlertEntry {
   id: string;
   severity: string;
@@ -159,6 +178,7 @@ export type WidgetPayload =
   | { kind: "SERVICE_STATUS"; data: ServiceStatusPayload }
   | { kind: "SERVER_METRICS"; data: ServerMetricsPayload }
   | { kind: "MAIL"; data: MailPayload }
+  | { kind: "MESSAGES"; data: MessagesPayload }
   | { kind: "ALERTS"; data: AlertsPayload }
   | { kind: "LOGS"; data: LogsPayload }
   | WidgetError;

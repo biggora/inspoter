@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.22
-**Status:** Agent origin and Messages token permissions specified and implemented
+**Version:** v2.23
+**Status:** Dashboard messages widget specified and implemented
 **Owner:** UI/UX Designer
-**Date:** 2026-08-05
+**Date:** 2026-08-06
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.17, docs/architecture.md v1.18, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.18, docs/architecture.md v1.19, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -242,7 +242,9 @@ Each following chapter is complete and normative. Its acceptance checks suppleme
 
 **Layout/content:** page header with the board's name and, once two or more boards exist, a wrapping row of board links below it (the start board carries a home glyph with an accessible name, never colour alone). Header actions: «Редактировать» / «Готово», «Добавить виджет» (edit mode only), and a board action menu (create, rename, make start page, delete). The board itself is a 12-column grid of `--dashboard-row-height` rows. Each tile is a bordered card: header with the kind's outline Remix icon, the resolved title, and either the actions menu (edit mode) or a link into the widget's own section (view mode); below it a scrollable body that is a container-query context, so a widget adapts to its own tile width rather than the viewport.
 
-**Widget catalogue (10 kinds):** Часы и дата, Погода, Календарь, Заметка, Закладки, Статусы сервисов, Метрики серверов, Почта, Оповещения, Логи. Each kind declares a default and minimum size plus its own maximum width; every kind may grow vertically to the shared 20-row board limit, independent of neighbouring tile heights. The picker lists kind name plus one sentence of purpose.
+**Widget catalogue (11 kinds):** Часы и дата, Погода, Календарь, Заметка, Закладки, Статусы сервисов, Метрики серверов, Почта, Сообщения, Оповещения, Логи. Each kind declares a default and minimum size plus its own maximum width; every kind may grow vertically to the shared 20-row board limit, independent of neighbouring tile heights. The picker lists kind name plus one sentence of purpose.
+
+**Сообщения widget:** its settings hold one selection, not a mode switch — a «Категория» select defaulting to «Все категории», plus a checkbox list of channels narrowed to the chosen category; ticked channels win, an untouched list means the whole category, and neither means every channel. «Только непрочитанные» and the shared item-count field complete the form. Each row prints «канал · категория» with the relative time and, while unread, the same dot the mail tile uses; below it «автор: текст» clamped to two lines, with «Без автора» / «Без текста» standing in for a webhook message that carries neither. A row links to `/messages?channel=…`, which preselects that channel; a stale id falls back to the section's first channel rather than erroring.
 
 **Actions:** create/rename/delete a board; pin one board as the workspace start page; add a widget from the catalogue (the new tile's settings open immediately, so a widget that needs input is never left as an error card); configure or remove a widget; move a tile by dragging its handle; resize a tile from the corner grip by pointer or arrow keys. Drag and resize exist **only** in edit mode — in view mode tiles stay interactive and cannot be nudged by a stray press. A displaced tile is pushed down and freed space is pulled up, so the grid never keeps a floating hole. Every layout change persists immediately and optimistically; a failed save reverts the tile and shows a notice.
 
@@ -572,6 +574,20 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.23 — 2026-08-06 (messages widget on dashboards)
+
+- §5.0: the widget catalogue grows to eleven kinds with «Сообщения». Its
+  settings reuse the selection pattern «Метрики серверов» and «Статусы сервисов»
+  already established — a target select plus a checkbox list — instead of adding
+  a mode switch: ticked channels win over the chosen category, and an empty
+  selection reads as "the whole category", so a channel created later needs no
+  reconfiguration.
+- A row deep-links to `/messages?channel=…`. Like the mail tile's deep link this
+  is a hint: an id that no longer resolves lands on the section's usual first
+  channel with no error state.
+- No other §5.0 rule changes: the tile keeps the shared frame, the unread dot
+  convention, the per-widget empty copy, and the 20-row vertical limit.
 
 ### v2.22 — 2026-08-05 (agent origin in the feed, Messages permissions in token settings)
 

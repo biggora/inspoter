@@ -272,6 +272,33 @@ export class ChannelNotFoundError extends Error {
   }
 }
 
+/**
+ * The newest messages of a workspace, across channels — what the dashboard
+ * MESSAGES widget draws. Separate from listMessages() because that one is the
+ * channel timeline: it pages backwards through one channel with a keyset
+ * cursor, while a tile wants the top N of a set of channels and never pages.
+ *
+ * `channelIds: null` means every channel; an empty array means the widget's
+ * selection resolved to nothing (deleted channel or category) and must stay
+ * empty rather than silently widen to the whole workspace.
+ */
+export async function listRecentMessages(
+  workspaceId: string,
+  params: { channelIds: string[] | null; unreadOnly: boolean; limit: number },
+): Promise<Message[]> {
+  if (params.channelIds?.length === 0) return [];
+
+  return db.message.findMany({
+    where: {
+      workspaceId,
+      ...(params.channelIds ? { channelId: { in: params.channelIds } } : {}),
+      ...(params.unreadOnly ? { isRead: false } : {}),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: params.limit,
+  });
+}
+
 export async function listMessages(
   workspaceId: string,
   channelId: string,

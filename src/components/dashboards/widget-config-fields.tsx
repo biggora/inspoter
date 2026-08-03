@@ -216,6 +216,7 @@ export function WidgetConfigFields({
   const showSecondsId = useId();
   const showDateId = useId();
   const unreadOnlyId = useId();
+  const messagesUnreadOnlyId = useId();
 
   const title = (
     <TitleField
@@ -508,6 +509,73 @@ export function WidgetConfigFields({
           />
         </FieldGroup>
       );
+
+    case "MESSAGES": {
+      const categoryId = str(config.categoryId) || null;
+      const channelIds = list(config.channelIds);
+      // Only the chosen category's channels are offered; picking a category
+      // therefore also drops ticks that no longer belong to it, in the same
+      // patch, so the form never shows a selection the list cannot display.
+      const channels = categoryId
+        ? targets.messageChannels.filter(
+            (channel) => channel.categoryId === categoryId,
+          )
+        : targets.messageChannels;
+      return (
+        <FieldGroup>
+          {title}
+          <TargetSelect
+            label={t("messages.categoryLabel")}
+            allOption={t("messages.allCategoriesOption")}
+            options={targets.messageCategories}
+            value={config.categoryId}
+            onChange={(id) =>
+              onChange({
+                categoryId: id,
+                channelIds: channelIds.filter((channelId) =>
+                  targets.messageChannels.some(
+                    (channel) =>
+                      channel.id === channelId &&
+                      (!id || channel.categoryId === id),
+                  ),
+                ),
+              })
+            }
+          />
+          <CheckboxList
+            legend={t("messages.channelsLabel")}
+            hint={t("messages.allChannelsHint")}
+            options={channels.map((channel) => ({
+              value: channel.id,
+              label: channel.name,
+            }))}
+            selected={channelIds}
+            onToggle={(value, on) =>
+              onChange({ channelIds: toggle(channelIds, value, on) })
+            }
+          />
+          <Field orientation="horizontal">
+            <Checkbox
+              id={messagesUnreadOnlyId}
+              checked={bool(config.unreadOnly)}
+              onCheckedChange={(checked) =>
+                onChange({ unreadOnly: checked === true })
+              }
+            />
+            <FieldLabel
+              htmlFor={messagesUnreadOnlyId}
+              className="cursor-pointer font-normal"
+            >
+              {t("messages.unreadOnlyLabel")}
+            </FieldLabel>
+          </Field>
+          <LimitField
+            value={config.limit}
+            onChange={(limit) => onChange({ limit })}
+          />
+        </FieldGroup>
+      );
+    }
 
     case "ALERTS": {
       const severities = list(config.severities);

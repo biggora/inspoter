@@ -12,7 +12,7 @@
 
   "dashboardsTitle": "Dashboards",
   "dashboardsCardDescription": "Build your own overview from widgets — clock, weather, calendar, and data from any section.",
-  "dashboardsIntroP1": "Dashboards are named overview pages inside a workspace. Each one holds widgets: global ones (clock and date, weather, calendar, note) and ones that read a section — bookmarks, service status, server metrics, mail, alerts, and logs.",
+  "dashboardsIntroP1": "Dashboards are named overview pages inside a workspace. Each one holds widgets: global ones (clock and date, weather, calendar, note) and ones that read a section — bookmarks, service status, server metrics, mail, messages, alerts, and logs.",
   "dashboardsIntroP2": "Widgets sit on a 12-column grid and can be dragged and resized, but only in edit mode — in normal mode the tiles stay interactive and never move on a stray press. Widget data refreshes itself once a minute while the page is open. Dashboards are shared across the workspace, and one of them can be made the start page, which is what opens right after signing in.",
   "dashboardsSteps": [
     "Choose “New dashboard” from the actions menu and give it a name — for example “Production” or “On call”.",

@@ -13,6 +13,7 @@ import { CalendarWidget } from "./calendar-widget";
 import { ClockWidget } from "./clock-widget";
 import { LogsWidget } from "./logs-widget";
 import { MailWidget } from "./mail-widget";
+import { MessagesWidget } from "./messages-widget";
 import { NoteWidget } from "./note-widget";
 import { ServerMetricsWidget } from "./server-metrics-widget";
 import { ServiceStatusWidget } from "./service-status-widget";
@@ -67,6 +68,10 @@ export function WidgetBody({
     case "MAIL":
       return payload?.kind === "MAIL" ? (
         <MailWidget data={payload.data} />
+      ) : null;
+    case "MESSAGES":
+      return payload?.kind === "MESSAGES" ? (
+        <MessagesWidget data={payload.data} />
       ) : null;
     case "ALERTS":
       return payload?.kind === "ALERTS" ? (
