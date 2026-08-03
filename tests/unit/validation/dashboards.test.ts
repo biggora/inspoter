@@ -6,6 +6,7 @@ import {
   layoutSchema,
   parseWidgetConfig,
   parseWidgetConfigOrDefaults,
+  readServerSelection,
   widgetCreateSchema,
   WEATHER_DEFAULT_LOCATION,
   WIDGET_CONFIG_SCHEMAS,
@@ -162,6 +163,54 @@ describe("widget config schemas", () => {
   it("drops unknown keys instead of storing them", () => {
     const parsed = parseWidgetConfig("NOTE", { text: "hi", evil: "payload" });
     expect(parsed.success && parsed.data).toEqual({ text: "hi" });
+  });
+
+  it("watches every server when no server is selected", () => {
+    const parsed = parseWidgetConfig("SERVER_METRICS", {});
+    expect(parsed.success && parsed.data).toEqual({
+      localServerIds: [],
+      limit: 5,
+    });
+  });
+
+  it("lifts a pre-multi-select localServerId into the selection", () => {
+    const parsed = parseWidgetConfig("SERVER_METRICS", {
+      localServerId: "srv-1",
+      limit: 3,
+    });
+    expect(parsed.success && parsed.data).toEqual({
+      localServerIds: ["srv-1"],
+      limit: 3,
+    });
+  });
+
+  it("keeps the new selection and drops the legacy key alongside it", () => {
+    const parsed = parseWidgetConfig("SERVER_METRICS", {
+      localServerId: "srv-1",
+      localServerIds: ["srv-2", "srv-3"],
+    });
+    expect(parsed.success && parsed.data).toEqual({
+      localServerIds: ["srv-2", "srv-3"],
+      limit: 5,
+    });
+  });
+
+  it("rejects a server selection that is not a list of ids", () => {
+    expect(
+      parseWidgetConfig("SERVER_METRICS", { localServerIds: "srv-1" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("readServerSelection", () => {
+  it("reads both the current and the legacy shape", () => {
+    expect(readServerSelection({ localServerIds: ["a", "b"] })).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(readServerSelection({ localServerId: "a" })).toEqual(["a"]);
+    expect(readServerSelection({ localServerId: null })).toEqual([]);
+    expect(readServerSelection(undefined)).toEqual([]);
   });
 });
 

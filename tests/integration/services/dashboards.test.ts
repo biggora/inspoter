@@ -6,6 +6,7 @@ import { resolveWidgetData } from "@/lib/services/dashboard-widget-data";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import { specFor } from "@/lib/dashboards/widget-kinds";
 import { WEATHER_DEFAULT_LOCATION } from "@/lib/validation/dashboards";
+import type { ServerMetricsPayload } from "@/lib/dashboards/widget-payloads";
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -34,6 +35,29 @@ afterAll(async () => {
 
 async function freshDashboard(name = "Board") {
   return dashboardsService.create(workspaceId, { name });
+}
+
+/**
+ * Agent-origin servers, created directly: they need no ProviderCredential and
+ * no snapshot, which is all listLocalServerMetrics() asks of a row. Names are
+ * prefixed and zero-padded so the listing's displayName order is the order the
+ * ids come back in.
+ */
+async function createAgentServers(prefix: string, count: number) {
+  const run = randomUUID();
+  const created = [];
+  for (let index = 0; index < count; index += 1) {
+    created.push(
+      await db.localServer.create({
+        data: {
+          workspaceId,
+          origin: "AGENT",
+          displayName: `${prefix}-${run}-${index}`,
+        },
+      }),
+    );
+  }
+  return created;
 }
 
 describe("create / list / getWithWidgets", () => {
@@ -459,5 +483,49 @@ describe("resolveWidgetData", () => {
       kind: "WEATHER",
       data: null,
     });
+  });
+
+  it("shows only the selected servers, and counts them", async () => {
+    const servers = await createAgentServers("multi", 3);
+
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "servers-two",
+        kind: "SERVER_METRICS",
+        config: {
+          localServerIds: [servers[0].id, servers[2].id],
+          limit: 5,
+        },
+      },
+    ]);
+
+    const payload = data["servers-two"];
+    expect(payload).toMatchObject({ kind: "SERVER_METRICS" });
+    const serverMetrics = (payload as { data: ServerMetricsPayload }).data;
+    expect(serverMetrics.servers.map((s) => s.localServerId)).toEqual([
+      servers[0].id,
+      servers[2].id,
+    ]);
+    // "and N more" is about the selection, not the whole workspace.
+    expect(serverMetrics.totalCount).toBe(2);
+  });
+
+  it("reads a widget still holding the pre-multi-select localServerId", async () => {
+    const servers = await createAgentServers("legacy", 2);
+
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "servers-legacy",
+        kind: "SERVER_METRICS",
+        config: { localServerId: servers[1].id, limit: 5 },
+      },
+    ]);
+
+    const serverMetrics = (
+      data["servers-legacy"] as { data: ServerMetricsPayload }
+    ).data;
+    expect(serverMetrics.servers.map((s) => s.localServerId)).toEqual([
+      servers[1].id,
+    ]);
   });
 });

@@ -131,7 +131,7 @@ async function resolveOne(
         kind: "SERVER_METRICS",
         data: await resolveServerMetrics(
           workspaceId,
-          config.localServerId,
+          config.localServerIds,
           config.limit,
         ),
       };
@@ -278,13 +278,16 @@ async function resolveBookmarks(
 
 async function resolveServerMetrics(
   workspaceId: string,
-  localServerId: string | null,
+  localServerIds: string[],
   limit: number,
 ): Promise<ServerMetricsPayload> {
   const servers = await serversService.listLocalServerMetrics(workspaceId);
-  const selected = localServerId
-    ? servers.filter((server) => server.localServerId === localServerId)
-    : servers;
+  const selected =
+    localServerIds.length > 0
+      ? servers.filter((server) =>
+          localServerIds.includes(server.localServerId),
+        )
+      : servers;
 
   return {
     servers: selected.slice(0, limit).map((server) => ({
@@ -302,7 +305,9 @@ async function resolveServerMetrics(
         filesystemAvailableBytes: server.metrics.filesystemAvailableBytes,
       },
     })),
-    totalCount: servers.length,
+    // Counts the selected servers, not the whole workspace: the tile's "and N
+    // more" line is about what this widget was told to watch.
+    totalCount: selected.length,
   };
 }
 

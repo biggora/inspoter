@@ -184,8 +184,8 @@
   },
 
   "serverMetrics": {
-    "serverLabel": "Server",
-    "allServersOption": "All servers",
+    "serversLabel": "Servers",
+    "allServersHint": "Nothing selected — every server is shown.",
     "cpuLabel": "CPU",
     "memoryLabel": "Memory",
     "diskLabel": "Disk",
