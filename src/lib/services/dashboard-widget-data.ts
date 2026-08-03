@@ -4,14 +4,19 @@ import * as bookmarksService from "@/lib/services/bookmarks";
 import * as logsService from "@/lib/services/logs";
 import * as mailService from "@/lib/services/mail";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
+import * as messagesService from "@/lib/services/messages";
 import * as serversService from "@/lib/services/servers";
 import * as servicesService from "@/lib/services/services";
 import { getMonthEvents } from "@/lib/services/dashboard-calendar";
 import { getWeather } from "@/lib/dashboards/weather";
-import { parseWidgetConfigOrDefaults } from "@/lib/validation/dashboards";
+import {
+  parseWidgetConfigOrDefaults,
+  type MessagesConfig,
+} from "@/lib/validation/dashboards";
 import type {
   BookmarkTile,
   BookmarksPayload,
+  MessagesPayload,
   ServerMetricsPayload,
   ServiceStatusPayload,
   WidgetDataMap,
@@ -173,6 +178,14 @@ async function resolveOne(
         },
       };
     }
+    case "MESSAGES": {
+      const config = parseWidgetConfigOrDefaults("MESSAGES", widget.config);
+      if (!config) return { error: "MESSAGES_CONFIG_INVALID" };
+      return {
+        kind: "MESSAGES",
+        data: await resolveMessages(workspaceId, config),
+      };
+    }
     case "ALERTS": {
       const config = parseWidgetConfigOrDefaults("ALERTS", widget.config);
       if (!config) return { error: "ALERTS_CONFIG_INVALID" };
@@ -308,6 +321,68 @@ async function resolveServerMetrics(
     // Counts the selected servers, not the whole workspace: the tile's "and N
     // more" line is about what this widget was told to watch.
     totalCount: selected.length,
+  };
+}
+
+/** How much of a message body travels to the tile — see MessageEntry.content. */
+const MESSAGE_PREVIEW_MAX = 240;
+
+async function resolveMessages(
+  workspaceId: string,
+  config: MessagesConfig,
+): Promise<MessagesPayload> {
+  // One read of the category tree serves both jobs: deciding which channels the
+  // widget watches, and naming the channel and category of every row.
+  const categories = await messagesService.listCategories(workspaceId);
+  const channels = categories.flatMap((category) =>
+    category.channels.map((channel) => ({
+      id: channel.id,
+      name: channel.name,
+      categoryId: category.id,
+      categoryName: category.name,
+    })),
+  );
+
+  const inScope = config.categoryId
+    ? channels.filter((channel) => channel.categoryId === config.categoryId)
+    : channels;
+
+  // Ticked channels win over the category; nothing ticked and no category means
+  // "every channel", which stays null so a channel added later is included.
+  // A selection that resolves to nothing (channel or category deleted) yields an
+  // empty tile rather than silently widening back to the whole workspace.
+  const selection =
+    config.channelIds.length > 0
+      ? inScope
+          .filter((channel) => config.channelIds.includes(channel.id))
+          .map((channel) => channel.id)
+      : config.categoryId
+        ? inScope.map((channel) => channel.id)
+        : null;
+
+  const messages = await messagesService.listRecentMessages(workspaceId, {
+    channelIds: selection,
+    unreadOnly: config.unreadOnly,
+    limit: config.limit,
+  });
+
+  const channelsById = new Map(
+    channels.map((channel) => [channel.id, channel]),
+  );
+  return {
+    items: messages.map((message) => {
+      const channel = channelsById.get(message.channelId);
+      return {
+        id: message.id,
+        channelId: message.channelId,
+        channelName: channel?.name ?? "",
+        categoryName: channel?.categoryName ?? "",
+        author: message.author,
+        content: message.content.trim().slice(0, MESSAGE_PREVIEW_MAX),
+        isRead: message.isRead,
+        createdAt: message.createdAt.toISOString(),
+      };
+    }),
   };
 }
 

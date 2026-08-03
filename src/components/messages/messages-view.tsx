@@ -53,17 +53,35 @@ function restoreSettingsOpenerFocus(opener: HTMLElement | null) {
   });
 }
 
-export function MessagesView({ workspaceId }: { workspaceId: string }) {
-  return <MessagesCoordinator key={workspaceId} />;
+export function MessagesView({
+  workspaceId,
+  initialChannelId = null,
+}: {
+  workspaceId: string;
+  /** Channel id from `?channel=…`, the dashboard widget's deep link. */
+  initialChannelId?: string | null;
+}) {
+  return (
+    <MessagesCoordinator
+      key={workspaceId}
+      initialChannelId={initialChannelId}
+    />
+  );
 }
 
-function MessagesCoordinator() {
+function MessagesCoordinator({
+  initialChannelId,
+}: {
+  initialChannelId: string | null;
+}) {
   const t = useTranslations("messages");
   const [categories, setCategories] = useState<MessageCategoryDto[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  // The deep-linked channel is only a starting point: loadCategories keeps it
+  // when the tree confirms it and falls back to the first channel otherwise.
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null,
+    initialChannelId,
   );
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(

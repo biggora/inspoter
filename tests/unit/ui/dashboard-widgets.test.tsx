@@ -11,6 +11,7 @@ import { CalendarWidget } from "@/components/dashboards/widgets/calendar-widget"
 import { ClockWidget } from "@/components/dashboards/widgets/clock-widget";
 import { LogsWidget } from "@/components/dashboards/widgets/logs-widget";
 import { MailWidget } from "@/components/dashboards/widgets/mail-widget";
+import { MessagesWidget } from "@/components/dashboards/widgets/messages-widget";
 import { NoteWidget } from "@/components/dashboards/widgets/note-widget";
 import { ServerMetricsWidget } from "@/components/dashboards/widgets/server-metrics-widget";
 import { ServiceStatusWidget } from "@/components/dashboards/widgets/service-status-widget";
@@ -492,6 +493,74 @@ describe("MailWidget", () => {
     renderWithIntl(<MailWidget data={{ items: [] }} />);
 
     expect(screen.getByText(ruDashboards.mail.empty)).toBeInTheDocument();
+  });
+});
+
+describe("MessagesWidget", () => {
+  // The channel (and its category) is what makes a tile watching several
+  // channels readable. As with the mail widget, the row's deep link into
+  // /messages is not asserted here — next-intl's Link needs a Next router to
+  // produce an anchor, so the href is only observable in the browser.
+  it("names the channel, the author, and the text", () => {
+    renderWithIntl(
+      <MessagesWidget
+        data={{
+          items: [
+            {
+              id: "msg-1",
+              channelId: "ch-1",
+              channelName: "prod-alerts",
+              categoryName: "Инциденты",
+              author: "Grafana",
+              content: "Диск /var заполнен на 91%",
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("prod-alerts")).toBeInTheDocument();
+    expect(screen.getByText(/Инциденты/)).toBeInTheDocument();
+    expect(screen.getByText("Grafana")).toBeInTheDocument();
+    expect(screen.getByText(/Диск \/var заполнен на 91%/)).toBeInTheDocument();
+  });
+
+  // An embed-only message from a Discord webhook has no text, and a webhook
+  // payload may carry no author at all: both must read as a row, not a blank.
+  it("falls back for a message with no author and no text", () => {
+    renderWithIntl(
+      <MessagesWidget
+        data={{
+          items: [
+            {
+              id: "msg-2",
+              channelId: "ch-1",
+              channelName: "prod-alerts",
+              categoryName: "Инциденты",
+              author: null,
+              content: "",
+              isRead: true,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(ruDashboards.messages.unknownAuthor),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(ruDashboards.messages.noContent)),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the empty state", () => {
+    renderWithIntl(<MessagesWidget data={{ items: [] }} />);
+
+    expect(screen.getByText(ruDashboards.messages.empty)).toBeInTheDocument();
   });
 });
 

@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.17
-**Status:** Agent-facing Messages management API specified and implemented
+**Version:** v3.18
+**Status:** Dashboard messages widget specified and implemented
 **Owner:** Product Analyst
-**Date:** 2026-07-30
+**Date:** 2026-08-06
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), the verbatim Mail-label request recorded in `specs/mail-label-filtering-plan.md` v0.3, `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -114,7 +114,7 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 
 **FR-DSH-002: Widgets from a fixed catalogue**
 
-- Description: A board holds widgets chosen from ten kinds: clock/date, weather, calendar, note, bookmarks, service status, server metrics, mail, alerts, and logs. Each kind carries its own options object validated per kind (coordinates and units for weather, event sources for the calendar, a target and item count for the section-reading kinds, an optional custom title for all of them). A newly added widget lands at the first free grid slot at its kind's default size, and its settings open immediately so a kind that needs input is never left unusable. Calendar rows containing alerts link to the Alerts section with that UTC day exposed as a visible filter.
+- Description: A board holds widgets chosen from eleven kinds: clock/date, weather, calendar, note, bookmarks, service status, server metrics, mail, messages, alerts, and logs. Each kind carries its own options object validated per kind (coordinates and units for weather, event sources for the calendar, a target and item count for the section-reading kinds, an optional custom title for all of them). The messages kind points at either a whole message category or hand-picked channels of it, and may be narrowed to unread messages; its rows deep-link into the Messages section with that channel selected. A newly added widget lands at the first free grid slot at its kind's default size, and its settings open immediately so a kind that needs input is never left unusable. Calendar rows containing alerts link to the Alerts section with that UTC day exposed as a visible filter.
 - Priority: Must Have (Dashboards slice)
 - Acceptance Criteria:
   - **AC-DSH-007**: Given the widget catalogue, When the operator picks a kind, Then a widget of that kind is created at the first free grid position with its default size and appears on the board without a full page reload.
@@ -1020,7 +1020,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.17 has
 | FR-REAL-001 / AC-REAL-HD-001..004   | `docs/idea.md` Domains; Q-11; `docs/remediation-plan.md` §5                                                                                                                                                        | Conditionally applicable: PASS when Hetzner DNS is enabled; NOT_ENABLED/N/A when disabled                                                                                                                                                                   |
 | FR-REAL-001 / AC-REAL-GD-001..004   | `docs/idea.md` Domains; Q-11; `docs/remediation-plan.md` §5 task 3.4                                                                                                                                               | Conditionally applicable; release gate requires PASS on an enabled eligible account or evidenced account/API ineligibility plus a dated explicit user exclusion; missing credentials alone never qualify                                                    |
 | FR-DEMO-001 / AC-DEMO-001..003      | Q-12; `docs/remediation-plan.md` §6                                                                                                                                                                                | Active; optional and production-separated                                                                                                                                                                                                                   |
-| FR-DSH-001..005 / AC-DSH-001..018   | Verbatim Dashboards request (Homarr-style boards); `docs/architecture.md` §7E; `docs/design.md` §5.0; `tests/unit/dashboards/**`; `tests/integration/{api,services}/dashboards.test.ts`; `e2e/dashboards*.spec.ts` | Active; workspace-shared boards, ten widget kinds, edit-mode-gated 12-column grid; Dashboards is the product home                                                                                                                                           |
+| FR-DSH-001..005 / AC-DSH-001..018   | Verbatim Dashboards request (Homarr-style boards); `docs/architecture.md` §7E; `docs/design.md` §5.0; `tests/unit/dashboards/**`; `tests/integration/{api,services}/dashboards.test.ts`; `e2e/dashboards*.spec.ts` | Active; workspace-shared boards, eleven widget kinds, edit-mode-gated 12-column grid; Dashboards is the product home                                                                                                                                        |
 | FR-BCK-001..003 / AC-BCK-001..008   | Backup slice implementation; `docs/architecture.md` §7B; `tests/unit/services/backup.test.ts`; `tests/unit/backup/format.test.ts`                                                                                  | Active; owner-only encrypted export/import of the active workspace with id regeneration and secret re-encryption                                                                                                                                            |
 | NFR-DEPLOY-001                      | `docs/progress.md` self-hosted decision; `docs/plan.md` §10                                                                                                                                                        | Active                                                                                                                                                                                                                                                      |
 | NFR-SEC-001                         | FR-AUTH-001; `docs/plan.md` §10.1                                                                                                                                                                                  | Active                                                                                                                                                                                                                                                      |
@@ -1040,6 +1040,12 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.18 — 2026-08-06 (messages widget on dashboards)
+
+- Amended **FR-DSH-002**: the widget catalogue grows from ten kinds to eleven with a messages widget. Its options point the tile at a whole message category or at hand-picked channels of one, optionally narrowed to unread messages, with the item count and custom title every list-style kind already has.
+- A row deep-links to `/messages?channel=…`, the same "hint, not command" contract AC-MAIL-030's mail deep link uses: an id that no longer resolves falls back to the section's usual default channel.
+- No AC ID was added, renumbered, reused, or retired — AC-DSH-007..010 already govern any catalogue kind and its per-kind schema.
 
 ### v3.17 — 2026-08-05 (agent-facing Messages management API)
 

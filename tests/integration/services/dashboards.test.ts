@@ -1,12 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import * as dashboardsService from "@/lib/services/dashboards";
+import * as messagesService from "@/lib/services/messages";
 import { resolveWidgetData } from "@/lib/services/dashboard-widget-data";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import { specFor } from "@/lib/dashboards/widget-kinds";
 import { WEATHER_DEFAULT_LOCATION } from "@/lib/validation/dashboards";
-import type { ServerMetricsPayload } from "@/lib/dashboards/widget-payloads";
+import type {
+  MessagesPayload,
+  ServerMetricsPayload,
+} from "@/lib/dashboards/widget-payloads";
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -58,6 +63,46 @@ async function createAgentServers(prefix: string, count: number) {
     );
   }
   return created;
+}
+
+/**
+ * A messages category with `channelNames` channels, each holding one message.
+ * Messages are written with explicit, increasing `createdAt` values so the
+ * widget's "newest first" ordering is deterministic rather than dependent on
+ * how fast the rows were inserted.
+ */
+async function createChannelsWithMessages(
+  channelNames: string[],
+  options: { workspaceId?: string; unreadChannels?: string[] } = {},
+) {
+  const scope = options.workspaceId ?? workspaceId;
+  const category = await messagesService.createCategory(
+    scope,
+    `cat-${randomUUID()}`,
+  );
+  const channels = [];
+  let minute = 0;
+  for (const name of channelNames) {
+    const channel = await messagesService.createChannel(
+      scope,
+      category.id,
+      name,
+    );
+    minute += 1;
+    await db.message.create({
+      data: {
+        workspaceId: scope,
+        channelId: channel.id,
+        channelWorkspaceId: scope,
+        content: `msg in ${name}`,
+        author: name,
+        isRead: !(options.unreadChannels ?? []).includes(name),
+        createdAt: new Date(Date.UTC(2026, 0, 1, 0, minute)),
+      },
+    });
+    channels.push(channel);
+  }
+  return { category, channels };
 }
 
 describe("create / list / getWithWidgets", () => {
@@ -527,5 +572,114 @@ describe("resolveWidgetData", () => {
     expect(serverMetrics.servers.map((s) => s.localServerId)).toEqual([
       servers[1].id,
     ]);
+  });
+
+  async function resolveMessagesWidget(config: Prisma.JsonObject) {
+    const data = await resolveWidgetData(workspaceId, [
+      { id: "messages", kind: "MESSAGES", config },
+    ]);
+    expect(data["messages"]).toMatchObject({ kind: "MESSAGES" });
+    return (data["messages"] as { data: MessagesPayload }).data;
+  }
+
+  it("shows only the selected channels, newest first", async () => {
+    const { channels } = await createChannelsWithMessages([
+      `alpha-${randomUUID()}`,
+      `beta-${randomUUID()}`,
+      `gamma-${randomUUID()}`,
+    ]);
+
+    const payload = await resolveMessagesWidget({
+      channelIds: [channels[0].id, channels[2].id],
+      limit: 5,
+    });
+
+    expect(payload.items.map((item) => item.channelId)).toEqual([
+      channels[2].id,
+      channels[0].id,
+    ]);
+    // The row names its channel and category, so a tile watching several
+    // channels stays readable.
+    expect(payload.items[0].channelName).toBe(channels[2].name);
+    expect(payload.items[0].categoryName).toBeTruthy();
+  });
+
+  it("shows the whole category when no channel is ticked", async () => {
+    const { category, channels } = await createChannelsWithMessages([
+      `cat-a-${randomUUID()}`,
+      `cat-b-${randomUUID()}`,
+    ]);
+
+    const payload = await resolveMessagesWidget({
+      categoryId: category.id,
+      limit: 5,
+    });
+
+    expect(payload.items.map((item) => item.channelId).sort()).toEqual(
+      channels.map((channel) => channel.id).sort(),
+    );
+  });
+
+  it("keeps only the ticked channels that belong to the chosen category", async () => {
+    const inside = await createChannelsWithMessages([`in-${randomUUID()}`]);
+    const outside = await createChannelsWithMessages([`out-${randomUUID()}`]);
+
+    const payload = await resolveMessagesWidget({
+      categoryId: inside.category.id,
+      channelIds: [inside.channels[0].id, outside.channels[0].id],
+      limit: 5,
+    });
+
+    expect(payload.items.map((item) => item.channelId)).toEqual([
+      inside.channels[0].id,
+    ]);
+  });
+
+  it("filters to unread messages and honours the limit", async () => {
+    const unreadName = `unread-${randomUUID()}`;
+    const { channels } = await createChannelsWithMessages(
+      [`read-${randomUUID()}`, unreadName],
+      { unreadChannels: [unreadName] },
+    );
+
+    const unreadOnly = await resolveMessagesWidget({
+      channelIds: channels.map((channel) => channel.id),
+      unreadOnly: true,
+      limit: 5,
+    });
+    expect(unreadOnly.items.map((item) => item.channelId)).toEqual([
+      channels[1].id,
+    ]);
+
+    const limited = await resolveMessagesWidget({
+      channelIds: channels.map((channel) => channel.id),
+      limit: 1,
+    });
+    expect(limited.items).toHaveLength(1);
+  });
+
+  it("stays empty when the selected channel is gone instead of showing every channel", async () => {
+    await createChannelsWithMessages([`survivor-${randomUUID()}`]);
+    const doomed = await createChannelsWithMessages([`doomed-${randomUUID()}`]);
+    await messagesService.deleteChannel(doomed.channels[0].id, workspaceId);
+
+    const payload = await resolveMessagesWidget({
+      channelIds: [doomed.channels[0].id],
+      limit: 5,
+    });
+
+    expect(payload.items).toEqual([]);
+  });
+
+  it("does not leak messages from another workspace", async () => {
+    await createChannelsWithMessages([`foreign-${randomUUID()}`], {
+      workspaceId: otherWorkspaceId,
+    });
+
+    const payload = await resolveMessagesWidget({ limit: 20 });
+
+    expect(
+      payload.items.some((item) => item.channelName.startsWith("foreign-")),
+    ).toBe(false);
   });
 });

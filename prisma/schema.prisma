@@ -186,6 +186,7 @@ enum DashboardWidgetKind {
   SERVICE_STATUS
   SERVER_METRICS
   MAIL
+  MESSAGES
   ALERTS
   LOGS
 }
@@ -294,6 +295,7 @@ model Message {
   createdAt          DateTime      @default(now())
 
   @@index([workspaceId, channelId, createdAt, id]) // NFR-PERF-001 keyset pagination (id tiebreaker for equal createdAt) + AC-MSG-004 chronological
+  @@index([workspaceId, createdAt, id]) // dashboard MESSAGES widget: latest messages across every channel
   @@index([workspaceId, isRead]) // topbar unread count
   @@index([workspaceId, channelId, isRead]) // per-channel unread badges + mark-channel-read
 }

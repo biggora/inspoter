@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.17
+**Version:** 1.19
 **Status:** Dashboards section (widget boards) implemented and verified
 **Owner:** Architect
-**Date:** 2026-07-30
+**Date:** 2026-08-06
 **Normative inputs:** `docs/prd.md` v3.16, `docs/design.md` v2.21, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.19 (2026-08-06):** adds the eleventh dashboard widget kind, `MESSAGES`, through migration `20260806120000_dashboard_messages_widget` (the enum value plus a `Message(workspaceId, createdAt, id)` index, which the existing channel-first index cannot serve for a cross-channel read). The tile watches a whole message category or hand-picked channels of one, optionally unread only, resolved by the new `messages.listRecentMessages()` beside the section's existing `listMessages()` timeline; `listConfigurableTargets()` grows the category and channel option lists. `/messages` accepts `?channel=…` as a deep-link hint, mirroring `/mail?account=…&message=…`. Updates §7E.2 and §7E.7.
 - **v1.18 (2026-08-05):** documents the agent-facing Messages management API as CURRENT (FR-MSG-004): the REST family `/api/v1/messages/**` — the first versioned namespace in the tree — and the ten MCP tools in `src/lib/mcp/tools/messages.ts` under the new `messages:read`/`messages:write` scopes, both calling the same `messages.ts`/`webhookTokens.ts` services. Adds `src/lib/api/token-auth.ts` (bearer authentication, scope check, shared webhook rate limiter, `{ error: { code, message } }` envelope) and the fifth NFR-SEC-001 exemption in `src/proxy.ts`. `MessageOrigin` gains `AGENT` through migration `20260805120000_message_origin_agent`; `McpToolContext` carries the token name so agent-written messages are attributable. `scripts/check-public-openapi.mjs` now pins allowed methods per path instead of requiring POST-only, and `specs/openapi.json` grows from 6 to 13 paths. Updates §3.2 and §6.5. New section §6.6.
 - **v1.17 (2026-08-02):** documents Discord webhook compatibility as CURRENT in both directions, normatively specified in [`specs/discord-webhook-compatibility.md`](../specs/discord-webhook-compatibility.md). Ingress adds `POST/GET /api/discord/webhooks/{webhookId}/{token}` plus the `/slack` and `/github` suffixes on a separate route prefix (Next.js forbids a second slug name beside `[type]`), reusing the existing channel credential unchanged; `Message` gains `embeds`/`avatarUrl`/`tts`/`flags` through migration `20260803120000_discord_webhook_compatibility`. Egress adds `OutgoingWebhookFormat { INSPOT, DISCORD_EXECUTE, DISCORD_EVENTS }` with Ed25519 signing, PING handshake, per-format backoff, and `WEBHOOK_AUTO_DISABLE_AFTER`. Shared ingest helpers move to `src/lib/webhooks/{body,channelMessage}.ts`; `checkRateLimit` now returns window bookkeeping. Updates §3.2, §4.1, §6.3, §6.4. New section §6.5.
 - **v1.16 (2026-08-02):** documents the LLM provider scaffolding as CURRENT: `src/lib/llm/` (result contract with typed error categories, deterministic mock driver, single-attempt OpenAI-compatible REAL driver, workspace registry), the `OPENAI_COMPATIBLE` `ProviderType` value with migration `20260802120000_llm_provider` reusing the encrypted `ProviderCredential` store, the audit-and-limit seam `src/lib/services/llm.ts` (`Activity` row per model call, `LLM_CALL_RATE_LIMIT` window), and the new `LLM_*` environment variables. Records the model endpoint as the application's second outbound destination after Open-Meteo, with a local model as the recommended deployment. New section §7F.
@@ -977,11 +978,17 @@ would have to be vetted.
 
 `src/lib/services/dashboard-widget-data.ts` resolves the payload of every widget
 on a board, reusing the existing section services (`services.list`, `alerts.list`,
-`logs.list`, `mail.list`, `bookmarks.list`) plus two narrow additions:
-`servers.listLocalServerMetrics()` (agent snapshots only — the full
-`listServers()` composes provider inventory and may trigger a provider fetch,
-far too much work for a tile that re-reads every minute) and
+`logs.list`, `mail.list`, `bookmarks.list`, `messages.listCategories`) plus three
+narrow additions: `servers.listLocalServerMetrics()` (agent snapshots only — the
+full `listServers()` composes provider inventory and may trigger a provider
+fetch, far too much work for a tile that re-reads every minute),
+`messages.listRecentMessages()` (newest messages across a set of channels, where
+`listMessages()` is a single channel's keyset-paged timeline), and
 `src/lib/services/dashboard-calendar.ts`.
+
+A widget pointed at a target that has since been deleted resolves to an **empty**
+tile, never to a wider one: the messages widget whose channel or category is gone
+returns no rows rather than falling back to every channel of the workspace.
 
 Failures are **per widget**: each resolution runs in its own `try/catch` and a
 failed one becomes `{ error }`, rendered as an error card while the rest of the
@@ -1075,8 +1082,9 @@ The post-login landing moved from `/bookmarks` to `/dashboards` in one place —
 
 `tests/unit/dashboards/{grid,weather,calendar}.test.ts` (engine, cache and
 failure mapping, day bucketing), `tests/unit/validation/dashboards.test.ts`
-(per-kind config schemas), `tests/unit/ui/dashboard-widgets.test.tsx` (all ten
-tiles plus empty and error states), `tests/integration/services/dashboards.test.ts`
+(per-kind config schemas), `tests/unit/ui/dashboard-widgets.test.tsx` (all eleven
+tiles plus empty and error states), `tests/unit/ui/dashboard-widget-config.test.tsx`
+(the selection-style settings forms), `tests/integration/services/dashboards.test.ts`
 and `tests/integration/api/dashboards.test.ts` (CRUD, layout rejection, workspace
 isolation), `e2e/dashboards.spec.ts` (create → add → configure → drag → resize →
 reload → delete) and `e2e/dashboards-visual.spec.ts` (light/dark/phone with

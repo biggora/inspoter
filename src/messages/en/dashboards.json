@@ -87,6 +87,10 @@
       "title": "Mail",
       "description": "The most recent messages, optionally unread only."
     },
+    "MESSAGES": {
+      "title": "Messages",
+      "description": "The most recent messages from a whole category or from hand-picked channels."
+    },
     "ALERTS": {
       "title": "Alerts",
       "description": "The most recent alerts, filtered by severity."
@@ -203,6 +207,17 @@
     "noSubject": "No subject",
     "accountAriaLabel": "Mailbox: {account}",
     "empty": "No mail yet."
+  },
+
+  "messages": {
+    "categoryLabel": "Category",
+    "allCategoriesOption": "All categories",
+    "channelsLabel": "Channels",
+    "allChannelsHint": "Nothing selected — every channel of the category is shown.",
+    "unreadOnlyLabel": "Unread only",
+    "unknownAuthor": "Unknown author",
+    "noContent": "No text",
+    "empty": "No messages in the selected channels yet."
   },
 
   "alerts": {

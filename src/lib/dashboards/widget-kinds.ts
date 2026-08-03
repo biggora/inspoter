@@ -73,6 +73,12 @@ export const WIDGET_KIND_SPECS: Record<DashboardWidgetKind, WidgetKindSpec> = {
     maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
+  MESSAGES: {
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 2 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
+    needsServerData: true,
+  },
   ALERTS: {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 2 },
@@ -98,6 +104,7 @@ export const WIDGET_KIND_ORDER: DashboardWidgetKind[] = [
   "SERVICE_STATUS",
   "SERVER_METRICS",
   "MAIL",
+  "MESSAGES",
   "ALERTS",
   "LOGS",
 ];

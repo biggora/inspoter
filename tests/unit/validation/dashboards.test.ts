@@ -200,6 +200,37 @@ describe("widget config schemas", () => {
       parseWidgetConfig("SERVER_METRICS", { localServerIds: "srv-1" }).success,
     ).toBe(false);
   });
+
+  it("watches every channel when neither a category nor channels are chosen", () => {
+    const parsed = parseWidgetConfig("MESSAGES", {});
+    expect(parsed.success && parsed.data).toEqual({
+      categoryId: null,
+      channelIds: [],
+      unreadOnly: false,
+      limit: 5,
+    });
+  });
+
+  it("keeps a category alongside a channel selection", () => {
+    const parsed = parseWidgetConfig("MESSAGES", {
+      categoryId: "cat-1",
+      channelIds: ["ch-1", "ch-2"],
+      unreadOnly: true,
+      limit: 10,
+    });
+    expect(parsed.success && parsed.data).toEqual({
+      categoryId: "cat-1",
+      channelIds: ["ch-1", "ch-2"],
+      unreadOnly: true,
+      limit: 10,
+    });
+  });
+
+  it("rejects a channel selection that is not a list of ids", () => {
+    expect(parseWidgetConfig("MESSAGES", { channelIds: "ch-1" }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("readServerSelection", () => {
@@ -218,6 +249,14 @@ describe("parseWidgetConfigOrDefaults", () => {
   it("falls back to defaults for a corrupt stored config", () => {
     expect(parseWidgetConfigOrDefaults("LOGS", { levels: "nope" })).toEqual({
       levels: [],
+      limit: 5,
+    });
+    expect(
+      parseWidgetConfigOrDefaults("MESSAGES", { channelIds: "nope" }),
+    ).toEqual({
+      categoryId: null,
+      channelIds: [],
+      unreadOnly: false,
       limit: 5,
     });
   });

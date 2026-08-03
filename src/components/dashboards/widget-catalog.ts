@@ -27,6 +27,7 @@ const ICONS: Record<DashboardWidgetKind, string> = {
   SERVICE_STATUS: "ri-pulse-line",
   SERVER_METRICS: "ri-server-line",
   MAIL: "ri-mail-line",
+  MESSAGES: "ri-message-2-line",
   ALERTS: "ri-alert-line",
   LOGS: "ri-file-list-3-line",
 };
@@ -52,6 +53,7 @@ export const WIDGET_SECTION_HREF: Partial<Record<DashboardWidgetKind, string>> =
     SERVICE_STATUS: "/services",
     SERVER_METRICS: "/servers",
     MAIL: "/mail",
+    MESSAGES: "/messages",
     ALERTS: "/alerts",
     LOGS: "/logs",
   };
