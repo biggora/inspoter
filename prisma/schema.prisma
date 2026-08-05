@@ -391,6 +391,9 @@ model MailAccount {
   isDefault           Boolean               @default(false)
   syncStatus          MailSyncStatus        @default(IDLE)
   syncError           String?
+  // Failure streak driving the ERROR flip (src/lib/services/mail-sync-status.ts):
+  // a single dropped IMAP session must not raise a critical alert.
+  consecutiveSyncFailures Int               @default(0)
   lastSyncAt          DateTime?
   nextSyncAt          DateTime?
   syncLeaseExpiresAt  DateTime?

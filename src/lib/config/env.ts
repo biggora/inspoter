@@ -76,6 +76,10 @@ const envSchema = z
     // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
     MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
     MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),
+    // Consecutive failed syncs before an account is marked ERROR and alerted
+    // on. Each sync already retries the transport once, so the default means
+    // six failed IMAP sessions in a row.
+    MAIL_SYNC_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(3),
     MAIL_MAX_ATTACHMENT_BYTES: z.coerce
       .number()
       .int()

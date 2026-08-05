@@ -12,10 +12,16 @@ import type { MailConnectionConfig } from "@/lib/mail/types";
 
 type FakeClient = EventEmitter & {
   usable: boolean;
+  closeCalls: number;
   options: Record<string, unknown>;
 };
 
-const state = vi.hoisted(() => ({ instances: [] as FakeClient[] }));
+const state = vi.hoisted(() => ({
+  instances: [] as FakeClient[],
+  // When set, connect() rejects with it — models imapflow failing the session
+  // handshake (LOGIN → NO) after the socket is already established.
+  connectError: null as Error | null,
+}));
 
 vi.mock("imapflow", async () => {
   const { EventEmitter: NodeEventEmitter } = await import("node:events");
@@ -23,6 +29,7 @@ vi.mock("imapflow", async () => {
   // without a listener throws) plus just enough surface for listFolders().
   class FakeImapFlow extends NodeEventEmitter {
     usable = false;
+    closeCalls = 0;
     options: Record<string, unknown>;
 
     constructor(options: Record<string, unknown>) {
@@ -32,6 +39,7 @@ vi.mock("imapflow", async () => {
     }
 
     async connect(): Promise<void> {
+      if (state.connectError) throw state.connectError;
       this.usable = true;
     }
 
@@ -45,10 +53,22 @@ vi.mock("imapflow", async () => {
 
     close(): void {
       this.usable = false;
+      this.closeCalls += 1;
     }
   }
   return { ImapFlow: FakeImapFlow };
 });
+
+// verify() also probes SMTP; keep that off the network so these IMAP tests
+// stay deterministic.
+vi.mock("nodemailer", () => ({
+  createTransport: () => ({
+    verify: async () => {
+      throw new Error("SMTP unavailable");
+    },
+    close: () => {},
+  }),
+}));
 
 const CONFIG: MailConnectionConfig = {
   email: "operator@inspot.local",
@@ -75,8 +95,15 @@ async function connectedDriver() {
   return driver;
 }
 
+// imapflow reports every NO/BAD response as "Command failed" and keeps the
+// server's own words on responseText.
+function commandFailed(responseText: string): Error {
+  return Object.assign(new Error("Command failed"), { responseText });
+}
+
 beforeEach(() => {
   state.instances.length = 0;
+  state.connectError = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -117,6 +144,62 @@ describe("ImapSmtpMailDriver connection errors", () => {
     await driver.listFolders();
 
     expect(state.instances).toHaveLength(2);
+  });
+
+  // imapflow rejects connect() from beginSession() without closing the socket
+  // when the handshake fails, and the driver has not cached the client yet —
+  // so nothing else can close it. Left open, the socket sits until its
+  // inactivity timeout fires a bogus "Socket timeout" error event.
+  it("closes the socket when connect() fails after the TCP handshake", async () => {
+    const { ImapSmtpMailDriver } = await import("@/lib/mail/imap-smtp");
+    state.connectError = commandFailed("[AUTHENTICATIONFAILED] Invalid");
+    const driver = new ImapSmtpMailDriver(CONFIG);
+
+    await expect(driver.listFolders()).rejects.toThrow();
+
+    expect(state.instances).toHaveLength(1);
+    expect(state.instances[0].closeCalls).toBe(1);
+    // The failed connect is reported by the rejection, not by the out-of-band
+    // error channel — no duplicate log entry.
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("reports the server response text instead of a bare 'Command failed'", async () => {
+    const { ImapSmtpMailDriver } = await import("@/lib/mail/imap-smtp");
+    state.connectError = commandFailed(
+      "[AUTHENTICATIONFAILED] Invalid credentials (Failure)",
+    );
+    const driver = new ImapSmtpMailDriver(CONFIG);
+
+    await expect(driver.listFolders()).rejects.toThrow(
+      "IMAP listFolders failed: Command failed: [AUTHENTICATIONFAILED] Invalid credentials (Failure)",
+    );
+  });
+
+  it("marks wire failures with the driver op so callers can retry them", async () => {
+    const { ImapSmtpMailDriver } = await import("@/lib/mail/imap-smtp");
+    const { MailTransportError } = await import("@/lib/mail/types");
+    state.connectError = socketTimeout();
+    const driver = new ImapSmtpMailDriver(CONFIG);
+
+    const error = await driver.listFolders().catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(MailTransportError);
+    expect((error as InstanceType<typeof MailTransportError>).op).toBe(
+      "listFolders",
+    );
+  });
+
+  it("closes verify()'s throwaway client when connect() fails", async () => {
+    const { ImapSmtpMailDriver } = await import("@/lib/mail/imap-smtp");
+    state.connectError = commandFailed("[AUTHENTICATIONFAILED] Invalid");
+    const driver = new ImapSmtpMailDriver(CONFIG);
+
+    const result = await driver.verify();
+
+    expect(result.imapOk).toBe(false);
+    expect(result.error).toContain("[AUTHENTICATIONFAILED] Invalid");
+    expect(state.instances[0].closeCalls).toBe(1);
   });
 
   it("only invalidates the driver whose connection failed", async () => {

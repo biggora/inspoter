@@ -21,8 +21,20 @@ import {
 // (imapflow upgrades automatically when secure:false; nodemailer via
 // requireTLS). Certificate validation stays on (no rejectUnauthorized:false).
 
-const TIMEOUT_MS = 15_000;
+// Timeouts. imapflow's own defaults are 90s/16s/300s; the values below are
+// tighter but still far above the observed norm (Gmail from the production
+// VPS: TCP 11ms, TLS 20ms, greeting 25ms, LOGIN 525ms). socketTimeout is an
+// *inactivity* timeout covering the whole session — including the gaps while
+// the sync engine writes to the database between IMAP commands — so it must
+// stay well above the per-command budget.
+const IMAP_CONNECT_TIMEOUT_MS = 30_000;
+const IMAP_GREETING_TIMEOUT_MS = 20_000;
+const IMAP_SOCKET_TIMEOUT_MS = 120_000;
+const SMTP_TIMEOUT_MS = 15_000;
 const SNIPPET_LENGTH = 120;
+// IMAP server responses are short; cap them so a chatty server can't blow up
+// the stored syncError.
+const MAX_RESPONSE_TEXT_LENGTH = 200;
 
 // imapflow special-use attributes → Prisma enum. "\All" (Gmail "All Mail")
 // intentionally maps to OTHER — it is not the user's Archive folder.
@@ -47,8 +59,15 @@ function specialUseFromName(path: string, name: string): MailSpecialUse {
   return "OTHER";
 }
 
+// imapflow reports every NO/BAD as the same "Command failed", and puts the
+// reason the server actually gave (e.g. "[AUTHENTICATIONFAILED] Invalid
+// credentials") on error.responseText. Without it an operator sees nothing
+// actionable in syncError. Server response text never echoes the password.
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) return String(error);
+  const responseText = (error as { responseText?: unknown }).responseText;
+  if (typeof responseText !== "string" || !responseText) return error.message;
+  return `${error.message}: ${responseText.slice(0, MAX_RESPONSE_TEXT_LENGTH)}`;
 }
 
 function makeSnippet(text: string): string {
@@ -83,9 +102,9 @@ export class ImapSmtpMailDriver implements MailDriver {
       port: this.config.imapPort,
       secure: this.config.imapSecurity === "SSL",
       auth: { user: this.config.username, pass: this.config.imapPassword },
-      connectionTimeout: TIMEOUT_MS,
-      greetingTimeout: TIMEOUT_MS,
-      socketTimeout: TIMEOUT_MS,
+      connectionTimeout: IMAP_CONNECT_TIMEOUT_MS,
+      greetingTimeout: IMAP_GREETING_TIMEOUT_MS,
+      socketTimeout: IMAP_SOCKET_TIMEOUT_MS,
       logger: false,
     });
     client.on("error", (error) => this.handleConnectionError(client, error));
@@ -127,9 +146,9 @@ export class ImapSmtpMailDriver implements MailDriver {
           user: this.config.username,
           pass: this.config.smtpPassword ?? this.config.imapPassword,
         },
-        connectionTimeout: TIMEOUT_MS,
-        greetingTimeout: TIMEOUT_MS,
-        socketTimeout: TIMEOUT_MS,
+        connectionTimeout: SMTP_TIMEOUT_MS,
+        greetingTimeout: SMTP_TIMEOUT_MS,
+        socketTimeout: SMTP_TIMEOUT_MS,
       });
     }
     return this.transporter;
@@ -138,7 +157,18 @@ export class ImapSmtpMailDriver implements MailDriver {
   private async getClient(): Promise<ImapFlow> {
     if (this.client?.usable) return this.client;
     const client = this.createImapClient();
-    await client.connect();
+    try {
+      await client.connect();
+    } catch (error) {
+      // imapflow rejects connect() from beginSession() *without* closing the
+      // socket when the session handshake fails (LOGIN → NO, ID/NAMESPACE →
+      // BAD). The instance was never stored in this.client, so close() cannot
+      // reach it and the socket lingers until its inactivity timeout fires an
+      // 'error' event — one bogus "Socket timeout" log entry per failed sync,
+      // plus a server connection slot held for the whole timeout window.
+      client.close();
+      throw error;
+    }
     this.client = client;
     return client;
   }
@@ -158,6 +188,7 @@ export class ImapSmtpMailDriver implements MailDriver {
         `IMAP ${op} failed: ${errorMessage(error)}`,
         {
           cause: error,
+          op,
         },
       );
     }
@@ -179,6 +210,11 @@ export class ImapSmtpMailDriver implements MailDriver {
       imapOk = true;
     } catch (error) {
       errors.push(`IMAP: ${errorMessage(error)}`);
+    } finally {
+      // A failed connect() can leave the socket open (see getClient()), and a
+      // failed logout() leaves it open by definition. close() on an already
+      // closed client is a no-op.
+      client.close();
     }
     try {
       await this.getTransporter().verify();
@@ -409,6 +445,7 @@ export class ImapSmtpMailDriver implements MailDriver {
     } catch (error) {
       throw new MailTransportError(`SMTP send failed: ${errorMessage(error)}`, {
         cause: error,
+        op: "send",
       });
     }
     return { messageId, raw };

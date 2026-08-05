@@ -9,8 +9,12 @@ import {
   vi,
 } from "vitest";
 import { db } from "@/lib/db";
+import { env } from "@/lib/config/env";
 import { MockMailDriver, resetMockMailStore } from "@/lib/mail/mock";
-import { WebhookAccountHasNoTransportError } from "@/lib/mail";
+import {
+  MailTransportError,
+  WebhookAccountHasNoTransportError,
+} from "@/lib/mail";
 import { syncAccount } from "@/lib/services/mail-sync";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { moveItem } from "@/lib/services/mail-actions";
@@ -568,9 +572,10 @@ describe("syncAccount — errors and scoping", () => {
     );
   });
 
-  it("records ERROR + syncError and still advances nextSyncAt on transport failure", async () => {
+  it("records syncError and still advances nextSyncAt on transport failure", async () => {
     // REAL account without connection settings → getMailDriver throws
-    // MailTransportError inside the sync try block.
+    // MailTransportError inside the sync try block. One failure is below the
+    // threshold, so the status itself does not flip yet.
     const account = await db.mailAccount.create({
       data: {
         workspaceId,
@@ -588,10 +593,24 @@ describe("syncAccount — errors and scoping", () => {
     const stored = await db.mailAccount.findUnique({
       where: { id: account.id },
     });
-    expect(stored?.syncStatus).toBe("ERROR");
+    expect(stored?.syncStatus).toBe("IDLE");
+    expect(stored?.consecutiveSyncFailures).toBe(1);
     expect(stored?.syncError).toContain("missing IMAP/SMTP");
     expect(stored?.nextSyncAt!.getTime()).toBeGreaterThan(Date.now());
     expect(stored?.syncLeaseExpiresAt).toBeNull();
+  });
+
+  it("does not retry a permanent failure that never reached the wire", async () => {
+    const account = await createMockAccount("no-retry");
+    const listFolders = vi
+      .spyOn(MockMailDriver.prototype, "listFolders")
+      .mockRejectedValue(new Error("boom"));
+
+    const outcome = await syncAccount(account.id, workspaceId);
+
+    expect(outcome.status).toBe("error");
+    expect(listFolders).toHaveBeenCalledTimes(1);
+    listFolders.mockRestore();
   });
 
   it("never touches data of другого workspace", async () => {
@@ -614,5 +633,133 @@ describe("syncAccount — errors and scoping", () => {
     });
     expect(untouched?.syncStatus).toBe("IDLE");
     expect(untouched?.lastSyncAt).toBeNull();
+  });
+});
+
+// A single dropped IMAP session is a network blip, not an outage: the sync
+// retries it once, and only a streak of MAIL_SYNC_FAILURE_THRESHOLD failed
+// syncs flips the account to ERROR and raises the critical alert.
+describe("syncAccount — failure streak and alerts", () => {
+  const THRESHOLD = env.MAIL_SYNC_FAILURE_THRESHOLD;
+
+  // Alerts are written fire-and-forget, so wait for the expected count instead
+  // of reading once.
+  async function alertsFor(source: string) {
+    return db.alert.findMany({
+      where: { workspaceId, source },
+      orderBy: { timestamp: "asc" },
+    });
+  }
+
+  async function createBrokenAccount(name: string, email: string) {
+    // REAL account without connection settings — fails on every sync.
+    return db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "REAL",
+        name: `${NAME_PREFIX}-${name}`,
+        email,
+        syncStatus: "IDLE",
+      },
+    });
+  }
+
+  it("flips to ERROR with exactly one critical alert when the streak reaches the threshold", async () => {
+    const email = `streak-${randomUUID()}@example.ru`;
+    const account = await createBrokenAccount("streak", email);
+    await db.mailAccount.update({
+      where: { id: account.id },
+      data: { consecutiveSyncFailures: THRESHOLD - 1 },
+    });
+
+    expect((await syncAccount(account.id, workspaceId)).status).toBe("error");
+
+    const flipped = await db.mailAccount.findUnique({
+      where: { id: account.id },
+    });
+    expect(flipped?.syncStatus).toBe("ERROR");
+    expect(flipped?.consecutiveSyncFailures).toBe(THRESHOLD);
+
+    await expect.poll(async () => (await alertsFor(email)).length).toBe(1);
+    const [alert] = await alertsFor(email);
+    expect(alert.severity).toBe("critical");
+    expect(alert.message).toContain("Ошибка синхронизации");
+
+    // Still broken on the next tick — the alert must not repeat.
+    expect((await syncAccount(account.id, workspaceId)).status).toBe("error");
+    const stillBroken = await db.mailAccount.findUnique({
+      where: { id: account.id },
+    });
+    expect(stillBroken?.syncStatus).toBe("ERROR");
+    expect(stillBroken?.consecutiveSyncFailures).toBe(THRESHOLD + 1);
+    expect(await alertsFor(email)).toHaveLength(1);
+  });
+
+  it("clears the streak on success and alerts recovery only out of ERROR", async () => {
+    const email = `recovered-${randomUUID()}@example.ru`;
+    const account = await db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "MOCK",
+        name: `${NAME_PREFIX}-recovered`,
+        email,
+        syncStatus: "ERROR",
+        syncError: "IMAP listFolders failed: Socket timeout",
+        consecutiveSyncFailures: THRESHOLD + 2,
+      },
+    });
+
+    expect((await syncAccount(account.id, workspaceId)).status).toBe("synced");
+
+    const recovered = await db.mailAccount.findUnique({
+      where: { id: account.id },
+    });
+    expect(recovered?.syncStatus).toBe("IDLE");
+    expect(recovered?.consecutiveSyncFailures).toBe(0);
+    expect(recovered?.syncError).toBeNull();
+
+    await expect.poll(async () => (await alertsFor(email)).length).toBe(1);
+    const [alert] = await alertsFor(email);
+    expect(alert.severity).toBe("info");
+    expect(alert.message).toBe("Синхронизация восстановлена");
+
+    // A second healthy sync is not a transition — no second alert.
+    expect((await syncAccount(account.id, workspaceId)).status).toBe("synced");
+    expect(await alertsFor(email)).toHaveLength(1);
+  });
+
+  it("retries a dropped IMAP session once and syncs without alerting", async () => {
+    const email = `retry-${randomUUID()}@example.ru`;
+    const account = await db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "MOCK",
+        name: `${NAME_PREFIX}-retry`,
+        email,
+        syncStatus: "IDLE",
+      },
+    });
+    const listFolders = vi
+      .spyOn(MockMailDriver.prototype, "listFolders")
+      .mockRejectedValueOnce(
+        new MailTransportError("IMAP listFolders failed: Socket timeout", {
+          op: "listFolders",
+        }),
+      );
+
+    const outcome = await syncAccount(account.id, workspaceId);
+
+    expect(outcome).toEqual({ status: "synced", folders: 5, newMessages: 30 });
+    expect(listFolders).toHaveBeenCalledTimes(2);
+    const stored = await db.mailAccount.findUnique({
+      where: { id: account.id },
+    });
+    expect(stored?.syncStatus).toBe("IDLE");
+    expect(stored?.consecutiveSyncFailures).toBe(0);
+    expect(await alertsFor(email)).toHaveLength(0);
+    listFolders.mockRestore();
   });
 });
