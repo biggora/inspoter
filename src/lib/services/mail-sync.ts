@@ -8,6 +8,7 @@ import {
 } from "@/generated/prisma/client";
 import {
   getMailDriver,
+  MailTransportError,
   WebhookAccountHasNoTransportError,
   type MailDriver,
   type RemoteFolder,
@@ -16,6 +17,7 @@ import {
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { logError } from "@/lib/services/logs";
 import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
+import { nextMailSyncState } from "@/lib/services/mail-sync-status";
 import * as alertsService from "./alerts";
 
 // IMAP sync engine (plan §3 «Движок синхронизации»): lease-locked per-account
@@ -36,6 +38,11 @@ const FLAG_CHUNK_SIZE = 500;
 
 // Stored syncError is a short operator-facing string, not a stack trace.
 const MAX_SYNC_ERROR_LENGTH = 500;
+
+// A dropped IMAP session gets one immediate second chance with a fresh
+// connection before it counts as a failure — most transport errors here are
+// one-off network blips, not outages.
+const TRANSPORT_RETRY_DELAY_MS = 2_000;
 
 // Fixed positions for special-use folders; OTHER folders go after them,
 // alphabetically from position 10 (plan §3: INBOX=0 → special-use → алфавит).
@@ -310,6 +317,47 @@ async function reconcileFolders(
   });
 }
 
+// One full transport pass over the account: folder reconciliation + per-folder
+// message/flag sync on a freshly connected driver. Idempotent (folders upsert
+// by [accountId, path], messages pre-filter by stored UID), so re-running it
+// after a dropped connection is safe.
+async function runSyncPass(
+  account: MailAccount,
+): Promise<{ folders: number; newMessages: number }> {
+  const driver = await getMailDriver(account);
+  try {
+    const remoteFolders = await driver.listFolders();
+    await reconcileFolders(account, remoteFolders);
+    let newMessages = 0;
+    for (const remote of remoteFolders) {
+      newMessages += await syncFolder(account, remote, driver);
+    }
+    return { folders: remoteFolders.length, newMessages };
+  } finally {
+    await driver.close().catch(() => {});
+  }
+}
+
+// Only errors that came off the wire carry an op — a missing configuration or
+// an undecryptable secret is permanent and must not be retried.
+function isRetryableTransportError(error: unknown): boolean {
+  return error instanceof MailTransportError && error.op !== undefined;
+}
+
+async function runSyncPassWithRetry(
+  account: MailAccount,
+): Promise<{ folders: number; newMessages: number }> {
+  try {
+    return await runSyncPass(account);
+  } catch (error) {
+    if (!isRetryableTransportError(error)) throw error;
+    await new Promise((resolve) =>
+      setTimeout(resolve, TRANSPORT_RETRY_DELAY_MS),
+    );
+    return runSyncPass(account);
+  }
+}
+
 export async function syncAccount(
   accountId: string,
   workspaceId: string,
@@ -344,25 +392,27 @@ export async function syncAccount(
     return { status: "busy" };
   }
 
+  // `account` was read before the lease was taken, so account.syncStatus is
+  // the pre-SYNCING status the flip logic needs.
+  const previous = {
+    syncStatus: account.syncStatus,
+    consecutiveSyncFailures: account.consecutiveSyncFailures,
+  };
+
   try {
-    const driver = await getMailDriver(account);
-    let newMessages = 0;
-    let remoteFolders: RemoteFolder[];
-    try {
-      remoteFolders = await driver.listFolders();
-      await reconcileFolders(account, remoteFolders);
-      for (const remote of remoteFolders) {
-        newMessages += await syncFolder(account, remote, driver);
-      }
-    } finally {
-      await driver.close().catch(() => {});
-    }
+    const pass = await runSyncPassWithRetry(account);
 
     const finishedAt = new Date();
+    const next = nextMailSyncState(
+      previous,
+      true,
+      env.MAIL_SYNC_FAILURE_THRESHOLD,
+    );
     await db.mailAccount.updateMany({
       where: { id: accountId, workspaceId },
       data: {
-        syncStatus: "IDLE",
+        syncStatus: next.syncStatus,
+        consecutiveSyncFailures: next.consecutiveSyncFailures,
         syncError: null,
         syncLeaseExpiresAt: null,
         lastSyncAt: finishedAt,
@@ -371,7 +421,7 @@ export async function syncAccount(
         ),
       },
     });
-    if (account.syncStatus === "ERROR") {
+    if (next.flipped) {
       // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
       alertsService
         .create(account.workspaceId, {
@@ -397,17 +447,25 @@ export async function syncAccount(
     }
     return {
       status: "synced",
-      folders: remoteFolders.length,
-      newMessages,
+      folders: pass.folders,
+      newMessages: pass.newMessages,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // nextSyncAt advances even on failure — no hot-loop retries (plan §3).
     const failedAt = new Date();
+    // syncError always records the latest failure, but the ERROR status (and
+    // its alert) waits for the failure streak to reach the threshold.
+    const next = nextMailSyncState(
+      previous,
+      false,
+      env.MAIL_SYNC_FAILURE_THRESHOLD,
+    );
     await db.mailAccount.updateMany({
       where: { id: accountId, workspaceId },
       data: {
-        syncStatus: "ERROR",
+        syncStatus: next.syncStatus,
+        consecutiveSyncFailures: next.consecutiveSyncFailures,
         syncError: message.slice(0, MAX_SYNC_ERROR_LENGTH),
         syncLeaseExpiresAt: null,
         nextSyncAt: new Date(
@@ -415,7 +473,7 @@ export async function syncAccount(
         ),
       },
     });
-    if (account.syncStatus !== "ERROR") {
+    if (next.flipped) {
       // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
       alertsService
         .create(account.workspaceId, {

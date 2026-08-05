@@ -126,9 +126,18 @@ export interface MailDriver {
 
 // Wraps IMAP/SMTP failures so API routes can map them to 502 uniformly.
 export class MailTransportError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
-    super(message, options);
+  /**
+   * Driver operation that failed ("listFolders", "send", …). Set only when the
+   * error came off the wire, so callers can tell a retryable transport blip
+   * from a permanent setup failure (missing settings, undecryptable secret),
+   * which carries no op.
+   */
+  readonly op?: string;
+
+  constructor(message: string, options?: { cause?: unknown; op?: string }) {
+    super(message, { cause: options?.cause });
     this.name = "MailTransportError";
+    this.op = options?.op;
   }
 }
 
