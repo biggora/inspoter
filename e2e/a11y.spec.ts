@@ -26,7 +26,7 @@ test("Login screen has zero serious or critical accessibility violations", async
 }) => {
   await page.goto("/login");
   await expect(
-    page.getByRole("heading", { name: "Войти", exact: true }),
+    page.getByRole("heading", { name: "Sign in", exact: true }),
   ).toBeVisible();
 
   await expectNoBlockingAxeViolations(page);
@@ -43,7 +43,7 @@ test("Shell + Bookmarks screen has one main landmark, one named primary navigati
   await expect(main).toBeVisible();
 
   const primaryNavigation = page.getByRole("navigation", {
-    name: "Основная навигация",
+    name: "Main navigation",
     exact: true,
   });
   await expect(primaryNavigation).toHaveCount(1);
@@ -61,10 +61,8 @@ test("Bookmark dialog with the color picker open has zero serious or critical ac
   await expect(page.getByRole("navigation")).toBeVisible();
 
   const categoryName = testData.name("A11y Color Cat");
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(categoryName);
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(categoryName);
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -72,7 +70,7 @@ test("Bookmark dialog with the color picker open has zero serious or critical ac
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const response = await responsePromise;
   const body: unknown = await response.json();
   if (
@@ -89,9 +87,9 @@ test("Bookmark dialog with the color picker open has zero serious or critical ac
     exact: true,
   });
   await expect(category).toBeVisible();
-  await category.getByRole("button", { name: "Добавить", exact: true }).click();
+  await category.getByRole("button", { name: "Add", exact: true }).click();
   await expect(
-    page.getByRole("group", { name: "Цвет", exact: true }),
+    page.getByRole("group", { name: "Color", exact: true }),
   ).toBeVisible();
 
   await expectNoBlockingAxeViolations(page, '[data-slot="dialog-content"]');
@@ -106,10 +104,8 @@ test("Bookmarks search input and no-results state have zero serious or critical 
   await expect(page.getByRole("navigation")).toBeVisible();
 
   const categoryName = testData.name("A11y Search Cat");
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(categoryName);
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(categoryName);
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -117,7 +113,7 @@ test("Bookmarks search input and no-results state have zero serious or critical 
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const response = await responsePromise;
   const body: unknown = await response.json();
   if (
@@ -129,13 +125,13 @@ test("Bookmarks search input and no-results state have zero serious or critical 
     testData.registerCategory(body.id);
   }
 
-  const search = page.getByLabel("Поиск закладок", { exact: true });
+  const search = page.getByLabel("Search bookmarks", { exact: true });
   await expect(search).toBeVisible();
 
   // Labeled search input, no results yet — no-results state is showing.
   await search.fill("nothing-matches-this-query");
   await expect(
-    page.getByRole("heading", { name: "Ничего не найдено", exact: true }),
+    page.getByRole("heading", { name: "No results found", exact: true }),
   ).toBeVisible();
 
   await expectNoBlockingAxeViolations(page);
@@ -154,10 +150,8 @@ test("Bookmark drag handle, focused, has zero serious or critical accessibility 
   await expect(page.getByRole("navigation")).toBeVisible();
 
   const categoryName = testData.name("A11y Drag Handle Cat");
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(categoryName);
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(categoryName);
   const categoryResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -165,7 +159,7 @@ test("Bookmark drag handle, focused, has zero serious or critical accessibility 
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const categoryResponse = await categoryResponsePromise;
   const categoryBody: unknown = await categoryResponse.json();
   if (
@@ -184,12 +178,12 @@ test("Bookmark drag handle, focused, has zero serious or critical accessibility 
   await expect(category).toBeVisible();
 
   const bookmarkName = testData.name("A11y Drag Handle Bookmark");
-  await category.getByRole("button", { name: "Добавить", exact: true }).click();
-  await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
+  await category.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(bookmarkName);
   await page
     .getByLabel("URL", { exact: true })
     .fill(new URL("/settings", page.url()).toString());
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
   const bookmarkArticle = category.getByRole("article", {
     name: bookmarkName,
@@ -198,7 +192,7 @@ test("Bookmark drag handle, focused, has zero serious or critical accessibility 
   await expect(bookmarkArticle).toBeVisible();
 
   const dragHandle = bookmarkArticle.getByRole("button", {
-    name: `Изменить порядок: «${bookmarkName}»`,
+    name: `Reorder: "${bookmarkName}"`,
     exact: true,
   });
   await dragHandle.focus();
@@ -222,10 +216,8 @@ test("Bookmarks screen with a subcategory has correct heading levels (h2 parent 
   const categoryName = testData.name("A11y Heading Parent");
   const subcategoryName = testData.name("A11y Heading Subcategory");
 
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(categoryName);
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(categoryName);
   const categoryResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -233,7 +225,7 @@ test("Bookmarks screen with a subcategory has correct heading levels (h2 parent 
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const categoryResponse = await categoryResponsePromise;
   const categoryBody: unknown = await categoryResponse.json();
   if (
@@ -251,12 +243,10 @@ test("Bookmarks screen with a subcategory has correct heading levels (h2 parent 
   });
   await expect(category).toBeVisible();
 
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(subcategoryName);
   await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(subcategoryName);
-  await page
-    .getByLabel("Родительская категория", { exact: true })
+    .getByLabel("Parent Category", { exact: true })
     .selectOption({ label: categoryName });
   const subcategoryResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -265,7 +255,7 @@ test("Bookmarks screen with a subcategory has correct heading levels (h2 parent 
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const subcategoryResponse = await subcategoryResponsePromise;
   const subcategoryBody: unknown = await subcategoryResponse.json();
   if (
@@ -304,12 +294,10 @@ test("NativeSelect in the category form has zero serious or critical accessibili
 }) => {
   await login(page);
   await page.goto("/bookmarks");
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
 
   await expect(
-    page.getByLabel("Родительская категория", { exact: true }),
+    page.getByLabel("Parent Category", { exact: true }),
   ).toBeVisible();
   await expectNoBlockingAxeViolations(page, '[data-slot="dialog-content"]');
 });
@@ -319,11 +307,11 @@ test("Service form and active checkbox have zero serious or critical accessibili
 }) => {
   await login(page);
   await page.goto("/services");
-  await page.getByRole("button", { name: "Новый сервис", exact: true }).click();
+  await page.getByRole("button", { name: "New service", exact: true }).click();
 
   await expect(
     page.getByRole("checkbox", {
-      name: "Активен (проверять по расписанию)",
+      name: "Active (check on schedule)",
       exact: true,
     }),
   ).toBeVisible();
@@ -383,11 +371,11 @@ test("Server power AlertDialog has zero serious or critical accessibility violat
   });
   await page.goto("/servers");
 
-  const card = page.getByRole("group", { name: "Сервер «a11y-server»" });
+  const card = page.getByRole("group", { name: 'Server "a11y-server"' });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Остановить", exact: true }).click();
+  await card.getByRole("button", { name: "Stop", exact: true }).click();
   await expect(
-    page.getByRole("alertdialog", { name: "Остановить «a11y-server»?" }),
+    page.getByRole("alertdialog", { name: 'Stop "a11y-server"?' }),
   ).toBeVisible();
   await expectNoBlockingAxeViolations(
     page,
@@ -420,10 +408,10 @@ test("Expanded log row has zero serious or critical accessibility violations", a
 
   const expand = page.locator('button[aria-controls="a11y-log-detail"]');
   await expect(expand).toBeVisible();
-  await expect(expand).toHaveAccessibleName("Показать детали записи журнала");
+  await expect(expand).toHaveAccessibleName("Show log entry details");
   await expand.click();
   await expect(expand).toHaveAttribute("aria-expanded", "true");
-  await expect(expand).toHaveAccessibleName("Скрыть детали записи журнала");
+  await expect(expand).toHaveAccessibleName("Hide log entry details");
   await expect(
     page.getByText("Deterministic expanded log details").last(),
   ).toBeVisible();
@@ -467,7 +455,7 @@ test.describe("mobile migrated controls", () => {
     await page.goto("/messages");
 
     const openChannels = page.getByRole("button", {
-      name: "Открыть каналы",
+      name: "Open channels",
       exact: true,
     });
     await expect(openChannels).toBeVisible();
@@ -479,7 +467,7 @@ test.describe("mobile migrated controls", () => {
     await sheet
       .getByRole("button", { name: "a11y-channel", exact: true })
       .click();
-    const composer = page.getByPlaceholder("Написать в #a11y-channel...");
+    const composer = page.getByPlaceholder("Message #a11y-channel...");
     await expect(composer).toBeVisible();
     await expectNoBlockingAxeViolations(page);
   });

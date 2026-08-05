@@ -52,28 +52,28 @@ async function createDashboard(page: Page, name: string): Promise<string> {
   // The section shows either the empty state's button or, once a board exists,
   // the action menu's "New dashboard" item.
   const emptyStateButton = page.getByRole("button", {
-    name: "Создать дашборд",
+    name: "Create dashboard",
     exact: true,
   });
   if (await emptyStateButton.isVisible().catch(() => false)) {
     await emptyStateButton.click();
   } else {
     await page
-      .getByRole("button", { name: "Действия с дашбордом", exact: true })
+      .getByRole("button", { name: "Dashboard actions", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Новый дашборд", exact: true })
+      .getByRole("menuitem", { name: "New dashboard", exact: true })
       .click();
   }
 
-  await page.getByLabel("Название", { exact: true }).fill(name);
+  await page.getByLabel("Name", { exact: true }).fill(name);
 
   const responsePromise = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/dashboards" &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
 
@@ -84,18 +84,14 @@ async function createDashboard(page: Page, name: string): Promise<string> {
 }
 
 async function enterEditMode(page: Page) {
-  await page
-    .getByRole("button", { name: "Редактировать", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Готово", exact: true }),
+    page.getByRole("button", { name: "Done", exact: true }),
   ).toBeVisible();
 }
 
 async function addWidget(page: Page, catalogueTitle: string) {
-  await page
-    .getByRole("button", { name: "Добавить виджет", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
 
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -110,7 +106,7 @@ async function addWidget(page: Page, catalogueTitle: string) {
   expect(response.status()).toBe(201);
 
   // The settings dialog opens straight after adding; this flow keeps defaults.
-  await page.getByRole("button", { name: "Отмена", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   return (await response.json()) as { id: string; kind: string };
 }
 
@@ -179,7 +175,7 @@ async function mouseDragTile(
   );
 }
 
-test("создание дашборда: пустое состояние ведёт к первому дашборду", async ({
+test("dashboard creation: the empty state leads to the first dashboard", async ({
   page,
   testData,
 }) => {
@@ -190,26 +186,23 @@ test("создание дашборда: пустое состояние вед�
 
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
   await expect(
-    page.getByText("На дашборде пока нет виджетов", { exact: true }),
+    page.getByText("This dashboard has no widgets yet", { exact: true }),
   ).toBeVisible();
   expect(id).toBeTruthy();
 });
 
-test("виджеты: добавление, настройка и удаление", async ({
-  page,
-  testData,
-}) => {
+test("widgets: add, configure, and delete", async ({ page, testData }) => {
   await createDashboard(page, testData.name("widgets"));
   await enterEditMode(page);
 
-  const note = await addWidget(page, "Заметка");
+  const note = await addWidget(page, "Note");
   await expect(tile(page, note.id)).toBeVisible();
 
   // Configure it: the note's text is the widget's whole payload, so a saved
   // config shows up as tile content immediately after the refresh.
-  await page.getByRole("button", { name: "Действия с виджетом" }).click();
-  await page.getByRole("menuitem", { name: "Настроить", exact: true }).click();
-  await page.getByLabel("Текст заметки", { exact: true }).fill("дежурит Аня");
+  await page.getByRole("button", { name: "Widget actions" }).click();
+  await page.getByRole("menuitem", { name: "Configure", exact: true }).click();
+  await page.getByLabel("Note text", { exact: true }).fill("Anna is on call");
 
   const savePromise = page.waitForResponse(
     (response) =>
@@ -217,12 +210,12 @@ test("виджеты: добавление, настройка и удалени
         new URL(response.url()).pathname,
       ) && response.request().method() === "PATCH",
   );
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   expect((await savePromise).status()).toBe(200);
-  await expect(page.getByText("дежурит Аня")).toBeVisible();
+  await expect(page.getByText("Anna is on call")).toBeVisible();
 
   // Removing the widget leaves the board empty again.
-  await page.getByRole("button", { name: "Действия с виджетом" }).click();
+  await page.getByRole("button", { name: "Widget actions" }).click();
   const deletePromise = page.waitForResponse(
     (response) =>
       /\/api\/dashboards\/[^/]+\/widgets\/[^/]+$/.test(
@@ -230,27 +223,27 @@ test("виджеты: добавление, настройка и удалени
       ) && response.request().method() === "DELETE",
   );
   await page
-    .getByRole("menuitem", { name: "Удалить виджет", exact: true })
+    .getByRole("menuitem", { name: "Remove widget", exact: true })
     .click();
   expect((await deletePromise).status()).toBe(204);
   await expect(tile(page, note.id)).toHaveCount(0);
 });
 
-test("раскладка: изменение размера с клавиатуры сохраняется после перезагрузки", async ({
+test("layout: a keyboard resize survives a reload", async ({
   page,
   testData,
 }) => {
   await createDashboard(page, testData.name("resize"));
   await enterEditMode(page);
 
-  const clock = await addWidget(page, "Часы и дата");
+  const clock = await addWidget(page, "Clock and date");
   const before = await tileRect(tile(page, clock.id));
 
   // The grip is a real button, so the resize is reachable from the keyboard —
   // and a key press is deterministic where a pixel drag is not.
   const saved = layoutSaved(page);
   await page
-    .getByRole("button", { name: /^Изменить размер виджета/ })
+    .getByRole("button", { name: /^Resize the/ })
     .first()
     .focus();
   await page.keyboard.press("ArrowRight");
@@ -262,15 +255,15 @@ test("раскладка: изменение размера с клавиату�
   expect(after.h).toBe(before.h);
 });
 
-test("раскладка: перетаскивание меняет порядок плиток и сохраняется", async ({
+test("layout: dragging reorders the tiles and persists", async ({
   page,
   testData,
 }) => {
   await createDashboard(page, testData.name("drag"));
   await enterEditMode(page);
 
-  const clock = await addWidget(page, "Часы и дата");
-  const note = await addWidget(page, "Заметка");
+  const clock = await addWidget(page, "Clock and date");
+  const note = await addWidget(page, "Note");
 
   // Both tiles start on the top row, the note to the right of the clock.
   expect((await tileRect(tile(page, clock.id))).y).toBe(1);
@@ -279,7 +272,7 @@ test("раскладка: перетаскивание меняет порядо
   expect(noteBefore.x).toBeGreaterThan(1);
 
   const handle = tile(page, note.id).getByRole("button", {
-    name: /^Переместить виджет/,
+    name: /^Move the/,
   });
   const handleBox = await handle.boundingBox();
   const clockBox = await tile(page, clock.id).boundingBox();
@@ -309,7 +302,7 @@ test("раскладка: перетаскивание меняет порядо
   ).toBe(true);
 });
 
-test("дашборд: переименование, назначение стартовым и удаление", async ({
+test("dashboard: rename, make start page, and delete", async ({
   page,
   testData,
 }) => {
@@ -317,29 +310,29 @@ test("дашборд: переименование, назначение ста�
   const renamed = testData.name("renamed");
 
   await page
-    .getByRole("button", { name: "Действия с дашбордом", exact: true })
+    .getByRole("button", { name: "Dashboard actions", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Переименовать", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(renamed);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(renamed);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: renamed, level: 1 }),
   ).toBeVisible();
 
   await page
-    .getByRole("button", { name: "Действия с дашбордом", exact: true })
+    .getByRole("button", { name: "Dashboard actions", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Сделать стартовым", exact: true })
+    .getByRole("menuitem", { name: "Make start page", exact: true })
     .click();
-  await expect(page.getByText("Дашборд стал стартовым")).toBeVisible();
+  await expect(
+    page.getByText("This dashboard is now the start page."),
+  ).toBeVisible();
 
   await page
-    .getByRole("button", { name: "Действия с дашбордом", exact: true })
+    .getByRole("button", { name: "Dashboard actions", exact: true })
     .click();
-  await page.getByRole("menuitem", { name: "Удалить", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 
   const deletePromise = page.waitForResponse(
     (response) =>
@@ -347,12 +340,12 @@ test("дашборд: переименование, назначение ста�
       response.request().method() === "DELETE",
   );
   await page
-    .getByRole("button", { name: "Удалить", exact: true })
+    .getByRole("button", { name: "Delete", exact: true })
     .last()
     .click();
   expect((await deletePromise).status()).toBe(204);
   createdDashboardIds.splice(createdDashboardIds.indexOf(id), 1);
 
   await page.waitForURL(/\/dashboards$/);
-  await expect(page.getByText("Дашбордов пока нет")).toBeVisible();
+  await expect(page.getByText("No dashboards yet")).toBeVisible();
 });

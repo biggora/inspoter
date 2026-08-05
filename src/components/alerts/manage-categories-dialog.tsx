@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import type { AlertCategoryDto } from "./api";
+import { categoryLabel } from "./localize";
 
 interface ManageCategoriesDialogProps {
   open: boolean;
@@ -45,44 +46,47 @@ export function ManageCategoriesDialog({
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
-            {categories.map((category) => (
-              <li
-                key={category.id}
-                className="flex items-center justify-between gap-3 py-2"
-              >
-                <span className="truncate text-sm text-foreground">
-                  {category.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("renameCategoryLabel", {
-                      name: category.name,
-                    })}
-                    onClick={() => onRename(category)}
-                  >
-                    <Icon name="ri-edit-line" aria-hidden className="text-sm" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("deleteCategoryLabel", {
-                      name: category.name,
-                    })}
-                    onClick={() => onDelete(category)}
-                  >
-                    <Icon
-                      name="ri-delete-bin-line"
-                      aria-hidden
-                      className="text-sm"
-                    />
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {categories.map((category) => {
+              const label = categoryLabel(category, t);
+              return (
+                <li
+                  key={category.id}
+                  className="flex items-center justify-between gap-3 py-2"
+                >
+                  <span className="truncate text-sm text-foreground">
+                    {label}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("renameCategoryLabel", { name: label })}
+                      onClick={() => onRename(category)}
+                    >
+                      <Icon
+                        name="ri-edit-line"
+                        aria-hidden
+                        className="text-sm"
+                      />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("deleteCategoryLabel", { name: label })}
+                      onClick={() => onDelete(category)}
+                    >
+                      <Icon
+                        name="ri-delete-bin-line"
+                        aria-hidden
+                        className="text-sm"
+                      />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
         <DialogFooter>

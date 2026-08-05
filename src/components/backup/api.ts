@@ -83,7 +83,7 @@ async function readError(res: Response): Promise<ApiError> {
       message = body.error;
     } else if (Array.isArray(body?.error)) {
       // src/lib/validation/backup.ts 400 shape: { error: ZodIssue[] },
-      // already Russian-localized server-side (VALIDATION_RU.backup.*).
+      // already rendered server-side (VALIDATION_MESSAGES.backup.*).
       fieldErrors = {};
       for (const issue of body.error as ZodIssueLike[]) {
         const key = issue.path?.[0];

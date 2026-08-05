@@ -39,7 +39,8 @@
     "subjectRequired": "Subject is required",
     "subjectTooLong": "Subject must not exceed 500 characters",
     "bodyRequired": "Message body is required",
-    "bodyTooLong": "Message body must not exceed 500,000 characters"
+    "bodyTooLong": "Message body must not exceed 500,000 characters",
+    "originalModeInvalid": "A message cannot be a reply and a forward at the same time"
   },
   "bookmark": {
     "nameRequired": "Name is required",

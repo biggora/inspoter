@@ -23,9 +23,11 @@ export async function submitLoginForm(
 ) {
   await page.goto("/login");
   const expectedDashboardUrl = new URL(POST_LOGIN_PATH, page.url()).href;
-  await page.getByLabel(/^(?:Username|Имя пользователя)$/).fill(username);
-  await page.getByLabel(/^(?:Password|Пароль)$/).fill(password);
-  await page.getByRole("button", { name: /^(?:Sign in|Войти)$/ }).click();
+  await page.getByLabel("Username", { exact: true }).fill(username);
+  // Exact: the reveal toggle inside the field is labelled "Show password",
+  // which a substring match would pick up alongside the input itself.
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   return expectedDashboardUrl;
 }
 

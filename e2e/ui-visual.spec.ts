@@ -41,9 +41,9 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   ).toBe(true);
 
   const renameForm = page.locator("form").filter({
-    has: page.getByLabel("Название рабочего пространства", { exact: true }),
+    has: page.getByLabel("Workspace Name", { exact: true }),
   });
-  const name = renameForm.getByLabel("Название рабочего пространства", {
+  const name = renameForm.getByLabel("Workspace Name", {
     exact: true,
   });
   // Click (rather than `.focus()`) to commit focus reliably after the
@@ -64,7 +64,7 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   expect(focusStyle.outlineWidth).toBeGreaterThan(0);
 
   const save = renameForm.getByRole("button", {
-    name: "Сохранить изменения",
+    name: "Save Changes",
     exact: true,
   });
   await expect(save).toBeDisabled();
@@ -81,7 +81,7 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
 
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await selectTheme(page, "dark");
-  const darkName = page.getByLabel("Название рабочего пространства", {
+  const darkName = page.getByLabel("Workspace Name", {
     exact: true,
   });
   await darkName.click();
@@ -116,12 +116,12 @@ test("migrated workspace controls render responsive light, dark, focus, disabled
   try {
     await darkName.fill(`Visual pending ${testInfo.project.name}`);
     await renameForm
-      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .getByRole("button", { name: "Save Changes", exact: true })
       .click();
     await requestObserved;
 
     const pending = page.getByRole("button", {
-      name: "Сохранение…",
+      name: "Saving…",
       exact: true,
     });
     await expect(pending).toBeDisabled();

@@ -188,7 +188,7 @@ describe("syncAccount — incremental sync", () => {
     const driver = new MockMailDriver(account.id);
     await driver.append(
       "INBOX",
-      Buffer.from("Subject: Новое письмо\r\n\r\nТело нового письма.", "utf8"),
+      Buffer.from("Subject: New message\r\n\r\nТело нового письма.", "utf8"),
       [],
     );
 

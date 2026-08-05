@@ -197,7 +197,7 @@ export function BookmarksBoard({
   // lists — a container-local `onDragEnd` can only see its own list.
   // CategorySection/BookmarkCard only call `useSortable()` and stay
   // presentational. A small 4px pointer-activation distance (below) avoids
-  // hijacking ordinary clicks (rename/delete menu, Добавить, card links) as
+  // hijacking ordinary clicks (rename/delete menu, Add, card links) as
   // accidental drags — the e2e mouse-drag test must move the pointer more
   // than 4px before dnd-kit arms the drag.
   const sensors = useSensors(

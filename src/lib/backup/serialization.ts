@@ -237,12 +237,19 @@ const alertCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
+  // Optional for the same reason as categorySource below: archives written
+  // before system categories were marked have no key, and their categories
+  // restore as ordinary operator-owned ones.
+  systemKey: z.string().nullable().optional(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });
 
 // categorySource/categoryConfidence are optional: archives written before
 // alert provenance existed have neither, and import fills the source in.
+// messageKey/messageParams are optional on the same grounds — an older archive
+// restores with the English `message` alone, which is exactly what the UI falls
+// back to.
 const alertSchema = z.object({
   id: z.string(),
   alertCategoryId: z.string().nullable(),
@@ -251,6 +258,11 @@ const alertSchema = z.object({
   severity: z.string(),
   source: z.string(),
   message: z.string(),
+  messageKey: z.string().nullable().optional(),
+  messageParams: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable()
+    .optional(),
   timestamp: isoDate,
   createdAt: isoDate,
 });

@@ -64,5 +64,23 @@
   "creatingButton": "Создание…",
   "categoryRenamedToast": "Категория переименована.",
   "categoryCreatedToast": "Категория создана.",
-  "saveCategoryError": "Не удалось сохранить категорию. Попробуйте снова."
+  "saveCategoryError": "Не удалось сохранить категорию. Попробуйте снова.",
+
+  "system": {
+    "categoryMail": "Почта",
+    "categoryServers": "Серверы",
+    "categoryServices": "Сервисы",
+    "categoryHosting": "Хостинг",
+    "categoryDns": "DNS",
+
+    "providerError": "Ошибка провайдера: {error}",
+    "providerRecovered": "Провайдер снова доступен",
+    "mailSyncError": "Ошибка синхронизации: {error}",
+    "mailSyncRecovered": "Синхронизация восстановлена",
+    "metricsStale": "Метрики агента не поступают",
+    "metricsRecovered": "Метрики агента восстановлены",
+    "serviceDown": "Сервис недоступен",
+    "serviceUp": "Сервис снова доступен",
+    "serverMetricsError": "[{code}] {message}"
+  }
 }

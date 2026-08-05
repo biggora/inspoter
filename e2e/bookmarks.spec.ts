@@ -23,9 +23,9 @@ function bookmarkArticle(page: Page, bookmarkName: string) {
   return page.getByRole("article", { name: bookmarkName, exact: true });
 }
 
-// The page-header's total-count description ("N закладок") always starts
-// with a digit — unlike the empty-state title ("Нет закладок") or the
-// search live-region's "Найдено N закладок", which don't.
+// The page-header's total-count description ("N bookmarks") always starts
+// with a digit — unlike the empty-state title ("No bookmarks") or the
+// search live-region's "Found N bookmarks", which don't.
 function totalCountText(page: Page) {
   return page
     .locator("p")
@@ -148,10 +148,8 @@ async function createCategory(
   name: string,
   registerCategory: RegisterCategory,
 ) {
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(name);
 
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -160,7 +158,7 @@ async function createCategory(
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const response = await responsePromise;
 
   const body: unknown = await response.json();
@@ -197,11 +195,11 @@ async function createBookmark(
   fields: { name: string; url: string },
 ) {
   await categorySection(page, categoryName)
-    .getByRole("button", { name: "Добавить", exact: true })
+    .getByRole("button", { name: "Add", exact: true })
     .click();
-  await page.getByLabel("Название", { exact: true }).fill(fields.name);
+  await page.getByLabel("Name", { exact: true }).fill(fields.name);
   await page.getByLabel("URL", { exact: true }).fill(fields.url);
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(
     categorySection(page, categoryName).getByRole("article", {
       name: fields.name,
@@ -214,13 +212,13 @@ test("AC-BM-014/021: empty state prompts to create the first category (no error)
   page,
 }) => {
   await expect(
-    page.getByRole("heading", { name: "Нет закладок" }),
+    page.getByRole("heading", { name: "No bookmarks" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Создать категорию", exact: true }),
+    page.getByRole("button", { name: "Create Category", exact: true }),
   ).toBeVisible();
   await expect(categoryRegions(page)).toHaveCount(0);
-  await expect(page.getByLabel("Поиск закладок")).toHaveCount(0);
+  await expect(page.getByLabel("Search bookmarks")).toHaveCount(0);
 });
 
 test("AC-BM-001: creating a category persists it and it appears without a full reload", async ({
@@ -235,11 +233,9 @@ test("AC-BM-001: creating a category persists it and it appears without a full r
 test("AC-BM-005: submitting an empty category name shows a validation error and creates nothing", async ({
   page,
 }) => {
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
-  await expect(page.getByText("Название категории обязательно.")).toBeVisible();
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByText("Category name is required.")).toBeVisible();
   await expect(categoryRegions(page)).toHaveCount(0);
 });
 
@@ -253,15 +249,15 @@ test("AC-BM-002: renaming a category persists and displays the new name", async 
 
   await categorySection(page, oldName)
     .getByRole("button", {
-      name: `Действия категории «${oldName}»`,
+      name: `Actions for category "${oldName}"`,
       exact: true,
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Переименовать категорию", exact: true })
+    .getByRole("menuitem", { name: "Rename category", exact: true })
     .click();
-  await page.getByLabel("Название", { exact: true }).fill(newName);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(newName);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 
   await expect(categorySection(page, newName)).toBeVisible();
   await expect(categorySection(page, oldName)).toHaveCount(0);
@@ -290,11 +286,11 @@ test("AC-BM-007: bookmark create without name/url shows a validation error, noth
   await createCategory(page, categoryName, testData.registerCategory);
 
   const category = categorySection(page, categoryName);
-  await category.getByRole("button", { name: "Добавить", exact: true }).click();
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await category.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
-  await expect(page.getByText("Название закладки обязательно.")).toBeVisible();
-  await expect(page.getByText("URL обязателен.")).toBeVisible();
+  await expect(page.getByText("Bookmark name is required.")).toBeVisible();
+  await expect(page.getByText("URL is required.")).toBeVisible();
   await expect(category.getByRole("article")).toHaveCount(0);
 
   await page.goto("/bookmarks");
@@ -312,15 +308,13 @@ test("AC-BM-008: an invalid (non-http/https) URL shows a validation error and is
   await createCategory(page, categoryName, testData.registerCategory);
 
   const category = categorySection(page, categoryName);
-  await category.getByRole("button", { name: "Добавить", exact: true }).click();
-  await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
+  await category.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(bookmarkName);
   await page.getByLabel("URL", { exact: true }).fill("not-a-url");
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
   await expect(
-    page.getByText(
-      "Введите корректный URL, начинающийся с http:// или https://.",
-    ),
+    page.getByText("Enter a valid URL starting with http:// or https://."),
   ).toBeVisible();
   await expect(
     category.getByRole("article", { name: bookmarkName, exact: true }),
@@ -358,19 +352,17 @@ test("AC-BM-009: editing a bookmark persists name/url/category changes", async (
 
   await bookmarkArticle(page, originalName)
     .getByRole("button", {
-      name: `Действия закладки «${originalName}»`,
+      name: `Actions for bookmark "${originalName}"`,
       exact: true,
     })
     .click();
-  await page.getByRole("menuitem", { name: "Изменить", exact: true }).click();
-  await page.getByLabel("Название", { exact: true }).fill(editedName);
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(editedName);
   await page.getByLabel("URL", { exact: true }).fill(editedUrl);
   await page
-    .getByLabel("Категория", { exact: true })
+    .getByLabel("Category", { exact: true })
     .selectOption({ label: targetCategory });
-  await page
-    .getByRole("button", { name: "Сохранить изменения", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Save Changes", exact: true }).click();
 
   const editedArticle = categorySection(page, targetCategory).getByRole(
     "article",
@@ -402,12 +394,12 @@ test("AC-BM-010: deleting a bookmark removes it from the list without a full rel
 
   await bookmarkArticle(page, bookmarkName)
     .getByRole("button", {
-      name: `Действия закладки «${bookmarkName}»`,
+      name: `Actions for bookmark "${bookmarkName}"`,
       exact: true,
     })
     .click();
-  await page.getByRole("menuitem", { name: "Удалить", exact: true }).click();
-  await page.getByRole("button", { name: "Удалить", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
 
   await expect(bookmarkArticle(page, bookmarkName)).toHaveCount(0);
 });
@@ -515,19 +507,17 @@ test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and
   async function openEditDialog() {
     await article
       .getByRole("button", {
-        name: `Действия закладки «${bookmarkName}»`,
+        name: `Actions for bookmark "${bookmarkName}"`,
         exact: true,
       })
       .click();
-    await page.getByRole("menuitem", { name: "Изменить", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
   }
 
   // AC-BM-016: choosing a color renders that color's tone classes.
   await openEditDialog();
-  await page.getByRole("button", { name: "Бирюзовый", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Сохранить изменения", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Turquoise", exact: true }).click();
+  await page.getByRole("button", { name: "Save Changes", exact: true }).click();
 
   await expect(tile).toHaveClass(/bg-accent-100/);
   await expect(tile).toHaveClass(/text-accent-700/);
@@ -535,10 +525,8 @@ test("AC-BM-015/016/017: choosing a color renders its tone on the icon tile, and
   // AC-BM-017: clearing the color reverts to the deterministic hash-based
   // fallback tone captured before any color was ever set.
   await openEditDialog();
-  await page.getByRole("button", { name: "Без цвета", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Сохранить изменения", exact: true })
-    .click();
+  await page.getByRole("button", { name: "No color", exact: true }).click();
+  await page.getByRole("button", { name: "Save Changes", exact: true }).click();
 
   await expect(tile).toHaveClass(defaultClass ?? "");
 });
@@ -561,16 +549,18 @@ test("AC-BM-003/004: deleting a category with bookmarks warns, then cascades on 
 
   await categorySection(page, categoryName)
     .getByRole("button", {
-      name: `Действия категории «${categoryName}»`,
+      name: `Actions for category "${categoryName}"`,
       exact: true,
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Удалить категорию", exact: true })
+    .getByRole("menuitem", { name: "Delete category", exact: true })
     .click();
-  await expect(page.getByText(/в этой категории 1 закладка/i)).toBeVisible();
+  await expect(
+    page.getByText(/this category contains 1 bookmark/i),
+  ).toBeVisible();
   await page
-    .getByRole("button", { name: "Удалить категорию", exact: true })
+    .getByRole("button", { name: "Delete category", exact: true })
     .click();
 
   await expect(categorySection(page, categoryName)).toHaveCount(0);
@@ -596,7 +586,7 @@ test("AC-BM-019: typing a query filters visible bookmark cards immediately, case
   });
 
   await page
-    .getByLabel("Поиск закладок", { exact: true })
+    .getByLabel("Search bookmarks", { exact: true })
     .fill(matchName.toLowerCase());
 
   await expect(bookmarkArticle(page, matchName)).toBeVisible();
@@ -615,22 +605,20 @@ test("AC-BM-020: a query matching nothing shows the no-results state, and cleari
     url: testData.localUrl(`/settings?bookmark=${testData.suffix}`),
   });
 
-  const search = page.getByLabel("Поиск закладок", { exact: true });
+  const search = page.getByLabel("Search bookmarks", { exact: true });
   await search.fill("no-such-bookmark-anywhere");
 
   await expect(
-    page.getByRole("heading", { name: "Ничего не найдено", exact: true }),
+    page.getByRole("heading", { name: "No results found", exact: true }),
   ).toBeVisible();
   await expect(bookmarkArticle(page, bookmarkName)).toHaveCount(0);
   await expect(categorySection(page, categoryName)).toHaveCount(0);
 
-  await page
-    .getByRole("button", { name: "Сбросить поиск", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Reset Search", exact: true }).click();
 
   await expect(search).toHaveValue("");
   await expect(
-    page.getByRole("heading", { name: "Ничего не найдено" }),
+    page.getByRole("heading", { name: "No results found" }),
   ).toHaveCount(0);
   await expect(bookmarkArticle(page, bookmarkName)).toBeVisible();
 });
@@ -648,7 +636,7 @@ test("AC-BM-019: a query matches on a URL substring, not just name/description",
     url: testData.localUrl(`/settings?${urlToken}=1`),
   });
 
-  await page.getByLabel("Поиск закладок", { exact: true }).fill(urlToken);
+  await page.getByLabel("Search bookmarks", { exact: true }).fill(urlToken);
 
   await expect(bookmarkArticle(page, bookmarkName)).toBeVisible();
 });
@@ -673,7 +661,7 @@ test("the page header shows the total bookmark count across all categories", asy
   );
 });
 
-test("the category filter dropdown shows only the selected category, and resetting to «Все категории» restores the full list", async ({
+test('the category filter dropdown shows only the selected category, and resetting to "All categories" restores the full list', async ({
   page,
   testData,
 }) => {
@@ -697,7 +685,7 @@ test("the category filter dropdown shows only the selected category, and resetti
     ),
   });
 
-  await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
+  await page.getByRole("combobox", { name: "Filter by category" }).click();
   await page.getByRole("option", { name: categoryA, exact: true }).click();
 
   await expect(categorySection(page, categoryA)).toBeVisible();
@@ -705,9 +693,9 @@ test("the category filter dropdown shows only the selected category, and resetti
   await expect(bookmarkArticle(page, bookmarkA)).toBeVisible();
   await expect(bookmarkArticle(page, bookmarkB)).toHaveCount(0);
 
-  await page.getByRole("combobox", { name: "Фильтр по категории" }).click();
+  await page.getByRole("combobox", { name: "Filter by category" }).click();
   await page
-    .getByRole("option", { name: "Все категории", exact: true })
+    .getByRole("option", { name: "All categories", exact: true })
     .click();
 
   await expect(categorySection(page, categoryA)).toBeVisible();
@@ -743,7 +731,7 @@ test("AC-BM-022..025: keyboard-only reorder moves a bookmark within a category a
     .toEqual([firstName, secondName]);
 
   const firstHandle = page.getByRole("button", {
-    name: `Изменить порядок: «${firstName}»`,
+    name: `Reorder: "${firstName}"`,
     exact: true,
   });
   await firstHandle.focus();
@@ -788,7 +776,7 @@ test("AC-BM-022..025: mouse-based reorder moves a category above its sibling and
 
   const sectionA = categorySection(page, categoryA);
   const handleB = categorySection(page, categoryB).getByRole("button", {
-    name: `Изменить порядок категории «${categoryB}»`,
+    name: `Reorder category "${categoryB}"`,
     exact: true,
   });
 
@@ -841,7 +829,7 @@ test("AC-BM-022..025: an active search query disables the bookmark drag handle",
   });
 
   const handle = page.getByRole("button", {
-    name: `Изменить порядок: «${bookmarkName}»`,
+    name: `Reorder: "${bookmarkName}"`,
     exact: true,
   });
   await expect(handle).toBeVisible();
@@ -850,7 +838,7 @@ test("AC-BM-022..025: an active search query disables the bookmark drag handle",
   // attributes rather than omitting them for falsy values).
   await expect(handle).toHaveAttribute("aria-disabled", "false");
 
-  await page.getByLabel("Поиск закладок", { exact: true }).fill(bookmarkName);
+  await page.getByLabel("Search bookmarks", { exact: true }).fill(bookmarkName);
   await expect(bookmarkArticle(page, bookmarkName)).toBeVisible();
 
   // `dragDisabled` (driven by the active search query) flips
@@ -864,7 +852,7 @@ test("AC-BM-022..025: an active search query disables the bookmark drag handle",
 });
 
 // Opens the create-bookmark dialog for `categoryName` and fills
-// Название/URL/Иконка, mirroring `createBookmark`'s internal flow but
+// Name/URL/Icon, mirroring `createBookmark`'s internal flow but
 // additionally setting the icon field (which `createBookmark` doesn't
 // support) — a local helper rather than modifying the shared one, since
 // other passing tests depend on `createBookmark`'s exact signature.
@@ -874,14 +862,12 @@ async function createBookmarkWithIcon(
   fields: { name: string; url: string; icon: string },
 ) {
   await categorySection(page, categoryName)
-    .getByRole("button", { name: "Добавить", exact: true })
+    .getByRole("button", { name: "Add", exact: true })
     .click();
-  await page.getByLabel("Название", { exact: true }).fill(fields.name);
+  await page.getByLabel("Name", { exact: true }).fill(fields.name);
   await page.getByLabel("URL", { exact: true }).fill(fields.url);
-  await page
-    .getByLabel("Иконка (необязательно)", { exact: true })
-    .fill(fields.icon);
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByLabel("Icon (optional)", { exact: true }).fill(fields.icon);
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(
     categorySection(page, categoryName).getByRole("article", {
       name: fields.name,
@@ -890,7 +876,7 @@ async function createBookmarkWithIcon(
   ).toBeVisible();
 }
 
-test("AC-BM-026: clicking «Подобрать» with a valid URL populates the icon field, and the button is disabled until a valid URL is entered", async ({
+test('AC-BM-026: clicking "Suggest" with a valid URL populates the icon field, and the button is disabled until a valid URL is entered', async ({
   page,
   testData,
 }) => {
@@ -899,18 +885,18 @@ test("AC-BM-026: clicking «Подобрать» with a valid URL populates the 
   await createCategory(page, categoryName, testData.registerCategory);
 
   await categorySection(page, categoryName)
-    .getByRole("button", { name: "Добавить", exact: true })
+    .getByRole("button", { name: "Add", exact: true })
     .click();
-  await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
+  await page.getByLabel("Name", { exact: true }).fill(bookmarkName);
 
   const urlInput = page.getByLabel("URL", { exact: true });
-  const iconInput = page.getByLabel("Иконка (необязательно)", { exact: true });
+  const iconInput = page.getByLabel("Icon (optional)", { exact: true });
   // Matched by a name regex (rather than the exact idle-state label) so the
   // locator keeps resolving to the same button once its accessible name
-  // switches to the loading label ("Подбор…") — a `name: "Подобрать", exact:
+  // switches to the loading label ("Suggesting…") — a `name: "Suggest", exact:
   // true` locator would stop matching anything during that state.
   const suggestButton = page.getByRole("button", {
-    name: /^(Подобрать|Подбор…)$/,
+    name: /^(Suggest|Suggesting…)$/,
   });
 
   // AC-BM-026: no URL yet — disabled.
@@ -925,9 +911,9 @@ test("AC-BM-026: clicking «Подобрать» with a valid URL populates the 
   await page.route("**/api/bookmarks/favicon-suggest**", async (route) => {
     routeCallCount += 1;
     // A11y check: while the request is in flight, the button must still
-    // expose a non-empty accessible name ("Подбор…"), never a blank/absent
+    // expose a non-empty accessible name ("Suggesting…"), never a blank/absent
     // one, so assistive tech announces the busy state.
-    await expect(suggestButton).toHaveText("Подбор…");
+    await expect(suggestButton).toHaveText("Suggesting…");
     // `suggesting` also disables the button while the request is in
     // flight (bookmark-dialog.tsx), but it keeps a non-empty accessible
     // name throughout — that's the a11y property under test here.
@@ -941,11 +927,11 @@ test("AC-BM-026: clicking «Подобрать» with a valid URL populates the 
   );
   await urlInput.fill(validUrl);
   await expect(suggestButton).toBeEnabled();
-  await expect(suggestButton).toHaveText("Подобрать");
+  await expect(suggestButton).toHaveText("Suggest");
 
   await suggestButton.click();
   await expect(iconInput).toHaveValue(suggestedIcon);
-  await expect(suggestButton).toHaveText("Подобрать");
+  await expect(suggestButton).toHaveText("Suggest");
   expect(routeCallCount).toBe(1);
 });
 
@@ -958,14 +944,14 @@ test("AC-BM-027: a no-suggestion favicon-suggest response leaves the icon field 
   await createCategory(page, categoryName, testData.registerCategory);
 
   await categorySection(page, categoryName)
-    .getByRole("button", { name: "Добавить", exact: true })
+    .getByRole("button", { name: "Add", exact: true })
     .click();
-  await page.getByLabel("Название", { exact: true }).fill(bookmarkName);
+  await page.getByLabel("Name", { exact: true }).fill(bookmarkName);
 
   const urlInput = page.getByLabel("URL", { exact: true });
-  const iconInput = page.getByLabel("Иконка (необязательно)", { exact: true });
+  const iconInput = page.getByLabel("Icon (optional)", { exact: true });
   const suggestButton = page.getByRole("button", {
-    name: "Подобрать",
+    name: "Suggest",
     exact: true,
   });
 
@@ -984,7 +970,7 @@ test("AC-BM-027: a no-suggestion favicon-suggest response leaves the icon field 
   await suggestButton.click();
 
   await expect(
-    page.getByText("Не удалось подобрать значок для этого URL.", {
+    page.getByText("Failed to find an icon for this URL.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -1034,7 +1020,7 @@ async function submitCategoryFormAndRegister(
       response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const response = await responsePromise;
 
   const body: unknown = await response.json();
@@ -1063,8 +1049,8 @@ async function submitCategoryFormAndRegister(
   return categoryId;
 }
 
-// Opens "Новая категория", picks `parentCategoryName` in the "Родительская
-// категория" select, and asserts the resulting subcategory's own
+// Opens "New Category", picks `parentCategoryName` in the "Parent Category"
+// select, and asserts the resulting subcategory's own
 // `<h3>`-headed section renders nested inside its parent's section.
 async function createSubcategory(
   page: Page,
@@ -1072,12 +1058,10 @@ async function createSubcategory(
   name: string,
   registerCategory: RegisterCategory,
 ): Promise<string> {
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(name);
   await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  await page.getByLabel("Название", { exact: true }).fill(name);
-  await page
-    .getByLabel("Родительская категория", { exact: true })
+    .getByLabel("Parent Category", { exact: true })
     .selectOption({ label: parentCategoryName });
 
   const categoryId = await submitCategoryFormAndRegister(
@@ -1134,11 +1118,9 @@ test("Phase 4: a subcategory is never offered as a parent option when creating a
     testData.registerCategory,
   );
 
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
   const optionTexts = await page
-    .getByLabel("Родительская категория", { exact: true })
+    .getByLabel("Parent Category", { exact: true })
     .locator("option")
     .allTextContents();
 
@@ -1161,17 +1143,15 @@ test("Phase 4: a top-level category that already has a subcategory is still offe
     testData.registerCategory,
   );
 
-  await page
-    .getByRole("button", { name: "Новая категория", exact: true })
-    .click();
-  const parentSelect = page.getByLabel("Родительская категория", {
+  await page.getByRole("button", { name: "New Category", exact: true }).click();
+  const parentSelect = page.getByLabel("Parent Category", {
     exact: true,
   });
   await expect(parentSelect).toBeEnabled();
   const optionTexts = await parentSelect.locator("option").allTextContents();
   expect(optionTexts).toContain(categoryA);
 
-  await page.getByLabel("Название", { exact: true }).fill(subcategoryC);
+  await page.getByLabel("Name", { exact: true }).fill(subcategoryC);
   await parentSelect.selectOption({ label: categoryA });
   await submitCategoryFormAndRegister(
     page,
@@ -1204,20 +1184,20 @@ test("Phase 4: a category with an existing subcategory cannot itself become a su
 
   await categorySection(page, categoryA)
     .getByRole("button", {
-      name: `Действия категории «${categoryA}»`,
+      name: `Actions for category "${categoryA}"`,
       exact: true,
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Переименовать категорию", exact: true })
+    .getByRole("menuitem", { name: "Rename category", exact: true })
     .click();
 
-  const parentSelect = page.getByLabel("Родительская категория", {
+  const parentSelect = page.getByLabel("Parent Category", {
     exact: true,
   });
   await expect(parentSelect).toBeDisabled();
   await expect(
-    page.getByText(/У этой категории есть подкатегории/i),
+    page.getByText(/This category has subcategories/i),
   ).toBeVisible();
 });
 
@@ -1252,20 +1232,20 @@ test("Phase 4: deleting a top-level category with a subcategory warns of the cas
 
   await categorySection(page, categoryA)
     .getByRole("button", {
-      name: `Действия категории «${categoryA}»`,
+      name: `Actions for category "${categoryA}"`,
       exact: true,
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Удалить категорию", exact: true })
+    .getByRole("menuitem", { name: "Delete category", exact: true })
     .click();
   await expect(
     page.getByText(
-      /в этой категории 1 закладка и 1 подкатегория \(в них ещё 1 закладка\)/i,
+      /this category contains 1 bookmark and 1 subcategory \(containing 1 more bookmark\)/i,
     ),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Удалить категорию", exact: true })
+    .getByRole("button", { name: "Delete category", exact: true })
     .click();
 
   await expect(categorySection(page, categoryA)).toHaveCount(0);

@@ -356,7 +356,12 @@ describe("applyCheckResult(): flip detection and Alert integration", () => {
     expect(alertsAfterDown).toHaveLength(1);
     expect(alertsAfterDown[0].severity).toBe("critical");
     expect(alertsAfterDown[0].source).toBe(serviceName);
-    expect(alertsAfterDown[0].alertCategory?.name).toBe("Сервисы");
+    expect(alertsAfterDown[0].alertCategory?.name).toBe("Services");
+    expect(alertsAfterDown[0].alertCategory?.systemKey).toBe("services");
+    // The probe explained itself, so its diagnostic is stored verbatim and
+    // stays untranslated — there is no key to render it from.
+    expect(alertsAfterDown[0].message).toBe("timeout 2");
+    expect(alertsAfterDown[0].messageKey).toBeNull();
 
     const afterSuccess = await servicesService.applyCheckResult(
       afterSecondFailure,
@@ -372,7 +377,11 @@ describe("applyCheckResult(): flip detection and Alert integration", () => {
     });
     expect(alertsAfterUp).toHaveLength(2);
     expect(alertsAfterUp[1].severity).toBe("info");
-    expect(alertsAfterUp[1].alertCategory?.name).toBe("Сервисы");
+    expect(alertsAfterUp[1].alertCategory?.name).toBe("Services");
+    // A successful probe carries no message of its own, so this one is ours:
+    // English in the column, plus the key the UI re-renders it from.
+    expect(alertsAfterUp[1].message).toBe("Service is available again");
+    expect(alertsAfterUp[1].messageKey).toBe("system.serviceUp");
   });
 
   it("records a ServiceCheck row for every applyCheckResult call", async () => {

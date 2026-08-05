@@ -40,34 +40,34 @@ const BASE_DATE = Date.UTC(2026, 5, 1, 9, 0, 0); // 2026-06-01T09:00:00Z
 const HOUR_MS = 60 * 60 * 1000;
 
 const SENDERS: MailAddress[] = [
-  { name: "Анна Смирнова", address: "anna.smirnova@example.ru" },
-  { name: "Пётр Иванов", address: "p.ivanov@example.ru" },
-  { name: "Мария Козлова", address: "m.kozlova@example.ru" },
-  { name: "Сергей Волков", address: "s.volkov@example.ru" },
-  { name: "Елена Соколова", address: "e.sokolova@example.ru" },
-  { name: "Служба поддержки", address: "support@example.ru" },
+  { name: "Anna Smirnova", address: "anna.smirnova@example.com" },
+  { name: "Peter Ivanov", address: "p.ivanov@example.com" },
+  { name: "Maria Kozlova", address: "m.kozlova@example.com" },
+  { name: "Sergey Volkov", address: "s.volkov@example.com" },
+  { name: "Elena Sokolova", address: "e.sokolova@example.com" },
+  { name: "Support Team", address: "support@example.com" },
 ];
 
 const SUBJECTS = [
-  "Отчёт за неделю",
-  "Встреча в понедельник",
-  "Обновление тарифов",
-  "Вопрос по интеграции",
-  "Счёт на оплату",
-  "Планы на квартал",
-  "Согласование макета",
-  "Доступ к репозиторию",
-  "Резервное копирование",
-  "Итоги спринта",
+  "Weekly report",
+  "Monday meeting",
+  "Pricing update",
+  "Question about the integration",
+  "Invoice for payment",
+  "Plans for the quarter",
+  "Design sign-off",
+  "Repository access",
+  "Backup",
+  "Sprint results",
 ];
 
 const BODIES = [
-  "Добрый день! Направляю сводку по задачам за прошедшую неделю. Основные метрики в норме, детали во вложении.",
-  "Коллеги, напоминаю о встрече в понедельник в 11:00. Повестка: статус проекта и планирование следующего этапа.",
-  "Здравствуйте! С 1 июля обновляются тарифы на обслуживание. Подробности — в прикреплённом документе.",
-  "Привет! Подскажи, пожалуйста, по интеграции с платёжным шлюзом: какой ключ использовать для тестового окружения?",
-  "Добрый день. Высылаю счёт на оплату услуг за текущий месяц. Просьба оплатить до конца недели.",
-  "Команда, предлагаю обсудить планы на квартал. Черновик целей приложен, жду комментариев до пятницы.",
+  "Good afternoon! Here is the summary of last week's tasks. The key metrics look normal, details are attached.",
+  "Team, a reminder about Monday's meeting at 11:00. Agenda: project status and planning the next stage.",
+  "Hello! Service pricing changes on July 1st. The details are in the attached document.",
+  "Hi! Could you help with the payment gateway integration — which key should we use for the test environment?",
+  "Good afternoon. Attached is the invoice for this month's services. Please pay it by the end of the week.",
+  "Team, let's discuss the plans for the quarter. A draft of the goals is attached, comments welcome until Friday.",
 ];
 
 function makeSnippet(text: string): string {
@@ -86,7 +86,7 @@ function makeMessage(index: number): MockMessage {
   const attachments: RemoteAttachment[] = [];
   // Every 10th message (uids 1, 11, 21) carries a deterministic attachment.
   if (index % 10 === 0) {
-    const content = `Содержимое вложения №${index + 1} (детерминированное).`;
+    const content = `Attachment #${index + 1} contents (deterministic).`;
     attachmentContents.set("2", { content, contentType: "text/plain" });
     attachments.push({
       partId: "2",
@@ -99,9 +99,9 @@ function makeMessage(index: number): MockMessage {
   }
   return {
     uid: BigInt(index + 1),
-    messageId: `<mock-${index + 1}@example.ru>`,
+    messageId: `<mock-${index + 1}@example.com>`,
     from: sender,
-    to: [{ name: "Оператор", address: "operator@inspot.local" }],
+    to: [{ name: "Operator", address: "operator@inspot.local" }],
     cc: [],
     subject,
     date: new Date(BASE_DATE + index * 3 * HOUR_MS),
@@ -121,17 +121,20 @@ function makeMessage(index: number): MockMessage {
 function seedStore(): MockStore {
   const inbox: MockFolder = {
     path: "INBOX",
-    name: "Входящие",
+    name: "Inbox",
     delimiter: "/",
     specialUse: "INBOX",
     uidValidity: 1n,
     messages: Array.from({ length: 30 }, (_, i) => makeMessage(i)),
   };
+  // Display names stand in for what a real IMAP server would report, so they
+  // stay in the base language like every other stored folder name; the sidebar
+  // translates special-use folders on the way to the screen.
   const extra: Array<[string, string, MockFolder["specialUse"]]> = [
-    ["Sent", "Отправленные", "SENT"],
-    ["Drafts", "Черновики", "DRAFTS"],
-    ["Trash", "Корзина", "TRASH"],
-    ["Archive", "Архив", "ARCHIVE"],
+    ["Sent", "Sent", "SENT"],
+    ["Drafts", "Drafts", "DRAFTS"],
+    ["Trash", "Trash", "TRASH"],
+    ["Archive", "Archive", "ARCHIVE"],
   ];
   return {
     folders: [

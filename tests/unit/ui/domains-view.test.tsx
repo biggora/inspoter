@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/settings/provider-credential-dialog", () => ({
-  ProviderCredentialDialog: () => <div role="dialog">Новый провайдер</div>,
+  ProviderCredentialDialog: () => <div role="dialog">New provider</div>,
 }));
 
 describe("DomainsView empty state", () => {
@@ -52,14 +52,15 @@ describe("DomainsView empty state", () => {
         <DomainsView providers={providers} categories={[]} services={[]} />,
       );
 
-      await user.click(
-        screen.getByRole("button", { name: "Добавить провайдера" }),
-      );
+      // The header action and the empty-state action share one label, so they
+      // are told apart by position: the header comes first in the document.
+      const [headerButton, emptyStateButton] = screen.getAllByRole("button", {
+        name: "Add Provider",
+      });
+      await user.click(emptyStateButton);
 
-      expect(screen.getByRole("dialog")).toHaveTextContent("Новый провайдер");
-      expect(
-        screen.getByRole("button", { name: "Добавить провайдер" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("dialog")).toHaveTextContent("New provider");
+      expect(headerButton).toBeInTheDocument();
     },
   );
 });
@@ -107,7 +108,7 @@ describe("DomainsView record counts", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "DNS-записи" }),
+      screen.getByRole("columnheader", { name: "DNS records" }),
     ).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
@@ -139,10 +140,8 @@ describe("DomainsView provider error copy", () => {
     // sibling text nodes, so assert via textContent rather than exact
     // getByText (which only matches an element's own direct text nodes).
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("Ошибка аутентификации провайдера.");
-    expect(alert).not.toHaveTextContent(
-      "Не удалось получить данные от провайдера.",
-    );
+    expect(alert).toHaveTextContent("Provider authentication failed.");
+    expect(alert).not.toHaveTextContent("Failed to fetch data from provider.");
   });
 
   it("falls back to the generic copy for a genuinely unknown error message", () => {
@@ -163,7 +162,7 @@ describe("DomainsView provider error copy", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Не удалось получить данные от провайдера.",
+      "Failed to fetch data from provider.",
     );
   });
 });
@@ -188,7 +187,7 @@ describe("DomainsView shared zones", () => {
       />,
     );
 
-    expect(screen.getByText("Ещё в 1 подключении")).toBeInTheDocument();
+    expect(screen.getByText("Also in 1 other connection")).toBeInTheDocument();
   });
 
   it("leaves an ordinary zone unmarked", () => {
@@ -200,7 +199,7 @@ describe("DomainsView shared zones", () => {
       />,
     );
 
-    expect(screen.queryByText(/Ещё в/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Also in/)).not.toBeInTheDocument();
   });
 });
 
@@ -216,16 +215,16 @@ describe("DomainsView bookmark/monitoring actions", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Действия для example.com" }),
+      screen.getByRole("button", { name: "Actions for example.com" }),
     );
 
     expect(
-      await screen.findByRole("menuitem", { name: "Добавить в мониторинг" }),
+      await screen.findByRole("menuitem", { name: "Add to Monitoring" }),
     ).toBeInTheDocument();
     // No bookmark category exists yet, so filing a bookmark is blocked.
     expect(
       screen.getByRole("menuitem", {
-        name: "Сначала создайте категорию закладок",
+        name: "Create a bookmark category first",
       }),
     ).toHaveAttribute("data-disabled");
   });
@@ -250,17 +249,17 @@ describe("DomainsView bookmark/monitoring actions", () => {
       />,
     );
 
-    expect(screen.getByText("В мониторинге")).toBeInTheDocument();
+    expect(screen.getByText("Monitored")).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Действия для example.com" }),
+      screen.getByRole("button", { name: "Actions for example.com" }),
     );
 
     // The item is a locale-aware <Link>; jsdom + the next/navigation mock
     // render it without its anchor, so assert on the copy, not the role.
-    expect(await screen.findByText("Открыть мониторинг")).toBeInTheDocument();
+    expect(await screen.findByText("Open in Monitoring")).toBeInTheDocument();
     expect(
-      screen.queryByRole("menuitem", { name: "Добавить в мониторинг" }),
+      screen.queryByRole("menuitem", { name: "Add to Monitoring" }),
     ).not.toBeInTheDocument();
   });
 });

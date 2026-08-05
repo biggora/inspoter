@@ -328,7 +328,7 @@ export async function refreshServerSnapshots(
     providerType: group.providerType,
     error: group.error,
   }));
-  await recordSyncOutcomes(workspaceId, "Серверы", "listServers", outcomes);
+  await recordSyncOutcomes(workspaceId, "servers", "listServers", outcomes);
 }
 
 export interface LocalServerMetricsDto {

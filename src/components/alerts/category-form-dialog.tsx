@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { alertCategoriesApi, ApiError, type AlertCategoryDto } from "./api";
+import { categoryLabel } from "./localize";
 
 export type CategoryFormState =
   { mode: "create" } | { mode: "edit"; category: AlertCategoryDto };
@@ -51,7 +52,11 @@ export function CategoryFormDialog({
   const [prevState, setPrevState] = useState(state);
   if (state !== prevState) {
     setPrevState(state);
-    setName(state?.mode === "edit" ? state.category.name : "");
+    // Seeded with what the list shows, not with the stored base-language name:
+    // renaming a system category is the operator taking it over, and the field
+    // must start from the wording they were just looking at. Saving clears
+    // systemKey server-side, so their choice sticks in both locales.
+    setName(state?.mode === "edit" ? categoryLabel(state.category, t) : "");
     setError(null);
   }
 

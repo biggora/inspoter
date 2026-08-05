@@ -14,13 +14,13 @@ const KEY = "acc-mock-1";
 
 function outgoing(overrides?: Partial<OutgoingMessage>): OutgoingMessage {
   return {
-    from: { name: "Оператор", address: "operator@inspot.local" },
+    from: { name: "Operator", address: "operator@inspot.local" },
     to: [{ address: "anna.smirnova@example.ru" }],
     cc: [],
     bcc: [],
-    subject: "Ответ на отчёт",
-    text: "Спасибо, отчёт получил.",
-    html: "<p>Спасибо, отчёт получил.</p>",
+    subject: "Re: weekly report",
+    text: "Thanks, got the report.",
+    html: "<p>Thanks, got the report.</p>",
     attachments: [],
     ...overrides,
   };
@@ -67,7 +67,7 @@ describe("MockMailDriver", () => {
       "Archive",
     ]);
     const inbox = folders[0];
-    expect(inbox.name).toBe("Входящие");
+    expect(inbox.name).toBe("Inbox");
     expect(inbox.specialUse).toBe("INBOX");
     expect(inbox.uidValidity).toBe(1n);
     expect(folders.map((f) => f.specialUse)).toEqual([
@@ -160,7 +160,9 @@ describe("MockMailDriver", () => {
       withAttachment!.attachments[0].partId,
     );
     expect(download.contentType).toBe("text/plain");
-    expect(download.content.toString("utf8")).toContain("Содержимое вложения");
+    expect(download.content.toString("utf8")).toContain(
+      "Attachment #1 contents",
+    );
     expect(download.content.byteLength).toBe(
       withAttachment!.attachments[0].sizeBytes,
     );
@@ -177,10 +179,10 @@ describe("MockMailDriver", () => {
     await driver.append("Sent", raw, ["\\Seen"]);
     const sent = await driver.fetchMessages("Sent", {});
     expect(sent).toHaveLength(1);
-    expect(sent[0].subject).toBe("Ответ на отчёт");
+    expect(sent[0].subject).toBe("Re: weekly report");
     expect(sent[0].messageId).toBe(messageId);
     expect(sent[0].isRead).toBe(true);
-    expect(sent[0].bodyText).toContain("Спасибо, отчёт получил.");
+    expect(sent[0].bodyText).toContain("Thanks, got the report.");
   });
 
   it("verify() always succeeds for the mock transport", async () => {

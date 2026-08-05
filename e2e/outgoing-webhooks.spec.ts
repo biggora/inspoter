@@ -55,47 +55,47 @@ test("desktop operator creates, inspects, and deletes an outgoing webhook", asyn
 
   try {
     await expect(
-      page.getByRole("heading", { name: "Исходящие вебхуки", exact: true }),
+      page.getByRole("heading", { name: "Outgoing Webhooks", exact: true }),
     ).toBeVisible();
 
     await page
-      .getByRole("button", { name: "Новый вебхук", exact: true })
+      .getByRole("button", { name: "New webhook", exact: true })
       .click();
 
     const dialog = page.getByRole("dialog", {
-      name: "Новый вебхук",
+      name: "New webhook",
       exact: true,
     });
     await expect(dialog).toBeVisible();
 
-    await dialog.getByLabel("Название", { exact: true }).fill(webhookName);
+    await dialog.getByLabel("Name", { exact: true }).fill(webhookName);
     await dialog
-      .getByLabel("URL эндпоинта", { exact: true })
+      .getByLabel("Endpoint URL", { exact: true })
       .fill("https://example.com/inspot-e2e");
     await dialog
-      .getByRole("checkbox", { name: "Создан алерт", exact: true })
+      .getByRole("checkbox", { name: "Alert created", exact: true })
       .click();
-    await dialog.getByRole("button", { name: "Создать", exact: true }).click();
+    await dialog.getByRole("button", { name: "Create", exact: true }).click();
 
     // Secret is shown exactly once, after creation.
     await expect(
-      page.getByRole("dialog", { name: "Вебхук создан", exact: true }),
+      page.getByRole("dialog", { name: "Webhook created", exact: true }),
     ).toBeVisible();
     const secretBlock = page.locator("code").filter({ hasText: "whsec_" });
     await expect(secretBlock).toBeVisible();
-    await page.getByRole("button", { name: "Готово", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
 
     // Row appears with its URL and subscribed event.
     const row = page.getByRole("row").filter({ hasText: webhookName });
     await expect(row).toBeVisible();
     await expect(row.getByText("example.com/inspot-e2e")).toBeVisible();
-    await expect(row.getByText("Создан алерт", { exact: true })).toBeVisible();
-    await expect(row.getByText("Работает", { exact: true })).toBeVisible();
+    await expect(row.getByText("Alert created", { exact: true })).toBeVisible();
+    await expect(row.getByText("Up", { exact: true })).toBeVisible();
 
     // Delivery history opens (empty until the scheduler sends something).
-    await row.getByRole("button", { name: "Доставки", exact: true }).click();
+    await row.getByRole("button", { name: "Deliveries", exact: true }).click();
     const deliveriesDialog = page.getByRole("dialog", {
-      name: `Доставки — ${webhookName}`,
+      name: `Deliveries — ${webhookName}`,
       exact: true,
     });
     await expect(deliveriesDialog).toBeVisible();
@@ -103,12 +103,12 @@ test("desktop operator creates, inspects, and deletes an outgoing webhook", asyn
     await expect(deliveriesDialog).toBeHidden();
 
     // Delete via confirmation dialog.
-    await row.getByRole("button", { name: "Удалить", exact: true }).click();
+    await row.getByRole("button", { name: "Delete", exact: true }).click();
     const confirm = page.getByRole("alertdialog", {
-      name: `Удалить «${webhookName}»?`,
+      name: `Remove "${webhookName}"?`,
       exact: true,
     });
-    await confirm.getByRole("button", { name: "Удалить", exact: true }).click();
+    await confirm.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(
       page.getByRole("row").filter({ hasText: webhookName }),
     ).toHaveCount(0);

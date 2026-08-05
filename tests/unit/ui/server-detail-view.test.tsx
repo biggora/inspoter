@@ -109,7 +109,7 @@ describe("ServerDetailView", () => {
     expect(screen.getByText("Helsinki")).toBeInTheDocument();
 
     const utilization = screen.getByRole("region", {
-      name: "Текущая загрузка ресурсов",
+      name: "Current resource utilization",
     });
     const meters = utilization.querySelectorAll('[data-slot="usage-meter"]');
     expect(meters).toHaveLength(4);
@@ -118,22 +118,22 @@ describe("ServerDetailView", () => {
 
     expect(
       await screen.findByRole("img", {
-        name: "График загрузки CPU сервера «web-prod-01»",
+        name: 'CPU usage chart for server "web-prod-01"',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "График средней нагрузки сервера «web-prod-01»",
+        name: 'Load average chart for server "web-prod-01"',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "График использования памяти сервера «web-prod-01»",
+        name: 'Memory usage chart for server "web-prod-01"',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "График заполнения диска сервера «web-prod-01»",
+        name: 'Disk usage chart for server "web-prod-01"',
       }),
     ).toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe("ServerDetailView", () => {
       ),
     );
 
-    await user.click(screen.getByRole("button", { name: "5 суток" }));
+    await user.click(screen.getByRole("button", { name: "5 days" }));
 
     await waitFor(() =>
       expect(apiMocks.getServerMetricsHistory).toHaveBeenCalledWith(
@@ -179,12 +179,10 @@ describe("ServerDetailView", () => {
     });
     renderWithIntl(<ServerDetailView localServerId="server-1" />);
 
-    expect(
-      await screen.findByText("Нет исторических данных"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No history yet")).toBeInTheDocument();
     expect(
       screen.queryByRole("img", {
-        name: "График загрузки CPU сервера «web-prod-01»",
+        name: 'CPU usage chart for server "web-prod-01"',
       }),
     ).not.toBeInTheDocument();
   });
@@ -194,7 +192,7 @@ describe("ServerDetailView", () => {
     renderWithIntl(<ServerDetailView localServerId="server-1" />);
 
     expect(
-      await screen.findByText("Не удалось загрузить историю метрик"),
+      await screen.findByText("Failed to load metric history"),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "web-prod-01" }),
@@ -207,8 +205,8 @@ describe("ServerDetailView", () => {
     );
     renderWithIntl(<ServerDetailView localServerId="missing" />);
 
-    expect(await screen.findByText("Сервер не найден")).toBeInTheDocument();
-    expect(screen.getByText("К серверам")).toBeInTheDocument();
+    expect(await screen.findByText("Server not found")).toBeInTheDocument();
+    expect(screen.getByText("Back to servers")).toBeInTheDocument();
   });
 
   // A server that has never reported is the normal state on the day an agent
@@ -246,14 +244,14 @@ describe("ServerDetailView", () => {
       ).toBeInTheDocument();
       // Provider capacity still has something to say without an agent.
       expect(screen.getByText("2 vCPU")).toBeInTheDocument();
-      expect(screen.getByText("Мониторинг не подключён")).toBeInTheDocument();
+      expect(screen.getByText("Monitoring not connected")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Подключите агент метрик — история появится в течение нескольких минут после первой отправки.",
+          "Connect a metrics agent — history appears within minutes of its first push.",
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Настроить мониторинг" }),
+        screen.getByRole("button", { name: "Setup monitoring" }),
       ).toBeInTheDocument();
     });
 
@@ -277,10 +275,10 @@ describe("ServerDetailView", () => {
       expect(
         await screen.findByRole("heading", { name: "orphan-host" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("Агент")).toBeInTheDocument();
+      expect(screen.getByText("Agent")).toBeInTheDocument();
       // No provider means no power actions to offer.
       expect(
-        screen.queryByRole("button", { name: "Перезапустить" }),
+        screen.queryByRole("button", { name: "Restart" }),
       ).not.toBeInTheDocument();
     });
 
@@ -307,7 +305,7 @@ describe("ServerDetailView", () => {
       renderWithIntl(<ServerDetailView localServerId="server-1" />);
 
       expect(
-        await screen.findByText("Не удалось загрузить историю метрик"),
+        await screen.findByText("Failed to load metric history"),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "web-prod-01" }),
@@ -319,14 +317,12 @@ describe("ServerDetailView", () => {
     const user = userEvent.setup();
     renderWithIntl(<ServerDetailView localServerId="server-1" />);
 
-    await user.click(
-      await screen.findByRole("button", { name: "Перезапустить" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Restart" }));
     expect(
-      screen.getByRole("heading", { name: "Перезапустить «web-prod-01»?" }),
+      screen.getByRole("heading", { name: 'Restart "web-prod-01"?' }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Подтвердить" }));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() =>
       expect(apiMocks.powerAction).toHaveBeenCalledWith(

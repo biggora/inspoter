@@ -1,7 +1,7 @@
 import net from "node:net";
 import { MonitorType, type Service } from "@/generated/prisma/client";
 
-// Pure check functions for Services monitoring (plan.md "Логика проверок").
+// Pure check functions for Services monitoring (plan.md "check logic").
 // Node built-ins only — no new npm dependency.
 
 export interface CheckOutcome {
@@ -112,7 +112,7 @@ export function checkTcp(params: {
 
 // Reachability probe, NOT a true ICMP echo: the app runs in a container
 // without CAP_NET_RAW, so Node cannot send raw ICMP packets without root
-// (plan.md "Логика проверок" — documented tradeoff). We approximate
+// (plan.md "check logic" — documented tradeoff). We approximate
 // reachability with a TCP connect attempt instead: a successful connect
 // obviously proves the host is up; ECONNREFUSED also proves the host is up
 // (its OS actively replied with a TCP RST — there's just nothing listening

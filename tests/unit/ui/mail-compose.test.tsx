@@ -123,15 +123,13 @@ describe("mail composer", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Кому"), "to@example.com");
-    await user.type(within(dialog).getByLabelText("Тема"), "Hello");
-    const body = await within(dialog).findByLabelText("Текст письма");
+    await user.type(within(dialog).getByLabelText("To"), "to@example.com");
+    await user.type(within(dialog).getByLabelText("Subject"), "Hello");
+    const body = await within(dialog).findByLabelText("Message body");
     await user.click(body);
-    await user.click(
-      within(dialog).getByRole("button", { name: "Полужирный" }),
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Bold" }));
     await user.type(body, "Formatted reply");
-    await user.click(within(dialog).getByRole("button", { name: "Отправить" }));
+    await user.click(within(dialog).getByRole("button", { name: "Send" }));
 
     await waitFor(() => {
       expect(apiMocks.sendMail).toHaveBeenCalledWith(
@@ -158,15 +156,15 @@ describe("mail composer", () => {
     );
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    const composer = screen.getByRole("region", { name: "Ответить" });
-    expect(within(composer).getByLabelText("Кому")).toHaveValue(
+    const composer = screen.getByRole("region", { name: "Reply" });
+    expect(within(composer).getByLabelText("To")).toHaveValue(
       "sender@example.com",
     );
-    expect(within(composer).getByLabelText("Тема")).toHaveValue(
+    expect(within(composer).getByLabelText("Subject")).toHaveValue(
       "Re: Status report",
     );
 
-    const body = await within(composer).findByLabelText("Текст письма");
+    const body = await within(composer).findByLabelText("Message body");
     await user.type(body, "Reply body");
     fireEvent.keyDown(body, { key: "Enter", ctrlKey: true });
 
@@ -196,9 +194,9 @@ describe("mail composer", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Тема"), "Unsent");
+    await user.type(within(dialog).getByLabelText("Subject"), "Unsent");
     await user.click(
-      within(dialog).getByRole("button", { name: "Закрыть редактор" }),
+      within(dialog).getByRole("button", { name: "Close composer" }),
     );
 
     await waitFor(() => {
@@ -226,13 +224,13 @@ describe("mail composer", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Тема"), "Unsent");
+    await user.type(within(dialog).getByLabelText("Subject"), "Unsent");
     await user.click(
-      within(dialog).getByRole("button", { name: "Закрыть редактор" }),
+      within(dialog).getByRole("button", { name: "Close composer" }),
     );
 
     expect(await screen.findByRole("alertdialog")).toHaveTextContent(
-      "Удалить это сообщение?",
+      "Discard this message?",
     );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });

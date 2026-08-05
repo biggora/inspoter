@@ -146,8 +146,13 @@ export interface AlertEntry {
   id: string;
   severity: string;
   source: string;
+  /** English base text; `messageKey` re-renders it in the active locale. */
   message: string;
+  messageKey: string | null;
+  messageParams: Record<string, string | number> | null;
   categoryName: string | null;
+  /** Set for Inspoter's own categories — see AlertCategory.systemKey. */
+  categorySystemKey: string | null;
   timestamp: string;
 }
 

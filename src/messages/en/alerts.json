@@ -64,5 +64,23 @@
   "creatingButton": "Creating…",
   "categoryRenamedToast": "Category renamed.",
   "categoryCreatedToast": "Category created.",
-  "saveCategoryError": "Failed to save category. Please try again."
+  "saveCategoryError": "Failed to save category. Please try again.",
+
+  "system": {
+    "categoryMail": "Mail",
+    "categoryServers": "Servers",
+    "categoryServices": "Services",
+    "categoryHosting": "Hosting",
+    "categoryDns": "DNS",
+
+    "providerError": "Provider error: {error}",
+    "providerRecovered": "Provider is reachable again",
+    "mailSyncError": "Sync error: {error}",
+    "mailSyncRecovered": "Sync restored",
+    "metricsStale": "No metrics arriving from the agent",
+    "metricsRecovered": "Agent metrics restored",
+    "serviceDown": "Service is unavailable",
+    "serviceUp": "Service is available again",
+    "serverMetricsError": "[{code}] {message}"
+  }
 }

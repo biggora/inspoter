@@ -52,9 +52,9 @@ describe("message origin labels", () => {
       message("4", "LEGACY", "old"),
     ]);
 
-    expect(screen.getByText("Агент")).toBeInTheDocument();
-    expect(screen.getByText("Оператор")).toBeInTheDocument();
-    expect(screen.getByText("Внешний источник")).toBeInTheDocument();
-    expect(screen.getByText("Источник не определён")).toBeInTheDocument();
+    expect(screen.getByText("Agent")).toBeInTheDocument();
+    expect(screen.getByText("Operator")).toBeInTheDocument();
+    expect(screen.getByText("External source")).toBeInTheDocument();
+    expect(screen.getByText("Source unknown")).toBeInTheDocument();
   });
 });

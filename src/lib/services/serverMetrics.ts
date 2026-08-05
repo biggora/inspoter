@@ -158,12 +158,14 @@ async function alertOnMetricsError(
     },
   });
   if (recent) return;
-  // TODO(i18n)
+  // The `[CODE] ` prefix is load-bearing: the 30-minute dedup query above
+  // matches on it, so the template keeps it in every locale.
   await alertsService.create(workspaceId, {
-    category: "Серверы",
+    categoryKey: "servers",
     severity: code === "SERVER_MATCH_AMBIGUOUS" ? "warning" : "error",
     source: hostname,
-    message: `[${code}] ${message.slice(0, 300)}`,
+    messageKey: "system.serverMetricsError",
+    messageParams: { code, message: message.slice(0, 300) },
   });
 }
 

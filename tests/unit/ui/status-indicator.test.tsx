@@ -21,13 +21,13 @@ describe("StatusIndicator", () => {
     const labels = [...container.querySelectorAll("[data-slot='badge']")].map(
       (badge) => badge.textContent,
     );
-    expect(labels).toEqual(["Работает", "Работает"]);
+    expect(labels).toEqual(["Up", "Up"]);
   });
 
   it("renders the label as text so status is never colour-only", () => {
     const { container } = renderWithIntl(<StatusIndicator status="down" />);
 
-    expect(screen.getByText("Не работает")).toBeInTheDocument();
+    expect(screen.getByText("Down")).toBeInTheDocument();
     expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
   });
 
@@ -52,13 +52,13 @@ describe("StatusIndicator", () => {
     );
 
     expect(container.querySelector(".animate-status-ping")).toBeNull();
-    expect(screen.getByText("Работает")).toBeInTheDocument();
+    expect(screen.getByText("Up")).toBeInTheDocument();
   });
 
   it("keeps the decorative dot out of the accessible text", () => {
     const { container } = renderWithIntl(<StatusIndicator status="syncing" />);
 
     const badge = container.querySelector("[data-slot='badge']");
-    expect(badge?.textContent).toBe("Синхронизация…");
+    expect(badge?.textContent).toBe("Syncing…");
   });
 });

@@ -100,6 +100,8 @@
   "fieldUsername": "Username",
   "fieldBaseUrl": "API base URL",
   "fieldModel": "Model",
+  "fieldAllowInsecure": "Allow self-signed certificates",
+  "allowInsecureHelpText": "Disables TLS certificate verification for this connection. Use it only when the cPanel server presents a self-signed or hostname-mismatched certificate — it weakens protection against server impersonation (MITM).",
   "selectProviderPlaceholder": "Select a provider",
   "selectProviderError": "Select a provider.",
   "fieldRequiredError": "Field \"{field}\" is required.",

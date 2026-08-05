@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await login(page);
   await page.goto("/settings/workspace");
   await expect(
-    page.getByRole("heading", { name: "Рабочее пространство", exact: true }),
+    page.getByRole("heading", { name: "Workspace", exact: true }),
   ).toBeVisible();
 });
 
@@ -24,9 +24,9 @@ test("workspace rename exposes validation, pending, and success states", async (
 }) => {
   const workspaceId = await activeWorkspaceId(page);
   const renameForm = page.locator("form").filter({
-    has: page.getByLabel("Название рабочего пространства", { exact: true }),
+    has: page.getByLabel("Workspace Name", { exact: true }),
   });
-  const name = renameForm.getByLabel("Название рабочего пространства", {
+  const name = renameForm.getByLabel("Workspace Name", {
     exact: true,
   });
   const originalName = await name.inputValue();
@@ -48,12 +48,11 @@ test("workspace rename exposes validation, pending, and success states", async (
   try {
     await name.fill("   ");
     await renameForm
-      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .getByRole("button", { name: "Save Changes", exact: true })
       .click();
-    const validation = page.getByText(
-      "Название рабочего пространства обязательно.",
-      { exact: true },
-    );
+    const validation = page.getByText("Workspace name is required.", {
+      exact: true,
+    });
     await expect(validation).toBeVisible();
     await expect(name).toHaveAttribute("aria-invalid", "true");
     const validationId = await validation.getAttribute("id");
@@ -67,11 +66,11 @@ test("workspace rename exposes validation, pending, and success states", async (
         response.request().method() === "PATCH",
     );
     await renameForm
-      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .getByRole("button", { name: "Save Changes", exact: true })
       .click();
 
     const pending = page.getByRole("button", {
-      name: "Сохранение…",
+      name: "Saving…",
       exact: true,
     });
     await expect(pending).toBeDisabled();
@@ -82,7 +81,7 @@ test("workspace rename exposes validation, pending, and success states", async (
     expect(response.status()).toBe(200);
     renamePersisted = true;
     await expect(
-      page.getByText("Рабочее пространство переименовано.", { exact: true }),
+      page.getByText("Workspace renamed.", { exact: true }),
     ).toBeVisible();
   } finally {
     releasePatch();
@@ -115,18 +114,16 @@ test("owner can validate, add, and remove a workspace member", async ({
   let memberId: string | undefined;
 
   try {
-    await page
-      .getByRole("button", { name: "Добавить участника", exact: true })
-      .click();
-    const usernameInput = page.getByLabel("Имя пользователя", { exact: true });
+    await page.getByRole("button", { name: "Add Member", exact: true }).click();
+    const usernameInput = page.getByLabel("Username", { exact: true });
     await expect(
-      page.getByText("Имя пользователя обязательно.", { exact: true }),
+      page.getByText("Username is required.", { exact: true }),
     ).toBeVisible();
     await expect(usernameInput).toHaveAttribute("aria-invalid", "true");
 
     await usernameInput.fill(username);
     await page
-      .getByLabel("Пароль (только для нового пользователя)", { exact: true })
+      .getByLabel("Password (new user only)", { exact: true })
       .fill("member-password");
     const createResponsePromise = page.waitForResponse(
       (response) =>
@@ -134,9 +131,7 @@ test("owner can validate, add, and remove a workspace member", async ({
           `/api/workspaces/${workspaceId}/members` &&
         response.request().method() === "POST",
     );
-    await page
-      .getByRole("button", { name: "Добавить участника", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Add Member", exact: true }).click();
     const createResponse = await createResponsePromise;
     expect(createResponse.status()).toBe(201);
     const body: unknown = await createResponse.json();
@@ -152,10 +147,10 @@ test("owner can validate, add, and remove a workspace member", async ({
     await expect(page.getByText(username, { exact: true })).toBeVisible();
 
     await page
-      .getByRole("button", { name: `Удалить ${username}`, exact: true })
+      .getByRole("button", { name: `Remove ${username}`, exact: true })
       .click();
     await expect(
-      page.getByRole("alertdialog", { name: `Удалить «${username}»?` }),
+      page.getByRole("alertdialog", { name: `Remove "${username}"?` }),
     ).toBeVisible();
     const deleteResponsePromise = page.waitForResponse(
       (response) =>
@@ -163,7 +158,7 @@ test("owner can validate, add, and remove a workspace member", async ({
           `/api/workspaces/${workspaceId}/members/${memberId}` &&
         response.request().method() === "DELETE",
     );
-    await page.getByRole("button", { name: "Удалить", exact: true }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
     expect((await deleteResponsePromise).status()).toBe(204);
     memberId = undefined;
     await expect(page.getByText(username, { exact: true })).toHaveCount(0);

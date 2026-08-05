@@ -170,7 +170,7 @@ const FOLDERS: Record<string, MailFolderDto[]> = {
     {
       id: "archive-1",
       path: "Archive",
-      name: "Архив",
+      name: "Archive",
       specialUse: "ARCHIVE",
       position: 5,
       unreadCount: 0,
@@ -250,9 +250,7 @@ describe("Mail client state boundaries", () => {
     });
     expect(staleRow).toBeEnabled();
 
-    await user.click(
-      screen.getByRole("combobox", { name: "Почтовый аккаунт" }),
-    );
+    await user.click(screen.getByRole("combobox", { name: "Mail account" }));
     await user.click(screen.getByRole("option", { name: /Second inbox/ }));
 
     await waitFor(() =>
@@ -288,24 +286,24 @@ describe("Mail client state boundaries", () => {
     renderWithIntl(<MailClientView workspaceId="workspace-1" />);
 
     await screen.findByRole("button", { name: /Deployment complete/ });
-    expect(screen.getByText("Страница 1")).toBeInTheDocument();
+    expect(screen.getByText("Page 1")).toBeInTheDocument();
 
-    await user.click(await screen.findByRole("button", { name: "Далее" }));
+    await user.click(await screen.findByRole("button", { name: "Next" }));
     await screen.findByRole("button", { name: /Second page message/ });
-    expect(screen.getByText("Страница 2")).toBeInTheDocument();
+    expect(screen.getByText("Page 2")).toBeInTheDocument();
     expect(apiMocks.fetchMail).toHaveBeenLastCalledWith(
       expect.objectContaining({ cursor: "cursor-page-2" }),
     );
 
     await user.click(
-      await screen.findByRole("combobox", { name: "Почтовый аккаунт" }),
+      await screen.findByRole("combobox", { name: "Mail account" }),
     );
     await user.click(
       await screen.findByRole("option", { name: /Second inbox/ }),
     );
 
     await screen.findByRole("button", { name: /Deployment complete/ });
-    expect(screen.getByText("Страница 1")).toBeInTheDocument();
+    expect(screen.getByText("Page 1")).toBeInTheDocument();
     expect(apiMocks.fetchMail).toHaveBeenLastCalledWith(
       expect.objectContaining({ accountId: "account-2", cursor: undefined }),
     );
@@ -334,7 +332,7 @@ describe("Mail client state boundaries", () => {
 
     renderWithIntl(<MailClientView workspaceId="workspace-1" />);
 
-    const labelsNav = await screen.findByRole("navigation", { name: "Метки" });
+    const labelsNav = await screen.findByRole("navigation", { name: "Labels" });
     await user.click(
       await within(labelsNav).findByRole("button", {
         name: "Production alerts",
@@ -348,7 +346,7 @@ describe("Mail client state boundaries", () => {
       name: "Deployment complete",
     });
 
-    await user.click(screen.getByRole("button", { name: "Изменить метки" }));
+    await user.click(screen.getByRole("button", { name: "Edit labels" }));
     await user.click(screen.getByRole("option", { name: /Production alerts/ }));
 
     await waitFor(() =>
@@ -412,31 +410,31 @@ describe("Mail client state boundaries", () => {
 
     renderWithIntl(<MailClientView workspaceId="backfill-workspace" />);
 
-    const list = await screen.findByRole("list", { name: "Список писем" });
+    const list = await screen.findByRole("list", { name: "Message list" });
     const row = within(list).getByRole("button", {
       name: /Deployment complete/,
     });
     await user.click(row);
     await screen.findByRole("heading", { name: "Deployment complete" });
     await user.click(
-      screen.getByRole("button", { name: "Фильтровать похожие письма" }),
+      screen.getByRole("button", { name: "Filter messages like this" }),
     );
     const dialog = screen.getByRole("dialog", {
-      name: "Фильтровать похожие письма",
+      name: "Filter messages like this",
     });
     await user.click(
       within(dialog).getByRole("checkbox", {
-        name: "Применить к существующей почте",
+        name: "Apply to existing mail",
       }),
     );
     await user.click(
-      within(dialog).getByRole("button", { name: "Сохранить фильтр" }),
+      within(dialog).getByRole("button", { name: "Save filter" }),
     );
 
     await waitFor(() =>
       expect(within(row).getByLabelText(label.name)).toBeVisible(),
     );
-    const appliedLabels = screen.getByLabelText("Применённые метки");
+    const appliedLabels = screen.getByLabelText("Applied labels");
     expect(within(appliedLabels).getByLabelText(label.name)).toBeVisible();
     expect(apiMocks.fetchMail).toHaveBeenCalledTimes(1);
   });
@@ -468,7 +466,7 @@ describe("Mail label chips", () => {
       </>,
     );
 
-    const redOption = screen.getByRole("button", { name: "Красный" });
+    const redOption = screen.getByRole("button", { name: "Red" });
     const redSwatch = redOption.querySelector('[aria-hidden="true"]');
     const chip = screen.getByLabelText("Urgent");
 
@@ -513,10 +511,10 @@ describe("Mail label chips", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
-    await user.type(screen.getByLabelText("Название метки"), "Build alerts");
-    await user.click(screen.getByRole("button", { name: "Бирюзовый" }));
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
+    await user.click(screen.getByRole("button", { name: "Create label" }));
+    await user.type(screen.getByLabelText("Label name"), "Build alerts");
+    await user.click(screen.getByRole("button", { name: "Teal" }));
+    await user.click(screen.getByRole("button", { name: "Create label" }));
 
     await waitFor(() =>
       expect(apiMocks.createMailLabel).toHaveBeenCalledWith({
@@ -548,20 +546,18 @@ describe("Mail label chips", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
-    await user.type(screen.getByLabelText("Название метки"), "Brand alerts");
-    const hexInput = screen.getByLabelText("HEX-код своего цвета");
+    await user.click(screen.getByRole("button", { name: "Create label" }));
+    await user.type(screen.getByLabelText("Label name"), "Brand alerts");
+    const hexInput = screen.getByLabelText("Custom color hex value");
     await user.clear(hexInput);
     await user.type(hexInput, "#12345");
+    expect(screen.getByRole("button", { name: "Create label" })).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Создать метку" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByText("Введите корректный шестизначный HEX-код."),
+      screen.getByText("Enter a valid six-digit hex color."),
     ).toBeVisible();
 
     await user.type(hexInput, "6");
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
+    await user.click(screen.getByRole("button", { name: "Create label" }));
     await waitFor(() =>
       expect(apiMocks.createMailLabel).toHaveBeenCalledWith({
         name: "Brand alerts",
@@ -588,13 +584,13 @@ describe("Mail label chips", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Изменить Production alerts" }),
+      screen.getByRole("button", { name: "Edit Production alerts" }),
     );
-    const nameInput = screen.getByLabelText("Название метки");
+    const nameInput = screen.getByLabelText("Label name");
     await user.clear(nameInput);
     await user.type(nameInput, "Critical builds");
-    await user.click(screen.getByRole("button", { name: "Красный" }));
-    await user.click(screen.getByRole("button", { name: "Обновить метку" }));
+    await user.click(screen.getByRole("button", { name: "Red" }));
+    await user.click(screen.getByRole("button", { name: "Update label" }));
     await waitFor(() =>
       expect(apiMocks.patchMailLabel).toHaveBeenCalledWith("label-1", {
         name: "Critical builds",
@@ -604,7 +600,7 @@ describe("Mail label chips", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Переместить Production alerts ниже",
+        name: "Move Production alerts down",
       }),
     );
     await waitFor(() =>
@@ -614,10 +610,12 @@ describe("Mail label chips", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Удалить Production alerts" }),
+      screen.getByRole("button", { name: "Delete Production alerts" }),
     );
-    expect(screen.getByText(/Метка будет удалена с писем/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Удалить метку" }));
+    expect(
+      screen.getByText(/The label will be removed from messages/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete label" }));
     await waitFor(() =>
       expect(apiMocks.deleteMailLabel).toHaveBeenCalledWith("label-1"),
     );
@@ -647,25 +645,25 @@ describe("Mail label chips", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
-    await user.type(screen.getByLabelText("Название метки"), label.name);
-    await user.click(screen.getByRole("button", { name: "Создать метку" }));
+    await user.click(screen.getByRole("button", { name: "Create label" }));
+    await user.type(screen.getByLabelText("Label name"), label.name);
+    await user.click(screen.getByRole("button", { name: "Create label" }));
     expect(
-      await screen.findByText("Метка с таким названием уже существует."),
+      await screen.findByText("A label with this name already exists."),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Название метки")).toHaveValue(label.name);
+    expect(screen.getByLabelText("Label name")).toHaveValue(label.name);
 
-    await user.click(screen.getByRole("button", { name: "Отмена" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
     await user.click(
-      screen.getByRole("button", { name: `Удалить ${label.name}` }),
+      screen.getByRole("button", { name: `Delete ${label.name}` }),
     );
-    await user.click(screen.getByRole("button", { name: "Удалить метку" }));
+    await user.click(screen.getByRole("button", { name: "Delete label" }));
     await waitFor(() =>
       expect(toastMocks.error).toHaveBeenCalledWith(
-        "Метка используется фильтром или активной обработкой существующей почты.",
+        "This label is used by a filter or active existing-mail run.",
       ),
     );
-    expect(screen.getByText(`Удалить метку «${label.name}»?`)).toBeVisible();
+    expect(screen.getByText(`Delete ${label.name}?`)).toBeVisible();
   });
 
   it("clears a deleted active label facet before refreshing mail", async () => {
@@ -677,7 +675,7 @@ describe("Mail label chips", () => {
 
     renderWithIntl(<MailClientView workspaceId="delete-filter-workspace" />);
 
-    const labelsNav = await screen.findByRole("navigation", { name: "Метки" });
+    const labelsNav = await screen.findByRole("navigation", { name: "Labels" });
     await user.click(
       await within(labelsNav).findByRole("button", { name: label.name }),
     );
@@ -687,13 +685,11 @@ describe("Mail label chips", () => {
       ),
     );
 
+    await user.click(screen.getByRole("button", { name: "Manage labels" }));
     await user.click(
-      screen.getByRole("button", { name: "Управление метками" }),
+      screen.getByRole("button", { name: `Delete ${label.name}` }),
     );
-    await user.click(
-      screen.getByRole("button", { name: `Удалить ${label.name}` }),
-    );
-    await user.click(screen.getByRole("button", { name: "Удалить метку" }));
+    await user.click(screen.getByRole("button", { name: "Delete label" }));
     await waitFor(() =>
       expect(apiMocks.deleteMailLabel).toHaveBeenCalledWith(label.id),
     );
@@ -701,7 +697,7 @@ describe("Mail label chips", () => {
 
     await waitFor(() =>
       expect(
-        within(labelsNav).getByRole("button", { name: "Все метки" }),
+        within(labelsNav).getByRole("button", { name: "All labels" }),
       ).toHaveAttribute("aria-current", "true"),
     );
     expect(apiMocks.fetchMail).toHaveBeenLastCalledWith(
@@ -712,13 +708,13 @@ describe("Mail label chips", () => {
   it("shows label and filter management to workspace operators", async () => {
     renderWithIntl(<MailClientView workspaceId="member-workspace" />);
     expect(
-      await screen.findByRole("button", { name: "Управление метками" }),
+      await screen.findByRole("button", { name: "Manage labels" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Управление фильтрами" }),
+      screen.getByRole("button", { name: "Manage filters" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("navigation", { name: "Метки" }),
+      screen.getByRole("navigation", { name: "Labels" }),
     ).toBeInTheDocument();
   });
 
@@ -752,10 +748,10 @@ describe("Mail label chips", () => {
     expect(row).toHaveAccessibleName(/Automation/);
     expect(row).toContainElement(screen.getByLabelText("Production alerts"));
     expect(row).toContainElement(screen.getByLabelText("Deployments"));
-    expect(row).toContainElement(screen.getByLabelText("Ещё меток: 2"));
-    expect(row).toContainElement(screen.getByLabelText("Ещё меток: 1"));
+    expect(row).toContainElement(screen.getByLabelText("2 more labels"));
+    expect(row).toContainElement(screen.getByLabelText("1 more label"));
     const sortControl = screen.getByRole("combobox", {
-      name: "Порядок сортировки",
+      name: "Sort order",
     });
     expect(
       sortControl.querySelector(".ri-arrow-down-s-line"),
@@ -790,7 +786,7 @@ describe("Mail label chips", () => {
     );
 
     const row = screen.getByRole("button", { name: /Deployment complete/ });
-    expect(row).toContainElement(screen.getByLabelText("Есть вложения"));
+    expect(row).toContainElement(screen.getByLabelText("Has attachments"));
   });
 
   it("filters from the sidebar and resets only through All labels", async () => {
@@ -823,11 +819,11 @@ describe("Mail label chips", () => {
       />,
     );
 
-    const labelsNav = screen.getByRole("navigation", { name: "Метки" });
+    const labelsNav = screen.getByRole("navigation", { name: "Labels" });
     const labelsNavQueries = within(labelsNav);
     const selectedFolder = within(
-      screen.getByRole("navigation", { name: "Папки" }),
-    ).getByRole("button", { name: "Входящие" });
+      screen.getByRole("navigation", { name: "Folders" }),
+    ).getByRole("button", { name: "Inbox" });
     const selectedLabel = labelsNavQueries.getByRole("button", {
       name: "Production alerts",
     });
@@ -840,7 +836,7 @@ describe("Mail label chips", () => {
       "dark:bg-secondary-300",
       "dark:hover:bg-secondary-400",
     );
-    expect(selectedLabel).toHaveAccessibleDescription("12 писем");
+    expect(selectedLabel).toHaveAccessibleDescription("12 emails");
     expect(within(selectedLabel).getByText("12")).toBeVisible();
 
     await user.click(
@@ -848,7 +844,7 @@ describe("Mail label chips", () => {
     );
     expect(onSelectLabel).toHaveBeenLastCalledWith("label-2");
     await user.click(
-      labelsNavQueries.getByRole("button", { name: "Все метки" }),
+      labelsNavQueries.getByRole("button", { name: "All labels" }),
     );
     expect(onSelectLabel).toHaveBeenLastCalledWith(null);
   });
@@ -870,9 +866,11 @@ describe("Mail label chips", () => {
       />,
     );
 
-    const trigger = screen.getByRole("button", { name: "Изменить метки" });
+    const trigger = screen.getByRole("button", { name: "Edit labels" });
     await user.click(trigger);
-    const search = await screen.findByRole("textbox", { name: "Поиск меток" });
+    const search = await screen.findByRole("textbox", {
+      name: "Search labels",
+    });
     await waitFor(() => expect(search).toHaveFocus());
 
     await user.keyboard("{ArrowDown}");
@@ -901,21 +899,21 @@ describe("Mail label chips", () => {
         appliedLabelIds={new Set(["label-1"])}
         loading={false}
         error={null}
-        mutationError="Не удалось изменить метки письма. Попробуйте снова."
+        mutationError="Failed to update message labels. Try again."
         pendingLabelIds={new Set(["label-1"])}
         onRetry={onRetry}
         onToggle={vi.fn()}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Изменить метки" }));
+    await user.click(screen.getByRole("button", { name: "Edit labels" }));
     const first = screen.getByRole("option", { name: /Production alerts/ });
     const second = screen.getByRole("option", { name: /Deployments/ });
     expect(first).toBeDisabled();
     expect(first).toHaveAttribute("aria-selected", "true");
     expect(second).not.toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Не удалось изменить метки письма",
+      "Failed to update message labels",
     );
   });
 
@@ -934,8 +932,8 @@ describe("Mail label chips", () => {
         onToggle={vi.fn()}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Изменить метки" }));
-    expect(screen.getByLabelText("Загрузка меток…")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit labels" }));
+    expect(screen.getByLabelText("Loading labels…")).toBeInTheDocument();
     unmount();
 
     renderWithIntl(
@@ -943,15 +941,15 @@ describe("Mail label chips", () => {
         labels={[]}
         appliedLabelIds={new Set()}
         loading={false}
-        error="Не удалось загрузить метки. Попробуйте снова."
+        error="Failed to load labels. Please try again."
         mutationError={null}
         pendingLabelIds={new Set()}
         onRetry={onRetry}
         onToggle={vi.fn()}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Изменить метки" }));
-    await user.click(screen.getByRole("button", { name: "Повторить" }));
+    await user.click(screen.getByRole("button", { name: "Edit labels" }));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
@@ -979,14 +977,11 @@ describe("Mail label chips", () => {
       />,
     );
 
-    await user.type(
-      await screen.findByLabelText("Название метки"),
-      "Build alerts",
-    );
-    const hexInput = screen.getByLabelText("HEX-код своего цвета");
+    await user.type(await screen.findByLabelText("Label name"), "Build alerts");
+    const hexInput = screen.getByLabelText("Custom color hex value");
     await user.clear(hexInput);
     await user.type(hexInput, "#0ea5e9");
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
     await waitFor(() =>
       expect(apiMocks.createMailFilterRule).toHaveBeenCalledTimes(1),
     );
@@ -995,9 +990,9 @@ describe("Mail label chips", () => {
       name: "Build alerts",
       color: "#0EA5E9",
     });
-    expect(screen.queryByLabelText("Название метки")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Label name")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(apiMocks.createMailLabel).toHaveBeenCalledTimes(1);
     expect(apiMocks.createMailFilterRule).toHaveBeenLastCalledWith(
@@ -1044,32 +1039,33 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
 
-    const sender = await screen.findByLabelText("Отправитель");
+    const sender = await screen.findByLabelText("Sender");
     const applyExisting = screen.getByRole("checkbox", {
-      name: "Применить к существующей почте",
+      name: "Apply to existing mail",
     });
     expect(applyExisting).not.toBeChecked();
     await user.clear(sender);
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
     expect(
-      screen.getByText("Добавьте хотя бы одно заполненное условие."),
+      screen.getByText("Add at least one complete condition."),
     ).toBeInTheDocument();
     expect(apiMocks.createMailFilterRule).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("combobox", { name: "Поле условия 1" }));
-    await user.click(await screen.findByRole("option", { name: "Тема" }));
-    await user.type(screen.getByLabelText("Тема содержит"), "  Deployment  ");
     await user.click(
-      screen.getByRole("combobox", { name: "Статус прочтения" }),
+      screen.getByRole("combobox", { name: "Condition 1 field" }),
     );
+    await user.click(await screen.findByRole("option", { name: "Subject" }));
+    await user.type(
+      screen.getByLabelText("Subject contains"),
+      "  Deployment  ",
+    );
+    await user.click(screen.getByRole("combobox", { name: "Read status" }));
     await user.click(
-      await screen.findByRole("option", { name: "Отметить прочитанным" }),
+      await screen.findByRole("option", { name: "Mark as read" }),
     );
-    await user.click(
-      screen.getByRole("combobox", { name: "Переместить в папку" }),
-    );
-    await user.click(await screen.findByRole("option", { name: "Архив" }));
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await user.click(screen.getByRole("combobox", { name: "Move to folder" }));
+    await user.click(await screen.findByRole("option", { name: "Archive" }));
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(apiMocks.createMailFilterRule).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1107,11 +1103,11 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     const checkbox = await screen.findByRole("checkbox", {
-      name: "Применить к существующей почте",
+      name: "Apply to existing mail",
     });
     await user.click(checkbox);
     expect(checkbox).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
 
     await waitFor(() =>
       expect(apiMocks.createMailFilterRule).toHaveBeenCalledWith(
@@ -1136,21 +1132,21 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
 
-    const ruleName = screen.getByLabelText("Название правила");
-    await user.click(screen.getByRole("button", { name: "Добавить условие" }));
-    const subject = screen.getByLabelText("Тема содержит");
+    const ruleName = screen.getByLabelText("Rule name");
+    await user.click(screen.getByRole("button", { name: "Add condition" }));
+    const subject = screen.getByLabelText("Subject contains");
     await user.clear(ruleName);
     await user.type(ruleName, "Preserved rule name");
     await user.type(subject, "Preserved subject");
     expect(
-      await screen.findByText("Не удалось загрузить метки. Попробуйте снова."),
+      await screen.findByText("Failed to load labels. Please try again."),
     ).toBeInTheDocument();
-    const save = screen.getByRole("button", { name: "Сохранить фильтр" });
+    const save = screen.getByRole("button", { name: "Save filter" });
     expect(save).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Повторить" }));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(
-      await screen.findByRole("combobox", { name: "Применить метку" }),
+      await screen.findByRole("combobox", { name: "Apply label" }),
     ).toBeInTheDocument();
     expect(ruleName).toHaveValue("Preserved rule name");
     expect(subject).toHaveValue("Preserved subject");
@@ -1176,10 +1172,12 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
 
-    await screen.findByRole("combobox", { name: "Применить метку" });
-    await user.click(screen.getByRole("button", { name: "Сохранить фильтр" }));
+    await screen.findByRole("combobox", { name: "Apply label" });
+    await user.click(screen.getByRole("button", { name: "Save filter" }));
     expect(
-      await screen.findByText("Текст темы не должен превышать 200 символов."),
+      await screen.findByText(
+        "Subject text can contain at most 200 characters.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("SUBJECT_FILTER_TOO_LONG"),
@@ -1210,14 +1208,12 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     expect(
-      await screen.findByRole("list", { name: "Правила фильтрации" }),
+      await screen.findByRole("list", { name: "Filter rules" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Работает", { selector: "span" })).toHaveLength(
-      2,
-    );
-    expect(screen.getAllByText(/тема содержит Deployment/)).toHaveLength(2);
+    expect(screen.getAllByText("Up", { selector: "span" })).toHaveLength(2);
+    expect(screen.getAllByText(/subject contains Deployment/)).toHaveLength(2);
 
-    await user.click(screen.getAllByRole("button", { name: "Отключить" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Disable" })[0]);
     await waitFor(() =>
       expect(apiMocks.patchMailFilterRule).toHaveBeenCalledWith("rule-1", {
         isActive: false,
@@ -1225,7 +1221,7 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Переместить Build messages ниже" }),
+      screen.getByRole("button", { name: "Move Build messages down" }),
     );
     await waitFor(() =>
       expect(apiMocks.patchMailFilterRule).toHaveBeenCalledWith("rule-1", {
@@ -1233,18 +1229,18 @@ describe("Mail filter-rule lifecycle UI", () => {
       }),
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Изменить" })[0]);
-    expect(await screen.findByLabelText("Тема содержит")).toHaveValue(
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    expect(await screen.findByLabelText("Subject contains")).toHaveValue(
       "Deployment",
     );
     expect(
       screen.queryByRole("checkbox", {
-        name: "Применить к существующей почте",
+        name: "Apply to existing mail",
       }),
     ).not.toBeInTheDocument();
-    await user.clear(screen.getByLabelText("Тема содержит"));
-    await user.type(screen.getByLabelText("Тема содержит"), "Release");
-    await user.click(screen.getByRole("button", { name: "Обновить фильтр" }));
+    await user.clear(screen.getByLabelText("Subject contains"));
+    await user.type(screen.getByLabelText("Subject contains"), "Release");
+    await user.click(screen.getByRole("button", { name: "Update filter" }));
     await waitFor(() =>
       expect(apiMocks.patchMailFilterRule).toHaveBeenCalledWith(
         "rule-1",
@@ -1261,17 +1257,15 @@ describe("Mail filter-rule lifecycle UI", () => {
     );
 
     await waitFor(() =>
-      expect(
-        screen.getAllByRole("button", { name: "Изменить" })[0],
-      ).toHaveFocus(),
+      expect(screen.getAllByRole("button", { name: "Edit" })[0]).toHaveFocus(),
     );
     await user.click(
-      screen.getByRole("button", { name: "Удалить Build messages" }),
+      screen.getByRole("button", { name: "Delete Build messages" }),
     );
     expect(
-      screen.getByText(/Уже применённые к письмам метки сохранятся/),
+      screen.getByText(/Labels already applied to messages will remain/),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Удалить" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() =>
       expect(apiMocks.deleteMailFilterRule).toHaveBeenCalledWith("rule-1"),
     );
@@ -1319,16 +1313,16 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
     await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: "Ход обработки" }));
+    fireEvent.click(screen.getByRole("button", { name: "View progress" }));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
-    expect(screen.getByText("Выполняется")).toBeInTheDocument();
+    expect(screen.getByText("In progress")).toBeInTheDocument();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
-    expect(screen.getByText("Завершено")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
     expect(screen.getAllByText("1", { selector: "dd" })).toHaveLength(2);
 
     await act(async () => {
@@ -1373,17 +1367,15 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
     await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: "Ход обработки" }));
+    fireEvent.click(screen.getByRole("button", { name: "View progress" }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(122_000);
     });
 
     expect(apiMocks.fetchMailFilterRun).toHaveBeenCalledTimes(60);
+    expect(screen.getByText("Automatic updates paused")).toBeInTheDocument();
     expect(
-      screen.getByText("Автоматическое обновление приостановлено"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Обновить состояние" }),
+      screen.getByRole("button", { name: "Refresh status" }),
     ).toBeEnabled();
   });
 
@@ -1425,30 +1417,30 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
     await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: "Ход обработки" }));
+    fireEvent.click(screen.getByRole("button", { name: "View progress" }));
 
     expect(
       screen.getAllByRole("button", {
-        name: "Назад к правилам фильтрации",
+        name: "Back to filter rules",
       })[1],
     ).toHaveFocus();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
     expect(apiMocks.fetchMailFilterRun).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Состояние недоступно")).toBeInTheDocument();
+    expect(screen.getByText("Status unavailable")).toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
     });
     expect(apiMocks.fetchMailFilterRun).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Обновить состояние" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
     await act(async () => {});
     expect(apiMocks.fetchMailFilterRun).toHaveBeenCalledTimes(2);
     expect(
       screen.getAllByRole("button", {
-        name: "Назад к правилам фильтрации",
+        name: "Back to filter rules",
       })[1],
     ).toHaveFocus();
 
@@ -1494,26 +1486,24 @@ describe("Mail filter-rule lifecycle UI", () => {
       />,
     );
     await user.click(
-      await screen.findByRole("button", { name: "Ход обработки" }),
+      await screen.findByRole("button", { name: "View progress" }),
     );
     expect(
       screen.getAllByRole("button", {
-        name: "Назад к правилам фильтрации",
+        name: "Back to filter rules",
       })[1],
     ).toHaveFocus();
     expect(screen.getByText("9", { selector: "dd" })).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Повторить обработку" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Retry processing" }));
 
     await waitFor(() =>
       expect(apiMocks.retryMailFilterRun).toHaveBeenCalledWith("run-failed"),
     );
-    expect(screen.getByText("Ожидание")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("9", { selector: "dd" })).toBeInTheDocument();
     expect(
       screen.getAllByRole("button", {
-        name: "Назад к правилам фильтрации",
+        name: "Back to filter rules",
       })[1],
     ).toHaveFocus();
   });

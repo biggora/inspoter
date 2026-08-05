@@ -212,7 +212,13 @@ async function resolveOne(
             severity: item.severity,
             source: item.source,
             message: item.message,
+            messageKey: item.messageKey,
+            messageParams: item.messageParams as Record<
+              string,
+              string | number
+            > | null,
             categoryName: item.alertCategory?.name ?? null,
+            categorySystemKey: item.alertCategory?.systemKey ?? null,
             timestamp: item.timestamp.toISOString(),
           })),
         },

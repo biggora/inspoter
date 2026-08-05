@@ -10,9 +10,9 @@ import {
 } from "@/lib/format/relative-time";
 import type { MonitorTypeValue } from "./api";
 
-// HTTP(S) and Ping are protocol names, not Russian prose, so they stay as
-// plain literal strings. TCP-порт contains the actual Russian word "порт"
-// ("port") and does need translation — its value here is a translation key,
+// HTTP(S) and Ping are protocol names, not prose, so they stay as plain
+// literal strings. The TCP label spells out the word "port", which every
+// locale words differently — its value here is a translation key,
 // resolved via getMonitorTypeLabel() below (same "store the key in the map,
 // resolve with t() at render" convention as servers-view.tsx's statusConfig).
 export const MONITOR_TYPE_LABELS: Record<MonitorTypeValue, string> = {

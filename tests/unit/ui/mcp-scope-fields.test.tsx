@@ -20,31 +20,31 @@ describe("McpScopeFields", () => {
   it("names each domain group so its checkboxes are distinguishable", () => {
     renderWithIntl(<McpScopeFields value={[]} onChange={vi.fn()} />);
 
-    // Every domain shares the plain "Поиск и чтение" label; the enclosing
+    // Every domain shares the plain "Search and read" label; the enclosing
     // fieldset legend is what tells them apart for assistive technology.
     const groups = [
-      "Почта",
-      "Алерты",
-      "Закладки",
-      "Сообщения",
-      "Серверы",
-      "Сервисы",
-      "Логи",
+      "Mail",
+      "Alerts",
+      "Bookmarks",
+      "Messages",
+      "Servers",
+      "Services",
+      "Logs",
     ];
     for (const label of groups) {
       expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
     }
     expect(
-      screen.getAllByRole("checkbox", { name: "Поиск и чтение" }),
+      screen.getAllByRole("checkbox", { name: "Search and read" }),
     ).toHaveLength(groups.length);
     expect(
-      screen.getByRole("checkbox", { name: "Черновики и отправка" }),
+      screen.getByRole("checkbox", { name: "Draft and send" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Создание" }),
+      screen.getByRole("checkbox", { name: "Create" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Управление и отправка" }),
+      screen.getByRole("checkbox", { name: "Manage and post" }),
     ).toBeInTheDocument();
   });
 
@@ -54,11 +54,9 @@ describe("McpScopeFields", () => {
     );
 
     expect(
-      screen.getByRole("checkbox", { name: "Черновики и отправка" }),
+      screen.getByRole("checkbox", { name: "Draft and send" }),
     ).toBeChecked();
-    expect(
-      screen.getByRole("checkbox", { name: "Создание" }),
-    ).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Create" })).not.toBeChecked();
   });
 
   it("adds a scope when its box is checked", async () => {
@@ -66,7 +64,7 @@ describe("McpScopeFields", () => {
     renderWithIntl(<McpScopeFields value={[]} onChange={onChange} />);
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Черновики и отправка" }),
+      screen.getByRole("checkbox", { name: "Draft and send" }),
     );
 
     expect(onChange).toHaveBeenCalledWith(["mail:write"]);
@@ -82,7 +80,7 @@ describe("McpScopeFields", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Черновики и отправка" }),
+      screen.getByRole("checkbox", { name: "Draft and send" }),
     );
 
     expect(onChange).toHaveBeenCalledWith(["mail:read"]);

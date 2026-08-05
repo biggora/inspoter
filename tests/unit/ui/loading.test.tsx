@@ -21,17 +21,17 @@ describe("LoadingRegion", () => {
 
     const region = screen.getByRole("status");
     expect(region).toHaveAttribute("aria-busy", "true");
-    expect(region).toHaveTextContent("Загрузка…");
+    expect(region).toHaveTextContent("Loading…");
   });
 
   it("prefers a caller-supplied label over the generic one", () => {
     renderWithIntl(
-      <LoadingRegion label="Загрузка вебхуков">
+      <LoadingRegion label="Loading webhooks">
         <TableSkeleton rows={1} />
       </LoadingRegion>,
     );
 
-    expect(screen.getByRole("status")).toHaveTextContent("Загрузка вебхуков");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading webhooks");
   });
 });
 
@@ -39,11 +39,11 @@ describe("LoadingOverlay", () => {
   it("renders the content untouched when idle", () => {
     renderWithIntl(
       <LoadingOverlay busy={false}>
-        <p>Подтверждённые данные</p>
+        <p>Confirmed content</p>
       </LoadingOverlay>,
     );
 
-    expect(screen.getByText("Подтверждённые данные")).toBeInTheDocument();
+    expect(screen.getByText("Confirmed content")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(
       document.querySelector('[data-slot="loading-overlay"]'),
@@ -53,13 +53,13 @@ describe("LoadingOverlay", () => {
   it("keeps the confirmed content and adds a spinner while busy", () => {
     renderWithIntl(
       <LoadingOverlay busy>
-        <p>Подтверждённые данные</p>
+        <p>Confirmed content</p>
       </LoadingOverlay>,
     );
 
     // The rows the operator was reading stay on screen — only a veil is added.
-    expect(screen.getByText("Подтверждённые данные")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Загрузка…");
+    expect(screen.getByText("Confirmed content")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
     expect(
       document.querySelector('[data-slot="loading-overlay"]'),
     ).toHaveAttribute("aria-busy", "true");

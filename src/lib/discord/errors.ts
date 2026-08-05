@@ -4,9 +4,9 @@ import type { z } from "zod";
 type DiscordZodIssue = z.core.$ZodIssue;
 
 // Discord-shaped error bodies (specs/discord-webhook-compatibility.md §4).
-// English on purpose: these responses go to an external sender hitting the
-// public Discord-compatible route, never to the Russian dashboard UI — the same
-// carve-out src/lib/validation/webhooks.ts already documents.
+// Verbatim Discord wording on purpose: these responses go to an external
+// sender hitting the public Discord-compatible route, never to the dashboard —
+// the same carve-out src/lib/validation/webhooks.ts already documents.
 
 export const DISCORD_ERROR = {
   GENERAL: 0,

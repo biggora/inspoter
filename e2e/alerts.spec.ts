@@ -107,10 +107,10 @@ test("an alert ingested without a category is filed by the operator and deleted"
   await expect(row).toBeVisible();
 
   // Uncategorized on arrival, and the operator can say so.
-  const categorySelect = row.getByLabel("Категория оповещения", {
+  const categorySelect = row.getByLabel("Alert category", {
     exact: true,
   });
-  await expect(categorySelect).toContainText("Без категории");
+  await expect(categorySelect).toContainText("No category");
 
   await categorySelect.click();
   await page.getByRole("option", { name: categoryName, exact: true }).click();
@@ -120,26 +120,24 @@ test("an alert ingested without a category is filed by the operator and deleted"
   await page.reload();
   const reloadedRow = page.getByRole("row").filter({ hasText: message });
   await expect(
-    reloadedRow.getByLabel("Категория оповещения", { exact: true }),
+    reloadedRow.getByLabel("Alert category", { exact: true }),
   ).toContainText(categoryName);
 
   // The "no category" filter no longer matches it.
-  await page.getByLabel("Фильтр по категории", { exact: true }).click();
-  await page
-    .getByRole("option", { name: "Без категории", exact: true })
-    .click();
+  await page.getByLabel("Filter by category", { exact: true }).click();
+  await page.getByRole("option", { name: "No category", exact: true }).click();
   await expect(page.getByRole("row").filter({ hasText: message })).toHaveCount(
     0,
   );
 
   // AC-ALR-008: delete removes it for good.
-  await page.getByLabel("Фильтр по категории", { exact: true }).click();
+  await page.getByLabel("Filter by category", { exact: true }).click();
   await page.getByRole("option", { name: categoryName, exact: true }).click();
   const targetRow = page.getByRole("row").filter({ hasText: message });
-  await targetRow.getByRole("button", { name: "Удалить оповещение" }).click();
+  await targetRow.getByRole("button", { name: "Delete alert" }).click();
   await page
-    .getByRole("alertdialog", { name: "Удалить оповещение?" })
-    .getByRole("button", { name: "Удалить оповещение", exact: true })
+    .getByRole("alertdialog", { name: "Delete this alert?" })
+    .getByRole("button", { name: "Delete alert", exact: true })
     .click();
   await expect(page.getByRole("row").filter({ hasText: message })).toHaveCount(
     0,

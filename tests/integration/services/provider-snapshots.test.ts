@@ -228,7 +228,7 @@ describe("recordSyncOutcomes() log de-duplication", () => {
     // every tick. Without the transition gate that would be ~288 identical
     // entries a day per credential.
     for (let i = 0; i < 3; i += 1) {
-      await recordSyncOutcomes(workspaceId, "DNS", "listDomains", [
+      await recordSyncOutcomes(workspaceId, "dns", "listDomains", [
         {
           credentialId,
           providerType: "cloudflare",
@@ -244,7 +244,7 @@ describe("recordSyncOutcomes() log de-duplication", () => {
   });
 
   it("writes one info entry when the provider comes back", async () => {
-    await recordSyncOutcomes(workspaceId, "DNS", "listDomains", [
+    await recordSyncOutcomes(workspaceId, "dns", "listDomains", [
       {
         credentialId,
         providerType: "cloudflare",
@@ -253,10 +253,10 @@ describe("recordSyncOutcomes() log de-duplication", () => {
     ]);
     await expect.poll(async () => (await providerLogs()).length).toBe(1);
 
-    await recordSyncOutcomes(workspaceId, "DNS", "listDomains", [
+    await recordSyncOutcomes(workspaceId, "dns", "listDomains", [
       { credentialId, providerType: "cloudflare", error: null },
     ]);
-    await recordSyncOutcomes(workspaceId, "DNS", "listDomains", [
+    await recordSyncOutcomes(workspaceId, "dns", "listDomains", [
       { credentialId, providerType: "cloudflare", error: null },
     ]);
 
@@ -267,7 +267,7 @@ describe("recordSyncOutcomes() log de-duplication", () => {
 
   it("stays silent while a healthy provider keeps succeeding", async () => {
     for (let i = 0; i < 3; i += 1) {
-      await recordSyncOutcomes(workspaceId, "DNS", "listDomains", [
+      await recordSyncOutcomes(workspaceId, "dns", "listDomains", [
         { credentialId, providerType: "cloudflare", error: null },
       ]);
     }

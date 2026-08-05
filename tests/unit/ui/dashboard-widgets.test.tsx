@@ -17,7 +17,7 @@ import { ServerMetricsWidget } from "@/components/dashboards/widgets/server-metr
 import { ServiceStatusWidget } from "@/components/dashboards/widgets/service-status-widget";
 import { WeatherWidget } from "@/components/dashboards/widgets/weather-widget";
 import { DashboardWidgetError } from "@/components/dashboards/dashboard-widget-frame";
-import ruDashboards from "@/messages/ru/dashboards.json";
+import enDashboards from "@/messages/en/dashboards.json";
 
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
@@ -69,15 +69,15 @@ describe("ClockWidget", () => {
 
 describe("NoteWidget", () => {
   it("preserves the operator's line breaks", () => {
-    renderWithIntl(<NoteWidget config={{ text: "дежурный\nАня" }} />);
+    renderWithIntl(<NoteWidget config={{ text: "on call\nAnna" }} />);
 
-    expect(screen.getByText(/дежурный/)).toBeInTheDocument();
+    expect(screen.getByText(/on call/)).toBeInTheDocument();
   });
 
   it("prompts when the note is empty", () => {
     renderWithIntl(<NoteWidget config={{ text: "   " }} />);
 
-    expect(screen.getByText(ruDashboards.note.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.note.empty)).toBeInTheDocument();
   });
 });
 
@@ -89,7 +89,7 @@ describe("WeatherWidget", () => {
     windSpeed: 4.6,
     isDay: true,
     unit: "celsius" as const,
-    label: "Рига",
+    label: "Riga",
     fetchedAt: "2026-07-30T08:00:00.000Z",
   };
 
@@ -98,16 +98,16 @@ describe("WeatherWidget", () => {
 
     expect(screen.getByText("12°C")).toBeInTheDocument();
     expect(
-      screen.getByText(ruDashboards.weather.conditions.overcast),
+      screen.getByText(enDashboards.weather.conditions.overcast),
     ).toBeInTheDocument();
-    expect(screen.getByText("Рига")).toBeInTheDocument();
+    expect(screen.getByText("Riga")).toBeInTheDocument();
   });
 
   it("falls back to the unknown condition for an unmapped code", () => {
     renderWithIntl(<WeatherWidget data={{ ...snapshot, weatherCode: 1234 }} />);
 
     expect(
-      screen.getByText(ruDashboards.weather.conditions.unknown),
+      screen.getByText(enDashboards.weather.conditions.unknown),
     ).toBeInTheDocument();
   });
 
@@ -118,8 +118,8 @@ describe("WeatherWidget", () => {
       />,
     );
 
-    expect(screen.queryByText(/Ощущается/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Ветер/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Feels like/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Wind/)).not.toBeInTheDocument();
   });
 
   it("switches the unit suffix for fahrenheit", () => {
@@ -134,7 +134,7 @@ describe("WeatherWidget", () => {
     renderWithIntl(<WeatherWidget data={null} />);
 
     expect(
-      screen.getByText(ruDashboards.weather.notConfigured),
+      screen.getByText(enDashboards.weather.notConfigured),
     ).toBeInTheDocument();
   });
 });
@@ -212,23 +212,23 @@ describe("CalendarWidget", () => {
     );
 
     // The month heading, a full 31-day grid, and the event line for the 3rd.
-    expect(screen.getByText(/июль/i)).toBeInTheDocument();
+    expect(screen.getByText(/july/i)).toBeInTheDocument();
     expect(screen.getByText("31")).toBeInTheDocument();
-    expect(screen.getByText(/Оповещения 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Alerts 2/)).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: /Открыть 2 оповещения за 3 июл/i,
+        name: /Open 2 alerts from Jul 3/i,
       }),
     ).toHaveAttribute("href", expect.stringContaining("date=2026-07-03"));
 
     const markedDay = screen.getByRole("button", {
-      name: /События за 3 июл.*3 события.*Оповещения 2.*Инциденты сервисов 1/i,
+      name: /Events on Jul 3.*3 events.*Alerts 2.*Service incidents 1/i,
     });
     await user.hover(markedDay);
 
-    expect(await screen.findByText(/События за 3 июл/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Events on Jul 3/i)).toBeInTheDocument();
     expect(
-      screen.getByText(ruDashboards.calendar.markedDayHint),
+      screen.getByText(enDashboards.calendar.markedDayHint),
     ).toBeInTheDocument();
   });
 
@@ -240,7 +240,7 @@ describe("CalendarWidget", () => {
     );
 
     expect(
-      screen.getByText(ruDashboards.calendar.noEvents),
+      screen.getByText(enDashboards.calendar.noEvents),
     ).toBeInTheDocument();
   });
 
@@ -267,7 +267,7 @@ describe("CalendarWidget", () => {
     );
 
     expect(
-      screen.getByText(ruDashboards.calendar.truncatedNote),
+      screen.getByText(enDashboards.calendar.truncatedNote),
     ).toBeInTheDocument();
   });
 });
@@ -284,7 +284,7 @@ describe("BookmarksWidget", () => {
               url: "https://grafana.example.com",
               icon: "ri-line-chart-line",
               color: null,
-              categoryName: "Прод",
+              categoryName: "Prod",
             },
           ],
           totalCount: 4,
@@ -293,13 +293,13 @@ describe("BookmarksWidget", () => {
     );
 
     expect(screen.getByText("Grafana")).toBeInTheDocument();
-    expect(screen.getByText(/и ещё 3/)).toBeInTheDocument();
+    expect(screen.getByText(/and 3 more/)).toBeInTheDocument();
   });
 
   it("shows the empty state for a category with no bookmarks", () => {
     renderWithIntl(<BookmarksWidget data={{ bookmarks: [], totalCount: 0 }} />);
 
-    expect(screen.getByText(ruDashboards.bookmarks.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.bookmarks.empty)).toBeInTheDocument();
   });
 });
 
@@ -325,10 +325,10 @@ describe("ServiceStatusWidget", () => {
     );
 
     expect(screen.getByText("API")).toBeInTheDocument();
-    expect(screen.getByText("Работает: 3")).toBeInTheDocument();
-    expect(screen.getByText("Не работает: 1")).toBeInTheDocument();
-    expect(screen.getByText("1200 мс")).toBeInTheDocument();
-    expect(screen.getByText(/и ещё 3/)).toBeInTheDocument();
+    expect(screen.getByText("Up: 3")).toBeInTheDocument();
+    expect(screen.getByText("Down: 1")).toBeInTheDocument();
+    expect(screen.getByText("1200 ms")).toBeInTheDocument();
+    expect(screen.getByText(/and 3 more/)).toBeInTheDocument();
   });
 
   it("shows the empty state when nothing is monitored", () => {
@@ -343,7 +343,7 @@ describe("ServiceStatusWidget", () => {
     );
 
     expect(
-      screen.getByText(ruDashboards.serviceStatus.empty),
+      screen.getByText(enDashboards.serviceStatus.empty),
     ).toBeInTheDocument();
   });
 });
@@ -416,7 +416,7 @@ describe("ServerMetricsWidget", () => {
 
     expect(screen.getByText("db-1")).toBeInTheDocument();
     expect(
-      screen.getByText(ruDashboards.serverMetrics.noMetrics),
+      screen.getByText(enDashboards.serverMetrics.noMetrics),
     ).toBeInTheDocument();
   });
 
@@ -426,7 +426,7 @@ describe("ServerMetricsWidget", () => {
     );
 
     expect(
-      screen.getByText(ruDashboards.serverMetrics.empty),
+      screen.getByText(enDashboards.serverMetrics.empty),
     ).toBeInTheDocument();
   });
 });
@@ -453,7 +453,7 @@ describe("MailWidget", () => {
       />,
     );
 
-    expect(screen.getByText(ruDashboards.mail.noSubject)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.mail.noSubject)).toBeInTheDocument();
     expect(screen.getByText("Ops")).toBeInTheDocument();
   });
 
@@ -470,7 +470,7 @@ describe("MailWidget", () => {
               id: "m1",
               from: "billing@example.com",
               fromName: null,
-              subject: "Счёт за хостинг",
+              subject: "Hosting invoice",
               isRead: true,
               receivedAt: new Date().toISOString(),
               accountId: "acc-1",
@@ -484,15 +484,15 @@ describe("MailWidget", () => {
 
     expect(screen.getByText("SB")).toBeInTheDocument();
     expect(
-      screen.getByText("Ящик: Support Box · support@example.com"),
+      screen.getByText("Mailbox: Support Box · support@example.com"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Счёт за хостинг")).toBeInTheDocument();
+    expect(screen.getByText("Hosting invoice")).toBeInTheDocument();
   });
 
   it("shows the empty state", () => {
     renderWithIntl(<MailWidget data={{ items: [] }} />);
 
-    expect(screen.getByText(ruDashboards.mail.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.mail.empty)).toBeInTheDocument();
   });
 });
 
@@ -510,9 +510,9 @@ describe("MessagesWidget", () => {
               id: "msg-1",
               channelId: "ch-1",
               channelName: "prod-alerts",
-              categoryName: "Инциденты",
+              categoryName: "Incidents",
               author: "Grafana",
-              content: "Диск /var заполнен на 91%",
+              content: "Disk /var is 91% full",
               isRead: false,
               createdAt: new Date().toISOString(),
             },
@@ -522,9 +522,9 @@ describe("MessagesWidget", () => {
     );
 
     expect(screen.getByText("prod-alerts")).toBeInTheDocument();
-    expect(screen.getByText(/Инциденты/)).toBeInTheDocument();
+    expect(screen.getByText(/Incidents/)).toBeInTheDocument();
     expect(screen.getByText("Grafana")).toBeInTheDocument();
-    expect(screen.getByText(/Диск \/var заполнен на 91%/)).toBeInTheDocument();
+    expect(screen.getByText(/Disk \/var is 91% full/)).toBeInTheDocument();
   });
 
   // An embed-only message from a Discord webhook has no text, and a webhook
@@ -538,7 +538,7 @@ describe("MessagesWidget", () => {
               id: "msg-2",
               channelId: "ch-1",
               channelName: "prod-alerts",
-              categoryName: "Инциденты",
+              categoryName: "Incidents",
               author: null,
               content: "",
               isRead: true,
@@ -550,17 +550,17 @@ describe("MessagesWidget", () => {
     );
 
     expect(
-      screen.getByText(ruDashboards.messages.unknownAuthor),
+      screen.getByText(enDashboards.messages.unknownAuthor),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(new RegExp(ruDashboards.messages.noContent)),
+      screen.getByText(new RegExp(enDashboards.messages.noContent)),
     ).toBeInTheDocument();
   });
 
   it("shows the empty state", () => {
     renderWithIntl(<MessagesWidget data={{ items: [] }} />);
 
-    expect(screen.getByText(ruDashboards.messages.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.messages.empty)).toBeInTheDocument();
   });
 });
 
@@ -574,8 +574,11 @@ describe("AlertsWidget", () => {
               id: "a1",
               severity: "critical",
               source: "monitor",
-              message: "Диск заполнен",
+              message: "Disk is full",
+              messageKey: null,
+              messageParams: null,
               categoryName: null,
+              categorySystemKey: null,
               timestamp: new Date().toISOString(),
             },
           ],
@@ -584,14 +587,14 @@ describe("AlertsWidget", () => {
     );
 
     expect(screen.getByText("critical")).toBeInTheDocument();
-    expect(screen.getByText("Диск заполнен")).toBeInTheDocument();
+    expect(screen.getByText("Disk is full")).toBeInTheDocument();
     expect(screen.getByText(/monitor/)).toBeInTheDocument();
   });
 
   it("shows the empty state", () => {
     renderWithIntl(<AlertsWidget data={{ items: [] }} />);
 
-    expect(screen.getByText(ruDashboards.alerts.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.alerts.empty)).toBeInTheDocument();
   });
 });
 
@@ -605,7 +608,7 @@ describe("LogsWidget", () => {
               id: "l1",
               level: "error",
               source: "api",
-              message: "500 на /orders",
+              message: "500 on /orders",
               timestamp: new Date().toISOString(),
             },
           ],
@@ -614,13 +617,13 @@ describe("LogsWidget", () => {
     );
 
     expect(screen.getByText("error")).toBeInTheDocument();
-    expect(screen.getByText("500 на /orders")).toBeInTheDocument();
+    expect(screen.getByText("500 on /orders")).toBeInTheDocument();
   });
 
   it("shows the empty state", () => {
     renderWithIntl(<LogsWidget data={{ items: [] }} />);
 
-    expect(screen.getByText(ruDashboards.logs.empty)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.logs.empty)).toBeInTheDocument();
   });
 });
 
@@ -628,7 +631,7 @@ describe("DashboardWidgetError", () => {
   it("names the failure without taking down the board", () => {
     renderWithIntl(<DashboardWidgetError message="WEATHER_UNAVAILABLE" />);
 
-    expect(screen.getByText(ruDashboards.widgetErrorTitle)).toBeInTheDocument();
+    expect(screen.getByText(enDashboards.widgetErrorTitle)).toBeInTheDocument();
     expect(screen.getByText("WEATHER_UNAVAILABLE")).toBeInTheDocument();
   });
 });

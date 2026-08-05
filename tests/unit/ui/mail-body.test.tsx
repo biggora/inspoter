@@ -49,7 +49,7 @@ describe("MailBody", () => {
     renderWithIntl(<MailBody bodyText="" bodyHtml={null} />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      "В этом письме нет текстового содержимого.",
+      "This message has no text content.",
     );
   });
 });

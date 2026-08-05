@@ -1,9 +1,7 @@
 import { db } from "@/lib/db";
 import { logError, logInfo } from "@/lib/services/logs";
+import type { SystemAlertCategoryKey } from "@/lib/services/alert-catalog";
 import * as alertsService from "./alerts";
-
-// TODO(i18n): category/message are persisted as literal Russian — migrating
-// to translation keys needs a data migration for existing rows.
 
 /**
  * What this poll changed about the provider's health:
@@ -20,8 +18,8 @@ export type ProviderHealthTransition = "began" | "recovered" | "unchanged";
 
 export async function updateProviderHealth(
   workspaceId: string,
+  categoryKey: SystemAlertCategoryKey,
   credentialId: string,
-  category: string,
   providerLabel: string,
   error: string | null,
 ): Promise<ProviderHealthTransition> {
@@ -42,17 +40,18 @@ export async function updateProviderHealth(
 
   if (error !== null && transition === "began") {
     await alertsService.create(workspaceId, {
-      category,
+      categoryKey,
       severity: "warning",
       source: providerLabel,
-      message: `Ошибка провайдера: ${error.slice(0, 200)}`,
+      messageKey: "system.providerError",
+      messageParams: { error: error.slice(0, 200) },
     });
   } else if (transition === "recovered") {
     await alertsService.create(workspaceId, {
-      category,
+      categoryKey,
       severity: "info",
       source: providerLabel,
-      message: "Провайдер снова доступен",
+      messageKey: "system.providerRecovered",
     });
   }
 
@@ -90,7 +89,7 @@ export interface SyncOutcome {
  */
 export async function recordSyncOutcomes(
   workspaceId: string,
-  category: string,
+  categoryKey: SystemAlertCategoryKey,
   operation: string,
   outcomes: SyncOutcome[],
 ): Promise<void> {
@@ -99,8 +98,8 @@ export async function recordSyncOutcomes(
       const source = `provider:${outcome.providerType.toLowerCase()}`;
       const transition = await updateProviderHealth(
         workspaceId,
+        categoryKey,
         outcome.credentialId,
-        category,
         outcome.providerType,
         outcome.error,
       ).catch((err) => {
@@ -126,7 +125,10 @@ export async function recordSyncOutcomes(
       if (transition === "began" && outcome.error) {
         logError(workspaceId, source, outcome.error, details);
       } else if (transition === "recovered") {
-        logInfo(workspaceId, source, "Провайдер снова доступен", details);
+        // Logs hold diagnostic text verbatim (the failure branch above stores
+        // the raw provider error), so this entry stays in the base language
+        // rather than going through the alert message catalog.
+        logInfo(workspaceId, source, "Provider is reachable again", details);
       }
     }),
   );

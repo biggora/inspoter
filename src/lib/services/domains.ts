@@ -240,7 +240,7 @@ export async function refreshDnsSnapshots(
     providerType: group.providerType,
     error: group.error,
   }));
-  await recordSyncOutcomes(workspaceId, "DNS", "listDomains", outcomes);
+  await recordSyncOutcomes(workspaceId, "dns", "listDomains", outcomes);
 }
 
 export async function listDomains(

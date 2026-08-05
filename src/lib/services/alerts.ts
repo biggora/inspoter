@@ -10,6 +10,13 @@ import {
   normalizeLabelDisplayName,
   normalizeLabelName,
 } from "@/lib/label-normalization";
+import {
+  renderSystemAlertMessage,
+  SYSTEM_ALERT_CATEGORY_NAMES,
+  type SystemAlertCategoryKey,
+  type SystemAlertMessageKey,
+  type SystemAlertMessageParams,
+} from "@/lib/services/alert-catalog";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
 import { MAX_BULK_ALERTS } from "@/lib/validation/alerts";
 
@@ -30,17 +37,35 @@ export class AlertCategoryNotFoundError extends Error {
   }
 }
 
-export interface CreateAlertInput {
-  /**
-   * Optional: a third-party sender that has no notion of categories still
-   * gets its alert stored, uncategorized, rather than a 400.
-   */
-  category?: string;
+/**
+ * Category and message are chosen independently: a system producer files into
+ * a keyed category but may still carry a probe's verbatim diagnostic, which is
+ * observed detail rather than prose anyone can translate.
+ *
+ * The `messageKey` variant is what makes an alert translatable — `message` is
+ * derived from the key, so the stored English text and the locale the operator
+ * reads can never disagree.
+ */
+export type CreateAlertInput = {
   severity: string;
   source: string;
-  message: string;
   timestamp?: string;
-}
+  /**
+   * Free-form name from a webhook sender. Optional: a third party that has no
+   * notion of categories still gets its alert stored, uncategorized, rather
+   * than a 400.
+   */
+  category?: string;
+  /** One of Inspoter's own categories. Takes precedence over `category`. */
+  categoryKey?: SystemAlertCategoryKey;
+} & (
+  | { message: string; messageKey?: never; messageParams?: never }
+  | {
+      messageKey: SystemAlertMessageKey;
+      messageParams?: SystemAlertMessageParams;
+      message?: never;
+    }
+);
 
 export interface ListAlertsParams {
   cursor?: string;
@@ -99,9 +124,17 @@ export async function create(
   workspaceId: string,
   input: CreateAlertInput,
 ): Promise<{ id: string }> {
-  const category = input.category
-    ? await upsertCategoryByName(workspaceId, input.category)
-    : null;
+  const category = input.categoryKey
+    ? await upsertSystemCategory(workspaceId, input.categoryKey)
+    : input.category
+      ? await upsertCategoryByName(workspaceId, input.category)
+      : null;
+
+  // Always the English base wording, whether it came from a sender verbatim or
+  // from the system catalog — one text for search, webhooks, backups and MCP.
+  const message = input.messageKey
+    ? renderSystemAlertMessage(input.messageKey, input.messageParams)
+    : input.message;
 
   const entry = await db.alert.create({
     data: {
@@ -111,7 +144,9 @@ export async function create(
       categorySource: category ? AlertCategorySource.WEBHOOK : null,
       severity: input.severity,
       source: input.source,
-      message: input.message,
+      message,
+      messageKey: input.messageKey ?? null,
+      messageParams: input.messageParams ?? Prisma.DbNull,
       ...(input.timestamp ? { timestamp: new Date(input.timestamp) } : {}),
     },
   });
@@ -119,7 +154,7 @@ export async function create(
     alertId: entry.id,
     severity: input.severity,
     source: input.source,
-    message: input.message,
+    message,
     // Null for a payload that carried no category — subscribers that used to
     // rely on this field always being present must tolerate it.
     category: category?.name ?? null,
@@ -146,6 +181,30 @@ export async function upsertCategoryByName(
   return db.alertCategory.upsert({
     where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
     create: { name, normalizedName, workspaceId },
+    update: { normalizedName },
+  });
+}
+
+/**
+ * The get-or-create used by Inspoter's own alert producers. Same atomic upsert
+ * as above, plus the `systemKey` marker that tells the UI to render the
+ * translated label instead of the stored English name.
+ *
+ * The `update` branch is a no-op write (same reason as above: it forces
+ * INSERT ... ON CONFLICT DO UPDATE) and touches neither `name` nor
+ * `systemKey`. An existing row belongs to whoever made it — an operator who
+ * renamed it, or a webhook sender who happened to pick the same word — and
+ * refiling into it must not relabel it behind their back.
+ */
+export async function upsertSystemCategory(
+  workspaceId: string,
+  key: SystemAlertCategoryKey,
+): Promise<AlertCategory> {
+  const name = SYSTEM_ALERT_CATEGORY_NAMES[key];
+  const normalizedName = normalizeLabelName(name);
+  return db.alertCategory.upsert({
+    where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
+    create: { name, normalizedName, workspaceId, systemKey: key },
     update: { normalizedName },
   });
 }
@@ -354,6 +413,9 @@ export async function renameCategory(
     data: {
       name: normalizeLabelDisplayName(name),
       normalizedName: normalizeLabelName(name),
+      // Renaming makes the category the operator's own: the UI must show what
+      // they typed, in every locale, instead of the built-in translation.
+      systemKey: null,
     },
   });
 }

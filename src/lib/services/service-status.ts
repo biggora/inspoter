@@ -1,7 +1,7 @@
 import { ServiceStatus } from "@/generated/prisma/client";
 
 // Pure, dependency-free status-flip logic for Services monitoring
-// (plan.md "Логика проверок"). Kept separate from services.ts so it's
+// (plan.md "check logic"). Kept separate from services.ts so it's
 // trivially unit-testable without touching Prisma.
 
 export interface CurrentState {

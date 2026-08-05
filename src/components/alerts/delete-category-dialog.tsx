@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { alertCategoriesApi, type AlertCategoryDto } from "./api";
+import { categoryLabel } from "./localize";
 
 interface DeleteCategoryDialogProps {
   category: AlertCategoryDto | null;
@@ -52,7 +53,9 @@ export function DeleteCategoryDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {t("deleteCategoryTitle", { name: category?.name ?? "" })}
+            {t("deleteCategoryTitle", {
+              name: category ? categoryLabel(category, t) : "",
+            })}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {t("deleteCategoryDescription")}

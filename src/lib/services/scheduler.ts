@@ -4,8 +4,8 @@ import { runCheck } from "./monitor-checks";
 import { listDueForCheck, applyCheckResult } from "./services";
 import { logError } from "@/lib/services/logs";
 
-// In-process scheduler for Services checks (plan.md "Планировщик
-// проверок"). The app is deployed as a single long-lived Node process
+// In-process scheduler for Services checks (plan.md "check scheduler").
+// The app is deployed as a single long-lived Node process
 // (`next start` in Docker, no serverless/cron/queue infra), which makes a
 // plain setInterval viable — see plan.md's Context section.
 

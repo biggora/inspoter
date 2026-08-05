@@ -17,8 +17,8 @@ import {
 } from "./service-labels";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
-// Sole Prisma caller for Service/ServiceCheck (plan.md "Слой сервиса, API,
-// валидация"), by the same conventions as src/lib/services/bookmarks.ts and
+// Sole Prisma caller for Service/ServiceCheck (plan.md "service layer, API,
+// validation"), by the same conventions as src/lib/services/bookmarks.ts and
 // src/lib/services/alerts.ts.
 
 export class ServiceNotFoundError extends Error {
@@ -335,7 +335,7 @@ export async function listChecks(
 }
 
 // Shared by both checkNow() (manual trigger) and scheduler.ts (tick) so the
-// flip-detection logic is never duplicated (plan.md "Планировщик проверок").
+// flip-detection logic is never duplicated (plan.md "check scheduler").
 export async function applyCheckResult(
   service: Service,
   outcome: CheckOutcome,
@@ -369,17 +369,30 @@ export async function applyCheckResult(
   // failed Alert write leaves the service on its old status and the next
   // check retries the same flip.
   if (result.flipped) {
-    // TODO(i18n): category/message are persisted to the DB as literal Russian text — migrating to translation keys needs a data migration for existing rows, out of scope for Phase C.
-    await alertsService.create(service.workspaceId, {
-      category: "Сервисы",
-      severity: result.status === ServiceStatus.DOWN ? "critical" : "info",
-      source: service.name,
-      message:
-        outcome.message ??
-        (result.status === ServiceStatus.DOWN
-          ? "Сервис недоступен"
-          : "Сервис снова доступен"),
-    });
+    const severity = result.status === ServiceStatus.DOWN ? "critical" : "info";
+    // A probe that explained itself ("Unexpected status code 429…") wins over
+    // the generic wording, and its diagnostic stays verbatim — it is raw
+    // observed detail, not prose we can translate. Only the fallback, which is
+    // ours, goes through the message catalog.
+    await alertsService.create(
+      service.workspaceId,
+      outcome.message
+        ? {
+            categoryKey: "services",
+            severity,
+            source: service.name,
+            message: outcome.message,
+          }
+        : {
+            categoryKey: "services",
+            severity,
+            source: service.name,
+            messageKey:
+              result.status === ServiceStatus.DOWN
+                ? "system.serviceDown"
+                : "system.serviceUp",
+          },
+    );
     await emitWebhookEvent(service.workspaceId, "SERVICE_STATUS", {
       serviceId: service.id,
       name: service.name,

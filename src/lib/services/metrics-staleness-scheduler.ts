@@ -28,13 +28,12 @@ async function tick(): Promise<void> {
     });
 
     for (const server of goneStale) {
-      // TODO(i18n)
       alertsService
         .create(server.workspaceId, {
-          category: "Серверы",
+          categoryKey: "servers",
           severity: "warning",
           source: server.displayName,
-          message: "Метрики агента не поступают",
+          messageKey: "system.metricsStale",
         })
         .catch((err) => {
           // Alert write failed — record it so the lost "agent went stale"
@@ -66,13 +65,12 @@ async function tick(): Promise<void> {
     });
 
     for (const server of recovered) {
-      // TODO(i18n)
       alertsService
         .create(server.workspaceId, {
-          category: "Серверы",
+          categoryKey: "servers",
           severity: "info",
           source: server.displayName,
-          message: "Метрики агента восстановлены",
+          messageKey: "system.metricsRecovered",
         })
         .catch((err) => {
           // Alert write failed — record it so the lost "agent recovered"

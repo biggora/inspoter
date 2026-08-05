@@ -9,7 +9,7 @@ import { login } from "./utils/auth";
 //
 // Widgets used here read only the app's own data — the weather tile is excluded
 // because its payload would require an outbound call to api.open-meteo.com.
-const WIDGETS = ["Часы и дата", "Заметка", "Статусы сервисов", "Логи"];
+const WIDGETS = ["Clock and date", "Note", "Service status", "Logs"];
 
 async function selectTheme(page: Page, theme: "light" | "dark") {
   await page.evaluate((value) => localStorage.setItem("theme", value), theme);
@@ -49,36 +49,34 @@ test("a populated dashboard renders in light and dark, and collapses to one colu
   // only when the workspace has no dashboards yet, so fall back to the action
   // menu — this suite must not depend on what other specs left behind.
   const emptyStateButton = page.getByRole("button", {
-    name: "Создать дашборд",
+    name: "Create dashboard",
     exact: true,
   });
   if (await emptyStateButton.isVisible().catch(() => false)) {
     await emptyStateButton.click();
   } else {
     await page
-      .getByRole("button", { name: "Действия с дашбордом", exact: true })
+      .getByRole("button", { name: "Dashboard actions", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Новый дашборд", exact: true })
+      .getByRole("menuitem", { name: "New dashboard", exact: true })
       .click();
   }
-  await page.getByLabel("Название", { exact: true }).fill("Обзор");
+  await page.getByLabel("Name", { exact: true }).fill("Overview");
   const created = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/dashboards" &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   const dashboardId = ((await (await created).json()) as { id: string }).id;
 
-  await page
-    .getByRole("button", { name: "Редактировать", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   for (const widget of WIDGETS) {
     const isFirst = widget === WIDGETS[0];
     await page
       .getByRole("button", {
-        name: isFirst ? "Добавить первый виджет" : "Добавить виджет",
+        name: isFirst ? "Add the first widget" : "Add widget",
         exact: true,
       })
       .click();
@@ -90,9 +88,9 @@ test("a populated dashboard renders in light and dark, and collapses to one colu
     );
     await page.getByRole("button", { name: new RegExp(`^${widget}`) }).click();
     await added;
-    await page.getByRole("button", { name: "Отмена", exact: true }).click();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
   }
-  await page.getByRole("button", { name: "Готово", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
 
   const tiles = page.locator('[data-slot="dashboard-grid-item"]');
   await expect(tiles).toHaveCount(WIDGETS.length);

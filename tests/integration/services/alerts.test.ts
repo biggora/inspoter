@@ -82,7 +82,7 @@ describe("AC-ALR-007: create() with category auto-upsert", () => {
 
   // The Services scheduler checks up to CHUNK_SIZE services per tick inside a
   // single Promise.all, so several services flipping at once race on the very
-  // first "Сервисы" category of a workspace. A non-atomic find-then-create
+  // first "Services" category of a workspace. A non-atomic find-then-create
   // loses every loser of that race to a unique-constraint violation.
   it("does not lose alerts when concurrent creates race on the same new category", async () => {
     const categoryName = `${NAME_PREFIX}-concurrent`;

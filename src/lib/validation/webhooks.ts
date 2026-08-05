@@ -4,12 +4,11 @@ import { z } from "zod";
 // Single source of input validation for the webhook pipeline. Only `log` is
 // registered in Slice 4 — mail/message/alert are added in Slices 5-7.
 //
-// TODO(i18n): messages here stay English — they surface in JSON API
-// responses to external/third-party callers hitting /api/webhooks/[type]
-// (Bearer-token authenticated, no session and no Russian dashboard UI in the
-// loop at all), not the dashboard UI. This migration's Phase C deliberately
-// doesn't touch API error-message consistency for third-party payloads; this
-// is an intentional carve-out, not an oversight.
+// Messages here are inline literals rather than catalog entries: they surface
+// in JSON API responses to external/third-party callers hitting
+// /api/webhooks/[type] (Bearer-token authenticated, no session in the loop at
+// all), never in the dashboard, and their wording is part of that public wire
+// contract.
 
 const logSchema = z.object({
   level: z.string().trim().min(1, "level is required"),

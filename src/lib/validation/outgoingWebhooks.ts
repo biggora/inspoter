@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
 import {
   OutgoingWebhookEvent,
   OutgoingWebhookFormat,
 } from "@/generated/prisma/client";
 
-// UI-facing (settings > outgoing webhooks form) — Russian messages surface as
+// UI-facing (settings > outgoing webhooks form) — these messages surface as
 // fieldErrors there. Mirrors src/lib/validation/webhookTokens.ts.
 
 export const OUTGOING_WEBHOOK_EVENTS = [
@@ -17,7 +17,7 @@ export const OUTGOING_WEBHOOK_EVENTS = [
 ] as const;
 
 const eventSchema = z.enum(OutgoingWebhookEvent, {
-  error: () => VALIDATION_RU.outgoingWebhook.eventInvalid,
+  error: () => VALIDATION_MESSAGES.outgoingWebhook.eventInvalid,
 });
 
 export const createOutgoingWebhookSchema = z
@@ -25,14 +25,16 @@ export const createOutgoingWebhookSchema = z
     name: z
       .string()
       .trim()
-      .min(1, { error: () => VALIDATION_RU.outgoingWebhook.nameRequired })
-      .max(80, { error: () => VALIDATION_RU.outgoingWebhook.nameTooLong }),
+      .min(1, { error: () => VALIDATION_MESSAGES.outgoingWebhook.nameRequired })
+      .max(80, {
+        error: () => VALIDATION_MESSAGES.outgoingWebhook.nameTooLong,
+      }),
     url: z
       .string()
       .trim()
-      .min(1, { error: () => VALIDATION_RU.outgoingWebhook.urlRequired })
+      .min(1, { error: () => VALIDATION_MESSAGES.outgoingWebhook.urlRequired })
       .refine((value) => /^https:\/\//i.test(value), {
-        error: () => VALIDATION_RU.outgoingWebhook.urlInvalid,
+        error: () => VALIDATION_MESSAGES.outgoingWebhook.urlInvalid,
       })
       .refine(
         (value) => {
@@ -43,17 +45,17 @@ export const createOutgoingWebhookSchema = z
             return false;
           }
         },
-        { error: () => VALIDATION_RU.outgoingWebhook.urlInvalid },
+        { error: () => VALIDATION_MESSAGES.outgoingWebhook.urlInvalid },
       ),
-    events: z
-      .array(eventSchema)
-      .min(1, { error: () => VALIDATION_RU.outgoingWebhook.eventsRequired }),
+    events: z.array(eventSchema).min(1, {
+      error: () => VALIDATION_MESSAGES.outgoingWebhook.eventsRequired,
+    }),
     isActive: z.boolean().default(true),
     // Wire format (specs/discord-webhook-compatibility.md §6-§7). Optional so
     // the pre-Discord request body still validates unchanged.
     format: z
       .enum(OutgoingWebhookFormat, {
-        error: () => VALIDATION_RU.outgoingWebhook.formatInvalid,
+        error: () => VALIDATION_MESSAGES.outgoingWebhook.formatInvalid,
       })
       .optional(),
   })

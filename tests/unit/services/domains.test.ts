@@ -174,7 +174,7 @@ describe("listDomains()", () => {
     expect(cloudflareResult?.domains).toEqual([]);
     expect(mockState.recordSyncOutcomes).toHaveBeenCalledWith(
       WORKSPACE_ID,
-      "DNS",
+      "dns",
       "listDomains",
       expect.arrayContaining([
         {

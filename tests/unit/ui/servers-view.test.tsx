@@ -84,9 +84,9 @@ describe("ServersView destructive actions", () => {
     renderWithIntl(<ServersView />);
 
     const addProvider = await screen.findByRole("button", {
-      name: "Добавить провайдера",
+      name: "Add provider",
     });
-    const refresh = screen.getByRole("button", { name: "Обновить" });
+    const refresh = screen.getByRole("button", { name: "Refresh" });
 
     expect(
       addProvider.compareDocumentPosition(refresh) &
@@ -99,23 +99,23 @@ describe("ServersView destructive actions", () => {
     await user.click(addProvider);
 
     expect(
-      screen.getByRole("heading", { name: "Добавить провайдера" }),
+      screen.getByRole("heading", { name: "Add provider" }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("combobox", { name: "Провайдер" }));
+    await user.click(screen.getByRole("combobox", { name: "Provider" }));
     await user.click(
-      await screen.findByRole("option", { name: "Hetzner Cloud (Хостинг)" }),
+      await screen.findByRole("option", { name: "Hetzner Cloud (Hosting)" }),
     );
-    await user.type(screen.getByLabelText("Название"), "Основной Hetzner");
-    await user.type(screen.getByLabelText("API-токен"), "token-value");
-    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+    await user.type(screen.getByLabelText("Name"), "Primary Hetzner");
+    await user.type(screen.getByLabelText("API token"), "token-value");
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(credentialsMocks.create).toHaveBeenCalledTimes(1),
     );
     expect(credentialsMocks.create).toHaveBeenCalledWith({
       provider: "HETZNER_CLOUD",
-      label: "Основной Hetzner",
+      label: "Primary Hetzner",
       apiToken: "token-value",
     });
     await waitFor(() =>
@@ -128,16 +128,16 @@ describe("ServersView destructive actions", () => {
     renderWithIntl(<ServersView />);
 
     const trigger = await screen.findByRole("button", {
-      name: "Перезапустить",
+      name: "Restart",
     });
 
     await user.click(trigger);
     expect(
       screen.getByRole("heading", {
-        name: "Перезапустить «web-prod-01»?",
+        name: 'Restart "web-prod-01"?',
       }),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Отмена" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(apiMocks.powerAction).not.toHaveBeenCalled();
@@ -152,21 +152,21 @@ describe("ServersView destructive actions", () => {
   it.each([
     {
       initialStatus: "stopped",
-      triggerName: "Запустить",
+      triggerName: "Start",
       action: "start",
-      pendingName: "Запускается…",
+      pendingName: "Starting…",
     },
     {
       initialStatus: "running",
-      triggerName: "Остановить",
+      triggerName: "Stop",
       action: "stop",
-      pendingName: "Останавливается…",
+      pendingName: "Stopping…",
     },
     {
       initialStatus: "running",
-      triggerName: "Перезапустить",
+      triggerName: "Restart",
       action: "restart",
-      pendingName: "Перезапускается…",
+      pendingName: "Restarting…",
     },
   ] as const)(
     "confirms $action once and leaves a focused card with a disabled pending action",
@@ -182,7 +182,7 @@ describe("ServersView destructive actions", () => {
       await user.click(
         await screen.findByRole("button", { name: triggerName }),
       );
-      await user.click(screen.getByRole("button", { name: "Подтвердить" }));
+      await user.click(screen.getByRole("button", { name: "Confirm" }));
 
       const pendingButton = await screen.findByRole("button", {
         name: pendingName,
@@ -192,7 +192,7 @@ describe("ServersView destructive actions", () => {
 
       await waitFor(() => {
         const card = screen.getByRole("group", {
-          name: "Сервер «web-prod-01»",
+          name: 'Server "web-prod-01"',
         });
         expect(card.contains(document.activeElement)).toBe(true);
       });
@@ -212,13 +212,13 @@ describe("ServersView destructive actions", () => {
     renderWithIntl(<ServersView />);
 
     const card = await screen.findByRole("group", {
-      name: "Сервер «web-prod-01»",
+      name: 'Server "web-prod-01"',
     });
     expect(card.querySelectorAll("[data-slot='usage-meter']")).toHaveLength(0);
     expect(screen.getByText("2 vCPU")).toBeInTheDocument();
     expect(screen.getByText("4 GB")).toBeInTheDocument();
     expect(screen.getByText("40 GB")).toBeInTheDocument();
-    expect(screen.getByText("Мониторинг не подключён")).toBeInTheDocument();
+    expect(screen.getByText("Monitoring not connected")).toBeInTheDocument();
   });
 
   it("merges live metrics into one metered resource section", async () => {
@@ -250,17 +250,17 @@ describe("ServersView destructive actions", () => {
     renderWithIntl(<ServersView />);
 
     const card = await screen.findByRole("group", {
-      name: "Сервер «web-prod-01»",
+      name: 'Server "web-prod-01"',
     });
 
-    // One resource section, not a provider block plus a "Метрики" block.
-    expect(screen.queryByText("Метрики")).not.toBeInTheDocument();
+    // One resource section, not a provider block plus a "Metrics" block.
+    expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
     expect(screen.getByText("21.1% · 2 vCPU")).toBeInTheDocument();
     expect(screen.getByText("1.8 / 3.7 GB · 48%")).toBeInTheDocument();
     expect(screen.getByText("28.0 / 74.8 GB · 37%")).toBeInTheDocument();
     expect(screen.getByText("1.33 / 1.39 / 1.67")).toBeInTheDocument();
     expect(screen.getByText("86d 10h")).toBeInTheDocument();
-    expect(screen.getByText(/^Обновлено \d+s ago$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Updated \d+s ago$/)).toBeInTheDocument();
 
     // The provider's nominal RAM and disk figures no longer duplicate the
     // agent's real totals.
@@ -295,7 +295,7 @@ describe("ServersView destructive actions", () => {
     const user = userEvent.setup();
     renderWithIntl(<ServersView />);
 
-    await user.click(await screen.findByRole("button", { name: "Повторить" }));
+    await user.click(await screen.findByRole("button", { name: "Retry" }));
 
     expect(await screen.findByText("web-prod-01")).toBeInTheDocument();
     expect(apiMocks.refreshServers).toHaveBeenCalledTimes(1);
