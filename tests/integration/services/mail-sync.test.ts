@@ -192,7 +192,10 @@ describe("syncAccount — incremental sync", () => {
     const driver = new MockMailDriver(account.id);
     await driver.append(
       "INBOX",
-      Buffer.from("Subject: New message\r\n\r\nТело нового письма.", "utf8"),
+      Buffer.from(
+        "Subject: New message\r\n\r\nBody of the new message.",
+        "utf8",
+      ),
       [],
     );
 
@@ -236,7 +239,7 @@ describe("syncAccount — shared Mail filter evaluator", () => {
 
   it("applies canonical subject matches on initial and UIDVALIDITY re-import", async () => {
     const account = await createMockAccount("filter-inbox");
-    const label = await createSubjectRule(account.id, " ОТЧЁТ ");
+    const label = await createSubjectRule(account.id, " WEEKLY REPORT ");
 
     await syncAccount(account.id, workspaceId);
     const firstAssignments = await db.mailItemLabel.findMany({
@@ -247,7 +250,7 @@ describe("syncAccount — shared Mail filter evaluator", () => {
     expect(
       firstAssignments.every(
         ({ mailItem }) =>
-          mailItem.subject === "Отчёт за неделю" &&
+          mailItem.subject === "Weekly report" &&
           mailItem.attachments.length === 1,
       ),
     ).toBe(true);
@@ -613,7 +616,7 @@ describe("syncAccount — errors and scoping", () => {
     listFolders.mockRestore();
   });
 
-  it("never touches data of другого workspace", async () => {
+  it("never touches data of another workspace", async () => {
     const foreignAccount = await createMockAccount(
       "isolated",
       otherWorkspaceId,
@@ -684,7 +687,7 @@ describe("syncAccount — failure streak and alerts", () => {
     await expect.poll(async () => (await alertsFor(email)).length).toBe(1);
     const [alert] = await alertsFor(email);
     expect(alert.severity).toBe("critical");
-    expect(alert.message).toContain("Ошибка синхронизации");
+    expect(alert.message).toContain("Sync error");
 
     // Still broken on the next tick — the alert must not repeat.
     expect((await syncAccount(account.id, workspaceId)).status).toBe("error");
@@ -723,7 +726,7 @@ describe("syncAccount — failure streak and alerts", () => {
     await expect.poll(async () => (await alertsFor(email)).length).toBe(1);
     const [alert] = await alertsFor(email);
     expect(alert.severity).toBe("info");
-    expect(alert.message).toBe("Синхронизация восстановлена");
+    expect(alert.message).toBe("Sync restored");
 
     // A second healthy sync is not a transition — no second alert.
     expect((await syncAccount(account.id, workspaceId)).status).toBe("synced");

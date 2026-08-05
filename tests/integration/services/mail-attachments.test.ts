@@ -21,7 +21,7 @@ import {
 // Phase 7 attachment service tests against the deterministic MOCK driver
 // (pattern: tests/unit/services/mail-actions.test.ts). The mock INBOX seeds
 // attachments on uids 1/11/21 (partId "2", text/plain, deterministic body
-// «Содержимое вложения №N (детерминированное).»).
+// "Attachment #N contents (deterministic).").
 
 // Every test starts by syncing 30 mock messages into the DB — comfortably
 // slower than the 5s default on a busy test container.
@@ -47,7 +47,7 @@ async function createSyncedAccount(name: string) {
   return account;
 }
 
-// Item + attachment row for mock uid 1 (subject «Отчёт за неделю»,
+// Item + attachment row for mock uid 1 (subject "Weekly report",
 // attachment document-1.txt).
 async function attachmentForUid1(accountId: string) {
   const inbox = await db.mailFolder.findFirst({
@@ -107,7 +107,7 @@ describe("getAttachmentContent", () => {
     expect(result.filename).toBe("document-1.txt");
     expect(result.contentType).toBe("text/plain");
     expect(result.content.toString("utf8")).toBe(
-      "Содержимое вложения №1 (детерминированное).",
+      "Attachment #1 contents (deterministic).",
     );
 
     const stored = await db.mailAttachment.findUnique({
@@ -115,7 +115,7 @@ describe("getAttachmentContent", () => {
     });
     expect(stored?.fetchedAt).not.toBeNull();
     expect(Buffer.from(stored!.content!).toString("utf8")).toBe(
-      "Содержимое вложения №1 (детерминированное).",
+      "Attachment #1 contents (deterministic).",
     );
   });
 
@@ -142,7 +142,7 @@ describe("getAttachmentContent", () => {
       workspaceId,
     );
     expect(result.content.toString("utf8")).toBe(
-      "Содержимое вложения №1 (детерминированное).",
+      "Attachment #1 contents (deterministic).",
     );
   });
 

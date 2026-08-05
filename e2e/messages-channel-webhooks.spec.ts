@@ -302,7 +302,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       .getByRole("menuitem", { name: "Channel settings", exact: true })
       .click();
     const settingsDialog = memberPage.getByRole("dialog", {
-      name: `Channel settings #${fixture.channel.name}`,
+      name: `Settings for channel #${fixture.channel.name}`,
       exact: true,
     });
     await expect(settingsDialog).toBeVisible();
@@ -313,7 +313,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
     await expect(rowActions).toBeFocused();
 
     const headerSettings = memberPage.getByRole("button", {
-      name: `Channel settings "${fixture.channel.name}"`,
+      name: `Settings for channel "${fixture.channel.name}"`,
       exact: true,
     });
     await headerSettings.click();
@@ -328,7 +328,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       .getByRole("button", { name: "Create webhook", exact: true })
       .click();
 
-    const urlField = settingsDialog.getByLabel("URL webhook", { exact: true });
+    const urlField = settingsDialog.getByLabel("Webhook URL", { exact: true });
     const curlField = settingsDialog.getByLabel("Ready-made cURL command", {
       exact: true,
     });
@@ -545,7 +545,7 @@ async function runMobileSheetAssertions(page: Page, fixture: MessageFixture) {
     .getByRole("menuitem", { name: "Channel settings", exact: true })
     .click();
   const settingsDialog = page.getByRole("dialog", {
-    name: `Channel settings #${fixture.channel.name}`,
+    name: `Settings for channel #${fixture.channel.name}`,
     exact: true,
   });
   await expect(settingsDialog).toBeVisible();

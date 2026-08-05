@@ -158,7 +158,7 @@ test("owner can validate, add, and remove a workspace member", async ({
           `/api/workspaces/${workspaceId}/members/${memberId}` &&
         response.request().method() === "DELETE",
     );
-    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("button", { name: "Remove", exact: true }).click();
     expect((await deleteResponsePromise).status()).toBe(204);
     memberId = undefined;
     await expect(page.getByText(username, { exact: true })).toHaveCount(0);

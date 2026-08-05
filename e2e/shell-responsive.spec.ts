@@ -36,7 +36,7 @@ test("PageHeader keeps the alerts title and actions inside the viewport", async 
       name: "Manage categories",
       exact: true,
     }),
-    header.getByRole("button", { name: "New Category", exact: true }),
+    header.getByRole("button", { name: "New category", exact: true }),
   ];
 
   await expect(title).toHaveText("Alerts");

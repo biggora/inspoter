@@ -164,11 +164,15 @@ test("mail client shows folders with unread badges, reads a message, switches fo
     await expect(
       accountDialog.getByRole("heading", { name: "Add account" }),
     ).toBeVisible();
-    await accountDialog.getByLabel("Name").fill("Draft account");
+    await accountDialog
+      .getByLabel("Name", { exact: true })
+      .fill("Draft account");
     await accountDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(accountDialog).toBeHidden();
     await addAccountButton.click();
-    await expect(accountDialog.getByLabel("Name")).toHaveValue("");
+    await expect(accountDialog.getByLabel("Name", { exact: true })).toHaveValue(
+      "",
+    );
     await accountDialog.getByRole("button", { name: "Cancel" }).click();
 
     // Sidebar: the MOCK IMAP account is preselected over the webhook one,
@@ -289,7 +293,12 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
     ).toBeVisible();
 
     // Archive the open message: row leaves INBOX and shows up in Archive.
-    await page.getByRole("button", { name: "Archive", exact: true }).click();
+    // Both the message-pane action and the sidebar folder are labelled
+    // "Archive" in the base locale, so the action is scoped to the pane.
+    await page
+      .locator('[data-slot="message-pane"]')
+      .getByRole("button", { name: "Archive", exact: true })
+      .click();
     await expect(
       page.getByText("Message moved to archive").first(),
     ).toBeVisible();
@@ -365,7 +374,7 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
       mimeType: "text/plain",
       buffer: Buffer.from("draft attachment"),
     });
-    await expect(page.getByText("Attachments added: 1").first()).toBeVisible();
+    await expect(page.getByText("1 attachment added").first()).toBeVisible();
     await draftDialog
       .getByRole("button", { name: "Close composer", exact: true })
       .click();
@@ -413,7 +422,7 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
       replyComposer.getByRole("heading", { name: "Reply" }),
     ).toBeVisible();
     await expect(replyComposer.getByLabel("To", { exact: true })).toHaveValue(
-      "e.sokolova@example.ru",
+      "e.sokolova@example.com",
     );
     await expect(
       replyComposer.getByLabel("Subject", { exact: true }),

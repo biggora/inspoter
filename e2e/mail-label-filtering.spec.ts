@@ -434,7 +434,7 @@ test("owner creates a standalone label with a chosen color", async ({
     );
     await switchWorkspace(page, originalWorkspaceId, workspaceId);
     switched = true;
-    await page.goto("/ru/mail");
+    await page.goto("/mail");
 
     const trigger = page.getByRole("button", {
       name: "Manage labels",
@@ -527,7 +527,7 @@ test("exact-sender tracer labels only future matching webhook mail", async ({
       body: "Open this message to define the exact-sender rule.",
     });
 
-    await page.goto("/ru/mail");
+    await page.goto("/mail");
     const list = page.getByRole("list", { name: "Message list" });
     const seedRow = list.getByRole("button", { name: new RegExp(seedSubject) });
     await expect(seedRow).toBeVisible();
@@ -653,7 +653,7 @@ test("existing-mail run labels historical matches and exposes terminal progress"
       body: "This historical message must remain unlabeled.",
     });
 
-    await page.goto("/ru/mail");
+    await page.goto("/mail");
     const list = page.getByRole("list", { name: "Message list" });
     await list
       .getByRole("button", { name: new RegExp(matchingSubject) })
@@ -828,7 +828,7 @@ test("rule edit, disable, enable, and delete change only future behavior", async
       body: "Create and manage a future-message rule from this seed.",
     });
 
-    await page.goto("/ru/mail");
+    await page.goto("/mail");
     const list = page.getByRole("list", { name: "Message list" });
     await list.getByRole("button", { name: new RegExp(seedSubject) }).click();
     await page
@@ -944,7 +944,7 @@ test("rule edit, disable, enable, and delete change only future behavior", async
       .getByRole("listitem")
       .filter({ hasText: ruleName });
     await ruleRow
-      .getByRole("button", { name: `Remove ${ruleName}`, exact: true })
+      .getByRole("button", { name: `Delete ${ruleName}`, exact: true })
       .click();
     const confirm = page.getByRole("alertdialog", {
       name: "Delete filter rule?",
@@ -1052,7 +1052,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       body: "This message remains unlabeled.",
     });
 
-    await page.goto("/ru/mail");
+    await page.goto("/mail");
     if (testInfo.project.name === "desktop-1440") {
       const initialAccountSelect = page.getByRole("combobox", {
         name: "Mail account",
@@ -1311,7 +1311,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       );
       memberContext = memberSession.context;
       const memberPage = memberSession.page;
-      await memberPage.goto("/ru/mail");
+      await memberPage.goto("/mail");
       const memberAccountSelect = memberPage.getByRole("combobox", {
         name: "Mail account",
         exact: true,

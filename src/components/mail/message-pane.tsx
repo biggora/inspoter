@@ -221,7 +221,13 @@ export function MessagePane({
   const displayName = detail.fromName || detail.from;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
+    // Slot marker: the pane's actions ("Archive", "Delete") share their
+    // wording with the sidebar's folder buttons, so a test asserting on one of
+    // them needs a container to scope to.
+    <div
+      data-slot="message-pane"
+      className="flex h-full min-h-0 flex-col overflow-y-auto"
+    >
       <BackButton onBack={onBack} />
       <div className="border-b border-background-100 px-6 py-5">
         <h2 className="mb-3 font-heading text-lg font-semibold text-foreground-900">

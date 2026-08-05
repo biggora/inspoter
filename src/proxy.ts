@@ -61,6 +61,21 @@ function stripLocalePrefix(pathname: string): string {
   return pathname;
 }
 
+/**
+ * The `/<locale>` the request spelled out, or "" when it used the unprefixed
+ * default-locale form. The login redirect below carries it so an operator who
+ * asked for a specific locale is not silently bounced into whichever one their
+ * browser prefers.
+ */
+function localePrefixOf(pathname: string): string {
+  for (const locale of routing.locales) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return `/${locale}`;
+    }
+  }
+  return "";
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
@@ -82,7 +97,7 @@ export function proxy(request: NextRequest) {
 
   if (request.cookies.has(SESSION_COOKIE_NAME)) return response;
 
-  const loginUrl = new URL("/login", request.url);
+  const loginUrl = new URL(`${localePrefixOf(pathname)}/login`, request.url);
   loginUrl.searchParams.set("next", localizedPathname);
   return NextResponse.redirect(loginUrl);
 }

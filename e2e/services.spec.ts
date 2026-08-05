@@ -238,7 +238,7 @@ test("service cards preserve actions and heading hierarchy across tablet and des
       await expectInsideHorizontally(
         card,
         card.getByRole("button", {
-          name: `Remove "${name}"`,
+          name: `Delete "${name}"`,
           exact: true,
         }),
       );
@@ -515,10 +515,10 @@ test("deleting a service removes it from the list without a full reload", async 
   const id = await createHttpService(page, { name, url });
 
   await serviceCard(page, name)
-    .getByRole("button", { name: `Remove "${name}"`, exact: true })
+    .getByRole("button", { name: `Delete "${name}"`, exact: true })
     .click();
   await expect(
-    page.getByText(`Remove "${name}"?`, { exact: true }),
+    page.getByText(`Delete "${name}"?`, { exact: true }),
   ).toBeVisible();
 
   const responsePromise = page.waitForResponse((response) => {

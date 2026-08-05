@@ -105,7 +105,7 @@ test("desktop operator creates, inspects, and deletes an outgoing webhook", asyn
     // Delete via confirmation dialog.
     await row.getByRole("button", { name: "Delete", exact: true }).click();
     const confirm = page.getByRole("alertdialog", {
-      name: `Remove "${webhookName}"?`,
+      name: `Delete "${webhookName}"?`,
       exact: true,
     });
     await confirm.getByRole("button", { name: "Delete", exact: true }).click();

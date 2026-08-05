@@ -510,7 +510,12 @@ test("domains retry performs one refresh and exposes its disabled transition", a
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.getByText("Authentication failed")).toHaveCount(0);
+  // Exact: the localized copy legitimately reads "Provider authentication
+  // failed.", which a substring match would hit. Only a bare, unlocalized
+  // provider string must be absent.
+  await expect(
+    page.getByText("Authentication failed", { exact: true }),
+  ).toHaveCount(0);
   const requestCountBeforeRetry = domainRscRequests;
 
   holdNextRequest = true;
