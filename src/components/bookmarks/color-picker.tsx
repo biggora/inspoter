@@ -14,7 +14,7 @@ import { bookmarkColorTokens } from "@/lib/validation/bookmarks";
 // "no color" option that clears the field back to the deterministic
 // hash-based fallback in bookmark-icon.tsx. Base UI ToggleGroup owns the
 // roving focus contract, while each swatch keeps a non-color-only accessible
-// name (Russian color name, not just "Цвет 1").
+// name (the color's own name, not just "Color 1").
 const SWATCHES: Array<{
   token: (typeof bookmarkColorTokens)[number];
   labelKey: "colorPrimary" | "colorAccent" | "colorSecondary";

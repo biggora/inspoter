@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { DashboardWidgetKind } from "@/generated/prisma/client";
-import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import {
   GRID_MAX_WIDGET_ROWS,
@@ -26,9 +26,9 @@ export const dashboardSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.dashboard.nameRequired })
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.nameRequired })
     .max(DASHBOARD_NAME_MAX, {
-      error: () => VALIDATION_RU.dashboard.nameTooLong,
+      error: () => VALIDATION_MESSAGES.dashboard.nameTooLong,
     }),
 });
 
@@ -38,9 +38,9 @@ export const dashboardUpdateSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.dashboard.nameRequired })
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.nameRequired })
     .max(DASHBOARD_NAME_MAX, {
-      error: () => VALIDATION_RU.dashboard.nameTooLong,
+      error: () => VALIDATION_MESSAGES.dashboard.nameTooLong,
     })
     .optional(),
   isDefault: z.literal(true).optional(),
@@ -53,14 +53,20 @@ export const dashboardUpdateSchema = z.object({
 const titleField = z
   .string()
   .trim()
-  .max(WIDGET_TITLE_MAX, { error: () => VALIDATION_RU.dashboard.titleTooLong })
+  .max(WIDGET_TITLE_MAX, {
+    error: () => VALIDATION_MESSAGES.dashboard.titleTooLong,
+  })
   .optional();
 
 const listLimitField = z
   .number()
   .int()
-  .min(LIST_LIMIT_MIN, { error: () => VALIDATION_RU.dashboard.limitOutOfRange })
-  .max(LIST_LIMIT_MAX, { error: () => VALIDATION_RU.dashboard.limitOutOfRange })
+  .min(LIST_LIMIT_MIN, {
+    error: () => VALIDATION_MESSAGES.dashboard.limitOutOfRange,
+  })
+  .max(LIST_LIMIT_MAX, {
+    error: () => VALIDATION_MESSAGES.dashboard.limitOutOfRange,
+  })
   .default(5);
 
 // An IANA zone name, validated by asking the runtime whether it can format in
@@ -78,7 +84,7 @@ const timeZoneField = z
         return false;
       }
     },
-    { error: () => VALIDATION_RU.dashboard.timeZoneInvalid },
+    { error: () => VALIDATION_MESSAGES.dashboard.timeZoneInvalid },
   )
   .optional();
 
@@ -128,14 +134,16 @@ const weatherConfigSchema = z
       .default(WEATHER_DEFAULT_LOCATION.label),
     latitude: z
       .number()
-      .min(-90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid })
-      .max(90, { error: () => VALIDATION_RU.dashboard.latitudeInvalid })
+      .min(-90, { error: () => VALIDATION_MESSAGES.dashboard.latitudeInvalid })
+      .max(90, { error: () => VALIDATION_MESSAGES.dashboard.latitudeInvalid })
       .nullable()
       .default(WEATHER_DEFAULT_LOCATION.latitude),
     longitude: z
       .number()
-      .min(-180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid })
-      .max(180, { error: () => VALIDATION_RU.dashboard.longitudeInvalid })
+      .min(-180, {
+        error: () => VALIDATION_MESSAGES.dashboard.longitudeInvalid,
+      })
+      .max(180, { error: () => VALIDATION_MESSAGES.dashboard.longitudeInvalid })
       .nullable()
       .default(WEATHER_DEFAULT_LOCATION.longitude),
     unit: z.enum(["celsius", "fahrenheit"]).default("celsius"),
@@ -147,7 +155,7 @@ const weatherConfigSchema = z
       ctx.addIssue({
         code: "custom",
         path: [hasLatitude ? "longitude" : "latitude"],
-        message: VALIDATION_RU.dashboard.coordinatesRequired,
+        message: VALIDATION_MESSAGES.dashboard.coordinatesRequired,
       });
       return;
     }
@@ -155,7 +163,7 @@ const weatherConfigSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["label"],
-        message: VALIDATION_RU.dashboard.locationRequired,
+        message: VALIDATION_MESSAGES.dashboard.locationRequired,
       });
     }
   });
@@ -164,7 +172,7 @@ const calendarConfigSchema = z.object({
   title: titleField,
   sources: z
     .array(z.enum(CALENDAR_EVENT_SOURCES))
-    .min(1, { error: () => VALIDATION_RU.dashboard.sourcesRequired })
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.sourcesRequired })
     .default(["alerts", "serviceIncidents"]),
 });
 
@@ -172,7 +180,9 @@ const noteConfigSchema = z.object({
   title: titleField,
   text: z
     .string()
-    .max(NOTE_TEXT_MAX, { error: () => VALIDATION_RU.dashboard.noteTooLong })
+    .max(NOTE_TEXT_MAX, {
+      error: () => VALIDATION_MESSAGES.dashboard.noteTooLong,
+    })
     .default(""),
 });
 
@@ -304,7 +314,7 @@ export type LogsConfig = WidgetConfig["LOGS"];
 
 export const widgetKindSchema = z.enum(
   WIDGET_KIND_ORDER as [DashboardWidgetKind, ...DashboardWidgetKind[]],
-  { error: () => VALIDATION_RU.dashboard.kindInvalid },
+  { error: () => VALIDATION_MESSAGES.dashboard.kindInvalid },
 );
 
 /**
@@ -353,28 +363,28 @@ const gridCellSchema = z.object({
   x: z
     .number()
     .int()
-    .min(0, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid })
+    .min(0, { error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid })
     .max(GRID_COLUMNS - 1, {
-      error: () => VALIDATION_RU.dashboard.layoutCellInvalid,
+      error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid,
     }),
   y: z
     .number()
     .int()
-    .min(0, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid })
-    .max(500, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid }),
+    .min(0, { error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid })
+    .max(500, { error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid }),
   w: z
     .number()
     .int()
-    .min(1, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid })
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid })
     .max(GRID_COLUMNS, {
-      error: () => VALIDATION_RU.dashboard.layoutCellInvalid,
+      error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid,
     }),
   h: z
     .number()
     .int()
-    .min(1, { error: () => VALIDATION_RU.dashboard.layoutCellInvalid })
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid })
     .max(GRID_MAX_WIDGET_ROWS, {
-      error: () => VALIDATION_RU.dashboard.layoutCellInvalid,
+      error: () => VALIDATION_MESSAGES.dashboard.layoutCellInvalid,
     }),
 });
 
@@ -384,7 +394,7 @@ const gridCellSchema = z.object({
 export const layoutSchema = z.object({
   items: z
     .array(gridCellSchema)
-    .min(1, { error: () => VALIDATION_RU.dashboard.layoutRequired }),
+    .min(1, { error: () => VALIDATION_MESSAGES.dashboard.layoutRequired }),
 });
 
 export type DashboardInput = z.infer<typeof dashboardSchema>;

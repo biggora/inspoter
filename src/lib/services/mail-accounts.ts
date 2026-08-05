@@ -134,9 +134,11 @@ export async function getOrCreateWebhookAccount(
           accountId: account.id,
           accountWorkspaceId: workspaceId,
           path: "INBOX",
-          // TODO(i18n): DB-persisted default folder name — migrating needs a
-          // data migration for existing rows, out of scope for Phase C.
-          name: "Входящие",
+          // Base language, like every other name Inspoter writes itself. The
+          // sidebar renders special-use folders from the message catalog
+          // (SPECIAL_USE_NAME_KEYS in mail-sidebar.tsx), so this value only
+          // shows up in the database, backups and the API.
+          name: "Inbox",
           specialUse: "INBOX",
           position: 0,
         },

@@ -4,9 +4,9 @@ import { z } from "zod";
 // §3.1). Non-strict on purpose: Discord ignores unknown keys, so accepting them
 // is part of the compatibility contract.
 //
-// TODO(i18n): messages stay English — they surface only in the JSON body
-// returned to an external sender hitting the public Discord route, never in the
-// Russian dashboard UI. Same carve-out as src/lib/validation/webhooks.ts.
+// Messages are inline literals — they surface only in the JSON body returned
+// to an external sender hitting the public Discord route, never in the
+// dashboard. Same carve-out as src/lib/validation/webhooks.ts.
 
 export const EMBED_TOTAL_LIMIT = 6000;
 

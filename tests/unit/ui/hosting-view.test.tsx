@@ -61,9 +61,9 @@ describe("HostingView quota meters", () => {
     renderWithIntl(<HostingView />);
 
     const card = await screen.findByRole("group", {
-      name: "Хостинг-аккаунт «example.ru»",
+      name: 'Hosting account "example.ru"',
     });
-    expect(screen.getByText("5.0 ГБ / 10.0 ГБ · 50%")).toBeInTheDocument();
+    expect(screen.getByText("5.0 GB / 10.0 GB · 50%")).toBeInTheDocument();
 
     const meters = card.querySelectorAll("[data-slot='usage-meter']");
     expect(meters).toHaveLength(1);
@@ -88,7 +88,7 @@ describe("HostingView quota meters", () => {
     renderWithIntl(<HostingView />);
 
     const card = await screen.findByRole("group", {
-      name: "Хостинг-аккаунт «example.ru»",
+      name: 'Hosting account "example.ru"',
     });
     expect(card.querySelectorAll("[data-slot='usage-meter']")).toHaveLength(0);
   });
@@ -105,7 +105,7 @@ describe("HostingView provider-specific rows", () => {
     respondWith();
     renderWithIntl(<HostingView />);
 
-    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    await screen.findByRole("group", { name: 'Hosting account "example.ru"' });
     expect(screen.queryByText("PHP")).not.toBeInTheDocument();
     expect(screen.queryByText("WordPress")).not.toBeInTheDocument();
   });
@@ -114,7 +114,7 @@ describe("HostingView provider-specific rows", () => {
     respondWith({ phpVersion: "8.3", wordpressVersion: "6.8.1" });
     renderWithIntl(<HostingView />);
 
-    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    await screen.findByRole("group", { name: 'Hosting account "example.ru"' });
     expect(screen.getByText("PHP")).toBeInTheDocument();
     expect(screen.getByText("8.3")).toBeInTheDocument();
     expect(screen.getByText("WordPress")).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("HostingView provider-specific rows", () => {
     respondWith({ emailAccounts: 3, emailAccountsLimit: 5 });
     renderWithIntl(<HostingView />);
 
-    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
+    await screen.findByRole("group", { name: 'Hosting account "example.ru"' });
     expect(screen.getByText("3 / 5")).toBeInTheDocument();
   });
 
@@ -133,7 +133,7 @@ describe("HostingView provider-specific rows", () => {
     respondWith({ databases: 2, databaseDiskUsedMb: 48 });
     renderWithIntl(<HostingView />);
 
-    await screen.findByRole("group", { name: "Хостинг-аккаунт «example.ru»" });
-    expect(screen.getByText("2 · 48 МБ")).toBeInTheDocument();
+    await screen.findByRole("group", { name: 'Hosting account "example.ru"' });
+    expect(screen.getByText("2 · 48 MB")).toBeInTheDocument();
   });
 });

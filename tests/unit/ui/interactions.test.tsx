@@ -14,7 +14,7 @@ import { ColorPicker } from "@/components/bookmarks/color-picker";
 import { LogsView } from "@/components/logs/logs-view";
 import { MessagesView } from "@/components/messages/messages-view";
 import type { Bookmark } from "@/generated/prisma/client";
-import { ruMessages } from "@/i18n/messages";
+import { enMessages } from "@/i18n/messages";
 
 const mocks = vi.hoisted(() => ({
   fetchLogs: vi.fn(),
@@ -95,10 +95,10 @@ describe("standardized UI interactions", () => {
     }
 
     renderWithIntl(<Harness />);
-    expect(screen.getByRole("group", { name: "Цвет" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Color" })).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(4);
-    const none = screen.getByRole("button", { name: "Без цвета" });
-    const secondary = screen.getByRole("button", { name: "Оливковый" });
+    const none = screen.getByRole("button", { name: "No color" });
+    const secondary = screen.getByRole("button", { name: "Olive" });
 
     await user.tab();
     expect(none).toHaveFocus();
@@ -143,7 +143,7 @@ describe("standardized UI interactions", () => {
     );
 
     const handle = screen.getByRole("button", {
-      name: "Изменить порядок: «Documentation»",
+      name: 'Reorder: "Documentation"',
     });
     expect(handle).toHaveAttribute("aria-roledescription", "sortable");
 
@@ -180,7 +180,7 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<LogsView />);
     const expand = await screen.findByRole("button", {
-      name: "Показать детали записи журнала",
+      name: "Show log entry details",
     });
 
     expect(expand).toHaveAttribute("aria-expanded", "false");
@@ -197,7 +197,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -211,12 +211,10 @@ describe("standardized UI interactions", () => {
     mocks.sendMessage.mockResolvedValue({ id: "message-1" });
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
-    const composer = await screen.findByPlaceholderText(
-      "Написать в #general...",
-    );
-    await user.type(composer, "Первая строка{Enter}Вторая строка");
+    const composer = await screen.findByPlaceholderText("Message #general...");
+    await user.type(composer, "First line{Enter}Second line");
 
-    expect(composer).toHaveValue("Первая строка\nВторая строка");
+    expect(composer).toHaveValue("First line\nSecond line");
     expect(mocks.sendMessage).not.toHaveBeenCalled();
 
     await user.keyboard("{Control>}{Enter}{/Control}");
@@ -227,11 +225,11 @@ describe("standardized UI interactions", () => {
     });
     expect(mocks.sendMessage).toHaveBeenCalledWith(
       "channel-1",
-      "Первая строка\nВторая строка",
+      "First line\nSecond line",
     );
     expect(mocks.fetchMessages).toHaveBeenCalledTimes(2);
     expect(mocks.refresh).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Прикрепить файл/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Attach file/)).not.toBeInTheDocument();
   });
 
   it("preserves a failed message draft and associates the error", async () => {
@@ -239,7 +237,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -250,17 +248,19 @@ describe("standardized UI interactions", () => {
       },
     ]);
     mocks.fetchMessages.mockResolvedValue({ items: [], nextCursor: null });
-    mocks.sendMessage.mockRejectedValue(new Error("Сервис недоступен"));
+    mocks.sendMessage.mockRejectedValue(new Error("Service is unavailable"));
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const composer = await screen.findByRole("textbox", {
-      name: "Сообщение в канале #general",
+      name: "Message in channel #general",
     });
-    await user.type(composer, "Не потеряйте меня");
+    await user.type(composer, "Do not lose me");
     await user.keyboard("{Control>}{Enter}{/Control}");
 
-    await waitFor(() => expect(composer).toHaveValue("Не потеряйте меня"));
-    expect(screen.getByRole("alert")).toHaveTextContent("Сервис недоступен");
+    await waitFor(() => expect(composer).toHaveValue("Do not lose me"));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Service is unavailable",
+    );
   });
 
   it("shows a new channel webhook URL only until settings close", async () => {
@@ -268,7 +268,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -294,23 +294,23 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const headerOpener = await screen.findByRole("button", {
-      name: "Настройки канала «general»",
+      name: 'Settings for channel "general"',
     });
     await user.click(headerOpener);
     const dialog = await screen.findByRole("dialog", {
-      name: "Настройки канала #general",
+      name: "Settings for channel #general",
     });
-    await user.click(within(dialog).getByRole("tab", { name: "Вебхуки" }));
+    await user.click(within(dialog).getByRole("tab", { name: "Webhooks" }));
     await user.type(
-      within(dialog).getByRole("textbox", { name: "Название webhook" }),
+      within(dialog).getByRole("textbox", { name: "Webhook name" }),
       "CI pipeline",
     );
     await user.click(
-      within(dialog).getByRole("button", { name: "Создать webhook" }),
+      within(dialog).getByRole("button", { name: "Create webhook" }),
     );
 
     const url = await within(dialog).findByRole("textbox", {
-      name: "URL webhook",
+      name: "Webhook URL",
     });
     expect(url).toHaveValue(
       "http://localhost:3000/api/webhooks/channels/webhook-1/one-time-secret",
@@ -320,7 +320,7 @@ describe("standardized UI interactions", () => {
       "CI pipeline",
     );
 
-    await user.click(within(dialog).getByRole("button", { name: "Закрыть" }));
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() =>
       expect(
         screen.queryByDisplayValue(/one-time-secret/),
@@ -334,7 +334,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -349,16 +349,16 @@ describe("standardized UI interactions", () => {
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await screen.findByRole("heading", { name: "general" });
     const rowOpener = screen.getByRole("button", {
-      name: "Действия канала «general»",
+      name: 'Actions for channel "general"',
     });
     await user.click(rowOpener);
     await user.click(
-      await screen.findByRole("menuitem", { name: "Настройки канала" }),
+      await screen.findByRole("menuitem", { name: "Channel settings" }),
     );
     const settings = await screen.findByRole("dialog", {
-      name: "Настройки канала #general",
+      name: "Settings for channel #general",
     });
-    await user.click(within(settings).getByRole("button", { name: "Закрыть" }));
+    await user.click(within(settings).getByRole("button", { name: "Close" }));
 
     await waitFor(() => expect(document.activeElement).toBe(rowOpener));
   });
@@ -368,7 +368,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -382,22 +382,22 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await user.click(
-      await screen.findByRole("button", { name: "Открыть каналы" }),
+      await screen.findByRole("button", { name: "Open channels" }),
     );
     const sheet = await screen.findByRole("dialog", {
-      name: "Категории и каналы",
+      name: "Categories and channels",
     });
     const sheetOpener = within(sheet).getByRole("button", {
-      name: "Действия канала «general»",
+      name: 'Actions for channel "general"',
     });
     await user.click(sheetOpener);
     await user.click(
-      await screen.findByRole("menuitem", { name: "Настройки канала" }),
+      await screen.findByRole("menuitem", { name: "Channel settings" }),
     );
     const settings = await screen.findByRole("dialog", {
-      name: "Настройки канала #general",
+      name: "Settings for channel #general",
     });
-    await user.click(within(settings).getByRole("button", { name: "Закрыть" }));
+    await user.click(within(settings).getByRole("button", { name: "Close" }));
 
     await waitFor(() => expect(document.activeElement).toBe(sheetOpener));
   });
@@ -408,12 +408,12 @@ describe("standardized UI interactions", () => {
       .mockResolvedValueOnce([
         {
           id: "category-a",
-          name: "Команда A",
+          name: "Team A",
           channels: [
             {
               id: "channel-a",
               messageCategoryId: "category-a",
-              name: "канал-a",
+              name: "channel-a",
             },
           ],
         },
@@ -421,12 +421,12 @@ describe("standardized UI interactions", () => {
       .mockResolvedValueOnce([
         {
           id: "category-b",
-          name: "Команда B",
+          name: "Team B",
           channels: [
             {
               id: "channel-b",
               messageCategoryId: "category-b",
-              name: "канал-b",
+              name: "channel-b",
             },
           ],
         },
@@ -438,7 +438,7 @@ describe("standardized UI interactions", () => {
               {
                 id: "message-a",
                 channelId: "channel-a",
-                content: "Сообщение A",
+                content: "Message A",
                 author: "operator-a",
                 origin: "OPERATOR",
                 createdAt: "2026-07-18T12:00:00.000Z",
@@ -451,7 +451,7 @@ describe("standardized UI interactions", () => {
       webhook: {
         id: "webhook-a",
         channelId: "channel-a",
-        name: "Интеграция A",
+        name: "Integration A",
         tokenPrefix: "prefix-a",
         createdAt: "2026-07-18T12:00:00.000Z",
         lastUsedAt: null,
@@ -462,52 +462,52 @@ describe("standardized UI interactions", () => {
 
     const view = renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const draft = await screen.findByRole("textbox", {
-      name: "Сообщение в канале #канал-a",
+      name: "Message in channel #channel-a",
     });
-    await user.type(draft, "Черновик A");
-    expect(await screen.findByText("Сообщение A")).toBeInTheDocument();
+    await user.type(draft, "Draft A");
+    expect(await screen.findByText("Message A")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Загрузить предыдущие" }),
+      screen.getByRole("button", { name: "Load previous" }),
     ).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Настройки канала «канал-a»" }),
+      screen.getByRole("button", { name: 'Settings for channel "channel-a"' }),
     );
     const settings = await screen.findByRole("dialog", {
-      name: "Настройки канала #канал-a",
+      name: "Settings for channel #channel-a",
     });
-    await user.click(within(settings).getByRole("tab", { name: "Вебхуки" }));
+    await user.click(within(settings).getByRole("tab", { name: "Webhooks" }));
     await user.type(
-      within(settings).getByRole("textbox", { name: "Название webhook" }),
-      "Интеграция A",
+      within(settings).getByRole("textbox", { name: "Webhook name" }),
+      "Integration A",
     );
     await user.click(
-      within(settings).getByRole("button", { name: "Создать webhook" }),
+      within(settings).getByRole("button", { name: "Create webhook" }),
     );
     expect(
-      await within(settings).findByRole("textbox", { name: "URL webhook" }),
+      await within(settings).findByRole("textbox", { name: "Webhook URL" }),
     ).toBeInTheDocument();
 
     view.rerender(
-      <NextIntlClientProvider locale="ru" messages={ruMessages}>
+      <NextIntlClientProvider locale="en" messages={enMessages}>
         <MessagesView workspaceId="workspace-b" />
       </NextIntlClientProvider>,
     );
 
     const workspaceBDraft = await screen.findByRole("textbox", {
-      name: "Сообщение в канале #канал-b",
+      name: "Message in channel #channel-b",
     });
     expect(workspaceBDraft).toHaveValue("");
     expect(
-      screen.queryByRole("heading", { name: "канал-a" }),
+      screen.queryByRole("heading", { name: "channel-a" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Сообщение A")).not.toBeInTheDocument();
-    expect(screen.queryByText("Черновик A")).not.toBeInTheDocument();
+    expect(screen.queryByText("Message A")).not.toBeInTheDocument();
+    expect(screen.queryByText("Draft A")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Загрузить предыдущие" }),
+      screen.queryByRole("button", { name: "Load previous" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("dialog", { name: "Настройки канала #канал-a" }),
+      screen.queryByRole("dialog", { name: "Settings for channel #channel-a" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByDisplayValue(/transient-value/),
@@ -521,7 +521,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -544,7 +544,7 @@ describe("standardized UI interactions", () => {
         {
           id: "message-2",
           channelId: "channel-1",
-          content: "Ответ оператора",
+          content: "Operator reply",
           author: "operator",
           origin: "OPERATOR",
           createdAt: "2026-07-18T12:01:00.000Z",
@@ -552,7 +552,7 @@ describe("standardized UI interactions", () => {
         {
           id: "message-3",
           channelId: "channel-1",
-          content: "Историческое сообщение",
+          content: "Historic message",
           author: null,
           origin: "LEGACY",
           createdAt: "2026-07-18T12:02:00.000Z",
@@ -563,9 +563,9 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
 
-    expect(await screen.findByText("Внешний источник")).toBeInTheDocument();
-    expect(screen.getByText("Оператор")).toBeInTheDocument();
-    expect(screen.getByText("Источник не определён")).toBeInTheDocument();
+    expect(await screen.findByText("External source")).toBeInTheDocument();
+    expect(screen.getByText("Operator")).toBeInTheDocument();
+    expect(screen.getByText("Source unknown")).toBeInTheDocument();
     expect(
       screen.getByText('<img src=x onerror="alert(1)">'),
     ).toBeInTheDocument();
@@ -578,7 +578,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -594,7 +594,7 @@ describe("standardized UI interactions", () => {
           {
             id: "message-new",
             channelId: "channel-1",
-            content: "Новое сообщение",
+            content: "New message",
             author: "operator",
             origin: "OPERATOR",
             createdAt: "2026-07-18T12:01:00.000Z",
@@ -609,7 +609,7 @@ describe("standardized UI interactions", () => {
             {
               id: "message-old",
               channelId: "channel-1",
-              content: "Старое сообщение",
+              content: "Old message",
               author: null,
               origin: "LEGACY",
               createdAt: "2026-07-17T12:00:00.000Z",
@@ -621,7 +621,7 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     const loadPrevious = await screen.findByRole("button", {
-      name: "Загрузить предыдущие",
+      name: "Load previous",
     });
     const timeline = screen.getByTestId("message-timeline");
     Object.defineProperty(timeline, "scrollHeight", {
@@ -632,7 +632,7 @@ describe("standardized UI interactions", () => {
 
     await user.click(loadPrevious);
 
-    expect(await screen.findByText("Старое сообщение")).toBeInTheDocument();
+    expect(await screen.findByText("Old message")).toBeInTheDocument();
     await waitFor(() => expect(timeline.scrollTop).toBe(500));
     expect(mocks.fetchMessages).toHaveBeenLastCalledWith("channel-1", {
       cursor: "older-cursor",
@@ -646,7 +646,7 @@ describe("standardized UI interactions", () => {
     mocks.listCategories.mockResolvedValue([
       {
         id: "category-1",
-        name: "Команда",
+        name: "Team",
         channels: [
           {
             id: "channel-1",
@@ -659,11 +659,11 @@ describe("standardized UI interactions", () => {
 
     renderWithIntl(<MessagesView workspaceId="workspace-a" />);
     await user.click(
-      await screen.findByRole("button", { name: "Открыть каналы" }),
+      await screen.findByRole("button", { name: "Open channels" }),
     );
 
     const dialog = await screen.findByRole("dialog", {
-      name: "Категории и каналы",
+      name: "Categories and channels",
     });
     expect(dialog).toHaveClass(
       "text-[var(--text-primary)]",
@@ -677,11 +677,11 @@ describe("standardized UI interactions", () => {
     );
     const toggles = Array.from(
       document.querySelectorAll<HTMLButtonElement>("button[aria-controls]"),
-    ).filter((button) => button.textContent?.trim() === "Команда");
+    ).filter((button) => button.textContent?.trim() === "Team");
     expect(toggles).toHaveLength(2);
 
     const sheetToggle = within(dialog).getByRole("button", {
-      name: "Команда",
+      name: "Team",
     });
     const railToggle = toggles.find((toggle) => toggle !== sheetToggle)!;
     const sheetRegionId = sheetToggle.getAttribute("aria-controls")!;

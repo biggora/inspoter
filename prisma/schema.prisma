@@ -715,6 +715,12 @@ model AlertCategory {
   // Free-form hint about what belongs here — the only context a classifier
   // gets beyond the bare name.
   description String?
+  // Set only on the categories Inspoter creates for its own alerts
+  // (SYSTEM_ALERT_CATEGORIES in src/lib/services/alert-catalog.ts): `name`
+  // holds the English base wording, and the UI renders the active locale's
+  // translation instead. Cleared the moment an operator renames the category —
+  // their own wording outranks the built-in translation.
+  systemKey   String?
   alerts      Alert[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -737,7 +743,15 @@ model Alert {
   categoryConfidence       Float?
   severity                 String
   source                   String
+  // Always the English base rendering, so search, webhook payloads, backups
+  // and the MCP tools all see one stable text regardless of who is looking.
   message                  String
+  // Set only on alerts Inspoter raises itself: the `alerts.system.*` key and
+  // its ICU arguments behind `message`, which lets the UI re-render the same
+  // alert in the active locale. Null for webhook-ingested alerts, whose text
+  // belongs to the sender and cannot be translated.
+  messageKey               String?
+  messageParams            Json?
   // Workspace-wide, not per-operator — same semantics as MailItem.isRead.
   // Opening the Alerts section clears every unread row at once.
   isRead                   Boolean        @default(false)

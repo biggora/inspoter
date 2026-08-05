@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 // Wire contract of the token-authenticated /api/v1/messages/** surface.
-// Messages stay English: the caller is an external agent or script reading a
-// JSON body, not the Russian dashboard UI — the same carve-out already applied
+// Messages are inline literals: the caller is an external agent or script
+// reading a JSON body, not the dashboard — the same carve-out already applied
 // to the channel webhook payload in src/lib/validation/webhookTokens.ts.
 //
 // Every schema is `.strict()`, so a typo in a field name is rejected instead

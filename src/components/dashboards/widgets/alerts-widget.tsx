@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { alertMessage, categoryLabel } from "@/components/alerts/localize";
 import { SeverityBadge } from "@/components/alerts/severity-badge";
 import type { AlertsPayload } from "@/lib/dashboards/widget-payloads";
 import { useWidgetRelativeTime } from "./use-widget-time";
@@ -11,6 +12,9 @@ import { useWidgetRelativeTime } from "./use-widget-time";
 // the four-tier scale keeps one set of colours and wording across the product.
 export function AlertsWidget({ data }: { data: AlertsPayload }) {
   const t = useTranslations("dashboards");
+  // Second namespace: an alert's own text and its system category live under
+  // `alerts`, and must read here exactly as they do in the Alerts section.
+  const tAlerts = useTranslations("alerts");
   const relativeTime = useWidgetRelativeTime();
 
   if (data.items.length === 0) {
@@ -19,25 +23,34 @@ export function AlertsWidget({ data }: { data: AlertsPayload }) {
 
   return (
     <ul className="flex flex-col gap-1.5">
-      {data.items.map((item) => (
-        <li key={item.id}>
-          <Link href={`/alerts?highlightAlertId=${item.id}`}>
-            <div className="flex flex-col gap-0.5 text-xs cursor-pointer transition-opacity hover:opacity-70">
-              <span className="flex items-center gap-1.5">
-                <SeverityBadge severity={item.severity} />
-                <span className="min-w-0 flex-1 truncate text-foreground-800">
-                  {item.message}
+      {data.items.map((item) => {
+        const category =
+          item.categoryName === null
+            ? null
+            : categoryLabel(
+                { name: item.categoryName, systemKey: item.categorySystemKey },
+                tAlerts,
+              );
+        return (
+          <li key={item.id}>
+            <Link href={`/alerts?highlightAlertId=${item.id}`}>
+              <div className="flex flex-col gap-0.5 text-xs cursor-pointer transition-opacity hover:opacity-70">
+                <span className="flex items-center gap-1.5">
+                  <SeverityBadge severity={item.severity} />
+                  <span className="min-w-0 flex-1 truncate text-foreground-800">
+                    {alertMessage(item, tAlerts)}
+                  </span>
                 </span>
-              </span>
-              <span className="truncate text-muted-foreground">
-                {item.categoryName && <span>{item.categoryName}</span>}
-                {item.categoryName && item.source && <span> · </span>}
-                {item.source} · {relativeTime(item.timestamp)}
-              </span>
-            </div>
-          </Link>
-        </li>
-      ))}
+                <span className="truncate text-muted-foreground">
+                  {category && <span>{category}</span>}
+                  {category && item.source && <span> · </span>}
+                  {item.source} · {relativeTime(item.timestamp)}
+                </span>
+              </div>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

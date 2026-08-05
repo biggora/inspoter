@@ -372,6 +372,7 @@ function toAlertCategoryRecord(row: AlertCategory): BackupAlertCategoryRecord {
     id: row.id,
     name: row.name,
     description: row.description,
+    systemKey: row.systemKey,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -386,6 +387,8 @@ function toAlertRecord(row: Alert): BackupAlertRecord {
     severity: row.severity,
     source: row.source,
     message: row.message,
+    messageKey: row.messageKey,
+    messageParams: row.messageParams as Record<string, string | number> | null,
     timestamp: iso(row.timestamp),
     createdAt: iso(row.createdAt),
   };
@@ -1029,6 +1032,7 @@ export async function importWorkspace(
           name: string;
           normalizedName: string;
           description: string | null;
+          systemKey: string | null;
           createdAt: string;
           updatedAt: string;
         }> = [];
@@ -1050,6 +1054,7 @@ export async function importWorkspace(
             name: row.name,
             normalizedName,
             description: row.description ?? null,
+            systemKey: row.systemKey ?? null,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
           });
@@ -1470,10 +1475,14 @@ export async function importWorkspace(
                 ? null
                 : (row.categorySource ?? AlertCategorySource.WEBHOOK),
             categoryConfidence:
-              alertCategoryId === null ? null : (row.categoryConfidence ?? null),
+              alertCategoryId === null
+                ? null
+                : (row.categoryConfidence ?? null),
             severity: row.severity,
             source: row.source,
             message: row.message,
+            messageKey: row.messageKey ?? null,
+            messageParams: row.messageParams ?? Prisma.DbNull,
             timestamp: row.timestamp,
             createdAt: row.createdAt,
           };

@@ -142,15 +142,15 @@ async function createMessageFixture(
   // that default: always open the channel this fixture just created.
   if ((await page.viewportSize())?.width === 375) {
     await page
-      .getByRole("button", { name: "Открыть каналы", exact: true })
+      .getByRole("button", { name: "Open channels", exact: true })
       .click();
     await page
-      .getByRole("dialog", { name: "Категории и каналы", exact: true })
+      .getByRole("dialog", { name: "Categories and channels", exact: true })
       .getByRole("button", { name: channel.name, exact: true })
       .click();
   } else {
     await page
-      .getByRole("navigation", { name: "Каналы сообщений", exact: true })
+      .getByRole("navigation", { name: "Message channels", exact: true })
       .getByRole("button", { name: channel.name, exact: true })
       .click();
   }
@@ -294,42 +294,42 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
     await memberPage.goto("/messages");
 
     const rowActions = memberPage.getByRole("button", {
-      name: `Действия канала «${fixture.channel.name}»`,
+      name: `Actions for channel "${fixture.channel.name}"`,
       exact: true,
     });
     await rowActions.click();
     await memberPage
-      .getByRole("menuitem", { name: "Настройки канала", exact: true })
+      .getByRole("menuitem", { name: "Channel settings", exact: true })
       .click();
     const settingsDialog = memberPage.getByRole("dialog", {
-      name: `Настройки канала #${fixture.channel.name}`,
+      name: `Channel settings #${fixture.channel.name}`,
       exact: true,
     });
     await expect(settingsDialog).toBeVisible();
     await settingsDialog
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .click();
     await expect(settingsDialog).toBeHidden();
     await expect(rowActions).toBeFocused();
 
     const headerSettings = memberPage.getByRole("button", {
-      name: `Настройки канала «${fixture.channel.name}»`,
+      name: `Channel settings "${fixture.channel.name}"`,
       exact: true,
     });
     await headerSettings.click();
     await settingsDialog
-      .getByRole("tab", { name: "Вебхуки", exact: true })
+      .getByRole("tab", { name: "Webhooks", exact: true })
       .click();
     const webhookName = testData.name("CI incoming");
     await settingsDialog
-      .getByLabel("Название webhook", { exact: true })
+      .getByLabel("Webhook name", { exact: true })
       .fill(webhookName);
     await settingsDialog
-      .getByRole("button", { name: "Создать webhook", exact: true })
+      .getByRole("button", { name: "Create webhook", exact: true })
       .click();
 
     const urlField = settingsDialog.getByLabel("URL webhook", { exact: true });
-    const curlField = settingsDialog.getByLabel("Готовая команда cURL", {
+    const curlField = settingsDialog.getByLabel("Ready-made cURL command", {
       exact: true,
     });
     await expect(urlField).toBeVisible();
@@ -343,20 +343,20 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       }),
     ).toBe(true);
     await settingsDialog
-      .getByRole("button", { name: "Копировать URL", exact: true })
+      .getByRole("button", { name: "Copy URL", exact: true })
       .click();
     await expect(
       settingsDialog.getByRole("button", {
-        name: "URL скопирован",
+        name: "URL copied",
         exact: true,
       }),
     ).toBeVisible();
     await settingsDialog
-      .getByRole("button", { name: "Копировать cURL", exact: true })
+      .getByRole("button", { name: "Copy cURL", exact: true })
       .click();
     await expect(
       settingsDialog.getByRole("button", {
-        name: "cURL скопирован",
+        name: "cURL copied",
         exact: true,
       }),
     ).toBeVisible();
@@ -364,7 +364,7 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
     const inboundText = testData.name("external-delivery");
     expect(await postSecret(memberPage, secretUrl, inboundText)).toBe(201);
     await settingsDialog
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .click();
     await expect(headerSettings).toBeFocused();
     expect(
@@ -382,32 +382,32 @@ test("desktop member manages a channel webhook, inbound delivery survives reload
       memberPage.getByText(inboundText, { exact: true }),
     ).toBeVisible();
     await expect(
-      memberPage.getByText("Внешний источник", { exact: true }),
+      memberPage.getByText("External source", { exact: true }),
     ).toBeVisible();
 
     await headerSettings.click();
     await settingsDialog
-      .getByRole("tab", { name: "Вебхуки", exact: true })
+      .getByRole("tab", { name: "Webhooks", exact: true })
       .click();
     const webhookRow = settingsDialog
-      .getByRole("list", { name: "Вебхуки канала", exact: true })
+      .getByRole("list", { name: "Channel webhooks", exact: true })
       .getByRole("listitem")
       .filter({ hasText: webhookName });
     await webhookRow
-      .getByRole("button", { name: "Отозвать", exact: true })
+      .getByRole("button", { name: "Revoke", exact: true })
       .click();
     const revokeDialog = memberPage.getByRole("alertdialog", {
-      name: `Отозвать webhook «${webhookName}»?`,
+      name: `Revoke webhook "${webhookName}"?`,
       exact: true,
     });
     await revokeDialog
-      .getByRole("button", { name: "Отозвать", exact: true })
+      .getByRole("button", { name: "Revoke", exact: true })
       .click();
     await expect(
-      webhookRow.getByText("Отозван", { exact: true }),
+      webhookRow.getByText("Revoked", { exact: true }),
     ).toBeVisible();
     await settingsDialog
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .click();
     expect(
       await postSecret(memberPage, secretUrl, "rejected-after-revoke"),
@@ -480,7 +480,7 @@ test("multiline composer keeps Enter as a newline and sends with Ctrl+Enter", as
   const fixture = await createMessageFixture(page, testData.name);
   try {
     const composer = page.getByLabel(
-      `Сообщение в канале #${fixture.channel.name}`,
+      `Message in channel #${fixture.channel.name}`,
       { exact: true },
     );
     const firstLine = testData.name("first-line");
@@ -499,7 +499,7 @@ test("multiline composer keeps Enter as a newline and sends with Ctrl+Enter", as
     expect((await sent).status()).toBe(201);
     await expect(composer).toHaveValue("");
     await expect(page.getByText(firstLine, { exact: false })).toBeVisible();
-    await expect(page.getByText("Оператор", { exact: true })).toBeVisible();
+    await expect(page.getByText("Operator", { exact: true })).toBeVisible();
   } finally {
     await removeMessageCategory(page, fixture);
   }
@@ -522,12 +522,12 @@ test("mobile uses one channel Sheet and restores focus to the exact Sheet and he
 async function runMobileSheetAssertions(page: Page, fixture: MessageFixture) {
   await expect(page.locator("select")).toHaveCount(0);
   const sheetOpener = page.getByRole("button", {
-    name: "Открыть каналы",
+    name: "Open channels",
     exact: true,
   });
   await sheetOpener.click();
   const sheet = page.getByRole("dialog", {
-    name: "Категории и каналы",
+    name: "Categories and channels",
     exact: true,
   });
   await expect(sheet).toBeVisible();
@@ -537,25 +537,25 @@ async function runMobileSheetAssertions(page: Page, fixture: MessageFixture) {
   await expectNoBlockingAxeViolations(page);
 
   const channelActions = sheet.getByRole("button", {
-    name: `Действия канала «${fixture.channel.name}»`,
+    name: `Actions for channel "${fixture.channel.name}"`,
     exact: true,
   });
   await channelActions.click();
   await page
-    .getByRole("menuitem", { name: "Настройки канала", exact: true })
+    .getByRole("menuitem", { name: "Channel settings", exact: true })
     .click();
   const settingsDialog = page.getByRole("dialog", {
-    name: `Настройки канала #${fixture.channel.name}`,
+    name: `Channel settings #${fixture.channel.name}`,
     exact: true,
   });
   await expect(settingsDialog).toBeVisible();
   await settingsDialog
-    .getByRole("button", { name: "Закрыть", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
     .click();
   await expect(settingsDialog).toBeHidden();
   await expect(channelActions).toBeFocused();
 
-  await sheet.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await sheet.getByRole("button", { name: "Close", exact: true }).click();
   await expect(sheet).toBeHidden();
   await expect(sheetOpener).toBeFocused();
   await expectNoBlockingAxeViolations(page);

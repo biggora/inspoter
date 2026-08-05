@@ -92,7 +92,7 @@ describe("Webhook mailbox: create() auto-provisions the system account", () => {
     });
     expect(folders).toHaveLength(1);
     expect(folders[0].path).toBe("INBOX");
-    expect(folders[0].name).toBe("Входящие");
+    expect(folders[0].name).toBe("Inbox");
     expect(folders[0].specialUse).toBe("INBOX");
 
     const storedFirst = await db.mailItem.findUnique({
@@ -377,7 +377,7 @@ describe("Phase 5: list projection and account/folder/unread filters", () => {
         accountId: account!.id,
         accountWorkspaceId: workspaceId,
         path: `${NAME_PREFIX}-Archive`,
-        name: "Архив",
+        name: "Archive",
         specialUse: "ARCHIVE",
         position: 5,
       },
@@ -462,8 +462,8 @@ describe("Phase 5: getById detail + DTO mappers", () => {
     await db.mailItem.update({
       where: { id: mail.id },
       data: {
-        fromName: "Отправитель",
-        toRecipients: [{ name: "Оператор", address: "op@example.com" }],
+        fromName: "Sender",
+        toRecipients: [{ name: "Operator", address: "op@example.com" }],
         ccRecipients: [{ name: null, address: "cc@example.com" }],
         bodyHtml: "<p>detail html</p>",
         hasAttachments: true,
@@ -486,8 +486,8 @@ describe("Phase 5: getById detail + DTO mappers", () => {
     const dto = mailService.toMailDetailDto(detail!);
     expect(dto.accountKind).toBe("WEBHOOK");
     expect(dto.from).toBe(`${NAME_PREFIX}-detail@example.com`);
-    expect(dto.fromName).toBe("Отправитель");
-    expect(dto.to).toEqual([{ name: "Оператор", address: "op@example.com" }]);
+    expect(dto.fromName).toBe("Sender");
+    expect(dto.to).toEqual([{ name: "Operator", address: "op@example.com" }]);
     expect(dto.cc).toEqual([{ name: null, address: "cc@example.com" }]);
     expect(dto.bodyText).toBe("detail body");
     expect(dto.bodyHtml).toBe("<p>detail html</p>");

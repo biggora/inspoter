@@ -47,7 +47,9 @@ const SPECIAL_USE_BY_ATTRIBUTE: Record<string, MailSpecialUse> = {
   "\\Archive": "ARCHIVE",
 };
 
-// Name-based fallback for servers without SPECIAL-USE (RU + EN conventions).
+// Name-based fallback for servers without SPECIAL-USE. The Cyrillic patterns
+// are not product copy and are exempt from the base-language rule: they match
+// folder names a remote IMAP server chose, which Inspoter only reads.
 function specialUseFromName(path: string, name: string): MailSpecialUse {
   if (path.toUpperCase() === "INBOX") return "INBOX";
   const lower = name.toLowerCase();

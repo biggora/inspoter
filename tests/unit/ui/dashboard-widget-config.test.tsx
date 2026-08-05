@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "../../test-utils";
 import { WidgetConfigFields } from "@/components/dashboards/widget-config-fields";
 import type { WidgetTargets } from "@/lib/services/dashboard-widget-targets";
-import ruDashboards from "@/messages/ru/dashboards.json";
+import enDashboards from "@/messages/en/dashboards.json";
 
 // Two settings forms whose options are a selection rather than a single value:
 // server-metrics (a tile may watch any subset of the workspace's servers, and
@@ -24,8 +24,8 @@ const targets: WidgetTargets = {
   ],
   mailAccounts: [],
   messageCategories: [
-    { id: "cat-1", name: "Инциденты" },
-    { id: "cat-2", name: "Релизы" },
+    { id: "cat-1", name: "Incidents" },
+    { id: "cat-2", name: "Releases" },
   ],
   messageChannels: [
     { id: "ch-1", name: "prod-alerts", categoryId: "cat-1" },
@@ -65,7 +65,7 @@ describe("WidgetConfigFields — SERVER_METRICS", () => {
     renderServerFields({});
 
     expect(
-      screen.getByText(ruDashboards.serverMetrics.allServersHint),
+      screen.getByText(enDashboards.serverMetrics.allServersHint),
     ).toBeInTheDocument();
     for (const server of targets.servers) {
       expect(
@@ -116,7 +116,7 @@ describe("WidgetConfigFields — MESSAGES", () => {
     renderMessagesFields({});
 
     expect(
-      screen.getByText(ruDashboards.messages.allChannelsHint),
+      screen.getByText(enDashboards.messages.allChannelsHint),
     ).toBeInTheDocument();
     for (const channel of targets.messageChannels) {
       expect(
@@ -143,7 +143,7 @@ describe("WidgetConfigFields — MESSAGES", () => {
     });
 
     await userEvent.selectOptions(
-      screen.getByLabelText(ruDashboards.messages.categoryLabel),
+      screen.getByLabelText(enDashboards.messages.categoryLabel),
       "cat-1",
     );
 
@@ -160,7 +160,7 @@ describe("WidgetConfigFields — MESSAGES", () => {
     });
 
     await userEvent.selectOptions(
-      screen.getByLabelText(ruDashboards.messages.categoryLabel),
+      screen.getByLabelText(enDashboards.messages.categoryLabel),
       "",
     );
 
@@ -185,7 +185,7 @@ describe("WidgetConfigFields — MESSAGES", () => {
 
     await userEvent.click(
       screen.getByRole("checkbox", {
-        name: ruDashboards.messages.unreadOnlyLabel,
+        name: enDashboards.messages.unreadOnlyLabel,
       }),
     );
 

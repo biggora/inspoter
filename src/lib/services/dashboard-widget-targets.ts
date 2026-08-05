@@ -44,7 +44,7 @@ export async function listConfigurableTargets(
       messagesService.listCategories(workspaceId),
     ]);
 
-  // Subcategories are offered too, prefixed with their parent, so "Прод / БД"
+  // Subcategories are offered too, prefixed with their parent, so "Prod / DB"
   // is selectable and unambiguous.
   const bookmarkCategories: WidgetTargetOption[] = [];
   for (const category of categories) {

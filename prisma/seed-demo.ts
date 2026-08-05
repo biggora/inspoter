@@ -39,62 +39,62 @@ async function seedBookmarks(client: ClientLike, workspaceId: string) {
     bookmarks: Array<{ name: string; url: string; description: string }>;
   }> = [
     {
-      name: `${DEMO_MARKER}Инфраструктура`,
+      name: `${DEMO_MARKER}Infrastructure`,
       bookmarks: [
         {
           name: "pfSense",
           url: "https://pfsense.local",
-          description: "Межсетевой экран и маршрутизатор",
+          description: "Firewall and router",
         },
         {
           name: "Proxmox",
           url: "https://proxmox.local:8006",
-          description: "Гипервизор виртуализации",
+          description: "Virtualization hypervisor",
         },
         {
           name: "TrueNAS",
           url: "https://truenas.local",
-          description: "Хранилище и резервное копирование",
+          description: "Storage and backups",
         },
         {
           name: "Grafana",
           url: "https://grafana.local",
-          description: "Дашборды и визуализация метрик",
+          description: "Dashboards and metric visualization",
         },
       ],
     },
     {
-      name: `${DEMO_MARKER}Разработка`,
+      name: `${DEMO_MARKER}Development`,
       bookmarks: [
         {
           name: "GitHub",
           url: "https://github.com",
-          description: "Хостинг репозиториев и CI/CD",
+          description: "Repository hosting and CI/CD",
         },
         {
           name: "GitLab",
           url: "https://gitlab.local",
-          description: "Внутренний git-сервер",
+          description: "Internal git server",
         },
         {
           name: "Docker Hub",
           url: "https://hub.docker.com",
-          description: "Реестр образов контейнеров",
+          description: "Container image registry",
         },
       ],
     },
     {
-      name: `${DEMO_MARKER}Мониторинг`,
+      name: `${DEMO_MARKER}Monitoring`,
       bookmarks: [
         {
           name: "Uptime Kuma",
           url: "https://uptime.local",
-          description: "Мониторинг доступности сервисов",
+          description: "Service availability monitoring",
         },
         {
           name: "Netdata",
           url: "https://netdata.local",
-          description: "Мониторинг производительности в реальном времени",
+          description: "Real-time performance monitoring",
         },
       ],
     },
@@ -156,7 +156,7 @@ async function seedLogs(client: ClientLike, workspaceId: string) {
     {
       level: "info",
       source: marker,
-      message: "Сервер запущен, слушает порт 443",
+      message: "Server started, listening on port 443",
     },
     {
       level: "info",
@@ -166,7 +166,7 @@ async function seedLogs(client: ClientLike, workspaceId: string) {
     {
       level: "warning",
       source: "docker",
-      message: "Контейнер inspoter-app перезапущен после OOM",
+      message: "Container inspoter-app restarted after OOM",
     },
     {
       level: "error",
@@ -191,7 +191,7 @@ async function seedLogs(client: ClientLike, workspaceId: string) {
     {
       level: "error",
       source: "cron",
-      message: "Не удалось выполнить задачу очистки логов: permission denied",
+      message: "Log cleanup job failed: permission denied",
     },
     {
       level: "info",
@@ -216,7 +216,7 @@ async function seedLogs(client: ClientLike, workspaceId: string) {
     {
       level: "info",
       source: "cron",
-      message: "Запущена ежедневная задача резервного копирования",
+      message: "Daily backup job started",
     },
     {
       level: "warning",
@@ -226,7 +226,7 @@ async function seedLogs(client: ClientLike, workspaceId: string) {
     {
       level: "info",
       source: marker,
-      message: "Конфигурация перезагружена без простоя",
+      message: "Configuration reloaded with no downtime",
     },
   ];
 
@@ -255,57 +255,57 @@ async function seedAlerts(client: ClientLike, workspaceId: string) {
     alerts: Array<{ severity: string; source: string; message: string }>;
   }> = [
     {
-      name: `${DEMO_MARKER}Сеть`,
+      name: `${DEMO_MARKER}Network`,
       alerts: [
         {
           severity: "warning",
           source: "monitoring",
-          message: "Высокая задержка на канале до дата-центра",
+          message: "High latency on the link to the data centre",
         },
         {
           severity: "critical",
           source: "firewall",
-          message: "Обнаружена попытка перебора паролей SSH",
+          message: "SSH password brute-force attempt detected",
         },
         {
           severity: "info",
           source: "monitoring",
-          message: "Пропускная способность восстановлена до нормы",
+          message: "Throughput is back to normal",
         },
       ],
     },
     {
-      name: `${DEMO_MARKER}Диски`,
+      name: `${DEMO_MARKER}Disks`,
       alerts: [
         {
           severity: "warning",
           source: "disk-check",
-          message: "Заполнение раздела /var превысило 80%",
+          message: "The /var partition is over 80% full",
         },
         {
           severity: "error",
           source: "disk-check",
-          message: "SMART: обнаружены сбойные секторы на /dev/sdb",
+          message: "SMART: bad sectors found on /dev/sdb",
         },
         {
           severity: "info",
           source: "disk-check",
-          message: "Очистка временных файлов освободила 4.2 ГБ",
+          message: "Temporary file cleanup freed 4.2 GB",
         },
       ],
     },
     {
-      name: `${DEMO_MARKER}Безопасность`,
+      name: `${DEMO_MARKER}Security`,
       alerts: [
         {
           severity: "critical",
           source: "firewall",
-          message: "Заблокирован трафик с известного вредоносного IP",
+          message: "Blocked traffic from a known malicious IP",
         },
         {
           severity: "warning",
           source: "monitoring",
-          message: "Истекает срок действия TLS-сертификата через 7 дней",
+          message: "The TLS certificate expires in 7 days",
         },
       ],
     },
@@ -383,7 +383,7 @@ async function ensureWebhookMailbox(
   } else {
     folderId = randomUUID();
     await client.query(
-      'INSERT INTO "MailFolder" (id, "workspaceId", "accountId", "accountWorkspaceId", path, name, "specialUse", position, "updatedAt") VALUES ($1, $2, $3, $2, \'INBOX\', \'Входящие\', \'INBOX\', 0, now())',
+      'INSERT INTO "MailFolder" (id, "workspaceId", "accountId", "accountWorkspaceId", path, name, "specialUse", position, "updatedAt") VALUES ($1, $2, $3, $2, \'INBOX\', \'Inbox\', \'INBOX\', 0, now())',
       [folderId, workspaceId, accountId],
     );
   }
@@ -410,38 +410,38 @@ async function seedMail(client: ClientLike, workspaceId: string) {
   const items: Array<{ sender: string; subject: string; body: string }> = [
     {
       sender: marker,
-      subject: "Резервное копирование завершено успешно",
-      body: "Еженедельное резервное копирование базы данных завершено. Размер архива: 3.4 ГБ.",
+      subject: "Backup completed successfully",
+      body: "The weekly database backup has finished. Archive size: 3.4 GB.",
     },
     {
       sender: "admin@example.com",
-      subject: "Требуется обновление системы",
-      body: "Доступно обновление безопасности для ядра. Рекомендуется установить в ближайшее плановое окно.",
+      subject: "System update required",
+      body: "A kernel security update is available. Install it in the next scheduled window.",
     },
     {
       sender: marker,
-      subject: "Сертификат TLS будет обновлён автоматически",
-      body: "Сертификат для *.local будет автоматически продлён через Let's Encrypt в течение 48 часов.",
+      subject: "The TLS certificate renews automatically",
+      body: "The certificate for *.local will be renewed through Let's Encrypt within 48 hours.",
     },
     {
       sender: "admin@example.com",
-      subject: "Новый участник добавлен в рабочее пространство",
-      body: "Пользователь был добавлен в рабочее пространство с ролью MEMBER.",
+      subject: "A new member joined the workspace",
+      body: "The user was added to the workspace with the MEMBER role.",
     },
     {
       sender: marker,
-      subject: "Резервное копирование: предупреждение",
-      body: "Резервное копирование завершено с предупреждениями: 2 файла пропущены из-за занятости.",
+      subject: "Backup: warning",
+      body: "The backup finished with warnings: 2 files were skipped because they were in use.",
     },
     {
       sender: "billing@example.com",
-      subject: "Счёт за облачное хранилище",
-      body: "Ваш счёт за текущий расчётный период доступен в личном кабинете.",
+      subject: "Cloud storage invoice",
+      body: "Your invoice for the current billing period is available in your account.",
     },
     {
       sender: marker,
-      subject: "Плановое обслуживание завершено",
-      body: "Плановое обслуживание инфраструктуры завершено без простоя сервисов.",
+      subject: "Scheduled maintenance completed",
+      body: "Scheduled infrastructure maintenance finished with no service downtime.",
     },
   ];
 
@@ -475,42 +475,43 @@ async function seedMessages(client: ClientLike, workspaceId: string) {
     }>;
   }> = [
     {
-      category: `${DEMO_MARKER}Общее`,
+      category: `${DEMO_MARKER}General`,
       channels: [
         {
-          name: "уведомления",
+          name: "announcements",
           messages: [
             {
-              content: "Развёртывание версии 2.4.0 завершено",
+              content: "Version 2.4.0 has finished deploying",
               author: "ci-bot",
             },
             {
-              content: "Плановые работы запланированы на выходные",
+              content: "Scheduled maintenance is planned for the weekend",
               author: "admin",
             },
             {
-              content: "Добро пожаловать в новую рабочую область!",
+              content: "Welcome to the new workspace!",
               author: "system",
             },
           ],
         },
         {
-          name: "обсуждение",
+          name: "discussion",
           messages: [
             {
-              content: "Кто-нибудь смотрел новый дашборд мониторинга?",
+              content: "Has anyone looked at the new monitoring dashboard?",
               author: "operator",
             },
             {
-              content: "Да, выглядит отлично, метрики диска особенно полезны",
+              content:
+                "Yes, it looks great — the disk metrics are especially useful",
               author: "operator",
             },
             {
-              content: "Стоит добавить ещё алерты по памяти",
+              content: "We should add memory alerts too",
               author: "operator",
             },
             {
-              content: "Согласен, добавлю в следующий спринт",
+              content: "Agreed, I'll add them next sprint",
               author: "operator",
             },
           ],
@@ -518,46 +519,46 @@ async function seedMessages(client: ClientLike, workspaceId: string) {
       ],
     },
     {
-      category: `${DEMO_MARKER}Мониторинг`,
+      category: `${DEMO_MARKER}Monitoring`,
       channels: [
         {
-          name: "алерты",
+          name: "alerts",
           messages: [
             {
-              content: "Критический алерт по диску sdb устранён",
+              content: "The critical sdb disk alert is resolved",
               author: "monitoring",
             },
             {
-              content: "Задержка сети вернулась в норму",
+              content: "Network latency is back to normal",
               author: "monitoring",
             },
             {
-              content: "Новое правило алертинга добавлено для CPU > 90%",
+              content: "Added a new alerting rule for CPU > 90%",
               author: "admin",
             },
           ],
         },
         {
-          name: "метрики",
+          name: "metrics",
           messages: [
             {
-              content: "Средняя загрузка CPU за неделю: 34%",
+              content: "Average CPU load for the week: 34%",
               author: "monitoring",
             },
             {
-              content: "Использование диска приближается к 75%",
+              content: "Disk usage is approaching 75%",
               author: "monitoring",
             },
             {
-              content: "Сетевой трафик вырос на 12% за последний час",
+              content: "Network traffic grew 12% in the last hour",
               author: "monitoring",
             },
             {
-              content: "Отчёт по производительности сформирован",
+              content: "The performance report has been generated",
               author: "monitoring",
             },
             {
-              content: "Все сервисы работают в штатном режиме",
+              content: "All services are operating normally",
               author: "monitoring",
             },
           ],

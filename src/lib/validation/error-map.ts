@@ -1,19 +1,21 @@
 import { z } from "zod";
-import validationMessages from "@/messages/ru/validation.json";
+import validationMessages from "@/messages/en/validation.json";
 
 // Global fallback — reached ONLY for schema calls that pass NO message at
 // all. Cannot intercept schema-level literal/function messages (Zod v4
 // precedence: schema-level > per-parse > global z.config > locale) — those
 // source text from `validationMessages` directly at the call site instead.
 //
-// TODO(i18n): this is a static, Russian-only catalog with no request/locale
-// awareness. Safe today because (a) there are zero client-side .parse()/
-// .safeParse() calls on any @/lib/validation/* schema anywhere under
-// src/components (verified by grep — schemas are only ever parsed
-// server-side in route handlers) and (b) no second locale is planned
-// imminently. If either of those changes, this needs a request-scoped
-// rework (e.g. an error map built per-request from the active locale
-// instead of registered once globally at boot).
+// English is the base language of the product, so this catalog is pinned to
+// the English messages rather than translated per request. Schemas are
+// parsed only server-side (there are zero client-side .parse()/.safeParse()
+// calls on any @/lib/validation/* schema under src/components), and the
+// resulting issues travel back as an /api/** JSON body — a surface that has
+// no `[locale]` segment and is deliberately excluded from next-intl routing
+// in src/proxy.ts, so no active locale is in scope there. Localizing these
+// would mean resolving the request locale in every route handler (or
+// returning message keys and translating them client-side) — a separate,
+// larger change than pinning the base language.
 z.config({
   customError: (iss) => {
     switch (iss.code) {
@@ -45,4 +47,4 @@ z.config({
   },
 });
 
-export const VALIDATION_RU = validationMessages;
+export const VALIDATION_MESSAGES = validationMessages;

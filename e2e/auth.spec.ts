@@ -46,9 +46,7 @@ test("AC-AUTH-003: invalid credentials are rejected with a generic error and no 
   page,
 }) => {
   await submitLoginForm(page, "not-the-operator", "wrong-password");
-  await expect(
-    page.getByText("Неверное имя пользователя или пароль."),
-  ).toBeVisible();
+  await expect(page.getByText("Invalid username or password.")).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
 });
 
@@ -61,7 +59,7 @@ test("AC-AUTH-004: logout invalidates the session and subsequent requests redire
   await page
     .getByRole("button", { name: new RegExp(`${OPERATOR_USERNAME}$`) })
     .click();
-  await page.getByRole("menuitem", { name: "Выйти", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 
   await page.goto("/bookmarks");

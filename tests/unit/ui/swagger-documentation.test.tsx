@@ -34,9 +34,9 @@ vi.mock("next/script", () => ({
 import { SwaggerDocumentation } from "@/components/api-docs/swagger-documentation";
 
 const runtimeErrors = {
-  load: "Не удалось загрузить тестовый Swagger UI.",
-  unavailable: "Тестовый Swagger UI недоступен.",
-  initialization: "Не удалось инициализировать тестовую документацию API.",
+  load: "Failed to load the test Swagger UI.",
+  unavailable: "The test Swagger UI is unavailable.",
+  initialization: "Failed to initialize the test API documentation.",
 };
 
 describe("SwaggerDocumentation", () => {

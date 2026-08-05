@@ -52,7 +52,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: appOrigin,
-    locale: "ru-RU",
+    locale: "en-US",
     actionTimeout: 5_000,
     navigationTimeout: 15_000,
     trace: "retain-on-failure",

@@ -123,9 +123,9 @@ describe("standardized form contracts", () => {
     const user = userEvent.setup();
 
     renderWithIntl(<LoginForm />);
-    const username = screen.getByLabelText("Имя пользователя");
-    const password = screen.getByLabelText("Пароль");
-    const reveal = screen.getByRole("button", { name: "Показать пароль" });
+    const username = screen.getByLabelText("Username");
+    const password = screen.getByLabelText("Password");
+    const reveal = screen.getByRole("button", { name: "Show password" });
 
     expect(reveal).toHaveAttribute("type", "button");
     await user.click(reveal);
@@ -150,10 +150,10 @@ describe("standardized form contracts", () => {
     mocks.login.mockReturnValueOnce(loginResult.promise);
 
     renderWithIntl(<LoginForm />);
-    const username = screen.getByLabelText("Имя пользователя");
-    const password = screen.getByLabelText("Пароль");
-    const reveal = screen.getByRole("button", { name: "Показать пароль" });
-    const submit = screen.getByRole("button", { name: "Войти" });
+    const username = screen.getByLabelText("Username");
+    const password = screen.getByLabelText("Password");
+    const reveal = screen.getByRole("button", { name: "Show password" });
+    const submit = screen.getByRole("button", { name: "Sign in" });
 
     await user.type(username, "operator");
     await user.type(password, "secret");
@@ -181,15 +181,15 @@ describe("standardized form contracts", () => {
 
     renderWithIntl(<LoginForm next={next} authentikEnabled />);
     expect(
-      screen.getByRole("button", { name: "Войти через Authentik" }),
+      screen.getByRole("button", { name: "Sign in with Authentik" }),
     ).toHaveAttribute(
       "href",
       "/api/auth/authentik/login?next=%2F%2Fevil.example%2Fsteal%3Ftoken%3D1",
     );
 
-    await user.type(screen.getByLabelText("Имя пользователя"), "operator");
-    await user.type(screen.getByLabelText("Пароль"), "secret");
-    await user.click(screen.getByRole("button", { name: "Войти" }));
+    await user.type(screen.getByLabelText("Username"), "operator");
+    await user.type(screen.getByLabelText("Password"), "secret");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     // An unsafe `next` falls back to the post-login landing path, not to the
     // attacker's target.
@@ -212,12 +212,12 @@ describe("standardized form contracts", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Название"), "Documentation");
+    await user.type(screen.getByLabelText("Name"), "Documentation");
     await user.type(screen.getByLabelText("URL"), "https://example.com/docs");
-    const category = screen.getByRole("combobox", { name: "Категория" });
+    const category = screen.getByRole("combobox", { name: "Category" });
     expect(category).toHaveValue("category-a");
     await user.selectOptions(category, "category-b");
-    await user.click(screen.getByRole("button", { name: "Создать" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(mocks.bookmarksCreate).toHaveBeenCalledTimes(1));
     expect(mocks.bookmarksCreate).toHaveBeenCalledWith({
@@ -258,11 +258,11 @@ describe("standardized form contracts", () => {
     );
 
     const parent = screen.getByRole("combobox", {
-      name: "Родительская категория",
+      name: "Parent Category",
     });
     expect(parent).toHaveValue("");
-    await user.type(screen.getByLabelText("Название"), "New root");
-    await user.click(screen.getByRole("button", { name: "Создать" }));
+    await user.type(screen.getByLabelText("Name"), "New root");
+    await user.click(screen.getByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(mocks.categoriesCreate).toHaveBeenCalledTimes(1),
     );
@@ -294,10 +294,10 @@ describe("standardized form contracts", () => {
       />,
     );
     expect(
-      screen.getByRole("combobox", { name: "Родительская категория" }),
+      screen.getByRole("combobox", { name: "Parent Category" }),
     ).toBeDisabled();
     expect(
-      screen.getByText(/У этой категории есть подкатегории/),
+      screen.getByText(/This category has subcategories/),
     ).toBeInTheDocument();
   });
 
@@ -313,19 +313,19 @@ describe("standardized form contracts", () => {
     );
 
     const checkbox = screen.getByRole("checkbox", {
-      name: "Активен (проверять по расписанию)",
+      name: "Active (check on schedule)",
     });
-    await user.click(screen.getByText("Активен (проверять по расписанию)"));
+    await user.click(screen.getByText("Active (check on schedule)"));
     expect(checkbox).not.toBeChecked();
     checkbox.focus();
     await user.keyboard(" ");
     expect(checkbox).toBeChecked();
-    await user.click(screen.getByText("Активен (проверять по расписанию)"));
+    await user.click(screen.getByText("Active (check on schedule)"));
     expect(checkbox).not.toBeChecked();
 
-    await user.type(screen.getByLabelText("Название"), "Status page");
+    await user.type(screen.getByLabelText("Name"), "Status page");
     await user.type(screen.getByLabelText("URL"), "https://example.com/health");
-    await user.click(screen.getByRole("button", { name: "Создать" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(mocks.servicesCreate).toHaveBeenCalledTimes(1));
     expect(mocks.servicesCreate).toHaveBeenCalledWith(
@@ -351,12 +351,12 @@ describe("standardized form contracts", () => {
       />,
     );
 
-    const submit = screen.getByRole("button", { name: "Сохранить" });
-    const provider = screen.getByRole("combobox", { name: "Провайдер" });
+    const submit = screen.getByRole("button", { name: "Save" });
+    const provider = screen.getByRole("combobox", { name: "Provider" });
     await user.click(submit);
     expect(provider).toHaveAttribute("aria-invalid", "true");
-    expect(provider).toHaveAccessibleDescription("Выберите провайдера.");
-    expect(screen.getByLabelText("Название")).not.toHaveAttribute(
+    expect(provider).toHaveAccessibleDescription("Select a provider.");
+    expect(screen.getByLabelText("Name")).not.toHaveAttribute(
       "aria-invalid",
       "true",
     );
@@ -366,16 +366,18 @@ describe("standardized form contracts", () => {
       await screen.findByRole("option", { name: "Cloudflare (DNS)" }),
     );
     await user.click(submit);
-    const label = screen.getByLabelText("Название");
+    const label = screen.getByLabelText("Name");
     expect(label).toHaveAttribute("aria-invalid", "true");
-    expect(label).toHaveAccessibleDescription("Название обязательно.");
+    expect(label).toHaveAccessibleDescription("Name is required.");
     expect(provider).not.toHaveAttribute("aria-invalid", "true");
 
-    await user.type(label, "Основной аккаунт");
+    await user.type(label, "Primary account");
     await user.click(submit);
-    const secret = screen.getByLabelText("API-токен");
+    const secret = screen.getByLabelText("API token");
     expect(secret).toHaveAttribute("aria-invalid", "true");
-    expect(secret).toHaveAccessibleDescription("Поле «API-токен» обязательно.");
+    expect(secret).toHaveAccessibleDescription(
+      'Field "API token" is required.',
+    );
     expect(provider).not.toHaveAttribute("aria-invalid", "true");
     expect(label).not.toHaveAttribute("aria-invalid", "true");
   });
@@ -393,26 +395,26 @@ describe("standardized form contracts", () => {
       />,
     );
 
-    await user.click(screen.getByRole("combobox", { name: "Провайдер" }));
+    await user.click(screen.getByRole("combobox", { name: "Provider" }));
     await user.click(
       await screen.findByRole("option", { name: "OpenAI-compatible (LLM)" }),
     );
 
-    await user.type(screen.getByLabelText("Название"), "Локальная модель");
+    await user.type(screen.getByLabelText("Name"), "Local model");
     await user.type(
-      screen.getByLabelText("Базовый URL API"),
+      screen.getByLabelText("API base URL"),
       "http://127.0.0.1:11434/v1",
     );
-    await user.type(screen.getByLabelText("Модель"), "llama3.1");
+    await user.type(screen.getByLabelText("Model"), "llama3.1");
     // The key is the only secret field of the three.
-    const apiKey = screen.getByLabelText("API-ключ");
+    const apiKey = screen.getByLabelText("API key");
     expect(apiKey).toHaveAttribute("type", "password");
     await user.type(apiKey, "llm-key-value");
-    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.credentialsCreate).toHaveBeenCalledWith({
       provider: "OPENAI_COMPATIBLE",
-      label: "Локальная модель",
+      label: "Local model",
       baseUrl: "http://127.0.0.1:11434/v1",
       model: "llama3.1",
       apiKey: "llm-key-value",
@@ -422,7 +424,7 @@ describe("standardized form contracts", () => {
   it("renders generic provider API failures at form level without invalidating fields", async () => {
     const user = userEvent.setup();
     mocks.credentialsCreate.mockRejectedValueOnce(
-      new CredentialApiError("Провайдер временно недоступен."),
+      new CredentialApiError("Provider is temporarily unavailable."),
     );
 
     renderWithIntl(
@@ -435,22 +437,22 @@ describe("standardized form contracts", () => {
       />,
     );
 
-    const provider = screen.getByRole("combobox", { name: "Провайдер" });
+    const provider = screen.getByRole("combobox", { name: "Provider" });
     await user.click(provider);
     await user.click(
       await screen.findByRole("option", { name: "Cloudflare (DNS)" }),
     );
-    const label = screen.getByLabelText("Название");
-    const secret = screen.getByLabelText("API-токен");
-    await user.type(label, "Основной аккаунт");
+    const label = screen.getByLabelText("Name");
+    const secret = screen.getByLabelText("API token");
+    await user.type(label, "Primary account");
     await user.type(secret, "token-value");
-    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(
       await screen.findByRole("alert", {
         name: "",
       }),
-    ).toHaveTextContent("Провайдер временно недоступен.");
+    ).toHaveTextContent("Provider is temporarily unavailable.");
     expect(provider).not.toHaveAttribute("aria-invalid", "true");
     expect(label).not.toHaveAttribute("aria-invalid", "true");
     expect(secret).not.toHaveAttribute("aria-invalid", "true");

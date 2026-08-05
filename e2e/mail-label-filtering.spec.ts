@@ -8,7 +8,7 @@ async function getWorkspaceId(page: Page): Promise<string> {
   const workspace = page.locator("button[data-workspace-id]").first();
   if ((await workspace.count()) === 0) {
     await page
-      .getByRole("button", { name: "Переключить навигацию", exact: true })
+      .getByRole("button", { name: "Toggle navigation", exact: true })
       .click();
     await expect(workspace).toBeVisible();
   }
@@ -24,7 +24,7 @@ async function getWorkspaceIdAndName(
   const workspace = page.locator("button[data-workspace-id]").first();
   if ((await workspace.count()) === 0) {
     await page
-      .getByRole("button", { name: "Переключить навигацию", exact: true })
+      .getByRole("button", { name: "Toggle navigation", exact: true })
       .click();
     await expect(workspace).toBeVisible();
   }
@@ -400,14 +400,14 @@ async function expectContainedInViewport(page: Page, locator: Locator) {
 async function getLabelsNavigation(page: Page, narrow: boolean) {
   if (narrow) {
     await page
-      .getByRole("button", { name: "Аккаунты и папки", exact: true })
+      .getByRole("button", { name: "Accounts and folders", exact: true })
       .click();
     await expect(page.locator('[data-slot="sheet-content"]')).toHaveCSS(
       "opacity",
       "1",
     );
   }
-  const navigation = page.getByRole("navigation", { name: "Метки" });
+  const navigation = page.getByRole("navigation", { name: "Labels" });
   await expect(navigation).toBeVisible();
   return navigation;
 }
@@ -437,21 +437,21 @@ test("owner creates a standalone label with a chosen color", async ({
     await page.goto("/ru/mail");
 
     const trigger = page.getByRole("button", {
-      name: "Управление метками",
+      name: "Manage labels",
       exact: true,
     });
     await trigger.click();
     const dialog = page.getByRole("dialog", {
-      name: "Управление метками",
+      name: "Manage labels",
     });
     await expectContainedInViewport(page, dialog);
     await expectNoBlockingAxeViolations(page);
 
     await dialog
-      .getByRole("button", { name: "Создать метку", exact: true })
+      .getByRole("button", { name: "Create label", exact: true })
       .click();
-    await dialog.getByLabel("Название метки").fill(labelName);
-    await dialog.getByRole("button", { name: "Бирюзовый" }).click();
+    await dialog.getByLabel("Label name").fill(labelName);
+    await dialog.getByRole("button", { name: "Teal" }).click();
 
     const [createResponse] = await Promise.all([
       page.waitForResponse(
@@ -459,9 +459,7 @@ test("owner creates a standalone label with a chosen color", async ({
           response.url().endsWith("/api/mail/labels") &&
           response.request().method() === "POST",
       ),
-      dialog
-        .getByRole("button", { name: "Создать метку", exact: true })
-        .click(),
+      dialog.getByRole("button", { name: "Create label", exact: true }).click(),
     ]);
     expect(createResponse.status()).toBe(201);
     expect(await createResponse.json()).toMatchObject({
@@ -530,50 +528,50 @@ test("exact-sender tracer labels only future matching webhook mail", async ({
     });
 
     await page.goto("/ru/mail");
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     const seedRow = list.getByRole("button", { name: new RegExp(seedSubject) });
     await expect(seedRow).toBeVisible();
     await seedRow.click();
 
     await page
       .getByRole("button", {
-        name: "Фильтровать похожие письма",
+        name: "Filter messages like this",
         exact: true,
       })
       .click();
     const dialog = page.getByRole("dialog", {
-      name: "Фильтровать похожие письма",
+      name: "Filter messages like this",
     });
-    await expect(dialog.getByLabel("Аккаунт")).toHaveValue("Webhook");
-    await expect(dialog.getByLabel("Отправитель")).toHaveValue(sender);
+    await expect(dialog.getByLabel("Account")).toHaveValue("Webhook");
+    await expect(dialog.getByLabel("Sender")).toHaveValue(sender);
     await expect(
       dialog.getByRole("checkbox", {
-        name: "Применить к существующей почте",
+        name: "Apply to existing mail",
       }),
     ).not.toBeChecked();
-    await dialog.getByRole("combobox", { name: "Применить метку" }).click();
+    await dialog.getByRole("combobox", { name: "Apply label" }).click();
     await page
-      .getByRole("option", { name: "Создать новую метку", exact: true })
+      .getByRole("option", { name: "Create a new label", exact: true })
       .click();
-    await dialog.getByLabel("Название метки").fill(labelName);
+    await dialog.getByLabel("Label name").fill(labelName);
     await expectNoBlockingAxeViolations(page);
     await expectContainedInViewport(page, dialog);
     await expectContainedInViewport(
       page,
-      dialog.getByRole("button", { name: "Отмена", exact: true }),
+      dialog.getByRole("button", { name: "Cancel", exact: true }),
     );
     await expectContainedInViewport(
       page,
       dialog.getByRole("button", {
-        name: "Сохранить фильтр",
+        name: "Save filter",
         exact: true,
       }),
     );
     await dialog
-      .getByRole("button", { name: "Сохранить фильтр", exact: true })
+      .getByRole("button", { name: "Save filter", exact: true })
       .click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByText("Правило фильтра создано.")).toBeVisible();
+    await expect(page.getByText("Filter rule created.")).toBeVisible();
 
     await ingestMail(page, webhook.token, {
       sender: `  ${sender.toUpperCase()}  `,
@@ -587,7 +585,7 @@ test("exact-sender tracer labels only future matching webhook mail", async ({
     });
 
     await page.reload();
-    const refreshedList = page.getByRole("list", { name: "Список писем" });
+    const refreshedList = page.getByRole("list", { name: "Message list" });
     const matchingRow = refreshedList.getByRole("button", {
       name: new RegExp(matchingSubject),
     });
@@ -656,91 +654,89 @@ test("existing-mail run labels historical matches and exposes terminal progress"
     });
 
     await page.goto("/ru/mail");
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await list
       .getByRole("button", { name: new RegExp(matchingSubject) })
       .click();
     await page
       .getByRole("button", {
-        name: "Фильтровать похожие письма",
+        name: "Filter messages like this",
         exact: true,
       })
       .click();
     const createDialog = page.getByRole("dialog", {
-      name: "Фильтровать похожие письма",
+      name: "Filter messages like this",
     });
-    await createDialog.getByLabel("Название правила").fill(ruleName);
+    await createDialog.getByLabel("Rule name").fill(ruleName);
     const applyExisting = createDialog.getByRole("checkbox", {
-      name: "Применить к существующей почте",
+      name: "Apply to existing mail",
     });
     await expect(applyExisting).not.toBeChecked();
     await applyExisting.check();
     await expect(applyExisting).toBeChecked();
-    await createDialog
-      .getByRole("combobox", { name: "Применить метку" })
-      .click();
+    await createDialog.getByRole("combobox", { name: "Apply label" }).click();
     await page
-      .getByRole("option", { name: "Создать новую метку", exact: true })
+      .getByRole("option", { name: "Create a new label", exact: true })
       .click();
-    await createDialog.getByLabel("Название метки").fill(labelName);
+    await createDialog.getByLabel("Label name").fill(labelName);
     await expectNoBlockingAxeViolations(page);
     await expectContainedInViewport(page, createDialog);
     await createDialog
-      .getByRole("button", { name: "Сохранить фильтр", exact: true })
+      .getByRole("button", { name: "Save filter", exact: true })
       .click();
     await expect(createDialog).toBeHidden();
 
     const manageTrigger = page.getByRole("button", {
-      name: "Управление фильтрами",
+      name: "Manage filters",
       exact: true,
     });
     await manageTrigger.click();
     const manager = page.getByRole("dialog", {
-      name: "Управление правилами фильтрации",
+      name: "Manage filter rules",
     });
     const ruleRow = manager.getByRole("listitem").filter({ hasText: ruleName });
     await expect(ruleRow).toBeVisible();
     await ruleRow
-      .getByRole("button", { name: "Ход обработки", exact: true })
+      .getByRole("button", { name: "View progress", exact: true })
       .click();
 
     const runDialog = page.getByRole("dialog", {
-      name: "Обработка существующей почты",
+      name: "Existing mail progress",
     });
     await expect(runDialog).toBeVisible();
     await expectContainedInViewport(page, runDialog);
     await expectNoBlockingAxeViolations(page);
-    await expect(runDialog.getByText("Завершено", { exact: true })).toBeVisible(
+    await expect(runDialog.getByText("Completed", { exact: true })).toBeVisible(
       { timeout: 90_000 },
     );
     await expect(
-      runDialog.getByText("Проверено писем", { exact: true }).locator(".."),
+      runDialog.getByText("Messages processed", { exact: true }).locator(".."),
     ).toContainText("2");
     await expect(
-      runDialog.getByText("Совпало писем", { exact: true }).locator(".."),
+      runDialog.getByText("Messages matched", { exact: true }).locator(".."),
     ).toContainText("1");
     await runDialog
       .getByRole("button", {
-        name: "Назад к правилам фильтрации",
+        name: "Back to filter rules",
         exact: true,
       })
       .last()
       .click();
     await manager
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .first()
       .click();
     await expect(manageTrigger).toBeFocused();
 
     const backToList = page.getByRole("button", {
-      name: "Назад к списку",
+      name: "Back to list",
       exact: true,
     });
     if (await backToList.isVisible().catch(() => false)) {
       await backToList.click();
     }
 
-    const currentList = page.getByRole("list", { name: "Список писем" });
+    const currentList = page.getByRole("list", { name: "Message list" });
     const matchingRow = currentList.getByRole("button", {
       name: new RegExp(matchingSubject),
     });
@@ -793,12 +789,12 @@ test("rule edit, disable, enable, and delete change only future behavior", async
 
   async function openManager() {
     const trigger = page.getByRole("button", {
-      name: "Управление фильтрами",
+      name: "Manage filters",
       exact: true,
     });
     await trigger.click();
     const manager = page.getByRole("dialog", {
-      name: "Управление правилами фильтрации",
+      name: "Manage filter rules",
     });
     await expect(manager).toBeVisible();
     await expectContainedInViewport(page, manager);
@@ -806,7 +802,7 @@ test("rule edit, disable, enable, and delete change only future behavior", async
   }
 
   async function expectRowLabel(subject: string, expected: boolean) {
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     const row = list.getByRole("button", { name: new RegExp(subject) });
     await expect(row).toBeVisible();
     if (expected) await expect(row.getByLabel(labelName)).toBeVisible();
@@ -833,33 +829,31 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     });
 
     await page.goto("/ru/mail");
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await list.getByRole("button", { name: new RegExp(seedSubject) }).click();
     await page
       .getByRole("button", {
-        name: "Фильтровать похожие письма",
+        name: "Filter messages like this",
         exact: true,
       })
       .click();
     const createDialog = page.getByRole("dialog", {
-      name: "Фильтровать похожие письма",
+      name: "Filter messages like this",
     });
-    await createDialog.getByLabel("Название правила").fill(ruleName);
+    await createDialog.getByLabel("Rule name").fill(ruleName);
     // The dialog seeds a single sender condition; a new one defaults to
     // subject-contains, which is what this rule keys on.
     await createDialog
-      .getByRole("button", { name: "Добавить условие", exact: true })
+      .getByRole("button", { name: "Add condition", exact: true })
       .click();
-    await createDialog.getByLabel("Тема содержит").fill(firstCriterion);
-    await createDialog
-      .getByRole("combobox", { name: "Применить метку" })
-      .click();
+    await createDialog.getByLabel("Subject contains").fill(firstCriterion);
+    await createDialog.getByRole("combobox", { name: "Apply label" }).click();
     await page
-      .getByRole("option", { name: "Создать новую метку", exact: true })
+      .getByRole("option", { name: "Create a new label", exact: true })
       .click();
-    await createDialog.getByLabel("Название метки").fill(labelName);
+    await createDialog.getByLabel("Label name").fill(labelName);
     await createDialog
-      .getByRole("button", { name: "Сохранить фильтр", exact: true })
+      .getByRole("button", { name: "Save filter", exact: true })
       .click();
     await expect(createDialog).toBeHidden();
 
@@ -876,21 +870,19 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     let ruleRow = opened.manager
       .getByRole("listitem")
       .filter({ hasText: ruleName });
-    await ruleRow
-      .getByRole("button", { name: "Изменить", exact: true })
-      .click();
+    await ruleRow.getByRole("button", { name: "Edit", exact: true }).click();
     const editDialog = page.getByRole("dialog", {
-      name: "Изменение правила фильтрации",
+      name: "Edit filter rule",
     });
-    await editDialog.getByLabel("Тема содержит").fill(secondCriterion);
+    await editDialog.getByLabel("Subject contains").fill(secondCriterion);
     await editDialog
-      .getByRole("button", { name: "Обновить фильтр", exact: true })
+      .getByRole("button", { name: "Update filter", exact: true })
       .click();
     await expect(
-      opened.manager.getByRole("list", { name: "Правила фильтрации" }),
+      opened.manager.getByRole("list", { name: "Filter rules" }),
     ).toBeVisible();
     await opened.manager
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .first()
       .click();
     await expect(opened.trigger).toBeFocused();
@@ -914,12 +906,10 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     ruleRow = opened.manager
       .getByRole("listitem")
       .filter({ hasText: ruleName });
-    await ruleRow
-      .getByRole("button", { name: "Отключить", exact: true })
-      .click();
-    await expect(ruleRow.getByText("Отключён", { exact: true })).toBeVisible();
+    await ruleRow.getByRole("button", { name: "Disable", exact: true }).click();
+    await expect(ruleRow.getByText("Disabled", { exact: true })).toBeVisible();
     await opened.manager
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .first()
       .click();
     await ingestMail(page, webhook.token, {
@@ -935,12 +925,10 @@ test("rule edit, disable, enable, and delete change only future behavior", async
     ruleRow = opened.manager
       .getByRole("listitem")
       .filter({ hasText: ruleName });
-    await ruleRow
-      .getByRole("button", { name: "Включить", exact: true })
-      .click();
-    await expect(ruleRow.getByText("Работает", { exact: true })).toBeVisible();
+    await ruleRow.getByRole("button", { name: "Enable", exact: true }).click();
+    await expect(ruleRow.getByText("Up", { exact: true })).toBeVisible();
     await opened.manager
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .first()
       .click();
     await ingestMail(page, webhook.token, {
@@ -956,18 +944,18 @@ test("rule edit, disable, enable, and delete change only future behavior", async
       .getByRole("listitem")
       .filter({ hasText: ruleName });
     await ruleRow
-      .getByRole("button", { name: `Удалить ${ruleName}`, exact: true })
+      .getByRole("button", { name: `Remove ${ruleName}`, exact: true })
       .click();
     const confirm = page.getByRole("alertdialog", {
-      name: "Удалить правило фильтрации?",
+      name: "Delete filter rule?",
     });
     await expect(confirm).toContainText(
-      "Уже применённые к письмам метки сохранятся",
+      "Labels already applied to messages will remain",
     );
-    await confirm.getByRole("button", { name: "Удалить", exact: true }).click();
+    await confirm.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(ruleRow).toHaveCount(0);
     await opened.manager
-      .getByRole("button", { name: "Закрыть", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .first()
       .click();
     await ingestMail(page, webhook.token, {
@@ -1067,25 +1055,25 @@ test("manual labels, combined browsing, keyboard and member access", async ({
     await page.goto("/ru/mail");
     if (testInfo.project.name === "desktop-1440") {
       const initialAccountSelect = page.getByRole("combobox", {
-        name: "Почтовый аккаунт",
+        name: "Mail account",
         exact: true,
       });
       await initialAccountSelect.click();
       await page.getByRole("option", { name: "Webhook", exact: true }).click();
       await expect(initialAccountSelect).toContainText("Webhook");
     }
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await list.getByRole("button", { name: new RegExp(targetSubject) }).click();
     await expect(
       page.getByRole("heading", { name: targetSubject, exact: true }),
     ).toBeVisible();
 
     const pickerTrigger = page.getByRole("button", {
-      name: "Изменить метки",
+      name: "Edit labels",
       exact: true,
     });
     await pickerTrigger.click();
-    const pickerSearch = page.getByRole("textbox", { name: "Поиск меток" });
+    const pickerSearch = page.getByRole("textbox", { name: "Search labels" });
     await expect(pickerSearch).toBeFocused();
 
     for (const labelName of labelNames) {
@@ -1112,11 +1100,11 @@ test("manual labels, combined browsing, keyboard and member access", async ({
     }
 
     await page
-      .getByRole("button", { name: "Непрочитано", exact: true })
+      .getByRole("button", { name: "Mark unread", exact: true })
       .click();
     if (narrow) {
       await page
-        .getByRole("button", { name: "Назад к списку", exact: true })
+        .getByRole("button", { name: "Back to list", exact: true })
         .click();
     }
 
@@ -1127,22 +1115,22 @@ test("manual labels, combined browsing, keyboard and member access", async ({
     if (narrow) {
       await expect(targetRow.getByLabel(labelNames[1])).toBeHidden();
       await expect(
-        targetRow.getByLabel("Ещё меток: 2", { exact: true }),
+        targetRow.getByLabel("2 more labels", { exact: true }),
       ).toBeVisible();
     } else {
       await expect(targetRow.getByLabel(labelNames[1])).toBeVisible();
       await expect(
-        targetRow.getByLabel("Ещё меток: 1", { exact: true }),
+        targetRow.getByLabel("1 more label", { exact: true }),
       ).toBeVisible();
     }
 
-    await page.getByLabel("Поиск по почте").fill(commonSubject);
+    await page.getByLabel("Search mail").fill(commonSubject);
     await page
-      .getByRole("button", { name: "Только непрочитанные", exact: true })
+      .getByRole("button", { name: "Unread only", exact: true })
       .click();
-    await page.getByRole("combobox", { name: "Порядок сортировки" }).click();
+    await page.getByRole("combobox", { name: "Sort order" }).click();
     await page
-      .getByRole("option", { name: "Сначала старые", exact: true })
+      .getByRole("option", { name: "Oldest first", exact: true })
       .click();
 
     let labelsNavigation = await getLabelsNavigation(page, narrow);
@@ -1151,7 +1139,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       await page.keyboard.press("Escape");
       await expect(
         page.getByRole("button", {
-          name: "Аккаунты и папки",
+          name: "Accounts and folders",
           exact: true,
         }),
       ).toBeFocused();
@@ -1163,7 +1151,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
     if (narrow) {
       await expect(
         page.getByRole("button", {
-          name: "Аккаунты и папки",
+          name: "Accounts and folders",
           exact: true,
         }),
       ).toBeFocused();
@@ -1172,20 +1160,20 @@ test("manual labels, combined browsing, keyboard and member access", async ({
     await expect(
       list.getByRole("button", { name: new RegExp(targetSubject) }),
     ).toBeVisible();
-    await expect(page.getByLabel("Поиск по почте")).toHaveValue(commonSubject);
+    await expect(page.getByLabel("Search mail")).toHaveValue(commonSubject);
     await expect(
       page.getByRole("button", {
-        name: "Только непрочитанные",
+        name: "Unread only",
         exact: true,
       }),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.getByRole("combobox", { name: "Порядок сортировки" }),
-    ).toContainText("Сначала старые");
+      page.getByRole("combobox", { name: "Sort order" }),
+    ).toContainText("Oldest first");
 
     labelsNavigation = await getLabelsNavigation(page, narrow);
     await labelsNavigation
-      .getByRole("button", { name: "Все метки", exact: true })
+      .getByRole("button", { name: "All labels", exact: true })
       .click();
     await expect(list.getByRole("listitem")).toHaveCount(2);
 
@@ -1196,7 +1184,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
 
     if (testInfo.project.name === "desktop-1440") {
       const accountSelect = page.getByRole("combobox", {
-        name: "Почтовый аккаунт",
+        name: "Mail account",
         exact: true,
       });
       await accountSelect.click();
@@ -1214,7 +1202,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
         .first()
         .or(
           page.getByRole("heading", {
-            name: "Ничего не найдено",
+            name: "Nothing found",
             exact: true,
           }),
         );
@@ -1279,16 +1267,16 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       await expect(
         page.locator(`button[data-workspace-id="${workspaceId}"]`).first(),
       ).toBeVisible();
-      await expect(page.getByLabel("Поиск по почте")).toHaveValue("");
+      await expect(page.getByLabel("Search mail")).toHaveValue("");
       await expect(
         page.getByRole("button", {
-          name: "Только непрочитанные",
+          name: "Unread only",
           exact: true,
         }),
       ).toHaveAttribute("aria-pressed", "false");
       await expect(
-        page.getByRole("combobox", { name: "Порядок сортировки" }),
-      ).toContainText("Сначала новые");
+        page.getByRole("combobox", { name: "Sort order" }),
+      ).toContainText("Newest first");
       // Same as above: assert only once the restored workspace's mailbox has
       // rendered, otherwise the empty in-flight list would satisfy this.
       await expect(mailboxSettled.first()).toBeVisible();
@@ -1296,7 +1284,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       labelsNavigation = await getLabelsNavigation(page, false);
       await expect(
         labelsNavigation.getByRole("button", {
-          name: "Все метки",
+          name: "All labels",
           exact: true,
         }),
       ).toHaveAttribute("aria-current", "true");
@@ -1325,7 +1313,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       const memberPage = memberSession.page;
       await memberPage.goto("/ru/mail");
       const memberAccountSelect = memberPage.getByRole("combobox", {
-        name: "Почтовый аккаунт",
+        name: "Mail account",
         exact: true,
       });
       await memberAccountSelect.click();
@@ -1334,37 +1322,37 @@ test("manual labels, combined browsing, keyboard and member access", async ({
         .click();
       await expect(memberAccountSelect).toContainText("Webhook");
       const memberList = memberPage.getByRole("list", {
-        name: "Список писем",
+        name: "Message list",
       });
       await memberList
         .getByRole("button", { name: new RegExp(targetSubject) })
         .click();
       await expect(
         memberPage.getByRole("button", {
-          name: "Фильтровать похожие письма",
+          name: "Filter messages like this",
           exact: true,
         }),
       ).toBeVisible();
       await expect(
         memberPage.getByRole("button", {
-          name: "Управление метками",
+          name: "Manage labels",
           exact: true,
         }),
       ).toBeVisible();
       await expect(
         memberPage.getByRole("button", {
-          name: "Управление фильтрами",
+          name: "Manage filters",
           exact: true,
         }),
       ).toBeVisible();
 
       const memberPickerTrigger = memberPage.getByRole("button", {
-        name: "Изменить метки",
+        name: "Edit labels",
         exact: true,
       });
       await memberPickerTrigger.click();
       const memberSearch = memberPage.getByRole("textbox", {
-        name: "Поиск меток",
+        name: "Search labels",
       });
       await memberSearch.fill(labelNames[2]);
       await memberPage.keyboard.press("ArrowDown");
@@ -1379,7 +1367,7 @@ test("manual labels, combined browsing, keyboard and member access", async ({
       await memberPage.keyboard.press("Escape");
       await expect(memberPickerTrigger).toBeFocused();
 
-      await memberPage.getByLabel("Поиск по почте").fill(commonSubject);
+      await memberPage.getByLabel("Search mail").fill(commonSubject);
       const memberLabels = await getLabelsNavigation(memberPage, false);
       await memberLabels
         .getByRole("button", { name: labelNames[0], exact: true })

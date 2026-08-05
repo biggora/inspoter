@@ -20,7 +20,7 @@ import { persistIncomingMail } from "@/lib/services/mail-message-persistence";
 import { nextMailSyncState } from "@/lib/services/mail-sync-status";
 import * as alertsService from "./alerts";
 
-// IMAP sync engine (plan §3 «Движок синхронизации»): lease-locked per-account
+// IMAP sync engine (plan §3 "sync engine"): lease-locked per-account
 // sync — folder list reconciliation, initial/incremental message fetch,
 // flag down-sync and deletion detection. Up-sync of flags happens in the
 // action routes, not here.
@@ -45,7 +45,7 @@ const MAX_SYNC_ERROR_LENGTH = 500;
 const TRANSPORT_RETRY_DELAY_MS = 2_000;
 
 // Fixed positions for special-use folders; OTHER folders go after them,
-// alphabetically from position 10 (plan §3: INBOX=0 → special-use → алфавит).
+// alphabetically from position 10 (plan §3: INBOX=0 → special-use → alphabet).
 const SPECIAL_USE_POSITION: Partial<Record<MailSpecialUse, number>> = {
   INBOX: 0,
   SENT: 1,
@@ -422,13 +422,12 @@ export async function syncAccount(
       },
     });
     if (next.flipped) {
-      // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
       alertsService
         .create(account.workspaceId, {
-          category: "Почта",
+          categoryKey: "mail",
           severity: "info",
           source: account.email,
-          message: "Синхронизация восстановлена",
+          messageKey: "system.mailSyncRecovered",
         })
         .catch((err) => {
           // Alert write failed — record it so the lost "sync recovered"
@@ -474,13 +473,13 @@ export async function syncAccount(
       },
     });
     if (next.flipped) {
-      // TODO(i18n): persisted as literal Russian — migrating to keys needs a data migration
       alertsService
         .create(account.workspaceId, {
-          category: "Почта",
+          categoryKey: "mail",
           severity: "critical",
           source: account.email,
-          message: `Ошибка синхронизации: ${message.slice(0, 200)}`,
+          messageKey: "system.mailSyncError",
+          messageParams: { error: message.slice(0, 200) },
         })
         .catch((err) => {
           // Alert write failed — record it so the lost "sync failed"

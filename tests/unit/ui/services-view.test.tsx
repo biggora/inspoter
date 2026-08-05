@@ -75,11 +75,11 @@ describe("ServicesView pause control", () => {
     const user = userEvent.setup();
     renderView();
 
-    expect(screen.getByText("Работает")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Приостановить" }));
+    expect(screen.getByText("Up")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pause" }));
 
     expect(apiMocks.setActive).toHaveBeenCalledWith("svc-1", false);
-    expect(toastMocks.success).toHaveBeenCalledWith("Проверки приостановлены.");
+    expect(toastMocks.success).toHaveBeenCalledWith("Checks paused.");
   });
 
   it("reports a paused service as suspended rather than as its stale last result", async () => {
@@ -88,13 +88,13 @@ describe("ServicesView pause control", () => {
     // service — the card must not keep claiming it is up.
     renderView({ isActive: false });
 
-    expect(screen.getByText("Приостановлен")).toBeInTheDocument();
-    expect(screen.queryByText("Работает")).not.toBeInTheDocument();
+    expect(screen.getByText("Suspended")).toBeInTheDocument();
+    expect(screen.queryByText("Up")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Возобновить" }));
+    await user.click(screen.getByRole("button", { name: "Resume" }));
 
     expect(apiMocks.setActive).toHaveBeenCalledWith("svc-1", true);
-    expect(toastMocks.success).toHaveBeenCalledWith("Проверки возобновлены.");
+    expect(toastMocks.success).toHaveBeenCalledWith("Checks resumed.");
   });
 
   it("surfaces a failed toggle on the card instead of a toast", async () => {
@@ -102,7 +102,7 @@ describe("ServicesView pause control", () => {
     apiMocks.setActive.mockRejectedValue(new Error("Resource not found."));
     renderView();
 
-    await user.click(screen.getByRole("button", { name: "Приостановить" }));
+    await user.click(screen.getByRole("button", { name: "Pause" }));
 
     expect(await screen.findByText("Resource not found.")).toBeInTheDocument();
     expect(toastMocks.success).not.toHaveBeenCalled();

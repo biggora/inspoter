@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
 
 // Zod schemas — DNS record input validation (AC-DOM-008): type-specific
 // value formats are rejected before reaching the provider. Mirrors the
-// refine-based style of validation/bookmarks.ts. Messages are Russian
-// because they surface directly as fieldErrors in the DNS record dialog.
+// refine-based style of validation/bookmarks.ts. Messages come from the
+// base-language catalog because they surface directly as fieldErrors in the
+// DNS record dialog.
 
 const RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV"] as const;
 
@@ -26,28 +27,28 @@ function checkValueForType(
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: VALIDATION_RU.dns.ipv4Invalid,
+      message: VALIDATION_MESSAGES.dns.ipv4Invalid,
     });
   }
   if (type === "AAAA" && !ipv6Regex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: VALIDATION_RU.dns.ipv6Invalid,
+      message: VALIDATION_MESSAGES.dns.ipv6Invalid,
     });
   }
   if ((type === "CNAME" || type === "NS") && !hostnameRegex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: VALIDATION_RU.dns.hostnameInvalid.replace("{type}", type),
+      message: VALIDATION_MESSAGES.dns.hostnameInvalid.replace("{type}", type),
     });
   }
   if (type === "MX" && !hostnameRegex.test(value)) {
     ctx.addIssue({
       code: "custom",
       path: ["value"],
-      message: VALIDATION_RU.dns.mxHostnameInvalid,
+      message: VALIDATION_MESSAGES.dns.mxHostnameInvalid,
     });
   }
 }
@@ -58,15 +59,15 @@ export const dnsRecordInputSchema = z
     name: z
       .string()
       .trim()
-      .min(1, { error: () => VALIDATION_RU.dns.nameRequired }),
+      .min(1, { error: () => VALIDATION_MESSAGES.dns.nameRequired }),
     value: z
       .string()
       .trim()
-      .min(1, { error: () => VALIDATION_RU.dns.valueRequired }),
+      .min(1, { error: () => VALIDATION_MESSAGES.dns.valueRequired }),
     ttl: z.coerce
       .number()
       .int()
-      .positive({ error: () => VALIDATION_RU.dns.ttlInvalid }),
+      .positive({ error: () => VALIDATION_MESSAGES.dns.ttlInvalid }),
     priority: z.coerce.number().int().nonnegative().optional(),
   })
   .superRefine((data, ctx) => {
@@ -75,7 +76,7 @@ export const dnsRecordInputSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["priority"],
-        message: VALIDATION_RU.dns.mxPriorityRequired,
+        message: VALIDATION_MESSAGES.dns.mxPriorityRequired,
       });
     }
   });
@@ -91,7 +92,7 @@ export const dnsRecordPatchSchema = z
       data.value !== undefined ||
       data.ttl !== undefined ||
       data.priority !== undefined,
-    { error: () => VALIDATION_RU.dns.atLeastOneFieldRequired },
+    { error: () => VALIDATION_MESSAGES.dns.atLeastOneFieldRequired },
   );
 
 export type DnsRecordInputPayload = z.infer<typeof dnsRecordInputSchema>;

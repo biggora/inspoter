@@ -38,8 +38,8 @@ import {
 import { credentialsApi, type CredentialDto } from "./credentials-api";
 import { ProviderCredentialDialog } from "./provider-credential-dialog";
 
-// "DNS" and "LLM" aren't Russian prose so they stay plain literal strings;
-// "Хостинг" does need translation and holds a translation key instead,
+// "DNS" and "LLM" aren't prose so they stay plain literal strings;
+// "Hosting" is a word every locale spells differently and holds a key instead,
 // resolved via categoryLabel() below (same convention as services/format.ts's
 // MONITOR_TYPE_LABELS/getMonitorTypeLabel).
 const CATEGORY_LABELS: Record<ProviderCategory, string> = {

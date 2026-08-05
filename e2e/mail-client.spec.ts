@@ -152,92 +152,90 @@ test("mail client shows folders with unread badges, reads a message, switches fo
 
     await page.goto("/mail");
     await expect(
-      page.getByRole("heading", { name: "Почта", exact: true }),
+      page.getByRole("heading", { name: "Mail", exact: true }),
     ).toBeVisible();
 
     const addAccountButton = page.getByRole("button", {
-      name: "Добавить аккаунт",
+      name: "Add account",
       exact: true,
     });
     await addAccountButton.click();
     const accountDialog = page.getByRole("dialog");
     await expect(
-      accountDialog.getByRole("heading", { name: "Добавить аккаунт" }),
+      accountDialog.getByRole("heading", { name: "Add account" }),
     ).toBeVisible();
-    await accountDialog.getByLabel("Название").fill("Черновик аккаунта");
-    await accountDialog.getByRole("button", { name: "Отмена" }).click();
+    await accountDialog.getByLabel("Name").fill("Draft account");
+    await accountDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(accountDialog).toBeHidden();
     await addAccountButton.click();
-    await expect(accountDialog.getByLabel("Название")).toHaveValue("");
-    await accountDialog.getByRole("button", { name: "Отмена" }).click();
+    await expect(accountDialog.getByLabel("Name")).toHaveValue("");
+    await accountDialog.getByRole("button", { name: "Cancel" }).click();
 
     // Sidebar: the MOCK IMAP account is preselected over the webhook one,
     // and INBOX carries the deterministic unread badge.
-    const sidebar = page.getByRole("navigation", { name: "Папки" });
-    const inboxButton = sidebar.getByRole("button", { name: /Входящие/ });
+    const sidebar = page.getByRole("navigation", { name: "Folders" });
+    const inboxButton = sidebar.getByRole("button", { name: /Inbox/ });
     await expect(inboxButton).toBeVisible();
     await expect(
-      inboxButton.getByLabel(`Непрочитанных: ${MOCK_INBOX_UNREAD}`),
+      inboxButton.getByLabel(`Unread: ${MOCK_INBOX_UNREAD}`),
     ).toBeVisible();
     await expect(
-      sidebar.getByRole("button", { name: "Отправленные", exact: true }),
+      sidebar.getByRole("button", { name: "Sent", exact: true }),
     ).toBeVisible();
 
     // All 30 INBOX messages fit on one page (LIST_PAGE_SIZE 50).
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await expect(list.getByRole("listitem")).toHaveCount(30);
 
     // Newest message (uid 30) opens in the reading pane with its body.
     await list
-      .getByRole("button", { name: /Итоги спринта/ })
+      .getByRole("button", { name: /Sprint results/ })
       .first()
       .click();
     await expect(
-      page.getByRole("heading", { name: "Итоги спринта", exact: true }),
+      page.getByRole("heading", { name: "Sprint results", exact: true }),
     ).toBeVisible();
     // The body renders in the reading pane's <pre>; the same sentence also
     // appears in list-row snippets, so scope to the pane body element.
     await expect(
-      page.locator("pre", { hasText: "Черновик целей приложен" }),
+      page.locator("pre", { hasText: "A draft of the goals is attached" }),
     ).toBeVisible();
     await expect(
-      page.getByText("Кому: Оператор <operator@inspot.local>", {
+      page.getByText("To: Operator <operator@inspot.local>", {
         exact: true,
       }),
     ).toBeVisible();
 
     // Folder switch: the mock Sent folder is empty.
-    await sidebar
-      .getByRole("button", { name: "Отправленные", exact: true })
-      .click();
+    await sidebar.getByRole("button", { name: "Sent", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Нет писем", exact: true }),
+      page.getByRole("heading", { name: "No messages", exact: true }),
     ).toBeVisible();
 
     // Back to INBOX; search narrows the list (3 of 30 subjects match).
     await inboxButton.click();
     await expect(list.getByRole("listitem")).toHaveCount(30);
-    const search = page.getByLabel("Поиск по почте", { exact: true });
-    await search.fill("Вопрос по интеграции");
+    const search = page.getByLabel("Search mail", { exact: true });
+    await search.fill("Question about the integration");
     await expect(list.getByRole("listitem")).toHaveCount(3);
 
     // Unread-only toggle keeps just the 10 unread messages.
     await search.fill("");
     await expect(list.getByRole("listitem")).toHaveCount(30);
     await page
-      .getByRole("button", { name: "Только непрочитанные", exact: true })
+      .getByRole("button", { name: "Unread only", exact: true })
       .click();
     await expect(list.getByRole("listitem")).toHaveCount(MOCK_INBOX_UNREAD);
 
-    // Attachment download (Phase 7): uid 1 («Отчёт за неделю», the only
+    // Attachment download (Phase 7): uid 1 ("Weekly report", the only
     // unread message with an attachment) exposes a chip that streams
     // document-1.txt through the lazy-cache attachment route.
     await list
-      .getByRole("button", { name: /Отчёт за неделю/ })
+      .getByRole("button", { name: /Weekly report/ })
       .first()
       .click();
     await expect(
-      page.getByRole("heading", { name: "Отчёт за неделю", exact: true }),
+      page.getByRole("heading", { name: "Weekly report", exact: true }),
     ).toBeVisible();
     const attachmentChip = page.getByRole("button", {
       name: /document-1\.txt/,
@@ -266,173 +264,165 @@ test("mail actions: read badge, archive, trash, compose and reply", async ({
     await waitForInitialSync(page, accountId);
 
     await page.goto("/mail");
-    const sidebar = page.getByRole("navigation", { name: "Папки" });
-    const inboxButton = sidebar.getByRole("button", { name: /Входящие/ });
+    const sidebar = page.getByRole("navigation", { name: "Folders" });
+    const inboxButton = sidebar.getByRole("button", { name: /Inbox/ });
     await expect(
-      inboxButton.getByLabel(`Непрочитанных: ${MOCK_INBOX_UNREAD}`),
+      inboxButton.getByLabel(`Unread: ${MOCK_INBOX_UNREAD}`),
     ).toBeVisible();
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await expect(list.getByRole("listitem")).toHaveCount(30);
 
-    // Opening an unread message (uid 28, newest «Доступ к репозиторию»)
+    // Opening an unread message (uid 28, newest "Repository access")
     // clears its dot and decrements the INBOX badge.
     const unreadRow = list
       .getByRole("listitem")
-      .filter({ hasText: "Доступ к репозиторию" })
+      .filter({ hasText: "Repository access" })
       .first();
-    await expect(unreadRow.getByLabel("Непрочитанное")).toBeVisible();
+    await expect(unreadRow.getByLabel("Unread")).toBeVisible();
     await unreadRow.getByRole("button").click();
     await expect(
-      page.getByRole("heading", { name: "Доступ к репозиторию", exact: true }),
+      page.getByRole("heading", { name: "Repository access", exact: true }),
     ).toBeVisible();
-    await expect(unreadRow.getByLabel("Непрочитанное")).toBeHidden();
+    await expect(unreadRow.getByLabel("Unread")).toBeHidden();
     await expect(
-      inboxButton.getByLabel(`Непрочитанных: ${MOCK_INBOX_UNREAD - 1}`),
+      inboxButton.getByLabel(`Unread: ${MOCK_INBOX_UNREAD - 1}`),
     ).toBeVisible();
 
-    // Archive the open message: row leaves INBOX and shows up in Архив.
-    await page.getByRole("button", { name: "В архив", exact: true }).click();
+    // Archive the open message: row leaves INBOX and shows up in Archive.
+    await page.getByRole("button", { name: "Archive", exact: true }).click();
     await expect(
-      page.getByText("Письмо перемещено в архив").first(),
+      page.getByText("Message moved to archive").first(),
     ).toBeVisible();
     await expect(list.getByRole("listitem")).toHaveCount(29);
-    await sidebar.getByRole("button", { name: "Архив", exact: true }).click();
+    await sidebar.getByRole("button", { name: "Archive", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(
-      list.getByRole("listitem").filter({ hasText: "Доступ к репозиторию" }),
+      list.getByRole("listitem").filter({ hasText: "Repository access" }),
     ).toBeVisible();
 
-    // Delete from INBOX moves the message into Корзина.
+    // Delete from INBOX moves the message into Trash.
     await inboxButton.click();
     await expect(list.getByRole("listitem")).toHaveCount(29);
     await list
-      .getByRole("button", { name: /Итоги спринта/ })
+      .getByRole("button", { name: /Sprint results/ })
       .first()
       .click();
     await expect(
-      page.getByRole("heading", { name: "Итоги спринта", exact: true }),
+      page.getByRole("heading", { name: "Sprint results", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Удалить", exact: true }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(
-      page.getByText("Письмо перемещено в корзину").first(),
+      page.getByText("Message moved to trash").first(),
     ).toBeVisible();
     await expect(list.getByRole("listitem")).toHaveCount(28);
-    await sidebar.getByRole("button", { name: "Корзина", exact: true }).click();
+    await sidebar.getByRole("button", { name: "Trash", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(
-      list.getByRole("listitem").filter({ hasText: "Итоги спринта" }),
+      list.getByRole("listitem").filter({ hasText: "Sprint results" }),
     ).toBeVisible();
 
-    // Compose: send a new message and find it in Отправленные (mock append +
+    // Compose: send a new message and find it in Sent (mock append +
     // local Sent row).
-    await page.getByRole("button", { name: "Написать", exact: true }).click();
+    await page.getByRole("button", { name: "Compose", exact: true }).click();
     const composeDialog = page.getByRole("dialog");
     await expect(
-      composeDialog.getByRole("heading", { name: "Новое письмо" }),
+      composeDialog.getByRole("heading", { name: "New message" }),
     ).toBeVisible();
     await composeDialog
-      .getByLabel("Кому", { exact: true })
+      .getByLabel("To", { exact: true })
       .fill("dest@example.ru");
     await composeDialog
-      .getByLabel("Тема", { exact: true })
-      .fill("E2E тестовое письмо");
+      .getByLabel("Subject", { exact: true })
+      .fill("E2E test message");
     await composeDialog
-      .getByLabel("Текст письма", { exact: true })
-      .fill("Привет из e2e-теста.");
+      .getByLabel("Message body", { exact: true })
+      .fill("Hello from the e2e test.");
     await composeDialog
-      .getByRole("button", { name: "Отправить", exact: true })
+      .getByRole("button", { name: "Send", exact: true })
       .click();
-    await expect(page.getByText("Письмо отправлено").first()).toBeVisible();
-    await sidebar
-      .getByRole("button", { name: "Отправленные", exact: true })
-      .click();
+    await expect(page.getByText("Message sent").first()).toBeVisible();
+    await sidebar.getByRole("button", { name: "Sent", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(
-      list.getByRole("listitem").filter({ hasText: "E2E тестовое письмо" }),
+      list.getByRole("listitem").filter({ hasText: "E2E test message" }),
     ).toBeVisible();
 
     // Draft lifecycle: attaching creates the draft, closing persists it,
     // reopening restores content + attachment, and sending removes it.
-    await page.getByRole("button", { name: "Написать", exact: true }).click();
+    await page.getByRole("button", { name: "Compose", exact: true }).click();
     const draftDialog = page.getByRole("dialog");
     await draftDialog
-      .getByLabel("Кому", { exact: true })
+      .getByLabel("To", { exact: true })
       .fill("draft-recipient@example.ru");
     await draftDialog
-      .getByLabel("Тема", { exact: true })
-      .fill("E2E черновик с файлом");
+      .getByLabel("Subject", { exact: true })
+      .fill("E2E draft with a file");
     await draftDialog
-      .getByLabel("Текст письма", { exact: true })
-      .fill("Текст сохранённого черновика.");
+      .getByLabel("Message body", { exact: true })
+      .fill("Saved draft body.");
     await draftDialog.locator('input[type="file"]').setInputFiles({
       name: "report.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("draft attachment"),
     });
-    await expect(page.getByText("Добавлено вложений: 1").first()).toBeVisible();
+    await expect(page.getByText("Attachments added: 1").first()).toBeVisible();
     await draftDialog
-      .getByRole("button", { name: "Закрыть редактор", exact: true })
+      .getByRole("button", { name: "Close composer", exact: true })
       .click();
     await expect(draftDialog).toBeHidden();
 
-    await sidebar
-      .getByRole("button", { name: "Черновики", exact: true })
-      .click();
+    await sidebar.getByRole("button", { name: "Drafts", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
-    await list.getByRole("button", { name: /E2E черновик с файлом/ }).click();
-    await page
-      .getByRole("button", { name: "Редактировать черновик", exact: true })
-      .click();
+    await list.getByRole("button", { name: /E2E draft with a file/ }).click();
+    await page.getByRole("button", { name: "Edit draft", exact: true }).click();
     const editDraftDialog = page.getByRole("dialog");
     await expect(
-      editDraftDialog.getByRole("heading", { name: "Редактировать черновик" }),
+      editDraftDialog.getByRole("heading", { name: "Edit draft" }),
     ).toBeVisible();
     await expect(editDraftDialog.getByText("report.txt")).toBeVisible();
     await expect(
-      editDraftDialog.getByLabel("Текст письма", { exact: true }),
-    ).toHaveText("Текст сохранённого черновика.");
+      editDraftDialog.getByLabel("Message body", { exact: true }),
+    ).toHaveText("Saved draft body.");
     await editDraftDialog
-      .getByRole("button", { name: "Отправить", exact: true })
+      .getByRole("button", { name: "Send", exact: true })
       .click();
-    await expect(page.getByText("Письмо отправлено").first()).toBeVisible();
+    await expect(page.getByText("Message sent").first()).toBeVisible();
     await expect(list.getByRole("listitem")).toHaveCount(0);
 
-    await sidebar
-      .getByRole("button", { name: "Отправленные", exact: true })
-      .click();
+    await sidebar.getByRole("button", { name: "Sent", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(2);
     await expect(
-      list.getByRole("listitem").filter({ hasText: "E2E черновик с файлом" }),
+      list.getByRole("listitem").filter({ hasText: "E2E draft with a file" }),
     ).toBeVisible();
 
     // Reply from the reading pane: prefilled recipient and Re: subject.
     await inboxButton.click();
     await list
-      .getByRole("button", { name: /Резервное копирование/ })
+      .getByRole("button", { name: /Backup/ })
       .first()
       .click();
     await expect(
       page.getByRole("heading", {
-        name: "Резервное копирование",
+        name: "Backup",
         exact: true,
       }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Ответить", exact: true }).click();
-    const replyComposer = page.getByRole("region", { name: "Ответить" });
+    await page.getByRole("button", { name: "Reply", exact: true }).click();
+    const replyComposer = page.getByRole("region", { name: "Reply" });
     await expect(
-      replyComposer.getByRole("heading", { name: "Ответить" }),
+      replyComposer.getByRole("heading", { name: "Reply" }),
     ).toBeVisible();
-    await expect(replyComposer.getByLabel("Кому", { exact: true })).toHaveValue(
+    await expect(replyComposer.getByLabel("To", { exact: true })).toHaveValue(
       "e.sokolova@example.ru",
     );
-    await expect(replyComposer.getByLabel("Тема", { exact: true })).toHaveValue(
-      "Re: Резервное копирование",
-    );
+    await expect(
+      replyComposer.getByLabel("Subject", { exact: true }),
+    ).toHaveValue("Re: Backup");
     await replyComposer
-      .getByLabel("Текст письма", { exact: true })
-      .fill("Спасибо, резервная копия проверена.");
+      .getByLabel("Message body", { exact: true })
+      .fill("Thanks, the backup has been verified.");
     await replyComposer
-      .getByRole("button", { name: "Отправить ответ", exact: true })
+      .getByRole("button", { name: "Send reply", exact: true })
       .click();
     await expect(replyComposer).toBeHidden();
   } finally {
@@ -454,18 +444,18 @@ test("mail client screen has zero serious or critical accessibility violations",
 
     await page.goto("/mail");
     await expect(
-      page.getByRole("heading", { name: "Почта", exact: true }),
+      page.getByRole("heading", { name: "Mail", exact: true }),
     ).toBeVisible();
-    const list = page.getByRole("list", { name: "Список писем" });
+    const list = page.getByRole("list", { name: "Message list" });
     await expect(list.getByRole("listitem")).toHaveCount(30);
 
     // Open a message so the reading pane content is part of the scan.
     await list
-      .getByRole("button", { name: /Итоги спринта/ })
+      .getByRole("button", { name: /Sprint results/ })
       .first()
       .click();
     await expect(
-      page.getByRole("heading", { name: "Итоги спринта", exact: true }),
+      page.getByRole("heading", { name: "Sprint results", exact: true }),
     ).toBeVisible();
 
     const results = await new AxeBuilder({ page }).analyze();

@@ -1,4 +1,4 @@
-// Mail transport DTOs + MailDriver contract (plan §2 «Транспортный слой»,
+// Mail transport DTOs + MailDriver contract (plan §2 "transport layer",
 // modelled after src/lib/providers/dns/types.ts). Remote* types are
 // read-through driver types — persistence mapping happens in the sync engine.
 

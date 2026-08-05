@@ -7,7 +7,7 @@
  *    single place that carries `aria-busy` plus the announced status text, so
  *    call sites never have to remember either.
  *  - `LoadingOverlay` — a refresh over data that is already on screen
- *    (pagination, filter change, "Обновить"). The confirmed content stays put
+ *    (pagination, filter change, "Refresh"). The confirmed content stays put
  *    and a spinner sits above it, instead of the table collapsing back into a
  *    skeleton.
  *
@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 interface LoadingRegionProps extends React.ComponentProps<"div"> {
-  /** Announced instead of the generic "Загрузка…" when the surface has a more precise wording. */
+  /** Announced instead of the generic "Loading…" when the surface has a more precise wording. */
   label?: string;
 }
 

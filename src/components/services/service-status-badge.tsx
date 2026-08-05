@@ -21,7 +21,7 @@ export function ServiceStatusBadge({
   status: ServiceStatusValue;
   // A paused service reports "suspended" instead of its last known result:
   // currentStatus stops being refreshed while the scheduler skips it, so a
-  // green "Работает" would keep asserting something nobody is checking.
+  // green "Up" would keep asserting something nobody is checking.
   isActive?: boolean;
   // The check-history table passes false: those rows report past results.
   pulse?: false;

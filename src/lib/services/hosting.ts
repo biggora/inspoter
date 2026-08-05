@@ -90,7 +90,7 @@ export async function refreshHostingSnapshots(
     providerType: group.providerType,
     error: group.error,
   }));
-  await recordSyncOutcomes(workspaceId, "Хостинг", "listAccounts", outcomes);
+  await recordSyncOutcomes(workspaceId, "hosting", "listAccounts", outcomes);
 }
 
 export async function listAccounts(

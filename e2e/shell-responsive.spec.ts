@@ -28,18 +28,18 @@ test("PageHeader keeps the alerts title and actions inside the viewport", async 
 
   const header = page.locator('[data-slot="page-header"]');
   const title = header.getByRole("heading", {
-    name: "Оповещения",
+    name: "Alerts",
     exact: true,
   });
   const actions = [
     header.getByRole("button", {
-      name: "Управление категориями",
+      name: "Manage categories",
       exact: true,
     }),
-    header.getByRole("button", { name: "Новая категория", exact: true }),
+    header.getByRole("button", { name: "New Category", exact: true }),
   ];
 
-  await expect(title).toHaveText("Оповещения");
+  await expect(title).toHaveText("Alerts");
   await expect(title).toBeVisible();
   for (const action of actions) await expect(action).toBeVisible();
 

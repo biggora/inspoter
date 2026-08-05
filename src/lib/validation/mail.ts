@@ -8,12 +8,13 @@ import {
   MAX_MAIL_FILTER_CONDITION_VALUE_LENGTH,
   isMailFilterConditionCombinationValid,
 } from "@/lib/mail-filter-types";
-import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
 import { normalizeMailLabelDisplayName } from "@/lib/mail-label-normalization";
 
 // Zod schemas for the mail accounts API (plan §4) — single source of input
-// validation, shared by the /api/mail/accounts route handlers. Messages are
-// Russian because they surface directly as fieldErrors in the settings dialog.
+// validation, shared by the /api/mail/accounts route handlers. Messages come
+// from the base-language catalog because they surface directly as fieldErrors
+// in the settings dialog.
 
 // Bare hostname or IP: dot-separated labels of letters/digits/hyphens —
 // no scheme, no slashes, no spaces, no ports (SSRF guard, plan §6).
@@ -23,29 +24,29 @@ const HOSTNAME_REGEX =
 const hostSchema = z
   .string()
   .trim()
-  .min(1, { error: () => VALIDATION_RU.mailAccount.hostRequired })
-  .max(253, { error: () => VALIDATION_RU.mailAccount.hostTooLong })
+  .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.hostRequired })
+  .max(253, { error: () => VALIDATION_MESSAGES.mailAccount.hostTooLong })
   .regex(HOSTNAME_REGEX, {
-    error: () => VALIDATION_RU.mailAccount.hostInvalidFormat,
+    error: () => VALIDATION_MESSAGES.mailAccount.hostInvalidFormat,
   });
 
 const portSchema = z
-  .number({ error: () => VALIDATION_RU.mailAccount.portMustBeNumber })
-  .int({ error: () => VALIDATION_RU.mailAccount.portMustBeInteger })
-  .min(1, { error: () => VALIDATION_RU.mailAccount.portOutOfRange })
-  .max(65535, { error: () => VALIDATION_RU.mailAccount.portOutOfRange });
+  .number({ error: () => VALIDATION_MESSAGES.mailAccount.portMustBeNumber })
+  .int({ error: () => VALIDATION_MESSAGES.mailAccount.portMustBeInteger })
+  .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.portOutOfRange })
+  .max(65535, { error: () => VALIDATION_MESSAGES.mailAccount.portOutOfRange });
 
 const securitySchema = z.enum(["SSL", "STARTTLS"], {
-  error: () => VALIDATION_RU.mailAccount.invalidSecurity,
+  error: () => VALIDATION_MESSAGES.mailAccount.invalidSecurity,
 });
 
 export const createMailAccountSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.mailAccount.nameRequired })
-    .max(100, { error: () => VALIDATION_RU.mailAccount.nameTooLong }),
-  email: z.email({ error: () => VALIDATION_RU.mailAccount.emailInvalid }),
+    .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.nameRequired })
+    .max(100, { error: () => VALIDATION_MESSAGES.mailAccount.nameTooLong }),
+  email: z.email({ error: () => VALIDATION_MESSAGES.mailAccount.emailInvalid }),
   imapHost: hostSchema,
   imapPort: portSchema.default(993),
   imapSecurity: securitySchema.default("SSL"),
@@ -55,10 +56,10 @@ export const createMailAccountSchema = z.object({
   username: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.mailAccount.usernameRequired }),
+    .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.usernameRequired }),
   password: z
     .string()
-    .min(1, { error: () => VALIDATION_RU.mailAccount.passwordRequired }),
+    .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.passwordRequired }),
   mode: z.enum(["MOCK", "REAL"]).default("REAL"),
 });
 
@@ -70,11 +71,11 @@ export const updateMailAccountSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.mailAccount.nameRequired })
-    .max(100, { error: () => VALIDATION_RU.mailAccount.nameTooLong })
+    .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.nameRequired })
+    .max(100, { error: () => VALIDATION_MESSAGES.mailAccount.nameTooLong })
     .optional(),
   email: z
-    .email({ error: () => VALIDATION_RU.mailAccount.emailInvalid })
+    .email({ error: () => VALIDATION_MESSAGES.mailAccount.emailInvalid })
     .optional(),
   imapHost: hostSchema.optional(),
   imapPort: portSchema.optional(),
@@ -85,7 +86,7 @@ export const updateMailAccountSchema = z.object({
   username: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.mailAccount.usernameRequired })
+    .min(1, { error: () => VALIDATION_MESSAGES.mailAccount.usernameRequired })
     .optional(),
   password: z.string().optional(),
   isDefault: z.literal(true).optional(),
@@ -103,7 +104,7 @@ export type TestMailAccountInput = z.infer<typeof testMailAccountSchema>;
 
 export const patchMailItemSchema = z.object({
   isRead: z.boolean({
-    error: () => VALIDATION_RU.mailItem.isReadMustBeBoolean,
+    error: () => VALIDATION_MESSAGES.mailItem.isReadMustBeBoolean,
   }),
 });
 
@@ -112,44 +113,48 @@ export type PatchMailItemInput = z.infer<typeof patchMailItemSchema>;
 export const moveMailItemSchema = z.object({
   targetFolderId: z
     .string()
-    .min(1, { error: () => VALIDATION_RU.mailItem.targetFolderRequired }),
+    .min(1, { error: () => VALIDATION_MESSAGES.mailItem.targetFolderRequired }),
 });
 
 export type MoveMailItemInput = z.infer<typeof moveMailItemSchema>;
 
 const recipientListSchema = z
-  .array(z.email({ error: () => VALIDATION_RU.mailSend.recipientEmailInvalid }))
-  .max(50, { error: () => VALIDATION_RU.mailSend.tooManyRecipients });
+  .array(
+    z.email({
+      error: () => VALIDATION_MESSAGES.mailSend.recipientEmailInvalid,
+    }),
+  )
+  .max(50, { error: () => VALIDATION_MESSAGES.mailSend.tooManyRecipients });
 
 export const sendMailSchema = z
   .object({
     accountId: z
       .string()
-      .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
+      .min(1, { error: () => VALIDATION_MESSAGES.mailSend.accountRequired }),
     to: recipientListSchema.min(1, {
-      error: () => VALIDATION_RU.mailSend.atLeastOneRecipientRequired,
+      error: () => VALIDATION_MESSAGES.mailSend.atLeastOneRecipientRequired,
     }),
     cc: recipientListSchema.default([]),
     bcc: recipientListSchema.default([]),
     subject: z
       .string()
-      .min(1, { error: () => VALIDATION_RU.mailSend.subjectRequired })
-      .max(500, { error: () => VALIDATION_RU.mailSend.subjectTooLong }),
+      .min(1, { error: () => VALIDATION_MESSAGES.mailSend.subjectRequired })
+      .max(500, { error: () => VALIDATION_MESSAGES.mailSend.subjectTooLong }),
     bodyText: z
       .string()
       .trim()
-      .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
-      .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
+      .min(1, { error: () => VALIDATION_MESSAGES.mailSend.bodyRequired })
+      .max(500_000, { error: () => VALIDATION_MESSAGES.mailSend.bodyTooLong }),
     bodyHtml: z
       .string()
-      .min(1, { error: () => VALIDATION_RU.mailSend.bodyRequired })
-      .max(500_000, { error: () => VALIDATION_RU.mailSend.bodyTooLong }),
+      .min(1, { error: () => VALIDATION_MESSAGES.mailSend.bodyRequired })
+      .max(500_000, { error: () => VALIDATION_MESSAGES.mailSend.bodyTooLong }),
     inReplyToId: z.string().optional(),
     forwardOfId: z.string().optional(),
     draftId: z.string().optional(),
   })
   .refine((input) => !(input.inReplyToId && input.forwardOfId), {
-    error: () => VALIDATION_RU.mailSend.originalModeInvalid,
+    error: () => VALIDATION_MESSAGES.mailSend.originalModeInvalid,
     path: ["forwardOfId"],
   });
 
@@ -157,31 +162,31 @@ export type SendMailInput = z.infer<typeof sendMailSchema>;
 
 const draftRecipientListSchema = z
   .array(z.string().trim().max(320))
-  .max(50, { error: () => VALIDATION_RU.mailSend.tooManyRecipients });
+  .max(50, { error: () => VALIDATION_MESSAGES.mailSend.tooManyRecipients });
 
 export const saveMailDraftSchema = z
   .object({
     draftId: z.string().optional(),
     accountId: z
       .string()
-      .min(1, { error: () => VALIDATION_RU.mailSend.accountRequired }),
+      .min(1, { error: () => VALIDATION_MESSAGES.mailSend.accountRequired }),
     to: draftRecipientListSchema.default([]),
     cc: draftRecipientListSchema.default([]),
     bcc: draftRecipientListSchema.default([]),
     subject: z.string().max(500, {
-      error: () => VALIDATION_RU.mailSend.subjectTooLong,
+      error: () => VALIDATION_MESSAGES.mailSend.subjectTooLong,
     }),
     bodyText: z.string().max(500_000, {
-      error: () => VALIDATION_RU.mailSend.bodyTooLong,
+      error: () => VALIDATION_MESSAGES.mailSend.bodyTooLong,
     }),
     bodyHtml: z.string().max(500_000, {
-      error: () => VALIDATION_RU.mailSend.bodyTooLong,
+      error: () => VALIDATION_MESSAGES.mailSend.bodyTooLong,
     }),
     inReplyToId: z.string().optional(),
     forwardOfId: z.string().optional(),
   })
   .refine((input) => !(input.inReplyToId && input.forwardOfId), {
-    error: () => VALIDATION_RU.mailSend.originalModeInvalid,
+    error: () => VALIDATION_MESSAGES.mailSend.originalModeInvalid,
     path: ["forwardOfId"],
   });
 

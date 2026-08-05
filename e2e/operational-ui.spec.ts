@@ -151,19 +151,19 @@ test("server power confirmation cancels safely and submits exactly once", async 
   );
 
   await page.goto("/servers");
-  const server = page.getByRole("group", { name: "Сервер «edge-01»" });
+  const server = page.getByRole("group", { name: 'Server "edge-01"' });
   const restart = server.getByRole("button", {
-    name: "Перезапустить",
+    name: "Restart",
     exact: true,
   });
 
   await restart.click();
   const dialog = page.getByRole("alertdialog", {
-    name: "Перезапустить «edge-01»?",
+    name: 'Restart "edge-01"?',
   });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Отмена" })).toBeFocused();
-  await dialog.getByRole("button", { name: "Отмена" }).click();
+  await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
   await expect(restart).toBeFocused();
   expect(powerRequests).toHaveLength(0);
@@ -176,11 +176,11 @@ test("server power confirmation cancels safely and submits exactly once", async 
   expect(powerRequests).toHaveLength(0);
 
   await restart.click();
-  await dialog.getByRole("button", { name: "Подтвердить" }).click();
+  await dialog.getByRole("button", { name: "Confirm" }).click();
   await expect.poll(() => powerRequests.length).toBe(1);
   expect(powerRequests).toEqual([{ action: "restart" }]);
   await expect(
-    server.getByRole("button", { name: "Перезапускается…" }),
+    server.getByRole("button", { name: "Restarting…" }),
   ).toBeDisabled();
   await expect(server).toBeFocused();
 
@@ -238,9 +238,9 @@ test("mobile messages navigation closes its Sheet and composer uses newline, key
 
   await page.goto("/messages");
   await page
-    .getByRole("button", { name: "Открыть каналы", exact: true })
+    .getByRole("button", { name: "Open channels", exact: true })
     .click();
-  const sheet = page.getByRole("dialog", { name: "Категории и каналы" });
+  const sheet = page.getByRole("dialog", { name: "Categories and channels" });
   await expect(sheet).toBeVisible();
 
   const category = sheet.getByRole("button", {
@@ -260,7 +260,7 @@ test("mobile messages navigation closes its Sheet and composer uses newline, key
   await expect(page.getByText("Deployment completed")).toBeVisible();
   expect(messageReadMethods).toEqual(["GET"]);
 
-  const composer = page.getByPlaceholder("Написать в #deploys...");
+  const composer = page.getByPlaceholder("Message #deploys...");
   await composer.fill("status via keyboard");
   await composer.press("Enter");
   expect(sentMessageBodies).toHaveLength(0);
@@ -275,7 +275,7 @@ test("mobile messages navigation closes its Sheet and composer uses newline, key
 
   await composer.fill("status via button");
   const send = page.getByRole("button", {
-    name: "Отправить сообщение",
+    name: "Send message",
     exact: true,
   });
   await expect(send).toBeEnabled();
@@ -286,9 +286,9 @@ test("mobile messages navigation closes its Sheet and composer uses newline, key
     { content: "status via button" },
   ]);
   await expect(composer).toHaveValue("");
-  await expect(
-    page.getByRole("button", { name: /Прикрепить файл/ }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Attach files/ })).toHaveCount(
+    0,
+  );
   expectNoUnexpectedBrowserErrors(browserErrors);
 });
 
@@ -303,7 +303,7 @@ test("mail row selection renders the corresponding message detail", async ({
         id: "acc-1",
         kind: "IMAP",
         mode: "MOCK",
-        name: "Рабочая почта",
+        name: "Work mail",
         email: "mail-ops@example.com",
         imapHost: "imap.example.com",
         imapPort: 993,
@@ -329,7 +329,7 @@ test("mail row selection renders the corresponding message detail", async ({
       {
         id: "folder-inbox",
         path: "INBOX",
-        name: "Входящие",
+        name: "Inbox",
         specialUse: "INBOX",
         position: 0,
         unreadCount: 1,
@@ -402,7 +402,7 @@ test("mail row selection renders the corresponding message detail", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByText("Кому: operator@inspot.local", { exact: true }),
+    page.getByText("To: operator@inspot.local", { exact: true }),
   ).toBeVisible();
   expectNoUnexpectedBrowserErrors(browserErrors);
 });
@@ -430,10 +430,10 @@ test("logs apply filters and reveal detail through the explicit expand button", 
   await page.goto("/logs");
   await expect(page.locator("#log-error-detail")).toHaveCount(0);
   const levelFilter = page.getByRole("combobox", {
-    name: "Фильтр по уровню",
+    name: "Filter by level",
   });
   await levelFilter.click();
-  await page.getByRole("option", { name: "Ошибка", exact: true }).click();
+  await page.getByRole("option", { name: "Error", exact: true }).click();
   await expect
     .poll(() =>
       requestedQueries.some((params) => params.get("level") === "error"),
@@ -451,7 +451,7 @@ test("logs apply filters and reveal detail through the explicit expand button", 
   );
   await expect(
     page.getByRole("button", {
-      name: "Скрыть детали записи журнала",
+      name: "Hide log entry details",
       exact: true,
     }),
   ).toBeVisible();
@@ -500,13 +500,13 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   });
 
   await page
-    .getByRole("navigation", { name: "Основная навигация" })
-    .getByRole("link", { name: "Домены", exact: true })
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Domains", exact: true })
     .click();
-  const retry = page.getByRole("button", { name: "Повторить", exact: true });
+  const retry = page.getByRole("button", { name: "Retry", exact: true });
   await expect(retry).toBeVisible();
   await expect(
-    page.getByText("Cloudflare — Ошибка аутентификации провайдера.", {
+    page.getByText("Cloudflare — Provider authentication failed.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -517,7 +517,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   await retry.click();
   await expect.poll(() => domainRscRequests).toBe(requestCountBeforeRetry + 1);
   const pendingRetry = page.getByRole("button", {
-    name: "Повтор…",
+    name: "Retrying…",
     exact: true,
   });
   await expect(pendingRetry).toBeDisabled();
@@ -526,7 +526,7 @@ test("domains retry performs one refresh and exposes its disabled transition", a
   await expect(retry).toBeVisible();
   await expect(retry).toBeEnabled();
   await expect(
-    page.getByText("Cloudflare — Не удалось получить данные от провайдера.", {
+    page.getByText("Cloudflare — Failed to fetch data from provider.", {
       exact: true,
     }),
   ).toBeVisible();

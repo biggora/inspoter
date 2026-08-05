@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MonitorType } from "@/generated/prisma/client";
 import { isLabelColor, type LabelColor } from "@/lib/label-color";
 import { normalizeLabelDisplayName } from "@/lib/label-normalization";
-import { VALIDATION_RU } from "@/lib/validation/error-map";
+import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
 
 // Zod schemas — single source of input validation for Services (Uptime
 // Kuma-style monitoring), shared by the /api/services route handlers.
@@ -11,15 +11,15 @@ import { VALIDATION_RU } from "@/lib/validation/error-map";
 // create (mirrors src/lib/validation/credentials.ts's per-provider
 // discriminated union) and via superRefine on update (partial payload —
 // type-specific fields are only required when monitorType itself is being
-// changed in the same request). Messages are Russian because they surface
-// directly as fieldErrors in the service form dialog.
+// changed in the same request). Messages come from the base-language catalog
+// because they surface directly as fieldErrors in the service form dialog.
 
 export const SERVICE_LABELS_PER_SERVICE_LIMIT = 20;
 
 const httpUrlSchema = z
   .string()
   .trim()
-  .min(1, { error: () => VALIDATION_RU.service.urlRequired })
+  .min(1, { error: () => VALIDATION_MESSAGES.service.urlRequired })
   .refine(
     (value) => {
       try {
@@ -29,19 +29,19 @@ const httpUrlSchema = z
         return false;
       }
     },
-    { error: () => VALIDATION_RU.service.urlInvalidFormat },
+    { error: () => VALIDATION_MESSAGES.service.urlInvalidFormat },
   );
 
 const hostSchema = z
   .string()
   .trim()
-  .min(1, { error: () => VALIDATION_RU.service.hostRequired });
+  .min(1, { error: () => VALIDATION_MESSAGES.service.hostRequired });
 
 const portSchema = z.coerce
   .number()
   .int()
-  .min(1, { error: () => VALIDATION_RU.service.portOutOfRange })
-  .max(65535, { error: () => VALIDATION_RU.service.portOutOfRange });
+  .min(1, { error: () => VALIDATION_MESSAGES.service.portOutOfRange })
+  .max(65535, { error: () => VALIDATION_MESSAGES.service.portOutOfRange });
 
 // e.g. "200-299" or a list of ranges/codes "200,204,301-399" — the default
 // ("200-299") is applied at the service layer, not enforced here.
@@ -50,42 +50,42 @@ const expectedStatusCodesSchema = z
   .trim()
   .min(1)
   .regex(/^\d{3}(-\d{3})?(,\d{3}(-\d{3})?)*$/, {
-    error: () => VALIDATION_RU.service.statusCodesInvalidFormat,
+    error: () => VALIDATION_MESSAGES.service.statusCodesInvalidFormat,
   });
 
 const intervalSecondsSchema = z.coerce
   .number()
   .int()
-  .min(10, { error: () => VALIDATION_RU.service.intervalTooSmall })
-  .max(86400, { error: () => VALIDATION_RU.service.intervalTooBig });
+  .min(10, { error: () => VALIDATION_MESSAGES.service.intervalTooSmall })
+  .max(86400, { error: () => VALIDATION_MESSAGES.service.intervalTooBig });
 
 const timeoutMsSchema = z.coerce
   .number()
   .int()
-  .min(1000, { error: () => VALIDATION_RU.service.timeoutTooSmall })
-  .max(30000, { error: () => VALIDATION_RU.service.timeoutTooBig });
+  .min(1000, { error: () => VALIDATION_MESSAGES.service.timeoutTooSmall })
+  .max(30000, { error: () => VALIDATION_MESSAGES.service.timeoutTooBig });
 
 const retriesSchema = z.coerce
   .number()
   .int()
-  .min(1, { error: () => VALIDATION_RU.service.retriesTooSmall })
-  .max(10, { error: () => VALIDATION_RU.service.retriesTooBig });
+  .min(1, { error: () => VALIDATION_MESSAGES.service.retriesTooSmall })
+  .max(10, { error: () => VALIDATION_MESSAGES.service.retriesTooBig });
 
 // Ids come straight from the label picker, so a bad value here is a client
 // bug rather than operator input — one generic message is enough.
 const labelIdsSchema = z
   .array(z.string().trim().min(1), {
-    error: () => VALIDATION_RU.service.labelIdsInvalid,
+    error: () => VALIDATION_MESSAGES.service.labelIdsInvalid,
   })
   .max(SERVICE_LABELS_PER_SERVICE_LIMIT, {
-    error: () => VALIDATION_RU.service.labelIdsInvalid,
+    error: () => VALIDATION_MESSAGES.service.labelIdsInvalid,
   });
 
 const commonFields = {
   name: z
     .string()
     .trim()
-    .min(1, { error: () => VALIDATION_RU.service.nameRequired }),
+    .min(1, { error: () => VALIDATION_MESSAGES.service.nameRequired }),
   description: z.string().trim().min(1).optional().nullable(),
   intervalSeconds: intervalSecondsSchema.optional(),
   timeoutMs: timeoutMsSchema.optional(),
@@ -129,7 +129,7 @@ export const serviceUpdateSchema = z
     if (data.monitorType === MonitorType.HTTP && !data.url) {
       ctx.addIssue({
         code: "custom",
-        message: VALIDATION_RU.service.urlRequiredForHttp,
+        message: VALIDATION_MESSAGES.service.urlRequiredForHttp,
         path: ["url"],
       });
     }
@@ -137,14 +137,14 @@ export const serviceUpdateSchema = z
       if (!data.host) {
         ctx.addIssue({
           code: "custom",
-          message: VALIDATION_RU.service.hostRequiredForTcp,
+          message: VALIDATION_MESSAGES.service.hostRequiredForTcp,
           path: ["host"],
         });
       }
       if (!data.port) {
         ctx.addIssue({
           code: "custom",
-          message: VALIDATION_RU.service.portRequiredForTcp,
+          message: VALIDATION_MESSAGES.service.portRequiredForTcp,
           path: ["port"],
         });
       }
@@ -152,7 +152,7 @@ export const serviceUpdateSchema = z
     if (data.monitorType === MonitorType.PING && !data.host) {
       ctx.addIssue({
         code: "custom",
-        message: VALIDATION_RU.service.hostRequiredForPing,
+        message: VALIDATION_MESSAGES.service.hostRequiredForPing,
         path: ["host"],
       });
     }
@@ -163,8 +163,8 @@ export type ServiceUpdateSchemaInput = z.infer<typeof serviceUpdateSchema>;
 
 // --- Service labels ---
 // Unlike the schemas above these emit machine-readable codes rather than
-// Russian prose: the manage-labels dialog maps them to locale-aware
-// messages, exactly like the mail label schemas in @/lib/validation/mail.
+// prose: the manage-labels dialog maps them to locale-aware messages,
+// exactly like the mail label schemas in @/lib/validation/mail.
 
 const serviceLabelColorSchema = z
   .string({ error: "LABEL_COLOR_INVALID" })

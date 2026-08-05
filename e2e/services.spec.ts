@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
-// Services section (plan.md "Раздел 'Services'..." — not part of the
+// Services section (plan.md "the 'Services' section" — not part of the
 // original 7-section PRD, so these tests trace to plan.md's user flows
 // rather than prd.md AC-* ids), mirroring bookmarks.spec.ts's structure:
 // login -> create/edit/delete via the form dialogs -> API response
@@ -46,8 +46,8 @@ async function createHttpService(
   page: Page,
   fields: { name: string; url: string },
 ) {
-  await page.getByRole("button", { name: "Новый сервис", exact: true }).click();
-  await page.getByLabel("Название", { exact: true }).fill(fields.name);
+  await page.getByRole("button", { name: "New service", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(fields.name);
   await page.getByLabel("URL", { exact: true }).fill(fields.url);
 
   const responsePromise = page.waitForResponse((response) => {
@@ -56,7 +56,7 @@ async function createHttpService(
       url.pathname === "/api/services" && response.request().method() === "POST"
     );
   });
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
 
@@ -117,16 +117,16 @@ async function deleteServiceLabelViaApi(page: Page, id: string) {
   );
 }
 
-// Creates a label through the "Управление метками" dialog and returns its id.
+// Creates a label through the "Manage labels" dialog and returns its id.
 async function createLabel(page: Page, name: string) {
   await page
-    .getByRole("button", { name: "Управление метками", exact: true })
+    .getByRole("button", { name: "Manage labels", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByRole("button", { name: "Создать метку", exact: true })
+    .getByRole("button", { name: "Create label", exact: true })
     .click();
-  await dialog.getByLabel("Название метки", { exact: true }).fill(name);
+  await dialog.getByLabel("Label name", { exact: true }).fill(name);
 
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -136,7 +136,7 @@ async function createLabel(page: Page, name: string) {
     );
   });
   await dialog
-    .getByRole("button", { name: "Создать метку", exact: true })
+    .getByRole("button", { name: "Create label", exact: true })
     .click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
@@ -206,39 +206,39 @@ test("service cards preserve actions and heading hierarchy across tablet and des
     }
 
     await expect(
-      page.getByRole("heading", { name: "Сервисы", exact: true, level: 1 }),
+      page.getByRole("heading", { name: "Services", exact: true, level: 1 }),
     ).toBeVisible();
 
     for (const name of names) {
       const card = serviceCard(page, name);
       const cardBox = await card.boundingBox();
-      if (!cardBox) throw new Error(`Service card «${name}» is not visible.`);
+      if (!cardBox) throw new Error(`Service card "${name}" is not visible.`);
       expect(cardBox.width).toBeGreaterThanOrEqual(288);
       await expect(
         card.getByRole("heading", { name, exact: true, level: 2 }),
       ).toBeVisible();
       await expect(
-        card.getByText("История проверок", { exact: true }),
+        card.getByText("Check history", { exact: true }),
       ).toBeVisible();
       await expectInsideHorizontally(
         card,
-        card.getByRole("button", { name: "Проверить сейчас", exact: true }),
+        card.getByRole("button", { name: "Check now", exact: true }),
       );
       await expectInsideHorizontally(
         card,
-        card.getByRole("button", { name: "Приостановить", exact: true }),
+        card.getByRole("button", { name: "Pause", exact: true }),
       );
       await expectInsideHorizontally(
         card,
         card.getByRole("button", {
-          name: `Редактировать «${name}»`,
+          name: `Edit "${name}"`,
           exact: true,
         }),
       );
       await expectInsideHorizontally(
         card,
         card.getByRole("button", {
-          name: `Удалить «${name}»`,
+          name: `Remove "${name}"`,
           exact: true,
         }),
       );
@@ -268,11 +268,11 @@ test("submitting the create form without a URL shows a validation error and crea
   const name = testData.name("No URL Service");
   await page.goto("/services");
 
-  await page.getByRole("button", { name: "Новый сервис", exact: true }).click();
-  await page.getByLabel("Название", { exact: true }).fill(name);
-  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await page.getByRole("button", { name: "New service", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
-  await expect(page.getByText("URL обязателен.")).toBeVisible();
+  await expect(page.getByText("URL is required.")).toBeVisible();
   await expect(serviceCard(page, name)).toHaveCount(0);
 });
 
@@ -287,11 +287,11 @@ test("editing a service persists field changes", async ({ page, testData }) => {
 
     await serviceCard(page, originalName)
       .getByRole("button", {
-        name: `Редактировать «${originalName}»`,
+        name: `Edit "${originalName}"`,
         exact: true,
       })
       .click();
-    await page.getByLabel("Название", { exact: true }).fill(editedName);
+    await page.getByLabel("Name", { exact: true }).fill(editedName);
 
     const responsePromise = page.waitForResponse((response) => {
       const respUrl = new URL(response.url());
@@ -301,7 +301,7 @@ test("editing a service persists field changes", async ({ page, testData }) => {
       );
     });
     await page
-      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .getByRole("button", { name: "Save changes", exact: true })
       .click();
     const response = await responsePromise;
     expect(response.status()).toBe(200);
@@ -335,7 +335,7 @@ test("the detail page renders the service configuration", async ({
   }
 });
 
-test("'Проверить сейчас' on the detail page triggers the check-now API call and updates lastCheckedAt", async ({
+test("'Check now' on the detail page triggers the check-now API call and updates lastCheckedAt", async ({
   page,
   testData,
 }) => {
@@ -355,9 +355,7 @@ test("'Проверить сейчас' on the detail page triggers the check-no
         response.request().method() === "POST"
       );
     });
-    await page
-      .getByRole("button", { name: "Проверить сейчас", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Check now", exact: true }).click();
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
@@ -397,13 +395,13 @@ test("labels can be created, assigned in the form, and used to filter the list",
     // Assign the label through the service edit form.
     await serviceCard(page, labeledName)
       .getByRole("button", {
-        name: `Редактировать «${labeledName}»`,
+        name: `Edit "${labeledName}"`,
         exact: true,
       })
       .click();
     const formDialog = page.getByRole("dialog");
     await formDialog
-      .getByRole("button", { name: "Выбрать метки", exact: true })
+      .getByRole("button", { name: "Pick labels", exact: true })
       .click();
     await toggleLabelOption(page, labelName);
 
@@ -415,7 +413,7 @@ test("labels can be created, assigned in the form, and used to filter the list",
       );
     });
     await formDialog
-      .getByRole("button", { name: "Сохранить изменения", exact: true })
+      .getByRole("button", { name: "Save changes", exact: true })
       .click();
     expect((await patchPromise).status()).toBe(200);
 
@@ -427,19 +425,19 @@ test("labels can be created, assigned in the form, and used to filter the list",
     ).toHaveCount(0);
 
     // Filtering by that label keeps the labeled service and drops the other.
-    await page.getByRole("button", { name: "Метки", exact: true }).click();
+    await page.getByRole("button", { name: "Labels", exact: true }).click();
     await toggleLabelOption(page, labelName);
     await expect(labeledCard).toBeVisible();
     await expect(serviceCard(page, plainName)).toHaveCount(0);
 
     await page
-      .getByRole("button", { name: "Сбросить фильтры", exact: true })
+      .getByRole("button", { name: "Reset filters", exact: true })
       .first()
       .click();
     await expect(serviceCard(page, plainName)).toBeVisible();
 
     // Text search narrows the list down to a single card.
-    await page.getByLabel("Поиск сервисов", { exact: true }).fill(plainName);
+    await page.getByLabel("Search services", { exact: true }).fill(plainName);
     await expect(serviceCard(page, plainName)).toBeVisible();
     await expect(labeledCard).toHaveCount(0);
   } finally {
@@ -467,9 +465,7 @@ test("pausing a service from its card stops the scheduled checks and reports it 
         response.request().method() === "PATCH"
       );
     });
-    await card
-      .getByRole("button", { name: "Приостановить", exact: true })
-      .click();
+    await card.getByRole("button", { name: "Pause", exact: true }).click();
     const pauseResponse = await pausePromise;
     expect(pauseResponse.status()).toBe(200);
 
@@ -485,11 +481,9 @@ test("pausing a service from its card stops the scheduled checks and reports it 
 
     // The card must stop claiming the last known result once nothing is
     // refreshing it.
+    await expect(card.getByText("Suspended", { exact: true })).toBeVisible();
     await expect(
-      card.getByText("Приостановлен", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      card.getByRole("button", { name: "Возобновить", exact: true }),
+      card.getByRole("button", { name: "Resume", exact: true }),
     ).toBeVisible();
 
     const resumePromise = page.waitForResponse((response) => {
@@ -499,17 +493,13 @@ test("pausing a service from its card stops the scheduled checks and reports it 
         response.request().method() === "PATCH"
       );
     });
-    await card
-      .getByRole("button", { name: "Возобновить", exact: true })
-      .click();
+    await card.getByRole("button", { name: "Resume", exact: true }).click();
     expect((await resumePromise).status()).toBe(200);
 
     await expect(
-      card.getByRole("button", { name: "Приостановить", exact: true }),
+      card.getByRole("button", { name: "Pause", exact: true }),
     ).toBeVisible();
-    await expect(card.getByText("Приостановлен", { exact: true })).toHaveCount(
-      0,
-    );
+    await expect(card.getByText("Suspended", { exact: true })).toHaveCount(0);
   } finally {
     if (id) await deleteServiceViaApi(page, id);
   }
@@ -525,10 +515,10 @@ test("deleting a service removes it from the list without a full reload", async 
   const id = await createHttpService(page, { name, url });
 
   await serviceCard(page, name)
-    .getByRole("button", { name: `Удалить «${name}»`, exact: true })
+    .getByRole("button", { name: `Remove "${name}"`, exact: true })
     .click();
   await expect(
-    page.getByText(`Удалить «${name}»?`, { exact: true }),
+    page.getByText(`Remove "${name}"?`, { exact: true }),
   ).toBeVisible();
 
   const responsePromise = page.waitForResponse((response) => {
@@ -538,7 +528,7 @@ test("deleting a service removes it from the list without a full reload", async 
       response.request().method() === "DELETE"
     );
   });
-  await page.getByRole("button", { name: "Удалить", exact: true }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(204);
 

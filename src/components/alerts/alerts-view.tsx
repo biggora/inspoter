@@ -47,6 +47,7 @@ import {
 } from "./category-form-dialog";
 import { DeleteAlertDialog } from "./delete-alert-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
+import { alertMessage, categoryLabel } from "./localize";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
 
@@ -298,16 +299,20 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     }
   }
 
+  const namedCategories = categories.map(
+    (c) => [c.id, categoryLabel(c, t)] as const,
+  );
+
   const categoryItems: Record<string, string> = {
     all: t("allCategoriesOption"),
     [UNCATEGORIZED_FILTER]: t("uncategorizedOption"),
-    ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
+    ...Object.fromEntries(namedCategories),
   };
 
   // Same options minus "all": a row is either in one category or in none.
   const assignItems: Record<string, string> = {
     [UNCATEGORIZED_FILTER]: t("uncategorizedOption"),
-    ...Object.fromEntries(categories.map((c) => [c.id, c.name])),
+    ...Object.fromEntries(namedCategories),
   };
 
   const severityItems: Record<string, string> = Object.fromEntries(
@@ -514,7 +519,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                   </TableCell>
                   <TableCell className="font-mono">{alert.source}</TableCell>
                   <TableCell className="max-w-md truncate font-mono">
-                    {alert.message}
+                    {alertMessage(alert, t)}
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {formatTimestamp(alert.timestamp)}

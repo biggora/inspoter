@@ -12,6 +12,12 @@ import {
 export interface AlertCategoryDto {
   id: string;
   name: string;
+  /**
+   * Set on the categories Inspoter creates for its own alerts; `name` then
+   * holds the English base wording and the UI renders the translation instead.
+   * See categoryLabel() in alerts-view.tsx.
+   */
+  systemKey: string | null;
 }
 
 /** Mirrors AlertCategorySource in prisma/schema.prisma. */
@@ -24,7 +30,11 @@ export interface AlertDto {
   categorySource: AlertCategorySourceDto | null;
   severity: string;
   source: string;
+  /** Always the English base rendering — see Alert.message in the schema. */
   message: string;
+  /** `alerts.system.*` key behind `message`, null for webhook-sent alerts. */
+  messageKey: string | null;
+  messageParams: Record<string, string | number> | null;
   timestamp: string;
 }
 

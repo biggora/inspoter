@@ -1,22 +1,24 @@
 import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
-// AC-SHELL-001..003 (design.md §3.2): Russian navigation and every
-// implemented dashboard route remain available through the shared shell.
+// AC-SHELL-001..003 (design.md §3.2): the navigation and every implemented
+// dashboard route remain available through the shared shell. The suite runs on
+// the base locale (playwright.config.ts sets `locale: "en-US"`), so the labels
+// below are the English catalog's.
 const SECTIONS = [
-  "Закладки",
-  "Домены",
-  "Серверы",
-  "Почта",
-  "Сообщения",
-  "Логи",
-  "Оповещения",
+  "Bookmarks",
+  "Domains",
+  "Servers",
+  "Mail",
+  "Messages",
+  "Logs",
+  "Alerts",
 ];
 
 // Scoped by accessible name: a dashboard page also renders a navigation
 // landmark for its dashboard tabs, so the bare "navigation" role is ambiguous
 // once a workspace has more than one dashboard.
-const MAIN_NAV = { name: "Основная навигация" } as const;
+const MAIN_NAV = { name: "Main navigation" } as const;
 
 test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
   await login(page);
@@ -40,7 +42,7 @@ test("AC-SHELL-002: clicking a nav link routes client-side (no full page reload)
 
   await page
     .getByRole("navigation", MAIN_NAV)
-    .getByRole("link", { name: "Домены", exact: true })
+    .getByRole("link", { name: "Domains", exact: true })
     .click();
   await expect(page).toHaveURL(/\/domains$/);
 
@@ -61,14 +63,14 @@ test("topbar exposes mail, alert and message indicators that route to their sect
   await login(page);
   const topbar = page.getByRole("banner");
 
-  for (const prefix of ["Почта:", "Оповещения:", "Сообщения:"]) {
+  for (const prefix of ["Mail:", "Alerts:", "Messages:"]) {
     await expect(
       topbar.getByLabel(new RegExp(`^${prefix}`)),
       `${prefix} indicator should be visible`,
     ).toBeVisible();
   }
 
-  await topbar.getByLabel(/^Оповещения:/).click();
+  await topbar.getByLabel(/^Alerts:/).click();
   await expect(page).toHaveURL(/\/alerts$/);
 });
 
@@ -89,40 +91,40 @@ interface ImplementedSection {
 const IMPLEMENTED_SECTIONS: readonly ImplementedSection[] = [
   {
     path: "/domains",
-    label: "Домены",
-    readiness: { role: "heading", name: "Домены" },
+    label: "Domains",
+    readiness: { role: "heading", name: "Domains" },
   },
   {
     path: "/servers",
-    label: "Серверы",
-    readiness: { role: "heading", name: "Серверы" },
+    label: "Servers",
+    readiness: { role: "heading", name: "Servers" },
   },
   {
     path: "/mail",
-    label: "Почта",
-    readiness: { role: "heading", name: "Почта" },
+    label: "Mail",
+    readiness: { role: "heading", name: "Mail" },
   },
   {
     path: "/messages",
-    label: "Сообщения",
-    readiness: { role: "heading", name: "Каналы" },
+    label: "Messages",
+    readiness: { role: "heading", name: "Channels" },
   },
   {
     path: "/logs",
-    label: "Логи",
-    readiness: { role: "heading", name: "Логи" },
+    label: "Logs",
+    readiness: { role: "heading", name: "Logs" },
   },
   {
     path: "/alerts",
-    label: "Оповещения",
-    readiness: { role: "heading", name: "Оповещения" },
+    label: "Alerts",
+    readiness: { role: "heading", name: "Alerts" },
   },
 ];
 
 const SETTINGS_ROUTE = {
   path: "/settings",
-  label: "Настройки",
-  readiness: { role: "heading", name: "Настройки" },
+  label: "Settings",
+  readiness: { role: "heading", name: "Settings" },
 } as const;
 
 test.describe("AC-SHELL-003: implemented sections render through the active shell", () => {
@@ -144,7 +146,7 @@ test.describe("AC-SHELL-003: implemented sections render through the active shel
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(
         page
-          .getByRole("navigation", { name: "Основная навигация" })
+          .getByRole("navigation", { name: "Main navigation" })
           .getByRole("link", { name: label, exact: true }),
       ).toHaveAttribute("data-active", "true");
       const readinessLocator = readiness.role
@@ -166,7 +168,7 @@ test("Settings route renders through the active shell (smoke check, not AC-SHELL
   await expect(page).toHaveURL(new RegExp(`${SETTINGS_ROUTE.path}$`));
   await expect(
     page
-      .getByRole("navigation", { name: "Основная навигация" })
+      .getByRole("navigation", { name: "Main navigation" })
       .getByRole("link", { name: SETTINGS_ROUTE.label, exact: true }),
   ).toHaveAttribute("data-active", "true");
   await expect(
