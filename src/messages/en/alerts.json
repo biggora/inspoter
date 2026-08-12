@@ -34,6 +34,7 @@
   "categorySourceModelLabel": "Set by a model",
   "categorySourceRuleLabel": "Set by a rule",
   "deleteAlertLabel": "Delete alert",
+  "createTaskLabel": "Create a kanban task",
   "deleteAlertTitle": "Delete this alert?",
   "deleteAlertDescription": "The alert will be permanently deleted.",
   "deleteAlertButton": "Delete alert",

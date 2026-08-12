@@ -425,6 +425,38 @@ export function WidgetConfigFields({
         </FieldGroup>
       );
 
+    case "KANBAN": {
+      // The column select only offers columns of the chosen board, and clearing
+      // the board clears the column with it — otherwise the widget would point
+      // at a column that is no longer reachable from its own configuration.
+      const boardId = config.boardId;
+      return (
+        <FieldGroup>
+          {title}
+          <TargetSelect
+            label={t("kanban.boardLabel")}
+            allOption={t("kanban.noBoardOption")}
+            options={targets.kanbanBoards}
+            value={boardId}
+            onChange={(id) => onChange({ boardId: id, columnId: null })}
+          />
+          <TargetSelect
+            label={t("kanban.columnLabel")}
+            allOption={t("kanban.allColumnsOption")}
+            options={targets.kanbanColumns.filter(
+              (column) => column.boardId === boardId,
+            )}
+            value={config.columnId}
+            onChange={(id) => onChange({ columnId: id })}
+          />
+          <LimitField
+            value={config.limit}
+            onChange={(limit) => onChange({ limit })}
+          />
+        </FieldGroup>
+      );
+    }
+
     case "SERVICE_STATUS": {
       const serviceIds = list(config.serviceIds);
       return (

@@ -116,6 +116,13 @@ model Workspace {
   activities              Activity[]
   dashboards              Dashboard[]
   dashboardWidgets        DashboardWidget[]
+  kanbanBoards            KanbanBoard[]
+  kanbanColumns           KanbanColumn[]
+  kanbanCards             KanbanCard[]
+  kanbanLabels            KanbanLabel[]
+  kanbanCardLabels        KanbanCardLabel[]
+  kanbanChecklistItems    KanbanChecklistItem[]
+  kanbanComments          KanbanComment[]
 }
 
 model WorkspaceMember {
@@ -127,6 +134,7 @@ model WorkspaceMember {
   role           WorkspaceRole
   joinedAt       DateTime      @default(now())
   activeSessions Session[]     @relation("ActiveWorkspaceMembership")
+  assignedCards  KanbanCard[]
 
   @@unique([workspaceId, operatorId])
   @@index([operatorId])
@@ -189,6 +197,7 @@ enum DashboardWidgetKind {
   MESSAGES
   ALERTS
   LOGS
+  KANBAN
 }
 
 model Dashboard {
@@ -231,6 +240,178 @@ model DashboardWidget {
 
   @@unique([id, workspaceId])
   @@index([workspaceId, dashboardId, y, x, id])
+}
+
+// --- Kanban (task boards) ---
+// A workspace holds any number of named boards; each board owns its own
+// ordered columns (the statuses) and the cards placed in them. Columns are
+// per-board rather than workspace-wide because two boards rarely share a
+// process — a release board's "QA" means nothing on a support board.
+
+enum KanbanPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// The kinds of existing record a card may point at. Deliberately a soft link
+// (type + id + denormalized label, no foreign key): a task outlives the alert
+// or server that prompted it, and losing the target must degrade the card to
+// an inert chip rather than delete the work item.
+enum KanbanLinkType {
+  SERVER
+  DOMAIN
+  SERVICE
+  ALERT
+  HOSTING_ACCOUNT
+}
+
+model KanbanBoard {
+  id          String         @id @default(cuid())
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  position    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  columns     KanbanColumn[]
+  cards       KanbanCard[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, position, id])
+}
+
+model KanbanColumn {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardId          String
+  boardWorkspaceId String
+  board            KanbanBoard  @relation(fields: [boardId, boardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  name             String
+  // Preset name ("SLATE"…) or #RRGGBB, same encoding as ServiceLabel.color.
+  color            String
+  position         Int          @default(0)
+  // Soft WIP limit: exceeding it highlights the column but never refuses a
+  // drop — a hard block strands a card mid-drag with nowhere legal to go.
+  wipLimit         Int?
+  // Marks the terminal column. Moving a card in stamps completedAt; moving it
+  // out clears it. Drives the kanban.card.completed webhook.
+  isDone           Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  cards            KanbanCard[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, boardId, position, id])
+}
+
+model KanbanCard {
+  id                  String                @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardId             String
+  boardWorkspaceId    String
+  board               KanbanBoard           @relation(fields: [boardId, boardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  columnId            String
+  columnWorkspaceId   String
+  column              KanbanColumn          @relation(fields: [columnId, columnWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  title               String
+  // Sanitized HTML from the shared TipTap editor (see src/lib/kanban/sanitize.ts).
+  description         String?
+  position            Int                   @default(0)
+  priority            KanbanPriority        @default(MEDIUM)
+  dueDate             DateTime?
+  // Assignee is a membership, not a bare operator: dropping someone from the
+  // workspace must unassign their cards, which SetNull on the composite
+  // WorkspaceMember key does for free.
+  assigneeOperatorId  String?
+  assigneeWorkspaceId String?
+  assignee            WorkspaceMember?      @relation(fields: [assigneeWorkspaceId, assigneeOperatorId], references: [workspaceId, operatorId], onDelete: SetNull)
+  linkedType          KanbanLinkType?
+  linkedId            String?
+  // Snapshot of the target's name at link time, so the chip stays readable
+  // after the target is renamed or deleted.
+  linkedLabel         String?
+  completedAt         DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  labels              KanbanCardLabel[]
+  checklistItems      KanbanChecklistItem[]
+  comments            KanbanComment[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, boardId, columnId, position, id]) // board render
+  @@index([workspaceId, dueDate]) // due/overdue widget
+  @@index([assigneeWorkspaceId, assigneeOperatorId])
+}
+
+model KanbanLabel {
+  id             String            @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String // same encoding as ServiceLabel.color
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  cards          KanbanCardLabel[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model KanbanCardLabel {
+  workspaceId      String
+  workspace        Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cardId           String
+  cardWorkspaceId  String
+  card             KanbanCard  @relation(fields: [cardId, cardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId          String
+  labelWorkspaceId String
+  label            KanbanLabel @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt        DateTime    @default(now())
+
+  @@unique([cardId, labelId])
+  @@index([workspaceId, labelId, cardId])
+}
+
+model KanbanChecklistItem {
+  id              String     @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cardId          String
+  cardWorkspaceId String
+  card            KanbanCard @relation(fields: [cardId, cardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  text            String
+  isDone          Boolean    @default(false)
+  position        Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, cardId, position, id])
+}
+
+model KanbanComment {
+  id               String     @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cardId           String
+  cardWorkspaceId  String
+  card             KanbanCard @relation(fields: [cardId, cardWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  authorOperatorId String
+  // Denormalized like Activity.operatorName: a comment must stay attributable
+  // after the operator account is gone.
+  authorName       String
+  body             String
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, cardId, createdAt, id])
 }
 
 // --- Messages (FR-MSG-001..002) ---
@@ -367,43 +548,43 @@ enum MailFilterActionJobStatus {
 }
 
 model MailAccount {
-  id                  String                @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  kind                MailAccountKind
-  mode                ProviderMode
-  name                String
-  email               String
-  imapHost            String?
-  imapPort            Int?
-  imapSecurity        MailSecurity?
-  smtpHost            String?
-  smtpPort            Int?
-  smtpSecurity        MailSecurity?
-  username            String?
-  encryptedData       String? // AES-256-GCM password payload (same scheme as ProviderCredential)
-  iv                  String?
-  authTag             String?
-  maskedHint          String?
-  isValid             Boolean?
-  lastCheckedAt       DateTime?
-  isActive            Boolean               @default(true)
-  isDefault           Boolean               @default(false)
-  syncStatus          MailSyncStatus        @default(IDLE)
-  syncError           String?
+  id                      String                @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind                    MailAccountKind
+  mode                    ProviderMode
+  name                    String
+  email                   String
+  imapHost                String?
+  imapPort                Int?
+  imapSecurity            MailSecurity?
+  smtpHost                String?
+  smtpPort                Int?
+  smtpSecurity            MailSecurity?
+  username                String?
+  encryptedData           String? // AES-256-GCM password payload (same scheme as ProviderCredential)
+  iv                      String?
+  authTag                 String?
+  maskedHint              String?
+  isValid                 Boolean?
+  lastCheckedAt           DateTime?
+  isActive                Boolean               @default(true)
+  isDefault               Boolean               @default(false)
+  syncStatus              MailSyncStatus        @default(IDLE)
+  syncError               String?
   // Failure streak driving the ERROR flip (src/lib/services/mail-sync-status.ts):
   // a single dropped IMAP session must not raise a critical alert.
-  consecutiveSyncFailures Int               @default(0)
-  lastSyncAt          DateTime?
-  nextSyncAt          DateTime?
-  syncLeaseExpiresAt  DateTime?
-  syncIntervalSeconds Int                   @default(300)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  folders             MailFolder[]
-  mailItems           MailItem[]
-  filterRules         MailFilterRule[]
-  filterActionJobs    MailFilterActionJob[]
+  consecutiveSyncFailures Int                   @default(0)
+  lastSyncAt              DateTime?
+  nextSyncAt              DateTime?
+  syncLeaseExpiresAt      DateTime?
+  syncIntervalSeconds     Int                   @default(300)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  folders                 MailFolder[]
+  mailItems               MailItem[]
+  filterRules             MailFilterRule[]
+  filterActionJobs        MailFilterActionJob[]
 
   // At most one WEBHOOK account per workspace: raw partial unique index in the
   // migration SQL (WHERE "kind" = 'WEBHOOK') — not expressible in Prisma DSL.
@@ -704,38 +885,38 @@ enum AlertCategorySource {
 }
 
 model AlertCategory {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name        String
+  id             String    @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
   // Case-folded name, same encoding as MailLabel/ServiceLabel. Third-party
   // senders spell one category three ways ("availability", "Availability",
   // "AVAILABILITY "), and upsert-by-name alone would create three categories.
   normalizedName String
   // Free-form hint about what belongs here — the only context a classifier
   // gets beyond the bare name.
-  description String?
+  description    String?
   // Set only on the categories Inspoter creates for its own alerts
   // (SYSTEM_ALERT_CATEGORIES in src/lib/services/alert-catalog.ts): `name`
   // holds the English base wording, and the UI renders the active locale's
   // translation instead. Cleared the moment an operator renames the category —
   // their own wording outranks the built-in translation.
-  systemKey   String?
-  alerts      Alert[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  systemKey      String?
+  alerts         Alert[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, normalizedName])
 }
 
 model Alert {
-  id                       String         @id @default(cuid())
+  id                       String               @id @default(cuid())
   workspaceId              String
-  workspace                Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace                Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   alertCategoryId          String?
   alertCategoryWorkspaceId String?
-  alertCategory            AlertCategory? @relation(fields: [alertCategoryId, alertCategoryWorkspaceId], references: [id, workspaceId], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
+  alertCategory            AlertCategory?       @relation(fields: [alertCategoryId, alertCategoryWorkspaceId], references: [id, workspaceId], onDelete: SetNull) // D-12: reassign to uncategorized, no orphan (AC-ALR-002)
   // Null exactly when alertCategoryId is null (including after AC-ALR-002
   // category deletion, which reassigns to uncategorized).
   categorySource           AlertCategorySource?
@@ -754,9 +935,9 @@ model Alert {
   messageParams            Json?
   // Workspace-wide, not per-operator — same semantics as MailItem.isRead.
   // Opening the Alerts section clears every unread row at once.
-  isRead                   Boolean        @default(false)
-  timestamp                DateTime       @default(now())
-  createdAt                DateTime       @default(now())
+  isRead                   Boolean              @default(false)
+  timestamp                DateTime             @default(now())
+  createdAt                DateTime             @default(now())
 
   @@index([workspaceId, isRead]) // topbar unread count + mark-all-read
   @@index([workspaceId, timestamp, id]) // sort + keyset pagination (AC-ALR-005/006)
@@ -912,6 +1093,9 @@ enum OutgoingWebhookEvent {
   MESSAGE_CREATED
   LOG_CREATED
   MAIL_RECEIVED
+  KANBAN_CARD_CREATED
+  KANBAN_CARD_MOVED
+  KANBAN_CARD_COMPLETED
 }
 
 enum WebhookDeliveryStatus {
@@ -934,29 +1118,29 @@ enum OutgoingWebhookFormat {
 // encrypted (AES-256-GCM, same scheme as ProviderCredential/MailAccount) and
 // shown once at creation; secretPrefix is display-only.
 model OutgoingWebhook {
-  id            String                 @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name          String
-  url           String
-  events        OutgoingWebhookEvent[]
-  isActive      Boolean                @default(true)
-  encryptedData String // AES-256-GCM ciphertext of the signing secret
-  iv            String
-  authTag       String
-  secretPrefix  String // first chars, for UI identification only
-  format        OutgoingWebhookFormat  @default(INSPOT)
+  id                  String                 @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                String
+  url                 String
+  events              OutgoingWebhookEvent[]
+  isActive            Boolean                @default(true)
+  encryptedData       String // AES-256-GCM ciphertext of the signing secret
+  iv                  String
+  authTag             String
+  secretPrefix        String // first chars, for UI identification only
+  format              OutgoingWebhookFormat  @default(INSPOT)
   // Ed25519 public key (64 hex chars), DISCORD_EVENTS only. The matching
   // private key rides inside the encrypted payload above as a
   // WEBHOOK_ED25519_KEY member; the public half is shown to the operator so the
   // receiver can verify signatures.
-  publicKey     String?
+  publicKey           String?
   // Consecutive terminal failures; reset on every delivered attempt. Reaching
   // WEBHOOK_AUTO_DISABLE_AFTER flips isActive to false (Discord parity).
-  consecutiveFailures Int              @default(0)
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  deliveries    WebhookDelivery[]
+  consecutiveFailures Int                    @default(0)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  deliveries          WebhookDelivery[]
 
   @@unique([id, workspaceId]) // composite FK target (project convention)
   @@index([workspaceId, createdAt, id])

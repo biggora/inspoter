@@ -24,6 +24,7 @@ const ICONS: Record<DashboardWidgetKind, string> = {
   CALENDAR: "ri-calendar-line",
   NOTE: "ri-sticky-note-line",
   BOOKMARKS: "ri-bookmark-line",
+  KANBAN: "ri-kanban-view",
   SERVICE_STATUS: "ri-pulse-line",
   SERVER_METRICS: "ri-server-line",
   MAIL: "ri-mail-line",
@@ -50,6 +51,7 @@ export function catalogEntry(kind: DashboardWidgetKind): WidgetCatalogEntry {
 export const WIDGET_SECTION_HREF: Partial<Record<DashboardWidgetKind, string>> =
   {
     BOOKMARKS: "/bookmarks",
+    KANBAN: "/kanban",
     SERVICE_STATUS: "/services",
     SERVER_METRICS: "/servers",
     MAIL: "/mail",

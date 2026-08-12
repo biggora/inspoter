@@ -59,6 +59,14 @@ function levelColor(value: unknown): number {
   return COLOR.grey;
 }
 
+function priorityColor(value: unknown): number {
+  const priority = text(value)?.toLowerCase();
+  if (priority === "urgent") return COLOR.red;
+  if (priority === "high") return COLOR.yellow;
+  if (priority === "low") return COLOR.grey;
+  return COLOR.blurple;
+}
+
 interface EmbedSpec {
   title: string;
   description?: string;
@@ -116,6 +124,22 @@ function specFor(
         fields: [field("from", data.sender ?? data.fromAddress)].filter(
           (entry) => entry !== null,
         ),
+      };
+    case "KANBAN_CARD_CREATED":
+    case "KANBAN_CARD_MOVED":
+    case "KANBAN_CARD_COMPLETED":
+      return {
+        title: text(data.title) ?? "Kanban card",
+        description: text(data.linkedLabel),
+        color:
+          event === "KANBAN_CARD_COMPLETED"
+            ? COLOR.green
+            : priorityColor(data.priority),
+        fields: [
+          field("priority", data.priority),
+          field("assignee", data.assignee),
+          field("due", data.dueDate),
+        ].filter((entry) => entry !== null),
       };
     default:
       return {

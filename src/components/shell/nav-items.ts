@@ -31,6 +31,12 @@ export const SECTION_NAV_ITEMS: NavItem[] = [
     icon: "ri-bookmark-line",
   },
   {
+    key: "kanban",
+    href: "/kanban",
+    labelKey: "navKanban",
+    icon: "ri-kanban-view",
+  },
+  {
     key: "domains",
     href: "/domains",
     labelKey: "navDomains",

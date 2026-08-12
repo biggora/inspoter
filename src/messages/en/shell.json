@@ -23,6 +23,7 @@
   "notificationsMessagesLabel": "Messages: {count, plural, =0 {no new} one {# new message} other {# new messages}}",
   "navDashboards": "Dashboards",
   "navBookmarks": "Bookmarks",
+  "navKanban": "Kanban",
   "navDomains": "Domains",
   "navServers": "Servers",
   "navHosting": "Hosting",

@@ -75,6 +75,10 @@
       "title": "Закладки",
       "description": "Плитки ссылок из выбранной категории закладок."
     },
+    "KANBAN": {
+      "title": "Kanban",
+      "description": "Карточки выбранной Kanban-доски или одной её колонки."
+    },
     "SERVICE_STATUS": {
       "title": "Статусы сервисов",
       "description": "Сводка мониторинга: что работает, что упало."
@@ -173,6 +177,16 @@
     "categoryLabel": "Категория",
     "allCategoriesOption": "Все категории",
     "empty": "В выбранной категории нет закладок.",
+    "moreCount": "и ещё {count}"
+  },
+
+  "kanban": {
+    "boardLabel": "Доска",
+    "noBoardOption": "Доска не выбрана",
+    "columnLabel": "Колонка",
+    "allColumnsOption": "Все колонки",
+    "noBoard": "Откройте настройки виджета и выберите доску.",
+    "empty": "На выбранной доске нет карточек.",
     "moreCount": "и ещё {count}"
   },
 

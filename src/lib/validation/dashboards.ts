@@ -282,12 +282,23 @@ const logsConfigSchema = z.object({
   limit: listLimitField,
 });
 
+// `columnId: null` means "the whole board" — the widget then shows the first
+// `limit` cards in column-then-position order, which is what an operator who
+// just wants "what's on the board" expects.
+const kanbanConfigSchema = z.object({
+  title: titleField,
+  boardId: z.string().min(1).nullable().default(null),
+  columnId: z.string().min(1).nullable().default(null),
+  limit: listLimitField,
+});
+
 export const WIDGET_CONFIG_SCHEMAS = {
   CLOCK: clockConfigSchema,
   WEATHER: weatherConfigSchema,
   CALENDAR: calendarConfigSchema,
   NOTE: noteConfigSchema,
   BOOKMARKS: bookmarksConfigSchema,
+  KANBAN: kanbanConfigSchema,
   SERVICE_STATUS: serviceStatusConfigSchema,
   SERVER_METRICS: serverMetricsConfigSchema,
   MAIL: mailConfigSchema,
@@ -305,6 +316,7 @@ export type WeatherConfig = WidgetConfig["WEATHER"];
 export type CalendarConfig = WidgetConfig["CALENDAR"];
 export type NoteConfig = WidgetConfig["NOTE"];
 export type BookmarksConfig = WidgetConfig["BOOKMARKS"];
+export type KanbanConfig = WidgetConfig["KANBAN"];
 export type ServiceStatusConfig = WidgetConfig["SERVICE_STATUS"];
 export type ServerMetricsConfig = WidgetConfig["SERVER_METRICS"];
 export type MailConfig = WidgetConfig["MAIL"];

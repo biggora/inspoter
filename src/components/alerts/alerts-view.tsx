@@ -34,6 +34,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  CreateTaskDialog,
+  type CreateTaskTarget,
+} from "@/components/kanban/create-task-dialog";
+import {
   alertCategoriesApi,
   alertsApi,
   fetchAlerts,
@@ -113,6 +117,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     null,
   );
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [taskTarget, setTaskTarget] = useState<CreateTaskTarget | null>(null);
 
   // Bumped after a mutation to re-run the list effect; the alternative
   // (splicing rows locally) would drift from the active filters — deleting an
@@ -525,6 +530,25 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                     {formatTimestamp(alert.timestamp)}
                   </TableCell>
                   <TableCell className="text-right">
+                    {/* Files the alert as a kanban task, linked back to it.
+                        Triage often ends in "someone has to fix this later",
+                        which had nowhere to go before the Kanban section. */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("createTaskLabel")}
+                      title={t("createTaskLabel")}
+                      onClick={() =>
+                        setTaskTarget({
+                          title: alertMessage(alert, t),
+                          linkedType: "ALERT",
+                          linkedId: alert.id,
+                          linkedLabel: alertMessage(alert, t),
+                        })
+                      }
+                    >
+                      <Icon name="ri-add-box-line" aria-hidden />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -571,6 +595,10 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
         alert={deleteAlertTarget}
         onOpenChange={(open) => !open && setDeleteAlertTarget(null)}
         onDeleted={handleAlertDeleted}
+      />
+      <CreateTaskDialog
+        target={taskTarget}
+        onOpenChange={(open) => !open && setTaskTarget(null)}
       />
     </PageBody>
   );

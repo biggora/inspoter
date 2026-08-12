@@ -14,6 +14,9 @@ export const OUTGOING_WEBHOOK_EVENTS = [
   OutgoingWebhookEvent.MESSAGE_CREATED,
   OutgoingWebhookEvent.LOG_CREATED,
   OutgoingWebhookEvent.MAIL_RECEIVED,
+  OutgoingWebhookEvent.KANBAN_CARD_CREATED,
+  OutgoingWebhookEvent.KANBAN_CARD_MOVED,
+  OutgoingWebhookEvent.KANBAN_CARD_COMPLETED,
 ] as const;
 
 const eventSchema = z.enum(OutgoingWebhookEvent, {
