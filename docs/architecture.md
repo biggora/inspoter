@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.19
-**Status:** Dashboards section (widget boards) implemented and verified
+**Version:** 1.20
+**Status:** Contacts section implemented and verified
 **Owner:** Architect
-**Date:** 2026-08-06
+**Date:** 2026-08-12
 **Normative inputs:** `docs/prd.md` v3.16, `docs/design.md` v2.21, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
@@ -1193,6 +1193,65 @@ details, rate-limit window and its per-workspace isolation), and the
 `OPENAI_COMPATIBLE` lifecycle case in
 `tests/integration/services/credentials.test.ts` (encrypted round-trip through
 create → read → update → delete).
+
+## 7G. Contacts — CURRENT (2026-08-12)
+
+A workspace address book (PRD §3.5a, FR-CNT-001..006) at `/contacts`, `/contacts/[id]` and `/contacts/duplicates`, plus the agent-facing `/api/v1/contacts/**` and seven MCP tools. Migration `20260812120000_contacts`.
+
+### 7G.1 Data model
+
+Five additive models, all following the composite `[id, workspaceId]` foreign-key convention with a `workspace_consistency_check` constraint:
+
+| Model                    | Role                                                                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Contact`                | Single-valued identity: structured and phonetic name, organization block, text `birthday` (year-less `--MM-DD` is legal), notes, `starred`, `photo`/`photoContentType` |
+| `ContactField`           | One polymorphic table for every repeatable detail: `ContactFieldKind` ∈ EMAIL, PHONE, URL, IM, EVENT, RELATION, CUSTOM, plus `label`, `value`, `normalizedValue`       |
+| `ContactAddress`         | Postal addresses — seven structural components plus the source's own `formatted` rendering                                                                             |
+| `ContactLabel`           | Mirrors `MailLabel` (name, `normalizedName` unique per workspace, color, position)                                                                                     |
+| `ContactLabelAssignment` | Mirrors `MailItemLabel`                                                                                                                                                |
+
+**ADR-027 — one polymorphic detail table, one address table.** No two detail kinds need a column of their own, so six narrow tables would buy nothing and adding a kind would cost a migration. Addresses are the exception: seven components that must stay individually addressable for CSV export and for the detail view.
+
+**Derived columns.** `displayName`, `sortKey` and `searchText` are computed on every write by `buildDisplayName`/`buildSortKey`/`buildSearchText` and never set by a caller. `sortKey` exists because PostgreSQL orders by the database collation; `searchText` is a lowercase token bag over names, organization, labels, notes and every field value plus its normalized form, so one `ILIKE` answers the search box — including a phone number typed without its formatting. Backup restores the parts and recomputes the derivations rather than trusting the archive.
+
+### 7G.2 Format engine (`src/lib/contacts/**`)
+
+Dependency-free by rule: no Prisma import, so every parser and serializer is unit-testable without a database and can never pull the client into a browser bundle. `ContactRecord` (`model.ts`) is the format-neutral shape every reader produces and every writer consumes; `src/lib/services/contacts.ts` is the only module that knows both it and the Prisma rows.
+
+| Module               | Responsibility                                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text.ts`            | BOM detection, `TextDecoder` fallback chain (UTF-8 → windows-1251 → windows-1252), RFC 2425 unfolding, octet-aware folding, quoted-printable |
+| `vcard/tokenizer.ts` | Lexer: folded and quoted-printable-continued lines, quoted parameter values, vCard 2.1 bare TYPE parameters, `group.NAME` prefixes           |
+| `vcard/parse.ts`     | 2.1/3.0/4.0 from one code path; Apple/Google `itemN.X-ABLabel` groups; photos from `ENCODING=b` and from 4.0 data URIs                       |
+| `vcard/serialize.ts` | 3.0 and 4.0; a label outside the shared vocabulary travels as an `X-ABLabel` group so its exact text survives a round-trip                   |
+| `csv/rfc4180.ts`     | Minimal CSV reader/writer: quotes, embedded newlines, CRLF, UTF-8 BOM                                                                        |
+| `csv/google.ts`      | Current Google layout plus the pre-2021 one (`Given Name`, `- Type`, `Group Membership`); the `:::` multi-value separator                    |
+| `csv/outlook.ts`     | Outlook's fixed column set, both directions                                                                                                  |
+| `ldif.ts`            | Thunderbird `mozillaAbPersonAlpha` and plain inetOrgPerson; `attr:: base64` values                                                           |
+| `labels.ts`          | The label vocabulary shared by all four formats                                                                                              |
+| `normalize.ts`       | Email/phone normalization, the derived columns, duplicate keys                                                                               |
+| `merge.ts`           | Pure union of N records: the leading record's scalars win, everything else is appended                                                       |
+| `formats.ts`         | Content sniffing (extension is never trusted) and the single parse/serialize entry point                                                     |
+
+Duplicate keys are a normalized email, the last eight digits of a phone number, and the sort key of the display name. The phone rule is loose on purpose — the same number is written with and without its country code depending on the exporting device — and only ever feeds the merge screen, which asks before it acts.
+
+### 7G.3 Surfaces
+
+Session routes: `/api/contacts` (GET, POST), `/api/contacts/[id]` (GET, PATCH, DELETE), `/api/contacts/[id]/photo` (GET, POST, DELETE — ETag on the contact's `updatedAt`; only JPEG/PNG/GIF/WebP), `/api/contacts/bulk` (PATCH), `/api/contacts/import` (POST multipart), `/api/contacts/export` (GET attachment), `/api/contacts/duplicates`, `/api/contacts/merge`, `/api/contacts/suggest`, and `/api/contact-labels[/id]`. Error mapping lives in `src/app/api/contacts/errors.ts`.
+
+Token routes: `/api/v1/contacts` (GET, POST), `/api/v1/contacts/{contactId}` (GET, PATCH, DELETE), `/api/v1/contacts/labels` (GET, POST), under `contacts:read`/`contacts:write`. `src/lib/mcp/tools/contacts.ts` publishes the same operations as seven tools plus `contacts_import`, which takes the file as text.
+
+**Write gate.** The service takes `operatorId: string | null`: a session caller passes the operator id and must be a workspace member; a token caller passes `null`, because the token itself is the workspace-scoped authority resolved by `src/lib/api/token-auth.ts` and there is no operator behind it.
+
+**Import.** Chunked at 50 records per transaction so one large address book cannot hold a single transaction's locks for the whole run. The duplicate strategy (`skip` | `update` | `create`) is the operator's choice; `update` merges with the incoming record leading. Bounded by `CONTACTS_MAX_IMPORT_BYTES`, `CONTACTS_MAX_IMPORT_ROWS` and `CONTACTS_MAX_PHOTO_BYTES`.
+
+### 7G.4 UI
+
+`/contacts` is server-rendered from the query string — filters and the page number live in the URL, so a filtered view is shareable and the back button behaves — and the client view holds only form state, ending every mutation in `router.refresh()`. Dialog bodies mount only while open, so their state resets without an effect copying props into state. Mail integration is two components living in `src/components/contacts/`: `recipient-autocomplete.tsx` (used by the composer's To/Cc/Bcc fields) and `add-to-contacts-button.tsx` (used by the reading pane).
+
+Tests: `tests/unit/contacts/` — 95 across the four formats, their round-trips, the fixtures (Google vCard 3.0 and CSV, a Nokia 2.1 card with quoted-printable Cyrillic, an Outlook CSV, a Thunderbird LDIF) and the normalization/merge rules.
+
+**Out of scope (v1):** a trash with delayed purge, auto-collected "other contacts", a contact-frequency signal, CardDAV synchronization, and photos in the CSV/LDIF exports.
 
 ## 8. Request sequences
 

@@ -15,6 +15,11 @@ export const MCP_SCOPES = [
   // caller a secret URL, which is the same class of irreversible action as
   // mail:write's send, so it stays inside the single write scope.
   "messages:write",
+  "contacts:read",
+  // Covers importing a vCard, which can create many contacts at once — the
+  // same class of action as creating them one by one, so it stays inside the
+  // single write scope.
+  "contacts:write",
   "servers:read",
   "services:read",
   "logs:read",

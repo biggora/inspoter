@@ -3,12 +3,10 @@
   "pageDescription": "Экспортируйте данные рабочего пространства в зашифрованный файл или восстановите их из архива.",
   "ownerOnlyTitle": "Только для владельца",
   "ownerOnly": "Экспорт и импорт данных рабочего пространства доступны только владельцу этого рабочего пространства.",
-
   "exportCardTitle": "Экспорт",
   "exportCardDescription": "Сохраните выбранные разделы рабочего пространства в зашифрованный файл .inspot-backup.",
   "importCardTitle": "Импорт",
   "importCardDescription": "Восстановите данные рабочего пространства из ранее созданного файла .inspot-backup.",
-
   "sectionsLabel": "Что экспортировать",
   "sectionsRequiredError": "Выберите хотя бы один раздел",
   "sections": {
@@ -21,19 +19,17 @@
     "services": "Сервисы",
     "webhooks": "Вебхуки",
     "providers": "Провайдеры",
-    "workspaceSettings": "Настройки рабочего пространства"
+    "workspaceSettings": "Настройки рабочего пространства",
+    "contacts": "Контакты"
   },
-
   "passphraseLabel": "Пароль архива",
   "confirmPassphraseLabel": "Повторите пароль",
   "passphraseHint": "Не менее 10 символов",
   "passphraseTooShortError": "Пароль должен содержать не менее 10 символов",
   "passphraseMismatchError": "Пароли не совпадают",
-
   "exportButton": "Экспортировать",
   "exportingButton": "Экспорт…",
   "exportSuccessToast": "Резервная копия скачана.",
-
   "fileLabel": "Файл архива",
   "fileHint": "Выберите файл .inspot-backup",
   "modeLabel": "Режим импорта",
@@ -41,21 +37,17 @@
   "modeReplaceOption": "Замена",
   "modeMergeDescription": "Новые записи добавляются к существующим данным. Дубликаты (вебхук-токены и привязки ресурсов провайдеров) пропускаются.",
   "modeReplaceDescription": "Данные разделов, входящих в архив, будут удалены и заменены его содержимым.",
-
   "importButton": "Импортировать",
   "importingButton": "Импорт…",
   "importSuccessToast": "Импорт завершён.",
-
   "replaceConfirmTitle": "Заменить данные?",
   "replaceConfirmDescription": "Данные разделов, входящих в архив, будут безвозвратно заменены его содержимым. Это действие нельзя отменить.",
   "replaceConfirmAction": "Заменить",
   "cancelButton": "Отмена",
-
   "summaryTitle": "Импортировано",
   "skippedTitle": "Пропущено (дубликаты)",
   "skippedWebhookTokens": "Webhook-токены",
   "skippedProviderResourceBindings": "Привязки ресурсов провайдеров",
-
   "models": {
     "categories": "Категории закладок",
     "bookmarks": "Закладки",
@@ -74,9 +66,13 @@
     "webhookTokens": "Webhook-токены",
     "outgoingWebhooks": "Исходящие вебхуки",
     "providerResourceBindings": "Привязки ресурсов провайдеров",
-    "providerCredentials": "Учётные данные провайдеров"
+    "providerCredentials": "Учётные данные провайдеров",
+    "contactLabels": "Метки контактов",
+    "contacts": "Контакты",
+    "contactFields": "Контактные данные",
+    "contactAddresses": "Адреса контактов",
+    "contactLabelAssignments": "Назначения меток контактам"
   },
-
   "errors": {
     "BACKUP_INVALID_FILE": "Файл повреждён или не является резервной копией Inspoter.",
     "BACKUP_UNSUPPORTED_VERSION": "Формат этого архива не поддерживается текущей версией приложения.",

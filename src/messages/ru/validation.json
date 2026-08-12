@@ -112,5 +112,11 @@
     "passphraseTooShort": "Пароль должен содержать не менее 10 символов",
     "passphraseTooLong": "Пароль слишком длинный",
     "sectionsRequired": "Выберите хотя бы один раздел"
+  },
+  "contact": {
+    "fieldValueRequired": "Укажите значение",
+    "emptyContact": "Укажите хотя бы имя, организацию или один контактный реквизит",
+    "labelNameRequired": "Укажите название метки",
+    "labelColorInvalid": "Выберите готовый цвет или введите HEX-значение вида #4488CC"
   }
 }

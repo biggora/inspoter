@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3800
+    },
+    {
+      "name": "inspoter-worktree",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--turbopack", "-p", "3801"],
+      "port": 3801
     }
   ]
 }

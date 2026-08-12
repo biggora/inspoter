@@ -112,5 +112,11 @@
     "passphraseTooShort": "Password must be at least 10 characters",
     "passphraseTooLong": "Password is too long",
     "sectionsRequired": "Select at least one section"
+  },
+  "contact": {
+    "fieldValueRequired": "A value is required",
+    "emptyContact": "Enter at least a name, an organization, or one contact detail",
+    "labelNameRequired": "Label name is required",
+    "labelColorInvalid": "Choose a preset color or enter a hex value like #4488CC"
   }
 }

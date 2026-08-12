@@ -226,5 +226,7 @@
   "retryingLabel": "Retrying…",
   "deliveryRetriedToast": "Delivery queued for retry.",
   "retryDeliveryError": "Failed to retry delivery. Please try again.",
-  "loadDeliveriesError": "Failed to load deliveries. Please try again."
+  "loadDeliveriesError": "Failed to load deliveries. Please try again.",
+  "scopeGroupContacts": "Contacts",
+  "scopeAccessEdit": "Create, update and delete"
 }

@@ -99,6 +99,11 @@ model Workspace {
   mailFilterConditions    MailFilterCondition[]
   mailFilterRuns          MailFilterRun[]
   mailFilterActionJobs    MailFilterActionJob[]
+  contacts                Contact[]
+  contactFields           ContactField[]
+  contactAddresses        ContactAddress[]
+  contactLabels           ContactLabel[]
+  contactLabelAssignments ContactLabelAssignment[]
   logEntries              LogEntry[]
   alertCategories         AlertCategory[]
   alerts                  Alert[]
@@ -651,6 +656,153 @@ model MailFilterActionJob {
   @@index([status, nextAttemptAt, createdAt, id])
   @@index([accountId, status, createdAt, id])
   @@index([workspaceId, mailItemId, createdAt, id])
+}
+
+// --- Contacts (FR-CNT-001..006; Google-Contacts-style address book) ---
+// A contact's single-valued identity lives on Contact; everything a person can
+// have more than one of (emails, phones, sites, chat handles, dates, related
+// people, custom pairs) lives in one polymorphic ContactField table. No two
+// kinds need a column of their own, so six narrow tables would buy nothing and
+// a new kind would cost a migration. Postal addresses are the exception — seven
+// structural components that must stay addressable — and get their own table.
+enum ContactFieldKind {
+  EMAIL
+  PHONE
+  URL
+  IM
+  EVENT
+  RELATION
+  CUSTOM
+}
+
+model Contact {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Structured name (vCard N) plus the phonetic trio Google CSV carries.
+  prefix         String?
+  firstName      String?
+  middleName     String?
+  lastName       String?
+  suffix         String?
+  phoneticFirst  String?
+  phoneticMiddle String?
+  phoneticLast   String?
+  nickname       String?
+  fileAs         String?
+
+  // Derived on every write by buildDisplayName/buildSortKey/buildSearchText
+  // (src/lib/contacts/normalize.ts) — never set by hand. `sortKey` exists so
+  // PostgreSQL can order the list without a locale-aware collation, and
+  // `searchText` so one ILIKE covers names, organization, emails and phones.
+  displayName String
+  sortKey     String
+  searchText  String
+
+  organization String?
+  jobTitle     String?
+  department   String?
+  // Text, not DateTime: vCard and Google both allow a year-less birthday
+  // ("--04-12"), which no date type can hold. Format is ISO-8601 or "--MM-DD".
+  birthday     String?
+  notes        String?
+  starred      Boolean @default(false)
+
+  photo            Bytes?
+  photoContentType String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fields    ContactField[]
+  addresses ContactAddress[]
+  labels    ContactLabelAssignment[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, sortKey, id])
+  @@index([workspaceId, starred, sortKey, id])
+}
+
+model ContactField {
+  id                 String           @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId          String
+  contactWorkspaceId String
+  contact            Contact          @relation(fields: [contactId, contactWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  kind               ContactFieldKind
+  // Free-form: the well-known vCard types (home/work/mobile/…) plus whatever
+  // label the source file carried, so a round-trip never loses one.
+  label              String?
+  value              String
+  // Lowercased email / digits-only phone. Powers duplicate detection and the
+  // mail compose autocomplete; null for kinds with no meaningful normal form.
+  normalizedValue    String?
+  isPrimary          Boolean          @default(false)
+  position           Int              @default(0)
+  createdAt          DateTime         @default(now())
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, contactId, kind, position])
+  @@index([workspaceId, kind, normalizedValue])
+}
+
+model ContactAddress {
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId          String
+  contactWorkspaceId String
+  contact            Contact   @relation(fields: [contactId, contactWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  label              String?
+  poBox              String?
+  extended           String?
+  street             String?
+  city               String?
+  region             String?
+  postalCode         String?
+  country            String?
+  // Source's own single-line rendering (Google CSV "Address 1 - Formatted",
+  // vCard LABEL). Kept verbatim so an import that carried one can give it back.
+  formatted          String?
+  position           Int       @default(0)
+  createdAt          DateTime  @default(now())
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, contactId, position])
+}
+
+model ContactLabel {
+  id             String                  @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String
+  position       Int                     @default(0)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  contacts       ContactLabelAssignment[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, position, id])
+}
+
+model ContactLabelAssignment {
+  workspaceId        String
+  workspace          Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId          String
+  contactWorkspaceId String
+  contact            Contact      @relation(fields: [contactId, contactWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  labelId            String
+  labelWorkspaceId   String
+  label              ContactLabel @relation(fields: [labelId, labelWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt          DateTime     @default(now())
+
+  @@unique([contactId, labelId])
+  @@index([workspaceId, labelId, contactId])
 }
 
 // --- Activity (user action journal) ---

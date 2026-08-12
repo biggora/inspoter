@@ -56,6 +56,12 @@ export const SECTION_NAV_ITEMS: NavItem[] = [
   },
   { key: "mail", href: "/mail", labelKey: "navMail", icon: "ri-mail-line" },
   {
+    key: "contacts",
+    href: "/contacts",
+    labelKey: "navContacts",
+    icon: "ri-contacts-book-line",
+  },
+  {
     key: "messages",
     href: "/messages",
     labelKey: "navMessages",

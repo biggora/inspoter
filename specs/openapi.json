@@ -2438,6 +2438,839 @@
           }
         }
       }
+    },
+    "/api/v1/contacts": {
+      "get": {
+        "operationId": "listContacts",
+        "summary": "Search the address book",
+        "description": "Requires the contacts:read scope. query matches names, organization, email and phone; a phone number matches with or without its formatting. The token identifies the workspace, so no workspace parameter is involved.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "labelId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "starred",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of matching contacts.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createContact",
+        "summary": "Create a contact",
+        "description": "Requires the contacts:write scope.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created contact.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/labels": {
+      "get": {
+        "operationId": "listContactLabels",
+        "summary": "List contact labels",
+        "description": "Requires the contacts:read scope. Ids from here are the labelIds the create and update operations accept.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's contact labels.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactLabel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createContactLabel",
+        "summary": "Create a contact label",
+        "description": "Requires the contacts:write scope. Label names are unique per workspace, case-insensitively.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactLabelInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created label.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactLabel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A label with this name already exists, or the workspace label limit is reached.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/{contactId}": {
+      "get": {
+        "operationId": "getContact",
+        "summary": "Read one contact",
+        "description": "Requires the contacts:read scope. Returns every email, phone, address, label and note the contact carries.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContactId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The contact.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No contact with this id exists in the workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateContact",
+        "summary": "Update a contact",
+        "description": "Requires the contacts:write scope. fields, addresses and labelIds are replaced wholesale: send the full list the contact should end up with.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContactId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated contact.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No contact with this id exists in the workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteContact",
+        "summary": "Delete a contact",
+        "description": "Requires the contacts:write scope. Deletes the contact and everything attached to it.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContactId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The id of the deleted contact.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDeleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body or query string failed validation.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, malformed, revoked, channel-scoped, or carries no MCP scopes.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "WWW-Authenticate": {
+                "$ref": "#/components/headers/WwwAuthenticate"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token lacks the scope this operation requires.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No contact with this id exists in the workspace.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The per-token rate limit was exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2543,6 +3376,15 @@
         "schema": {
           "type": "string"
         }
+      },
+      "ContactId": {
+        "name": "contactId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Contact id, as returned by the list operation."
       }
     },
     "headers": {
@@ -3863,6 +4705,378 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          }
+        }
+      },
+      "Contact": {
+        "type": "object",
+        "required": [
+          "id",
+          "displayName",
+          "starred",
+          "hasPhoto",
+          "labels",
+          "fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Derived from the name parts, falling back to the nickname, the organization and then the first email address."
+          },
+          "prefix": {
+            "type": ["string", "null"]
+          },
+          "firstName": {
+            "type": ["string", "null"]
+          },
+          "middleName": {
+            "type": ["string", "null"]
+          },
+          "lastName": {
+            "type": ["string", "null"]
+          },
+          "suffix": {
+            "type": ["string", "null"]
+          },
+          "phoneticFirst": {
+            "type": ["string", "null"]
+          },
+          "phoneticMiddle": {
+            "type": ["string", "null"]
+          },
+          "phoneticLast": {
+            "type": ["string", "null"]
+          },
+          "nickname": {
+            "type": ["string", "null"]
+          },
+          "fileAs": {
+            "type": ["string", "null"]
+          },
+          "organization": {
+            "type": ["string", "null"]
+          },
+          "jobTitle": {
+            "type": ["string", "null"]
+          },
+          "department": {
+            "type": ["string", "null"]
+          },
+          "birthday": {
+            "type": ["string", "null"],
+            "description": "ISO-8601 date, or \"--MM-DD\" when the year is unknown."
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "starred": {
+            "type": "boolean"
+          },
+          "hasPhoto": {
+            "type": "boolean"
+          },
+          "primaryEmail": {
+            "type": ["string", "null"]
+          },
+          "primaryPhone": {
+            "type": ["string", "null"]
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name", "color"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "A preset name (SLATE, RED, AMBER, GREEN, BLUE, VIOLET) or a #RRGGBB value."
+                }
+              }
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "label", "value", "isPrimary"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "EMAIL",
+                    "PHONE",
+                    "URL",
+                    "IM",
+                    "EVENT",
+                    "RELATION",
+                    "CUSTOM"
+                  ]
+                },
+                "label": {
+                  "type": ["string", "null"],
+                  "description": "Free-form. Well-known values are \"home\", \"work\", \"mobile\", \"main\", \"fax\", \"workFax\", \"homeFax\", \"pager\" and \"other\"; anything else came from an imported file and is kept verbatim."
+                },
+                "value": {
+                  "type": "string"
+                },
+                "isPrimary": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": ["string", "null"]
+                },
+                "poBox": {
+                  "type": ["string", "null"]
+                },
+                "extended": {
+                  "type": ["string", "null"]
+                },
+                "street": {
+                  "type": ["string", "null"]
+                },
+                "city": {
+                  "type": ["string", "null"]
+                },
+                "region": {
+                  "type": ["string", "null"]
+                },
+                "postalCode": {
+                  "type": ["string", "null"]
+                },
+                "country": {
+                  "type": ["string", "null"]
+                },
+                "formatted": {
+                  "type": ["string", "null"],
+                  "description": "The source's own one-line rendering, when it carried one."
+                }
+              }
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ContactPage": {
+        "type": "object",
+        "required": ["contacts", "total", "page", "pageSize"],
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contact"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          }
+        }
+      },
+      "ContactInput": {
+        "type": "object",
+        "description": "At least one of the name parts, the organization, or one entry in fields is required. fields, addresses and labelIds are written wholesale on update.",
+        "properties": {
+          "prefix": {
+            "type": ["string", "null"]
+          },
+          "firstName": {
+            "type": ["string", "null"]
+          },
+          "middleName": {
+            "type": ["string", "null"]
+          },
+          "lastName": {
+            "type": ["string", "null"]
+          },
+          "suffix": {
+            "type": ["string", "null"]
+          },
+          "phoneticFirst": {
+            "type": ["string", "null"]
+          },
+          "phoneticMiddle": {
+            "type": ["string", "null"]
+          },
+          "phoneticLast": {
+            "type": ["string", "null"]
+          },
+          "nickname": {
+            "type": ["string", "null"]
+          },
+          "fileAs": {
+            "type": ["string", "null"]
+          },
+          "organization": {
+            "type": ["string", "null"]
+          },
+          "jobTitle": {
+            "type": ["string", "null"]
+          },
+          "department": {
+            "type": ["string", "null"]
+          },
+          "birthday": {
+            "type": ["string", "null"]
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "starred": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "value"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "EMAIL",
+                    "PHONE",
+                    "URL",
+                    "IM",
+                    "EVENT",
+                    "RELATION",
+                    "CUSTOM"
+                  ]
+                },
+                "label": {
+                  "type": ["string", "null"],
+                  "description": "Free-form. Well-known values are \"home\", \"work\", \"mobile\", \"main\", \"fax\", \"workFax\", \"homeFax\", \"pager\" and \"other\"; anything else came from an imported file and is kept verbatim."
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "isPrimary": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": ["string", "null"]
+                },
+                "poBox": {
+                  "type": ["string", "null"]
+                },
+                "extended": {
+                  "type": ["string", "null"]
+                },
+                "street": {
+                  "type": ["string", "null"]
+                },
+                "city": {
+                  "type": ["string", "null"]
+                },
+                "region": {
+                  "type": ["string", "null"]
+                },
+                "postalCode": {
+                  "type": ["string", "null"]
+                },
+                "country": {
+                  "type": ["string", "null"]
+                },
+                "formatted": {
+                  "type": ["string", "null"],
+                  "description": "The source's own one-line rendering, when it carried one."
+                }
+              }
+            }
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ContactLabel": {
+        "type": "object",
+        "required": ["id", "name", "color", "position", "contactCount"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string",
+            "description": "A preset name (SLATE, RED, AMBER, GREEN, BLUE, VIOLET) or a #RRGGBB value."
+          },
+          "position": {
+            "type": "integer"
+          },
+          "contactCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "ContactLabelInput": {
+        "type": "object",
+        "required": ["name", "color"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "color": {
+            "type": "string",
+            "description": "A preset name (SLATE, RED, AMBER, GREEN, BLUE, VIOLET) or a #RRGGBB value."
+          }
+        }
+      },
+      "ContactDeleted": {
+        "type": "object",
+        "required": ["deleted"],
+        "properties": {
+          "deleted": {
+            "type": "string"
           }
         }
       }

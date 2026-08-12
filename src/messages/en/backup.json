@@ -3,12 +3,10 @@
   "pageDescription": "Export workspace data to an encrypted file, or restore it from an archive.",
   "ownerOnlyTitle": "Owner only",
   "ownerOnly": "Exporting and importing workspace data is only available to the workspace owner.",
-
   "exportCardTitle": "Export",
   "exportCardDescription": "Save the selected workspace sections to an encrypted .inspot-backup file.",
   "importCardTitle": "Import",
   "importCardDescription": "Restore workspace data from a previously created .inspot-backup file.",
-
   "sectionsLabel": "What to export",
   "sectionsRequiredError": "Select at least one section",
   "sections": {
@@ -21,19 +19,17 @@
     "services": "Services",
     "webhooks": "Webhooks",
     "providers": "Providers",
-    "workspaceSettings": "Workspace settings"
+    "workspaceSettings": "Workspace settings",
+    "contacts": "Contacts"
   },
-
   "passphraseLabel": "Archive passphrase",
   "confirmPassphraseLabel": "Confirm passphrase",
   "passphraseHint": "At least 10 characters",
   "passphraseTooShortError": "Passphrase must be at least 10 characters",
   "passphraseMismatchError": "Passphrases do not match",
-
   "exportButton": "Export",
   "exportingButton": "Exporting…",
   "exportSuccessToast": "Backup downloaded.",
-
   "fileLabel": "Archive file",
   "fileHint": "Choose an .inspot-backup file",
   "modeLabel": "Import mode",
@@ -41,21 +37,17 @@
   "modeReplaceOption": "Replace",
   "modeMergeDescription": "New records are added alongside existing data. Duplicates (webhook tokens and provider resource bindings) are skipped.",
   "modeReplaceDescription": "Data for the sections included in the archive will be deleted and replaced with its contents.",
-
   "importButton": "Import",
   "importingButton": "Importing…",
   "importSuccessToast": "Import complete.",
-
   "replaceConfirmTitle": "Replace data?",
   "replaceConfirmDescription": "Data for the sections included in the archive will be permanently replaced with its contents. This action cannot be undone.",
   "replaceConfirmAction": "Replace",
   "cancelButton": "Cancel",
-
   "summaryTitle": "Imported",
   "skippedTitle": "Skipped (duplicates)",
   "skippedWebhookTokens": "Webhook tokens",
   "skippedProviderResourceBindings": "Provider resource bindings",
-
   "models": {
     "categories": "Bookmark categories",
     "bookmarks": "Bookmarks",
@@ -74,9 +66,13 @@
     "webhookTokens": "Webhook tokens",
     "outgoingWebhooks": "Outgoing webhooks",
     "providerResourceBindings": "Provider resource bindings",
-    "providerCredentials": "Provider credentials"
+    "providerCredentials": "Provider credentials",
+    "contactLabels": "Contact labels",
+    "contacts": "Contacts",
+    "contactFields": "Contact details",
+    "contactAddresses": "Contact addresses",
+    "contactLabelAssignments": "Contact label assignments"
   },
-
   "errors": {
     "BACKUP_INVALID_FILE": "The file is corrupt or is not an Inspoter backup.",
     "BACKUP_UNSUPPORTED_VERSION": "This archive's format is not supported by the current version of the app.",

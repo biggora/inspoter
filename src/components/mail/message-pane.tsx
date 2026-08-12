@@ -22,6 +22,7 @@ import { Icon } from "@/components/ui/icon";
 import { LoadingRegion } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { AddToContactsButton } from "@/components/contacts/add-to-contacts-button";
 import { getInitials, stringToColor } from "@/lib/mail/avatar";
 import { MailBody } from "./mail-body";
 import { LabelChip } from "./label-chip";
@@ -357,6 +358,12 @@ export function MessagePane({
                     {t("archiveButton")}
                   </Button>
                 )}
+                {/* Renders nothing when the From header holds no usable
+                    address, which is the case for some webhook-ingested mail. */}
+                <AddToContactsButton
+                  address={detail.from}
+                  displayName={detail.fromName ?? undefined}
+                />
               </>
             )}
           </>

@@ -16,6 +16,7 @@ import {
 
 export const BACKUP_SECTIONS = [
   "bookmarks",
+  "contacts",
   "messages",
   "mail",
   "logs",

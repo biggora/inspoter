@@ -9,7 +9,6 @@
   "discordWebhookHeading": "Discord compatibility",
   "managementApiHeading": "Managing the section over the API",
   "outgoingFormatsNote": "Every outgoing webhook has a delivery format, chosen in <outgoing>Settings → Outgoing webhooks</outgoing>. “Inspoter” is our own envelope signed with HMAC-SHA256. “Discord” posts the event as an embed card straight into a Discord channel: point it at a Discord webhook URL and nothing else is needed. “Discord Webhook Events” suits receivers written against Discord: an envelope signed with Ed25519, with the verifying public key shown alongside.",
-
   "dashboardsTitle": "Dashboards",
   "dashboardsCardDescription": "Build your own overview from widgets — clock, weather, calendar, and data from any section.",
   "dashboardsIntroP1": "Dashboards are named overview pages inside a workspace. Each one holds widgets: global ones (clock and date, weather, calendar, note) and ones that read a section — bookmarks, service status, server metrics, mail, messages, alerts, and logs.",
@@ -22,7 +21,6 @@
     "Click “Done” to leave edit mode: widgets then show a link into their section instead of the actions menu.",
     "The dashboard menu renames it, makes it the start page, or deletes it — deleting a dashboard never touches section data."
   ],
-
   "bookmarksTitle": "Bookmarks",
   "bookmarksCardDescription": "Organize saved links into categories and subcategories.",
   "bookmarksIntroP1": "Bookmarks stores links to sites and tools you use often, grouped into categories with one level of subcategories. Each bookmark can have a name, URL, description, and icon.",
@@ -34,7 +32,6 @@
     "Use the search box to filter by name, description, or URL, and the category dropdown to show only one category.",
     "Use a category's or bookmark's menu to rename or delete it — deleting a category also deletes its bookmarks."
   ],
-
   "domainsTitle": "Domains",
   "domainsCardDescription": "View and manage DNS records across connected providers.",
   "domainsIntroP1": "Domains lists every domain from your connected DNS providers (Cloudflare, Hetzner DNS, GoDaddy) in one table, with the number of DNS records and which provider manages it.",
@@ -46,7 +43,6 @@
     "Use the row's link menu to create or open a linked Bookmark or Service for that domain.",
     "If a provider shows an error banner, click \"Retry\" to re-fetch it live."
   ],
-
   "serversTitle": "Servers",
   "serversCardDescription": "Monitor and control servers from cloud providers and the metrics agent.",
   "serversIntroP1": "Servers shows every server from your connected cloud providers alongside any host running the InSpoter metrics agent, combined into one card per server.",
@@ -59,7 +55,6 @@
     "For a server without live metrics, click \"Set up monitoring\" to enroll it with the metrics agent."
   ],
   "serversWebhookIntro": "Live metrics arrive over HTTP as well, but the body is assembled by the InSpoter metrics agent rather than by hand: install it with \"Set up monitoring\" on a server card, give it an API token from <tokens>Settings → Webhooks</tokens>, and it posts CPU, memory, disk, and uptime on its own schedule. Each submission is matched to a server by the IP addresses the agent reports. The endpoint is described in <apiDocs>Settings → API Documentation</apiDocs>.",
-
   "hostingTitle": "Hosting",
   "hostingCardDescription": "Track shared hosting accounts across connected providers.",
   "hostingIntroP1": "Hosting aggregates shared-hosting/control-panel accounts from your connected providers into one card grid, showing domain, plan, and status.",
@@ -70,7 +65,6 @@
     "Where supported, use Suspend/Unsuspend (with a confirmation dialog) to change the account's state.",
     "Click \"Refresh\" to force a live re-fetch; a failing provider shows a retry banner."
   ],
-
   "servicesTitle": "Services",
   "servicesCardDescription": "Uptime monitoring for HTTP, TCP, and PING targets.",
   "servicesIntroP1": "Services runs uptime checks against HTTP, TCP, or PING targets you define, polling on the interval you set and recording a status history for each.",
@@ -84,7 +78,6 @@
     "Click a card's title to open its detail page, or use the card menu to edit or delete it."
   ],
   "servicesOutgoingWebhook": "Services have no incoming webhook — the dashboard runs the checks itself. Status changes do fire a SERVICE_STATUS event outwards, though: subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing> to forward them to a chat, pager, or automation.",
-
   "mailTitle": "Mail",
   "mailCardDescription": "A three-pane webmail client for connected IMAP accounts.",
   "mailIntroP1": "Mail is a three-pane webmail client — accounts and folders on the left, the message list in the middle, and the reading pane on the right — for IMAP/SMTP mailboxes you connect, plus a built-in webhook mailbox for mail received over the API.",
@@ -105,7 +98,6 @@
     "receivedAt — optional: ISO 8601 date-time; defaults to the moment the request arrives."
   ],
   "mailOutgoingWebhook": "Mail arriving in a mailbox also fires a MAIL_RECEIVED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
-
   "messagesTitle": "Messages",
   "messagesCardDescription": "Slack-style channels for internal chat and incoming webhooks.",
   "messagesIntroP1": "Messages organizes channels into categories, similar to Slack, for both manual team chat and messages posted in by external systems through a channel's webhook.",
@@ -143,7 +135,6 @@
     "Errors come back as {\"error\":{\"code\",\"message\"}}: 401 when the token is missing or revoked, 403 when a permission is lacking, 404 when the object is not in your workspace, and 429 when the rate limit is hit."
   ],
   "messagesOutgoingWebhook": "Every posted message also fires a MESSAGE_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
-
   "activityTitle": "Activity",
   "activityCardDescription": "Audit log of every action taken in the workspace.",
   "activityIntroP1": "Activity is a read-only audit trail of every create, update, delete, and other action operators take across the workspace — bookmarks, domains, servers, mail, tokens, and more.",
@@ -154,7 +145,6 @@
     "Click the chevron on a row with details to expand its full change payload.",
     "Use Previous/Next to page through history."
   ],
-
   "logsTitle": "Logs",
   "logsCardDescription": "Central log collector fed by the incoming webhook API.",
   "logsIntroP1": "Logs stores log lines pushed in by external systems through the log webhook endpoint, so scripts, cron jobs, and services outside InSpoter have one place to report what they did.",
@@ -174,7 +164,6 @@
     "timestamp — optional: ISO 8601 date-time; defaults to the moment the request arrives."
   ],
   "logsOutgoingWebhook": "Every new entry also fires a LOG_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
-
   "alertsTitle": "Alerts",
   "alertsCardDescription": "Categorized alert inbox fed by the incoming webhook API.",
   "alertsIntroP1": "Alerts stores alert events pushed in by external systems through the alert webhook endpoint, organized into categories you define (e.g. \"Deploy\", \"Security\") with an info/warning/error/critical severity.",
@@ -194,5 +183,23 @@
     "message — required: the alert text.",
     "timestamp — optional: ISO 8601 date-time; defaults to the moment the request arrives."
   ],
-  "alertsOutgoingWebhook": "Every alert also fires an ALERT_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>."
+  "alertsOutgoingWebhook": "Every alert also fires an ALERT_CREATED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
+  "contactsTitle": "Contacts",
+  "contactsCardDescription": "A shared address book with labels, import, export, and duplicate merging.",
+  "contactsIntroP1": "Contacts is the workspace address book: one row per person or organization, each holding as many emails, phone numbers, addresses, chat handles, dates and related people as it needs.",
+  "contactsIntroP2": "It reads and writes the formats every other address book speaks — vCard 2.1/3.0/4.0, Google CSV, Outlook CSV and Thunderbird LDIF — so moving a book in or out is a single file, and it finds contacts that describe the same person so you can merge them.",
+  "contactsSteps": [
+    "Click \"New contact\" to add someone by hand; every detail row can carry its own label.",
+    "Use \"Import\" to load a vCard, CSV or LDIF file, and choose what should happen when a contact already exists.",
+    "Search by name, email, phone or organization; the search box also matches a phone number typed without its spaces.",
+    "Use \"Manage labels\" to create colored labels, then apply them from a contact or from the list selection.",
+    "Star the people you reach for often to keep them under \"Starred\".",
+    "Open \"Merge duplicates\" to review contacts that share an address, a number or a name, and fold them into one.",
+    "Use \"Export\" to write the current filter, the current selection, or the whole book out in any supported format."
+  ],
+  "contactsManagementApiIntro": "Contacts can also be read and written by an external system or an AI assistant. Grant a token the Contacts permissions under <tokens>Settings → Webhooks</tokens>: the same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "contactsManagementApiFields": [
+    "contacts:read — list and read contacts and labels.",
+    "contacts:write — create, update and delete contacts, and import a vCard."
+  ]
 }
