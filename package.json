@@ -63,7 +63,7 @@
     "@tiptap/starter-kit": "^3.28.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.13",
     "imapflow": "^1.4.7",
     "ipaddr.js": "^2.4.0",
     "mailparser": "^3.9.14",
