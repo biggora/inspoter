@@ -52,6 +52,8 @@
   "models": {
     "categories": "Категории закладок",
     "bookmarks": "Закладки",
+    "dashboards": "Дашборды",
+    "dashboardWidgets": "Виджеты дашборда",
     "kanbanBoards": "Kanban-доски",
     "kanbanColumns": "Kanban-колонки",
     "kanbanLabels": "Kanban-метки",
