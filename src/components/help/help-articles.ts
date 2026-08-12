@@ -105,6 +105,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
     outgoing: true,
   },
   {
+    slug: "contacts",
+    href: "/help/contacts",
+    icon: iconFor("contacts"),
+    titleKey: "contactsTitle",
+    cardDescriptionKey: "contactsCardDescription",
+    // No incoming webhook: an address book is filled by import or by hand,
+    // not pushed. The agent-facing REST/MCP surface is the API story here.
+    managementApi: {
+      endpoint: "GET|POST /api/v1/contacts",
+      curl: `curl "http://your-host/api/v1/contacts?query=anna" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`,
+    },
+  },
+  {
     slug: "messages",
     href: "/help/messages",
     icon: iconFor("messages"),

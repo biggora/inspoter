@@ -231,5 +231,7 @@
   "retryingLabel": "Повтор…",
   "deliveryRetriedToast": "Доставка поставлена в очередь на повтор.",
   "retryDeliveryError": "Не удалось повторить доставку. Попробуйте снова.",
-  "loadDeliveriesError": "Не удалось загрузить доставки. Попробуйте снова."
+  "loadDeliveriesError": "Не удалось загрузить доставки. Попробуйте снова.",
+  "scopeGroupContacts": "Контакты",
+  "scopeAccessEdit": "Создание, изменение и удаление"
 }

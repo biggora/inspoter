@@ -28,6 +28,7 @@ describe("McpScopeFields", () => {
       "Bookmarks",
       "Kanban",
       "Messages",
+      "Contacts",
       "Servers",
       "Services",
       "Logs",
@@ -49,6 +50,9 @@ describe("McpScopeFields", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Create and move" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Create, update and delete" }),
     ).toBeInTheDocument();
   });
 

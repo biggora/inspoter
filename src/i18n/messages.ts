@@ -3,6 +3,7 @@ import activity from "@/messages/ru/activity.json";
 import auth from "@/messages/ru/auth.json";
 import backup from "@/messages/ru/backup.json";
 import bookmarks from "@/messages/ru/bookmarks.json";
+import contacts from "@/messages/ru/contacts.json";
 import dashboards from "@/messages/ru/dashboards.json";
 import kanban from "@/messages/ru/kanban.json";
 import servers from "@/messages/ru/servers.json";
@@ -26,6 +27,7 @@ import enActivity from "@/messages/en/activity.json";
 import enAuth from "@/messages/en/auth.json";
 import enBackup from "@/messages/en/backup.json";
 import enBookmarks from "@/messages/en/bookmarks.json";
+import enContacts from "@/messages/en/contacts.json";
 import enDashboards from "@/messages/en/dashboards.json";
 import enKanban from "@/messages/en/kanban.json";
 import enServers from "@/messages/en/servers.json";
@@ -50,6 +52,7 @@ export const ruMessages = {
   auth,
   backup,
   bookmarks,
+  contacts,
   dashboards,
   kanban,
   servers,
@@ -75,6 +78,7 @@ export const enMessages = {
   auth: enAuth,
   backup: enBackup,
   bookmarks: enBookmarks,
+  contacts: enContacts,
   dashboards: enDashboards,
   kanban: enKanban,
   servers: enServers,

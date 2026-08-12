@@ -61,6 +61,14 @@ const SCOPE_GROUPS: ReadonlyArray<{
     ],
   },
   {
+    key: "contacts",
+    labelKey: "scopeGroupContacts",
+    scopes: [
+      { scope: "contacts:read", accessKey: "scopeAccessRead" },
+      { scope: "contacts:write", accessKey: "scopeAccessEdit" },
+    ],
+  },
+  {
     key: "servers",
     labelKey: "scopeGroupServers",
     scopes: [{ scope: "servers:read", accessKey: "scopeAccessRead" }],

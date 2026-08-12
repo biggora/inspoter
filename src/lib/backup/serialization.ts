@@ -27,6 +27,7 @@ import {
 
 export const BACKUP_SECTIONS = [
   "bookmarks",
+  "contacts",
   "dashboards",
   "kanban",
   "messages",
@@ -43,6 +44,13 @@ export type BackupSection = (typeof BACKUP_SECTIONS)[number];
 
 export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
   bookmarks: ["categories", "bookmarks"],
+  contacts: [
+    "contactLabels",
+    "contacts",
+    "contactFields",
+    "contactAddresses",
+    "contactLabelAssignments",
+  ],
   dashboards: ["dashboards", "dashboardWidgets"],
   // Insertion order matters on import: a card needs its board and column, an
   // assignment needs both its card and its label.
@@ -97,6 +105,77 @@ const bookmarkSchema = z.object({
 // purpose: re-validating it here would make a backup unrestorable the moment a
 // widget kind's schema tightens, and a config that no longer parses degrades to
 // the kind's defaults when the dashboard renders.
+// Contacts. The photo is carried as base64 rather than left behind: it is the
+// one part of a contact that cannot be retyped, and an archive that silently
+// dropped it would look complete while being lossy.
+const contactLabelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  normalizedName: z.string(),
+  color: z.string(),
+  position: z.number().int(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const contactSchema = z.object({
+  id: z.string(),
+  prefix: z.string().nullable(),
+  firstName: z.string().nullable(),
+  middleName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  suffix: z.string().nullable(),
+  phoneticFirst: z.string().nullable(),
+  phoneticMiddle: z.string().nullable(),
+  phoneticLast: z.string().nullable(),
+  nickname: z.string().nullable(),
+  fileAs: z.string().nullable(),
+  organization: z.string().nullable(),
+  jobTitle: z.string().nullable(),
+  department: z.string().nullable(),
+  birthday: z.string().nullable(),
+  notes: z.string().nullable(),
+  starred: z.boolean(),
+  photoBase64: z.string().nullable(),
+  photoContentType: z.string().nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const contactFieldSchema = z.object({
+  id: z.string(),
+  contactId: z.string(),
+  kind: z.enum(["EMAIL", "PHONE", "URL", "IM", "EVENT", "RELATION", "CUSTOM"]),
+  label: z.string().nullable(),
+  value: z.string(),
+  normalizedValue: z.string().nullable(),
+  isPrimary: z.boolean(),
+  position: z.number().int(),
+  createdAt: isoDate,
+});
+
+const contactAddressSchema = z.object({
+  id: z.string(),
+  contactId: z.string(),
+  label: z.string().nullable(),
+  poBox: z.string().nullable(),
+  extended: z.string().nullable(),
+  street: z.string().nullable(),
+  city: z.string().nullable(),
+  region: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  country: z.string().nullable(),
+  formatted: z.string().nullable(),
+  position: z.number().int(),
+  createdAt: isoDate,
+});
+
+const contactLabelAssignmentSchema = z.object({
+  contactId: z.string(),
+  labelId: z.string(),
+  appliedAt: isoDate,
+});
+
 const dashboardSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -473,6 +552,11 @@ const manifestSchema = z.object({
 const dataSchema = z.object({
   categories: z.array(categorySchema).optional(),
   bookmarks: z.array(bookmarkSchema).optional(),
+  contactLabels: z.array(contactLabelSchema).optional(),
+  contacts: z.array(contactSchema).optional(),
+  contactFields: z.array(contactFieldSchema).optional(),
+  contactAddresses: z.array(contactAddressSchema).optional(),
+  contactLabelAssignments: z.array(contactLabelAssignmentSchema).optional(),
   dashboards: z.array(dashboardSchema).optional(),
   dashboardWidgets: z.array(dashboardWidgetSchema).optional(),
   kanbanBoards: z.array(kanbanBoardSchema).optional(),
@@ -510,6 +594,13 @@ export type BackupManifest = z.infer<typeof manifestSchema>;
 export type BackupData = z.infer<typeof dataSchema>;
 export type BackupCategoryRecord = z.infer<typeof categorySchema>;
 export type BackupBookmarkRecord = z.infer<typeof bookmarkSchema>;
+export type BackupContactLabelRecord = z.infer<typeof contactLabelSchema>;
+export type BackupContactRecord = z.infer<typeof contactSchema>;
+export type BackupContactFieldRecord = z.infer<typeof contactFieldSchema>;
+export type BackupContactAddressRecord = z.infer<typeof contactAddressSchema>;
+export type BackupContactLabelAssignmentRecord = z.infer<
+  typeof contactLabelAssignmentSchema
+>;
 export type BackupDashboardRecord = z.infer<typeof dashboardSchema>;
 export type BackupDashboardWidgetRecord = z.infer<typeof dashboardWidgetSchema>;
 export type BackupKanbanBoardRecord = z.infer<typeof kanbanBoardSchema>;

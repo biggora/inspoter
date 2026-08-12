@@ -34,6 +34,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { RecipientAutocomplete } from "@/components/contacts/recipient-autocomplete";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
@@ -444,12 +445,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
       return (
         <Field data-invalid={!!message || undefined}>
           <FieldLabel htmlFor={id}>{label}</FieldLabel>
-          <Input
+          {/* Suggests addresses from the workspace address book; typing an
+              address that is not in it still works exactly as before. */}
+          <RecipientAutocomplete
             id={id}
             value={value}
-            onChange={(event) => updateValue(setValue, event.target.value)}
+            onChange={(next) => updateValue(setValue, next)}
             placeholder={t("addressPlaceholder")}
-            autoComplete="off"
             autoFocus={autoFocus}
             aria-invalid={!!message || undefined}
             aria-describedby={message ? `${id}-error` : undefined}

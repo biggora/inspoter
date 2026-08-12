@@ -467,3 +467,36 @@ pnpm 11.12.0.
 
 None currently gate Phase 1. User approved the MVP interpretations by directing
 implementation from `specs/mail-label-filtering-plan.md`.
+
+## Contacts section (2026-08-12)
+
+Ветка `dev/new-contacts-section-35c1a3` (worktree `inspoter-security-issues-f43505`).
+План: `C:\Users\biggora\.claude\plans\logical-wibbling-rossum.md`. PRD v3.19
+(§3.5a, FR-CNT-001..006, AC-CNT-001..016), architecture v1.20 (§7G, ADR-027),
+`specs/ui.md` (три новых экрана).
+
+- Модель: `Contact` + одна полиморфная `ContactField` (7 видов) + `ContactAddress`
+  - `ContactLabel`/`ContactLabelAssignment`, миграция `20260812120000_contacts`.
+    Производные колонки `displayName`/`sortKey`/`searchText` считаются на каждой
+    записи и пересчитываются при импорте бэкапа, а не восстанавливаются из архива.
+- Формат-движок `src/lib/contacts/**` — без Prisma: vCard 2.1/3.0/4.0 (включая
+  quoted-printable, windows-1251 без BOM, base64-фото, Apple-группы
+  `itemN.X-ABLabel`), Google CSV в текущей и до-2021 раскладке, Outlook CSV,
+  Thunderbird LDIF. Формат файла определяется по содержимому, не по расширению.
+- Поверхности: сессионные `/api/contacts/**` и `/api/contact-labels/**`,
+  токенные `/api/v1/contacts/**` + 7 MCP-инструментов под новыми скоупами
+  `contacts:read`/`contacts:write`. Сервис принимает `operatorId: string | null`
+  — токенный вызов передаёт `null`, авторитет в этом случае сам токен.
+- Интеграция с почтой: автодополнение адресатов в compose и «Добавить в
+  контакты» в панели чтения.
+- Бэкап: 11-я секция `contacts` (метки, контакты, поля, адреса, назначения);
+  фотографии едут в архиве как base64.
+- Верификация: unit 1118/1118 (91 файл, из них 95 новых по форматам), lint 0,
+  typecheck чистый, `next build` собирает все 15 новых маршрутов, guard'ы
+  native-controls / base-language / public-openapi зелёные.
+- НЕ выполнено: живая проверка в браузере и `pnpm test:e2e` (`e2e/contacts.spec.ts`
+  написан) — Docker Desktop не запущен, dev-PostgreSQL на 3832 недоступен, из-за
+  чего миграция не применена к dev-базе. Интеграционные тесты по той же причине
+  не запускались.
+- Вне объёма v1 (зафиксировано в PRD §10): корзина с отложенной очисткой,
+  автосбор «других контактов», счётчик частоты обращений, CardDAV.

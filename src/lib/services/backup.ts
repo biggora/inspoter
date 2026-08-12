@@ -3,6 +3,11 @@ import { AlertCategorySource, Prisma } from "@/generated/prisma/client";
 import type {
   Category,
   Bookmark,
+  Contact,
+  ContactAddress,
+  ContactField,
+  ContactLabel,
+  ContactLabelAssignment,
   Dashboard,
   DashboardWidget,
   KanbanBoard,
@@ -33,6 +38,15 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import { normalizeLabelName } from "@/lib/label-normalization";
 import {
+  createEmptyContactRecord,
+  type ContactRecord,
+} from "@/lib/contacts/model";
+import {
+  buildDisplayName,
+  buildSearchText,
+  buildSortKey,
+} from "@/lib/contacts/normalize";
+import {
   sealArchive,
   openArchive,
   BackupInvalidFileError,
@@ -47,6 +61,11 @@ import {
   type BackupManifest,
   type BackupCategoryRecord,
   type BackupBookmarkRecord,
+  type BackupContactRecord,
+  type BackupContactAddressRecord,
+  type BackupContactFieldRecord,
+  type BackupContactLabelRecord,
+  type BackupContactLabelAssignmentRecord,
   type BackupDashboardRecord,
   type BackupDashboardWidgetRecord,
   type BackupKanbanBoardRecord,
@@ -161,6 +180,91 @@ function remapOrNull(
   return map.get(id) ?? null;
 }
 
+/**
+ * Rebuilds the format-neutral record a contact's derived columns
+ * (displayName, sortKey, searchText) are computed from. The archive stores the
+ * parts, not the derivations, so an import recomputes them with the current
+ * rules rather than restoring whatever the exporting version wrote.
+ */
+interface ContactParts {
+  fields: Map<string, BackupContactFieldRecord[]>;
+  addresses: Map<string, BackupContactAddressRecord[]>;
+  labelNames: Map<string, string[]>;
+}
+
+function groupContactParts(data: BackupData): ContactParts {
+  const fields = new Map<string, BackupContactFieldRecord[]>();
+  for (const field of data.contactFields ?? []) {
+    const list = fields.get(field.contactId) ?? [];
+    list.push(field);
+    fields.set(field.contactId, list);
+  }
+
+  const addresses = new Map<string, BackupContactAddressRecord[]>();
+  for (const address of data.contactAddresses ?? []) {
+    const list = addresses.get(address.contactId) ?? [];
+    list.push(address);
+    addresses.set(address.contactId, list);
+  }
+
+  const labelNameById = new Map(
+    (data.contactLabels ?? []).map((label) => [label.id, label.name]),
+  );
+  const labelNames = new Map<string, string[]>();
+  for (const assignment of data.contactLabelAssignments ?? []) {
+    const name = labelNameById.get(assignment.labelId);
+    if (name === undefined) continue;
+    const list = labelNames.get(assignment.contactId) ?? [];
+    list.push(name);
+    labelNames.set(assignment.contactId, list);
+  }
+
+  return { fields, addresses, labelNames };
+}
+
+function contactRecordFor(
+  row: BackupContactRecord,
+  parts: ContactParts,
+): ContactRecord {
+  return {
+    ...createEmptyContactRecord(),
+    prefix: row.prefix,
+    firstName: row.firstName,
+    middleName: row.middleName,
+    lastName: row.lastName,
+    suffix: row.suffix,
+    phoneticFirst: row.phoneticFirst,
+    phoneticMiddle: row.phoneticMiddle,
+    phoneticLast: row.phoneticLast,
+    nickname: row.nickname,
+    fileAs: row.fileAs,
+    organization: row.organization,
+    jobTitle: row.jobTitle,
+    department: row.department,
+    birthday: row.birthday,
+    notes: row.notes,
+    starred: row.starred,
+    fields: (parts.fields.get(row.id) ?? []).map((field) => ({
+      kind: field.kind,
+      label: field.label,
+      value: field.value,
+      isPrimary: field.isPrimary,
+    })),
+    addresses: (parts.addresses.get(row.id) ?? []).map((address) => ({
+      label: address.label,
+      poBox: address.poBox,
+      extended: address.extended,
+      street: address.street,
+      city: address.city,
+      region: address.region,
+      postalCode: address.postalCode,
+      country: address.country,
+      formatted: address.formatted,
+    })),
+    labels: parts.labelNames.get(row.id) ?? [],
+  };
+}
+
 // ============================================================
 // Export
 // ============================================================
@@ -188,6 +292,91 @@ function toBookmarkRecord(row: Bookmark): BackupBookmarkRecord {
     position: row.position,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toContactLabelRecord(row: ContactLabel): BackupContactLabelRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalizedName,
+    color: row.color,
+    position: row.position,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toContactRecord(row: Contact): BackupContactRecord {
+  return {
+    id: row.id,
+    prefix: row.prefix,
+    firstName: row.firstName,
+    middleName: row.middleName,
+    lastName: row.lastName,
+    suffix: row.suffix,
+    phoneticFirst: row.phoneticFirst,
+    phoneticMiddle: row.phoneticMiddle,
+    phoneticLast: row.phoneticLast,
+    nickname: row.nickname,
+    fileAs: row.fileAs,
+    organization: row.organization,
+    jobTitle: row.jobTitle,
+    department: row.department,
+    birthday: row.birthday,
+    notes: row.notes,
+    starred: row.starred,
+    // displayName, sortKey and searchText are derived on write, so they are
+    // recomputed at import rather than carried.
+    photoBase64:
+      row.photo === null ? null : Buffer.from(row.photo).toString("base64"),
+    photoContentType: row.photoContentType,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toContactFieldRecord(row: ContactField): BackupContactFieldRecord {
+  return {
+    id: row.id,
+    contactId: row.contactId,
+    kind: row.kind,
+    label: row.label,
+    value: row.value,
+    normalizedValue: row.normalizedValue,
+    isPrimary: row.isPrimary,
+    position: row.position,
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toContactAddressRecord(
+  row: ContactAddress,
+): BackupContactAddressRecord {
+  return {
+    id: row.id,
+    contactId: row.contactId,
+    label: row.label,
+    poBox: row.poBox,
+    extended: row.extended,
+    street: row.street,
+    city: row.city,
+    region: row.region,
+    postalCode: row.postalCode,
+    country: row.country,
+    formatted: row.formatted,
+    position: row.position,
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toContactLabelAssignmentRecord(
+  row: ContactLabelAssignment,
+): BackupContactLabelAssignmentRecord {
+  return {
+    contactId: row.contactId,
+    labelId: row.labelId,
+    appliedAt: iso(row.appliedAt),
   };
 }
 
@@ -705,6 +894,42 @@ export async function exportWorkspace(
         counts.bookmarks = bookmarks.length;
       }
 
+      if (sections.includes("contacts")) {
+        const contactLabels = await tx.contactLabel.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        const contacts = await tx.contact.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        const contactFields = await tx.contactField.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        const contactAddresses = await tx.contactAddress.findMany({
+          where: { workspaceId },
+          orderBy: orderByCreated(),
+        });
+        const contactLabelAssignments =
+          await tx.contactLabelAssignment.findMany({
+            where: { workspaceId },
+            orderBy: [{ contactId: "asc" }, { labelId: "asc" }],
+          });
+        data.contactLabels = contactLabels.map(toContactLabelRecord);
+        data.contacts = contacts.map(toContactRecord);
+        data.contactFields = contactFields.map(toContactFieldRecord);
+        data.contactAddresses = contactAddresses.map(toContactAddressRecord);
+        data.contactLabelAssignments = contactLabelAssignments.map(
+          toContactLabelAssignmentRecord,
+        );
+        counts.contactLabels = contactLabels.length;
+        counts.contacts = contacts.length;
+        counts.contactFields = contactFields.length;
+        counts.contactAddresses = contactAddresses.length;
+        counts.contactLabelAssignments = contactLabelAssignments.length;
+      }
+
       if (sections.includes("dashboards")) {
         const dashboards = await tx.dashboard.findMany({
           where: { workspaceId },
@@ -1088,6 +1313,8 @@ export async function importWorkspace(
       }
 
       const categoryIdMap = new Map<string, string>();
+      const contactIdMap = new Map<string, string>();
+      const contactLabelIdMap = new Map<string, string>();
       const dashboardIdMap = new Map<string, string>();
       const messageCategoryIdMap = new Map<string, string>();
       const channelIdMap = new Map<string, string>();
@@ -1129,6 +1356,82 @@ export async function importWorkspace(
           500,
         );
         imported.categories = inserts.length;
+      }
+
+      if (payload.data.contactLabels) {
+        const inserts = payload.data.contactLabels.map((row) => {
+          const newId = crypto.randomUUID();
+          contactLabelIdMap.set(row.id, newId);
+          return {
+            id: newId,
+            workspaceId,
+            name: row.name,
+            normalizedName: row.normalizedName,
+            color: row.color,
+            position: row.position,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) =>
+            // A merge-mode import into a workspace that already has a label
+            // of the same name would violate the per-workspace unique index;
+            // the existing label wins and its assignments are dropped below.
+            tx.contactLabel.createMany({ data: chunk, skipDuplicates: true }),
+          inserts,
+          500,
+        );
+        imported.contactLabels = inserts.length;
+      }
+
+      if (payload.data.contacts) {
+        // Grouped once: the derived columns need every field, address and
+        // label of a contact, and looking them up per row would be quadratic.
+        const derivedParts = groupContactParts(payload.data);
+        const inserts = payload.data.contacts.map((row) => {
+          const newId = crypto.randomUUID();
+          contactIdMap.set(row.id, newId);
+          const record = contactRecordFor(row, derivedParts);
+          const displayName = buildDisplayName(record);
+          return {
+            id: newId,
+            workspaceId,
+            prefix: row.prefix,
+            firstName: row.firstName,
+            middleName: row.middleName,
+            lastName: row.lastName,
+            suffix: row.suffix,
+            phoneticFirst: row.phoneticFirst,
+            phoneticMiddle: row.phoneticMiddle,
+            phoneticLast: row.phoneticLast,
+            nickname: row.nickname,
+            fileAs: row.fileAs,
+            organization: row.organization,
+            jobTitle: row.jobTitle,
+            department: row.department,
+            birthday: row.birthday,
+            notes: row.notes,
+            starred: row.starred,
+            // Derived columns are rebuilt rather than trusted from the file.
+            displayName,
+            sortKey: buildSortKey(displayName),
+            searchText: buildSearchText(record),
+            photo:
+              row.photoBase64 === null
+                ? null
+                : Buffer.from(row.photoBase64, "base64"),
+            photoContentType: row.photoContentType,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.contact.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.contacts = inserts.length;
       }
 
       // --- Tier 2: independent parents ---
@@ -1579,6 +1882,84 @@ export async function importWorkspace(
           500,
         );
         imported.bookmarks = inserts.length;
+      }
+
+      if (payload.data.contactFields) {
+        const inserts = payload.data.contactFields.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          contactId: mustRemap(contactIdMap, row.contactId),
+          contactWorkspaceId: workspaceId,
+          kind: row.kind,
+          label: row.label,
+          value: row.value,
+          normalizedValue: row.normalizedValue,
+          isPrimary: row.isPrimary,
+          position: row.position,
+          createdAt: row.createdAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.contactField.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.contactFields = inserts.length;
+      }
+
+      if (payload.data.contactAddresses) {
+        const inserts = payload.data.contactAddresses.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          contactId: mustRemap(contactIdMap, row.contactId),
+          contactWorkspaceId: workspaceId,
+          label: row.label,
+          poBox: row.poBox,
+          extended: row.extended,
+          street: row.street,
+          city: row.city,
+          region: row.region,
+          postalCode: row.postalCode,
+          country: row.country,
+          formatted: row.formatted,
+          position: row.position,
+          createdAt: row.createdAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.contactAddress.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.contactAddresses = inserts.length;
+      }
+
+      if (payload.data.contactLabelAssignments) {
+        // A label whose name collided with an existing one was skipped above,
+        // so its id never entered the map; those assignments are dropped
+        // rather than aborting the import.
+        const inserts = payload.data.contactLabelAssignments
+          .map((row) => {
+            const labelId = contactLabelIdMap.get(row.labelId);
+            if (labelId === undefined) return null;
+            return {
+              workspaceId,
+              contactId: mustRemap(contactIdMap, row.contactId),
+              contactWorkspaceId: workspaceId,
+              labelId,
+              labelWorkspaceId: workspaceId,
+              appliedAt: row.appliedAt,
+            };
+          })
+          .filter((row) => row !== null);
+        await createManyChunked(
+          (chunk) =>
+            tx.contactLabelAssignment.createMany({
+              data: chunk,
+              skipDuplicates: true,
+            }),
+          inserts,
+          500,
+        );
+        imported.contactLabelAssignments = inserts.length;
       }
 
       if (payload.data.dashboardWidgets) {

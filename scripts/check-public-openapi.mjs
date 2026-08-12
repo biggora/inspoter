@@ -94,6 +94,7 @@ try {
 
 const discordPath = "/api/discord/webhooks/{webhookId}/{token}";
 const messagesBase = "/api/v1/messages";
+const contactsBase = "/api/v1/contacts";
 // The ingest and MCP surfaces are POST-only; the Discord webhook is also
 // readable (Get Webhook with Token), and the Messages management API is a
 // regular REST family, so the allowed methods are pinned per path.
@@ -111,6 +112,9 @@ const expectedMethods = {
   [`${messagesBase}/channels/{channelId}/messages`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
+  [contactsBase]: ["get", "post"],
+  [`${contactsBase}/labels`]: ["get", "post"],
+  [`${contactsBase}/{contactId}`]: ["delete", "get", "patch"],
 };
 const expectedPaths = Object.keys(expectedMethods).sort();
 const actualPaths = Object.keys(spec.paths ?? {}).sort();
@@ -177,7 +181,7 @@ check(
   "components.schemas.MessagesApiError must be a nested error envelope requiring string code and message",
 );
 for (const { label, publicPath, operation } of allOperations) {
-  if (!publicPath.startsWith(messagesBase)) continue;
+  if (!publicPath.startsWith("/api/v1/")) continue;
   check(
     sameJson(operation.security, [{ WebhookBearer: [] }]),
     `${label} security must be exactly [{"WebhookBearer":[]}]`,

@@ -1,0 +1,36 @@
+dn: cn=Anna Petrova,mail=anna@example.com
+objectclass: top
+objectclass: person
+objectclass: organizationalPerson
+objectclass: inetOrgPerson
+objectclass: mozillaAbPersonAlpha
+givenName: Anna
+sn: Petrova
+cn: Anna Petrova
+mozillaNickname: Annie
+mail: anna@example.com
+mozillaSecondEmail: anna.petrova@inspot.example
+telephoneNumber: +371 67 000 002
+homePhone: +371 67 111 000
+mobile: +371 20 000 001
+o: Inspot Labs
+ou: Operations
+title: Site Reliability Engineer
+mozillaWorkUrl: https://anna.example
+mozillaHomeStreet: Brivibas iela 1
+mozillaHomeLocalityName: Riga
+mozillaHomePostalCode: LV-1010
+mozillaHomeCountryName: Latvia
+birthyear: 1985
+birthmonth: 4
+birthday: 12
+description: Prefers email over phone.
+
+dn:: Y2490JHQvtGA0LjRgSDQn9C10YLRgNC+0LIsbWFpbD1ib3Jpc0BleGFtcGxlLmNvbQ==
+objectclass: top
+objectclass: mozillaAbPersonAlpha
+givenName:: 0JHQvtGA0LjRgQ==
+sn:: 0J/QtdGC0YDQvtCy
+cn:: 0JHQvtGA0LjRgSDQn9C10YLRgNC+0LI=
+mail: boris@example.com
+mobile: +371 20 000 010

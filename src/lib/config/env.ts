@@ -159,6 +159,24 @@ const envSchema = z
       .int()
       .positive()
       .default(60_000),
+    // --- Contacts import limits ---
+    // An address book is text; 10 MiB is a five-figure contact count, and the
+    // row cap is what actually protects the database.
+    CONTACTS_MAX_IMPORT_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10_485_760), // 10 MiB
+    CONTACTS_MAX_IMPORT_ROWS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10_000),
+    CONTACTS_MAX_PHOTO_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(2_097_152), // 2 MiB
     OPERATOR_USERNAME: z.string().min(1, "OPERATOR_USERNAME is required"),
     // Preprocessed so an explicitly blanked "" (scripts/test-env.mjs blanks
     // this in test child environments to stop prisma.config.ts's dotenv

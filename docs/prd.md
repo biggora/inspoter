@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.18
-**Status:** Dashboard messages widget specified and implemented
+**Version:** v3.19
+**Status:** Contacts section specified and implemented
 **Owner:** Product Analyst
-**Date:** 2026-08-06
+**Date:** 2026-08-12
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), the verbatim Mail-label request recorded in `specs/mail-label-filtering-plan.md` v0.3, `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -455,6 +455,64 @@ The visible UI defaults to English, with Russian fully supported and operator-se
 
 ---
 
+### 3.5a Contacts (2026-08-12)
+
+**FR-CNT-001: Contact records**
+
+- Description: A workspace-scoped address book. One record per person or organization, carrying a structured name (prefix, first, middle, last, suffix, phonetic parts, nickname, display override), an organization block (company, job title, department), a birthday that may be year-less, free-text notes, a starred flag, an optional photo, and any number of labeled details: email addresses, phone numbers, websites, chat handles, dates, related people and custom label/value pairs, plus any number of structured postal addresses. Every detail carries its own label — the well-known ones (home, work, mobile, main, fax, work fax, home fax, pager, other) are translated, and a label an imported file invented is kept verbatim.
+- Priority: Must Have
+- Acceptance Criteria:
+  - **AC-CNT-001**: Given an operator creating a contact, When the submission carries no name part, no organization and no detail entry, Then it is rejected with a client error and no record is created.
+  - **AC-CNT-002**: Given a contact with several emails or phone numbers, When it is saved, Then every entry is persisted with its own label and order, and at most one entry per kind is marked primary.
+  - **AC-CNT-003**: Given a contact whose structured name is empty, When it is displayed, Then its shown name falls back through the display override, the nickname, the organization and then the first email address, and never renders as a blank row.
+  - **AC-CNT-004**: Given a photo upload, When its type is outside JPEG/PNG/GIF/WebP or its size exceeds the configured limit, Then it is rejected and the stored photo is unchanged; When it is accepted, Then it is served only to an authenticated member of the owning workspace.
+
+**FR-CNT-002: Labels, search, and starring**
+
+- Description: Contacts are grouped by colored labels managed per workspace, filtered by label or by starred, and searched across names, organization, email, phone and notes from one box. A label carries its color and its contact count; deleting a label removes it from the contacts that carry it without deleting them.
+- Priority: Must Have
+- Acceptance Criteria:
+  - **AC-CNT-005**: Given a search term, When it is submitted, Then the list shows every contact whose name, organization, label, note, email or phone matches it, and a phone number matches whether or not the operator typed its formatting.
+  - **AC-CNT-006**: Given a filter or a page selection, When it is applied, Then it is reflected in the URL, so the view is shareable and the browser's back button returns to the previous one.
+  - **AC-CNT-007**: Given two labels whose names differ only in case, When the second is created, Then it is rejected as a conflict and only one label exists.
+
+**FR-CNT-003: Import and export**
+
+- Description: The section reads and writes the formats the rest of the world's address books speak: vCard 2.1, 3.0 and 4.0 (including quoted-printable bodies, legacy single-byte encodings and base64 photos), Google Contacts CSV in both its current and its pre-2021 column layouts, Microsoft Outlook CSV, and Thunderbird/LDAP LDIF. The format of an uploaded file is detected from its content rather than its extension. On import the operator chooses what happens when a contact already exists: keep the existing one, update it from the file, or add a second record. Export covers the whole book, the current filter, or the current selection; photos travel in vCard only.
+- Priority: Must Have
+- Acceptance Criteria:
+  - **AC-CNT-008**: Given a file in any supported format, When it is imported, Then its contacts, their labeled details, their addresses and their labels are created, and the response reports how many records were read, created, updated and skipped.
+  - **AC-CNT-009**: Given a file that is not a recognized contacts format, When it is uploaded, Then it is rejected with a client error and nothing is created; Given a file over the configured size or contact-count limit, Then it is rejected with `413`.
+  - **AC-CNT-010**: Given an exported file, When it is imported back into an empty workspace, Then every name, label, detail, address and note round-trips unchanged.
+  - **AC-CNT-011**: Given the "keep the existing contact" strategy and a file holding a contact that matches an existing one by email, phone or name, When it is imported, Then the existing record is left untouched and the summary counts it as skipped.
+
+**FR-CNT-004: Duplicate detection and merge**
+
+- Description: Contacts that share an email address, a phone number or a display name are grouped as duplicate candidates. The operator picks which record leads and merges the group: the leading record's own values win, and everything the others knew that it lacked — details, addresses, labels, a photo, notes — is folded in rather than dropped.
+- Priority: Should Have
+- Acceptance Criteria:
+  - **AC-CNT-012**: Given contacts linked through different shared keys (A shares an email with B, B shares a phone with C), When duplicates are listed, Then all three appear in one group rather than in two overlapping ones.
+  - **AC-CNT-013**: Given a merge, When it completes, Then the leading contact carries the union of every detail and address of the group with duplicates collapsed, the merged-away records no longer exist, and no detail present before the merge is missing afterwards.
+
+**FR-CNT-005: Mail integration**
+
+- Description: The mail composer suggests recipients from the address book as the operator types into To/Cc/Bcc, replacing only the address fragment being typed, and the reading pane offers to create a contact from the message's sender.
+- Priority: Should Have
+- Acceptance Criteria:
+  - **AC-CNT-014**: Given a partial address typed into a recipient field, When a contact matches it by address or by name, Then it is offered as a suggestion, and accepting one replaces only the fragment being typed while the addresses already entered are untouched. An address that matches nothing is still accepted as typed.
+
+**FR-CNT-006: Agent-facing Contacts API**
+
+- Description: The address book is also reachable by an API token rather than a browser session, published twice over one service layer — as MCP tools on `POST /api/mcp` and as the REST family `/api/v1/contacts/**` — under two scopes on the existing workspace token (FR-WH-002): `contacts:read` and `contacts:write`, the latter also covering vCard import because loading a file is the same class of action as creating its contacts one by one.
+- Priority: Should Have
+- Acceptance Criteria:
+  - **AC-CNT-015**: Given a request to either surface, When it presents no token, an unknown or revoked token, a channel-scoped webhook token, or a token carrying no MCP scope, Then it is rejected with `401` and a bearer challenge; When the token's scopes lack the operation's requirement, Then it is rejected with `403`; and in both cases nothing is read or written.
+  - **AC-CNT-016**: Given an identifier belonging to another workspace, When it is used against either surface, Then the response is a non-disclosing `404` (REST) or a tool error (MCP), and no record is read or modified in either workspace.
+
+**Contacts interaction contract:** The list is a table with a checkbox column; a selection reveals the bulk actions (delete, star, add or remove a label) and hides them again when it is cleared. A row's name opens `/contacts/[id]`; the star toggles in place. The section sidebar holds the two standing views (all, starred), the workspace's labels with their counts, and the duplicates screen. Import shows a summary of what it did rather than closing silently, and points at the duplicates screen when it created records. Photos are shown as an initials tile when a contact has none, using the same deterministic coloring the mail client uses for senders.
+
+---
+
 ### 3.6 Logs
 
 **FR-LOG-001: Log viewing, filtering, sorting**
@@ -674,7 +732,7 @@ Each provider selects its mode independently under AC-PROV-001..002: an absent c
 
 **NFR-DEPLOY-001 (Self-hosted / Docker):** The application must be deployable as a self-hosted service via Docker on a single host, backed by PostgreSQL. _Verification:_ a documented `docker`-based startup brings up the app + database and serves the login screen. (Traces to Decisions log: self-hosted, single deploy, PostgreSQL + Prisma.)
 
-**NFR-SEC-001 (Panel authentication):** All dashboard routes and browser data APIs require an authenticated session. The only session-free surfaces are the login route and the token-authenticated machine surfaces, each of which derives its workspace from the presented credential and never from a header: the webhook ingest API (FR-WH-001, FR-WH-003), server-metrics ingestion, `POST /api/mcp`, and the `/api/v1/**` management API (FR-MSG-004). A token surface is reachable without a session but never without a credential. _Verification:_ AC-AUTH-001, AC-WH-001, AC-MSG-015.
+**NFR-SEC-001 (Panel authentication):** All dashboard routes and browser data APIs require an authenticated session. The only session-free surfaces are the login route and the token-authenticated machine surfaces, each of which derives its workspace from the presented credential and never from a header: the webhook ingest API (FR-WH-001, FR-WH-003), server-metrics ingestion, `POST /api/mcp`, and the `/api/v1/**` management API (FR-MSG-004, FR-CNT-006). A token surface is reachable without a session but never without a credential. _Verification:_ AC-AUTH-001, AC-WH-001, AC-MSG-015.
 
 **NFR-SEC-002 (Provider/webhook secret handling):** Provider API keys and webhook token secrets must be sourced from environment variables or stored such that secret values are never returned in list/detail API responses or rendered in the UI after creation. Channel-webhook creation and public-delivery responses are non-cacheable; the UI keeps the returned URL only in transient dialog state and never in storage, RSC props, toast text, analytics, or logs. Because the channel webhook credential is embedded in the URL, reverse proxies **MUST redact the full request path for `/api/webhooks/channels/*`** in access and error logs. _Verification:_ inspect persistence and API responses for raw secret values (absent except the one-time creation response), inspect cache/referrer headers, close/reopen the dialog to prove non-reveal, and verify proxy-log fixtures contain no tokenized path.
 
@@ -984,6 +1042,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.17 has
 - Domains: AC-DOM-001..009
 - Servers: AC-SRV-001..008
 - Mail: AC-MAIL-001..045, with AC-MAIL-007..030 added by Q-14 (accounts 007..011, sync 012..017, actions 018..021, send 022..025, attachments 026..028, folders/switching 029..030) and AC-MAIL-031..045 added by Q-15 (labels 031..038, automatic rules/backfill 039..045)
+- Contacts: AC-CNT-001..016 (records 001..004, labels/search 005..007, import/export 008..011, duplicates and merge 012..013, mail integration 014, agent API 015..016)
 - Messages: AC-MSG-001..021, with AC-MSG-008 INACTIVE under Q-8; AC-MSG-009..014 added by Q-4; AC-MSG-015..021 added by the agent-facing management API (scoped access 015, idempotent creation 016, agent origin 017, no destructive operations 018, webhook lifecycle 019, isolation 020, validation/limits 021)
 - Logs: AC-LOG-001..005
 - Alerts: AC-ALR-001..010, with AC-ALR-008 added by Q-7 and AC-ALR-009..010 added alongside the category-provenance work (case-folded category names, operator reassignment)
@@ -1008,6 +1067,7 @@ All IDs are stable and must not be renumbered, reused, or transferred. v3.17 has
 | FR-MAIL-008..009 / AC-MAIL-031..045 | Verbatim Mail-label request; Q-15; reviewed `specs/mail-label-filtering-plan.md` v0.3                                                                                                                              | Implemented and final-gate verified; migration/performance/rollback/restart/regression/review evidence is recorded in `docs/test-plan.md` and `docs/progress.md`; user verification remains                                                                 |
 | FR-MSG-001..002                     | `docs/idea.md` Messages; `specs/ui.md` Messages; Q-8                                                                                                                                                               | Active; AC-MSG-008 inactive                                                                                                                                                                                                                                 |
 | FR-MSG-003 / AC-MSG-009..014        | Q-4; Q-8                                                                                                                                                                                                           | Active; supersedes only the read-only Messages statement in `specs/ui.md`                                                                                                                                                                                   |
+| FR-CNT-001..006 / AC-CNT-001..016   | User request 2026-08-12 («создать новый раздел контакты по такому же принципу как Google контакты и с поддержкой тех же форматов, а также самых популярных»); FR-WH-002 token model; `docs/architecture.md` §7C    | Active; additive section, no existing contract changed. Trash with delayed purge, auto-collected "other contacts", contact-frequency ranking and CardDAV sync are out of scope (§10)                                                                        |
 | FR-MSG-004 / AC-MSG-015..021        | User request 2026-08-05 (управление разделом Messages через API для ИИ-агента); FR-WH-002 token model; `docs/architecture.md` §6.6                                                                                 | Active; extends FR-MSG-001..003 to a token-authenticated caller without changing any existing contract; deletion and channel auto-create stay excluded (AC-MSG-003, Q-8/AC-MSG-006)                                                                         |
 | FR-LOG-001..002                     | `docs/idea.md` Logs; `specs/ui.md` Logs                                                                                                                                                                            | Active                                                                                                                                                                                                                                                      |
 | FR-ALR-001..003 / AC-ALR-008        | `docs/idea.md` Alerts; `specs/ui.md` Alerts; Q-7                                                                                                                                                                   | Active; acknowledge/resolve excluded                                                                                                                                                                                                                        |
@@ -1040,6 +1100,14 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.19 — 2026-08-12 (Contacts section)
+
+- Added §3.5a **FR-CNT-001..006** and **AC-CNT-001..016**: a workspace address book modeled on Google Contacts — rich contact records with any number of labeled details and addresses, colored labels, URL-backed search and filtering, import and export of vCard 2.1/3.0/4.0, Google CSV, Outlook CSV and Thunderbird LDIF, duplicate detection with a union merge, recipient autocomplete and "add to contacts" in Mail, and an agent-facing surface (MCP tools plus `/api/v1/contacts/**`) under the new `contacts:read`/`contacts:write` scopes.
+- Amended **NFR-SEC-001**: `/api/v1/**` now covers the Contacts family as well as Messages; the rule itself is unchanged.
+- Amended **FR-BCK-001..002**: the export section list grows to eleven with `contacts`, carrying labels, contacts, their details, their addresses and their label assignments. Contact photos travel inside the archive; the derived display, sort and search columns are recomputed on import rather than restored.
+- No existing AC ID was renumbered, reused, or retired.
+- Out of scope for this version (§10): a trash with delayed purge, auto-collected "other contacts", a frequency-of-contact signal, and CardDAV synchronization.
 
 ### v3.18 — 2026-08-06 (messages widget on dashboards)
 

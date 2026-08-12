@@ -1,0 +1,28 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Anna Petrova
+N:Petrova;Anna;Marie;Dr.;PhD
+NICKNAME:Annie
+ORG:Inspot Labs;Operations
+TITLE:Site Reliability Engineer
+EMAIL;TYPE=INTERNET;TYPE=HOME:anna@example.com
+EMAIL;TYPE=INTERNET;TYPE=WORK;TYPE=PREF:anna.petrova@inspot.example
+TEL;TYPE=CELL:+371 20 000 001
+TEL;TYPE=WORK;TYPE=VOICE:+371 67 000 002
+TEL;TYPE=WORK;TYPE=FAX:+371 67 000 003
+ADR;TYPE=HOME:;;Brivibas iela 1\, dz. 5;Riga;;LV-1010;Latvia
+item1.URL:https://anna.example
+item1.X-ABLabel:Blog
+BDAY:1985-04-12
+NOTE:Prefers email over phone.\nOn call every other week.
+CATEGORIES:Work,Operations
+X-PHONETIC-FIRST-NAME:AH-nuh
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Inspot Support
+N:;;;;
+ORG:Inspot Labs
+EMAIL;TYPE=INTERNET:support@inspot.example
+TEL;TYPE=MAIN:+371 67 000 000
+END:VCARD

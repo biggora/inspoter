@@ -116,6 +116,7 @@ const discordResponseStatuses = [
 ];
 const mcpResponseStatuses = ["200", "401", "405", "429", "500"];
 const messagesBase = "/api/v1/messages";
+const contactsBase = "/api/v1/contacts";
 // Pinned per path: the ingest and MCP surfaces are POST-only, the Discord
 // webhook is also readable, and the Messages management API is a REST family.
 const expectedMethods: Record<string, string[]> = {
@@ -132,6 +133,9 @@ const expectedMethods: Record<string, string[]> = {
   [`${messagesBase}/channels/{channelId}/messages`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
+  [contactsBase]: ["get", "post"],
+  [`${contactsBase}/labels`]: ["get", "post"],
+  [`${contactsBase}/{contactId}`]: ["delete", "get", "patch"],
 };
 const metricsResponseStatuses = [
   "200",
@@ -591,12 +595,13 @@ describe("public OpenAPI contract", () => {
     }
   });
 
-  it("authenticates every Messages API operation with the same envelope", () => {
+  it("authenticates every agent-facing v1 operation with the same envelope", () => {
     const error = spec.components?.schemas?.MessagesApiError;
     const operations = Object.entries(spec.paths)
-      .filter(([name]) => name.startsWith(messagesBase))
+      .filter(([name]) => name.startsWith("/api/v1/"))
       .flatMap(([, item]) => Object.values(item));
-    expect(operations).toHaveLength(10);
+    // 10 Messages operations plus 7 Contacts ones.
+    expect(operations).toHaveLength(17);
 
     for (const operation of operations) {
       expect(operation.security).toEqual([{ WebhookBearer: [] }]);
