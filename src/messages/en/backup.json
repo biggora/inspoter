@@ -60,6 +60,8 @@
   "models": {
     "categories": "Bookmark categories",
     "bookmarks": "Bookmarks",
+    "dashboards": "Dashboards",
+    "dashboardWidgets": "Dashboard widgets",
     "kanbanBoards": "Kanban boards",
     "kanbanColumns": "Kanban columns",
     "kanbanLabels": "Kanban labels",
