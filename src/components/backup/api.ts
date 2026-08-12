@@ -18,6 +18,7 @@ export const BACKUP_SECTIONS = [
   "bookmarks",
   "contacts",
   "dashboards",
+  "kanban",
   "messages",
   "mail",
   "logs",
