@@ -61,6 +61,27 @@ export interface BookmarksPayload {
   totalCount: number;
 }
 
+export interface KanbanCardTile {
+  id: string;
+  title: string;
+  columnName: string;
+  columnColor: string;
+  priority: string;
+  /** ISO-8601, or null when the card has no deadline. */
+  dueDate: string | null;
+  /** Resolved server-side — see KanbanCardDetail.isOverdue. */
+  isOverdue: boolean;
+  assignee: string | null;
+  isDone: boolean;
+}
+
+export interface KanbanPayload {
+  /** Null when the widget has no board selected yet, or it was deleted. */
+  boardName: string | null;
+  cards: KanbanCardTile[];
+  totalCount: number;
+}
+
 export interface ServiceStatusEntry {
   id: string;
   name: string;
@@ -180,6 +201,7 @@ export type WidgetPayload =
   | { kind: "WEATHER"; data: WeatherSnapshot | null }
   | { kind: "CALENDAR"; data: CalendarMonthData }
   | { kind: "BOOKMARKS"; data: BookmarksPayload }
+  | { kind: "KANBAN"; data: KanbanPayload }
   | { kind: "SERVICE_STATUS"; data: ServiceStatusPayload }
   | { kind: "SERVER_METRICS"; data: ServerMetricsPayload }
   | { kind: "MAIL"; data: MailPayload }

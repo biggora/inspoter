@@ -45,6 +45,14 @@ const SCOPE_GROUPS: ReadonlyArray<{
     ],
   },
   {
+    key: "kanban",
+    labelKey: "scopeGroupKanban",
+    scopes: [
+      { scope: "kanban:read", accessKey: "scopeAccessRead" },
+      { scope: "kanban:write", accessKey: "scopeAccessCreateAndMove" },
+    ],
+  },
+  {
     key: "messages",
     labelKey: "scopeGroupMessages",
     scopes: [

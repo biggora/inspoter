@@ -9,6 +9,7 @@ import { parseWidgetConfigOrDefaults } from "@/lib/validation/dashboards";
 import { DashboardWidgetError } from "../dashboard-widget-frame";
 import { AlertsWidget } from "./alerts-widget";
 import { BookmarksWidget } from "./bookmarks-widget";
+import { KanbanWidget } from "./kanban-widget";
 import { CalendarWidget } from "./calendar-widget";
 import { ClockWidget } from "./clock-widget";
 import { LogsWidget } from "./logs-widget";
@@ -56,6 +57,10 @@ export function WidgetBody({
     case "BOOKMARKS":
       return payload?.kind === "BOOKMARKS" ? (
         <BookmarksWidget data={payload.data} />
+      ) : null;
+    case "KANBAN":
+      return payload?.kind === "KANBAN" ? (
+        <KanbanWidget data={payload.data} />
       ) : null;
     case "SERVICE_STATUS":
       return payload?.kind === "SERVICE_STATUS" ? (

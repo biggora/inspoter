@@ -11,6 +11,9 @@ export const EVENT_LABEL_KEY: Record<OutgoingWebhookEventValue, string> = {
   MESSAGE_CREATED: "eventMessageCreated",
   LOG_CREATED: "eventLogCreated",
   MAIL_RECEIVED: "eventMailReceived",
+  KANBAN_CARD_CREATED: "eventKanbanCardCreated",
+  KANBAN_CARD_MOVED: "eventKanbanCardMoved",
+  KANBAN_CARD_COMPLETED: "eventKanbanCardCompleted",
 };
 
 export const ALL_EVENTS: OutgoingWebhookEventValue[] = [
@@ -19,6 +22,9 @@ export const ALL_EVENTS: OutgoingWebhookEventValue[] = [
   "MESSAGE_CREATED",
   "LOG_CREATED",
   "MAIL_RECEIVED",
+  "KANBAN_CARD_CREATED",
+  "KANBAN_CARD_MOVED",
+  "KANBAN_CARD_COMPLETED",
 ];
 
 // Wire formats (specs/discord-webhook-compatibility.md §6-§7).

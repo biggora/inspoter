@@ -12,7 +12,10 @@ export type OutgoingWebhookEventValue =
   | "SERVICE_STATUS"
   | "MESSAGE_CREATED"
   | "LOG_CREATED"
-  | "MAIL_RECEIVED";
+  | "MAIL_RECEIVED"
+  | "KANBAN_CARD_CREATED"
+  | "KANBAN_CARD_MOVED"
+  | "KANBAN_CARD_COMPLETED";
 
 export type OutgoingWebhookFormatValue =
   "INSPOT" | "DISCORD_EXECUTE" | "DISCORD_EVENTS";

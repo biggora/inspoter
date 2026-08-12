@@ -5,6 +5,13 @@ import type {
   Bookmark,
   Dashboard,
   DashboardWidget,
+  KanbanBoard,
+  KanbanCard,
+  KanbanCardLabel,
+  KanbanChecklistItem,
+  KanbanColumn,
+  KanbanComment,
+  KanbanLabel,
   MessageCategory,
   Channel,
   Message,
@@ -42,6 +49,13 @@ import {
   type BackupBookmarkRecord,
   type BackupDashboardRecord,
   type BackupDashboardWidgetRecord,
+  type BackupKanbanBoardRecord,
+  type BackupKanbanCardLabelRecord,
+  type BackupKanbanCardRecord,
+  type BackupKanbanChecklistItemRecord,
+  type BackupKanbanColumnRecord,
+  type BackupKanbanCommentRecord,
+  type BackupKanbanLabelRecord,
   type BackupMessageCategoryRecord,
   type BackupChannelRecord,
   type BackupMessageRecord,
@@ -200,6 +214,97 @@ function toDashboardWidgetRecord(
     w: row.w,
     h: row.h,
     config: row.config,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanBoardRecord(row: KanbanBoard): BackupKanbanBoardRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanColumnRecord(row: KanbanColumn): BackupKanbanColumnRecord {
+  return {
+    id: row.id,
+    boardId: row.boardId,
+    name: row.name,
+    color: row.color,
+    position: row.position,
+    wipLimit: row.wipLimit,
+    isDone: row.isDone,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanCardRecord(row: KanbanCard): BackupKanbanCardRecord {
+  return {
+    id: row.id,
+    boardId: row.boardId,
+    columnId: row.columnId,
+    title: row.title,
+    description: row.description,
+    position: row.position,
+    priority: row.priority,
+    dueDate: row.dueDate ? iso(row.dueDate) : null,
+    assigneeOperatorId: row.assigneeOperatorId,
+    linkedType: row.linkedType,
+    linkedId: row.linkedId,
+    linkedLabel: row.linkedLabel,
+    completedAt: row.completedAt ? iso(row.completedAt) : null,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanLabelRecord(row: KanbanLabel): BackupKanbanLabelRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalizedName,
+    color: row.color,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanCardLabelRecord(
+  row: KanbanCardLabel,
+): BackupKanbanCardLabelRecord {
+  return {
+    cardId: row.cardId,
+    labelId: row.labelId,
+    appliedAt: iso(row.appliedAt),
+  };
+}
+
+function toKanbanChecklistItemRecord(
+  row: KanbanChecklistItem,
+): BackupKanbanChecklistItemRecord {
+  return {
+    id: row.id,
+    cardId: row.cardId,
+    text: row.text,
+    isDone: row.isDone,
+    position: row.position,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toKanbanCommentRecord(row: KanbanComment): BackupKanbanCommentRecord {
+  return {
+    id: row.id,
+    cardId: row.cardId,
+    authorOperatorId: row.authorOperatorId,
+    authorName: row.authorName,
+    body: row.body,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
@@ -615,6 +720,63 @@ export async function exportWorkspace(
         counts.dashboardWidgets = dashboardWidgets.length;
       }
 
+      if (sections.includes("kanban")) {
+        const [
+          kanbanBoards,
+          kanbanColumns,
+          kanbanLabels,
+          kanbanCards,
+          kanbanCardLabels,
+          kanbanChecklistItems,
+          kanbanComments,
+        ] = await Promise.all([
+          tx.kanbanBoard.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.kanbanColumn.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.kanbanLabel.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.kanbanCard.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.kanbanCardLabel.findMany({
+            where: { workspaceId },
+            orderBy: [{ cardId: "asc" }, { labelId: "asc" }],
+          }),
+          tx.kanbanChecklistItem.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.kanbanComment.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+        ]);
+        data.kanbanBoards = kanbanBoards.map(toKanbanBoardRecord);
+        data.kanbanColumns = kanbanColumns.map(toKanbanColumnRecord);
+        data.kanbanLabels = kanbanLabels.map(toKanbanLabelRecord);
+        data.kanbanCards = kanbanCards.map(toKanbanCardRecord);
+        data.kanbanCardLabels = kanbanCardLabels.map(toKanbanCardLabelRecord);
+        data.kanbanChecklistItems = kanbanChecklistItems.map(
+          toKanbanChecklistItemRecord,
+        );
+        data.kanbanComments = kanbanComments.map(toKanbanCommentRecord);
+        counts.kanbanBoards = kanbanBoards.length;
+        counts.kanbanColumns = kanbanColumns.length;
+        counts.kanbanLabels = kanbanLabels.length;
+        counts.kanbanCards = kanbanCards.length;
+        counts.kanbanCardLabels = kanbanCardLabels.length;
+        counts.kanbanChecklistItems = kanbanChecklistItems.length;
+        counts.kanbanComments = kanbanComments.length;
+      }
+
       if (sections.includes("messages")) {
         const messageCategories = await tx.messageCategory.findMany({
           where: { workspaceId },
@@ -865,6 +1027,16 @@ export async function importWorkspace(
         if (sections.has("dashboards")) {
           await tx.dashboardWidget.deleteMany({ where: { workspaceId } });
         }
+        // Deleting the boards alone would cascade the rest, but the explicit
+        // child-first order keeps this block readable next to its siblings.
+        if (sections.has("kanban")) {
+          await tx.kanbanComment.deleteMany({ where: { workspaceId } });
+          await tx.kanbanChecklistItem.deleteMany({ where: { workspaceId } });
+          await tx.kanbanCardLabel.deleteMany({ where: { workspaceId } });
+          await tx.kanbanCard.deleteMany({ where: { workspaceId } });
+          await tx.kanbanColumn.deleteMany({ where: { workspaceId } });
+          await tx.kanbanLabel.deleteMany({ where: { workspaceId } });
+        }
         if (sections.has("webhooks")) {
           await tx.webhookToken.deleteMany({ where: { workspaceId } });
         }
@@ -925,6 +1097,10 @@ export async function importWorkspace(
       const mailItemIdMap = new Map<string, string>();
       const alertCategoryIdMap = new Map<string, string>();
       const serviceIdMap = new Map<string, string>();
+      const kanbanBoardIdMap = new Map<string, string>();
+      const kanbanColumnIdMap = new Map<string, string>();
+      const kanbanCardIdMap = new Map<string, string>();
+      const kanbanLabelIdMap = new Map<string, string>();
 
       // --- Tier 1: Category (self-referential, topological) ---
       if (payload.data.categories) {
@@ -981,6 +1157,53 @@ export async function importWorkspace(
           500,
         );
         imported.dashboards = inserts.length;
+      }
+
+      if (payload.data.kanbanBoards) {
+        const inserts = payload.data.kanbanBoards.map((row) => {
+          const newId = crypto.randomUUID();
+          kanbanBoardIdMap.set(row.id, newId);
+          return {
+            id: newId,
+            workspaceId,
+            name: row.name,
+            position: row.position,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.kanbanBoard.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.kanbanBoards = inserts.length;
+      }
+
+      if (payload.data.kanbanLabels) {
+        const inserts = payload.data.kanbanLabels.map((row) => {
+          const newId = crypto.randomUUID();
+          kanbanLabelIdMap.set(row.id, newId);
+          return {
+            id: newId,
+            workspaceId,
+            name: row.name,
+            normalizedName: row.normalizedName,
+            color: row.color,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          // A merge-mode import into a workspace that already uses the same
+          // label name would violate the (workspaceId, normalizedName) unique
+          // index; the existing label wins and the archived one is dropped.
+          (chunk) =>
+            tx.kanbanLabel.createMany({ data: chunk, skipDuplicates: true }),
+          inserts,
+          500,
+        );
+        imported.kanbanLabels = inserts.length;
       }
 
       if (payload.data.messageCategories) {
@@ -1385,6 +1608,158 @@ export async function importWorkspace(
           500,
         );
         imported.dashboardWidgets = inserts.length;
+      }
+
+      if (payload.data.kanbanColumns) {
+        const inserts = payload.data.kanbanColumns.map((row) => {
+          const newId = crypto.randomUUID();
+          kanbanColumnIdMap.set(row.id, newId);
+          const boardId = mustRemap(kanbanBoardIdMap, row.boardId);
+          return {
+            id: newId,
+            workspaceId,
+            boardId,
+            boardWorkspaceId: workspaceId,
+            name: row.name,
+            color: row.color,
+            position: row.position,
+            wipLimit: row.wipLimit,
+            isDone: row.isDone,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.kanbanColumn.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.kanbanColumns = inserts.length;
+      }
+
+      if (payload.data.kanbanCards) {
+        // An assignee only survives the import when that operator is still a
+        // member of the target workspace: the composite foreign key points at
+        // WorkspaceMember, so a restore into a different workspace would
+        // otherwise fail outright instead of simply losing the assignment.
+        const members = await tx.workspaceMember.findMany({
+          where: { workspaceId },
+          select: { operatorId: true },
+        });
+        const memberIds = new Set(members.map((member) => member.operatorId));
+
+        const inserts = payload.data.kanbanCards.map((row) => {
+          const newId = crypto.randomUUID();
+          kanbanCardIdMap.set(row.id, newId);
+          const assigneeOperatorId =
+            row.assigneeOperatorId !== null &&
+            memberIds.has(row.assigneeOperatorId)
+              ? row.assigneeOperatorId
+              : null;
+          return {
+            id: newId,
+            workspaceId,
+            boardId: mustRemap(kanbanBoardIdMap, row.boardId),
+            boardWorkspaceId: workspaceId,
+            columnId: mustRemap(kanbanColumnIdMap, row.columnId),
+            columnWorkspaceId: workspaceId,
+            title: row.title,
+            description: row.description,
+            position: row.position,
+            priority: row.priority,
+            dueDate: row.dueDate,
+            assigneeOperatorId,
+            assigneeWorkspaceId:
+              assigneeOperatorId !== null ? workspaceId : null,
+            // The linked record is a soft reference to another section's row,
+            // whose ids are not remapped by this import. It is preserved
+            // verbatim; a link that no longer resolves renders as an inert
+            // chip, which is the same degradation a deleted target produces.
+            linkedType: row.linkedType,
+            linkedId: row.linkedId,
+            linkedLabel: row.linkedLabel,
+            completedAt: row.completedAt,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.kanbanCard.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.kanbanCards = inserts.length;
+      }
+
+      if (payload.data.kanbanCardLabels) {
+        // A label dropped by the skipDuplicates above has no entry in the map;
+        // its assignments go with it rather than failing the whole restore.
+        const inserts = payload.data.kanbanCardLabels
+          .filter(
+            (row) =>
+              kanbanCardIdMap.has(row.cardId) &&
+              kanbanLabelIdMap.has(row.labelId),
+          )
+          .map((row) => ({
+            workspaceId,
+            cardId: mustRemap(kanbanCardIdMap, row.cardId),
+            cardWorkspaceId: workspaceId,
+            labelId: mustRemap(kanbanLabelIdMap, row.labelId),
+            labelWorkspaceId: workspaceId,
+            appliedAt: row.appliedAt,
+          }));
+        await createManyChunked(
+          (chunk) =>
+            tx.kanbanCardLabel.createMany({
+              data: chunk,
+              skipDuplicates: true,
+            }),
+          inserts,
+          500,
+        );
+        imported.kanbanCardLabels = inserts.length;
+      }
+
+      if (payload.data.kanbanChecklistItems) {
+        const inserts = payload.data.kanbanChecklistItems.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          cardId: mustRemap(kanbanCardIdMap, row.cardId),
+          cardWorkspaceId: workspaceId,
+          text: row.text,
+          isDone: row.isDone,
+          position: row.position,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.kanbanChecklistItem.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.kanbanChecklistItems = inserts.length;
+      }
+
+      if (payload.data.kanbanComments) {
+        const inserts = payload.data.kanbanComments.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          cardId: mustRemap(kanbanCardIdMap, row.cardId),
+          cardWorkspaceId: workspaceId,
+          // authorOperatorId has no foreign key and authorName is already
+          // denormalized, so attribution survives a cross-workspace restore.
+          authorOperatorId: row.authorOperatorId,
+          authorName: row.authorName,
+          body: row.body,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.kanbanComment.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.kanbanComments = inserts.length;
       }
 
       if (payload.data.channels) {

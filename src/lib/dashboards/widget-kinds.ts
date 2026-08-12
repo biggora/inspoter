@@ -91,6 +91,12 @@ export const WIDGET_KIND_SPECS: Record<DashboardWidgetKind, WidgetKindSpec> = {
     maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
     needsServerData: true,
   },
+  KANBAN: {
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 2 },
+    maxSize: { w: 12, h: GRID_MAX_WIDGET_ROWS },
+    needsServerData: true,
+  },
 };
 
 // Catalogue order — the order the widget picker lists kinds in: the three
@@ -101,6 +107,7 @@ export const WIDGET_KIND_ORDER: DashboardWidgetKind[] = [
   "CALENDAR",
   "NOTE",
   "BOOKMARKS",
+  "KANBAN",
   "SERVICE_STATUS",
   "SERVER_METRICS",
   "MAIL",

@@ -1,6 +1,7 @@
 import type { DashboardWidget } from "@/generated/prisma/client";
 import * as alertsService from "@/lib/services/alerts";
 import * as bookmarksService from "@/lib/services/bookmarks";
+import * as kanbanService from "@/lib/services/kanban";
 import * as logsService from "@/lib/services/logs";
 import * as mailService from "@/lib/services/mail";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
@@ -16,6 +17,8 @@ import {
 import type {
   BookmarkTile,
   BookmarksPayload,
+  KanbanCardTile,
+  KanbanPayload,
   MessagesPayload,
   ServerMetricsPayload,
   ServiceStatusPayload,
@@ -107,6 +110,19 @@ async function resolveOne(
         data: await resolveBookmarks(
           workspaceId,
           config.categoryId,
+          config.limit,
+        ),
+      };
+    }
+    case "KANBAN": {
+      const config = parseWidgetConfigOrDefaults("KANBAN", widget.config);
+      if (!config) return { error: "KANBAN_CONFIG_INVALID" };
+      return {
+        kind: "KANBAN",
+        data: await resolveKanban(
+          workspaceId,
+          config.boardId,
+          config.columnId,
           config.limit,
         ),
       };
@@ -293,6 +309,44 @@ async function resolveBookmarks(
     }
   }
   return { bookmarks: tiles.slice(0, limit), totalCount: tiles.length };
+}
+
+// A widget with no board picked, or one whose board was deleted, renders the
+// "choose a board" hint rather than an error — same treatment the weather tile
+// gives a missing location.
+async function resolveKanban(
+  workspaceId: string,
+  boardId: string | null,
+  columnId: string | null,
+  limit: number,
+): Promise<KanbanPayload> {
+  const board = boardId
+    ? await kanbanService.getBoard(workspaceId, boardId)
+    : null;
+  if (!board) return { boardName: null, cards: [], totalCount: 0 };
+
+  const tiles: KanbanCardTile[] = [];
+  for (const column of board.columns) {
+    if (columnId && column.id !== columnId) continue;
+    for (const card of column.cards) {
+      tiles.push({
+        id: card.id,
+        title: card.title,
+        columnName: column.name,
+        columnColor: column.color,
+        priority: card.priority,
+        dueDate: card.dueDate?.toISOString() ?? null,
+        isOverdue: card.isOverdue,
+        assignee: card.assignee?.username ?? null,
+        isDone: card.completedAt !== null,
+      });
+    }
+  }
+  return {
+    boardName: board.name,
+    cards: tiles.slice(0, limit),
+    totalCount: tiles.length,
+  };
 }
 
 async function resolveServerMetrics(

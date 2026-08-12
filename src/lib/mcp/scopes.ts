@@ -18,6 +18,11 @@ export const MCP_SCOPES = [
   "servers:read",
   "services:read",
   "logs:read",
+  "kanban:read",
+  // Covers creating and moving cards. Moving a card into a terminal column
+  // emits the completed webhook, so an agent with this scope can trigger
+  // outbound notifications — the same class of side effect mail:write has.
+  "kanban:write",
 ] as const;
 
 export type McpScope = (typeof MCP_SCOPES)[number];

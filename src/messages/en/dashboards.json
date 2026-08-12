@@ -75,6 +75,10 @@
       "title": "Bookmarks",
       "description": "Link tiles from a chosen bookmark category."
     },
+    "KANBAN": {
+      "title": "Kanban",
+      "description": "Cards from a chosen kanban board or one of its columns."
+    },
     "SERVICE_STATUS": {
       "title": "Service status",
       "description": "Monitoring summary: what is up and what is down."
@@ -173,6 +177,16 @@
     "categoryLabel": "Category",
     "allCategoriesOption": "All categories",
     "empty": "The selected category has no bookmarks.",
+    "moreCount": "and {count} more"
+  },
+
+  "kanban": {
+    "boardLabel": "Board",
+    "noBoardOption": "No board selected",
+    "columnLabel": "Column",
+    "allColumnsOption": "All columns",
+    "noBoard": "Open the widget settings and choose a board.",
+    "empty": "The selected board has no cards.",
     "moreCount": "and {count} more"
   },
 

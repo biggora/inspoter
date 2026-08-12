@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   AlertCategorySource,
   DashboardWidgetKind,
+  KanbanLinkType,
+  KanbanPriority,
   MailAccountKind,
   MailSecurity,
   MailSpecialUse,
@@ -26,6 +28,7 @@ import {
 export const BACKUP_SECTIONS = [
   "bookmarks",
   "dashboards",
+  "kanban",
   "messages",
   "mail",
   "logs",
@@ -41,6 +44,17 @@ export type BackupSection = (typeof BACKUP_SECTIONS)[number];
 export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
   bookmarks: ["categories", "bookmarks"],
   dashboards: ["dashboards", "dashboardWidgets"],
+  // Insertion order matters on import: a card needs its board and column, an
+  // assignment needs both its card and its label.
+  kanban: [
+    "kanbanBoards",
+    "kanbanColumns",
+    "kanbanLabels",
+    "kanbanCards",
+    "kanbanCardLabels",
+    "kanbanChecklistItems",
+    "kanbanComments",
+  ],
   messages: ["messageCategories", "channels", "messages"],
   mail: ["mailAccounts", "mailFolders", "mailItems", "mailAttachments"],
   logs: ["logEntries"],
@@ -101,6 +115,83 @@ const dashboardWidgetSchema = z.object({
   w: z.number().int(),
   h: z.number().int(),
   config: z.unknown(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+// The assignee is stored as a bare operator id, not a membership: the import
+// only restores it when that operator is still a member of the target
+// workspace (see restoreKanban), so a cross-workspace restore drops the
+// assignment rather than failing the composite foreign key.
+const kanbanBoardSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  position: z.number().int(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const kanbanColumnSchema = z.object({
+  id: z.string(),
+  boardId: z.string(),
+  name: z.string(),
+  color: z.string(),
+  position: z.number().int(),
+  wipLimit: z.number().int().nullable(),
+  isDone: z.boolean(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const kanbanCardSchema = z.object({
+  id: z.string(),
+  boardId: z.string(),
+  columnId: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  position: z.number().int(),
+  priority: z.enum(KanbanPriority),
+  dueDate: isoDate.nullable(),
+  assigneeOperatorId: z.string().nullable(),
+  linkedType: z.enum(KanbanLinkType).nullable(),
+  linkedId: z.string().nullable(),
+  linkedLabel: z.string().nullable(),
+  completedAt: isoDate.nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const kanbanLabelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  normalizedName: z.string(),
+  color: z.string(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const kanbanCardLabelSchema = z.object({
+  cardId: z.string(),
+  labelId: z.string(),
+  appliedAt: isoDate,
+});
+
+const kanbanChecklistItemSchema = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  text: z.string(),
+  isDone: z.boolean(),
+  position: z.number().int(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const kanbanCommentSchema = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  authorOperatorId: z.string(),
+  authorName: z.string(),
+  body: z.string(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });
@@ -384,6 +475,13 @@ const dataSchema = z.object({
   bookmarks: z.array(bookmarkSchema).optional(),
   dashboards: z.array(dashboardSchema).optional(),
   dashboardWidgets: z.array(dashboardWidgetSchema).optional(),
+  kanbanBoards: z.array(kanbanBoardSchema).optional(),
+  kanbanColumns: z.array(kanbanColumnSchema).optional(),
+  kanbanLabels: z.array(kanbanLabelSchema).optional(),
+  kanbanCards: z.array(kanbanCardSchema).optional(),
+  kanbanCardLabels: z.array(kanbanCardLabelSchema).optional(),
+  kanbanChecklistItems: z.array(kanbanChecklistItemSchema).optional(),
+  kanbanComments: z.array(kanbanCommentSchema).optional(),
   messageCategories: z.array(messageCategorySchema).optional(),
   channels: z.array(channelSchema).optional(),
   messages: z.array(messageSchema).optional(),
@@ -414,6 +512,15 @@ export type BackupCategoryRecord = z.infer<typeof categorySchema>;
 export type BackupBookmarkRecord = z.infer<typeof bookmarkSchema>;
 export type BackupDashboardRecord = z.infer<typeof dashboardSchema>;
 export type BackupDashboardWidgetRecord = z.infer<typeof dashboardWidgetSchema>;
+export type BackupKanbanBoardRecord = z.infer<typeof kanbanBoardSchema>;
+export type BackupKanbanColumnRecord = z.infer<typeof kanbanColumnSchema>;
+export type BackupKanbanLabelRecord = z.infer<typeof kanbanLabelSchema>;
+export type BackupKanbanCardRecord = z.infer<typeof kanbanCardSchema>;
+export type BackupKanbanCardLabelRecord = z.infer<typeof kanbanCardLabelSchema>;
+export type BackupKanbanChecklistItemRecord = z.infer<
+  typeof kanbanChecklistItemSchema
+>;
+export type BackupKanbanCommentRecord = z.infer<typeof kanbanCommentSchema>;
 export type BackupMessageCategoryRecord = z.infer<typeof messageCategorySchema>;
 export type BackupChannelRecord = z.infer<typeof channelSchema>;
 export type BackupMessageRecord = z.infer<typeof messageSchema>;

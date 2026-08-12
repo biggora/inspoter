@@ -1,4 +1,5 @@
 import * as bookmarksService from "@/lib/services/bookmarks";
+import * as kanbanService from "@/lib/services/kanban";
 import * as mailAccountsService from "@/lib/services/mail-accounts";
 import * as messagesService from "@/lib/services/messages";
 import * as serversService from "@/lib/services/servers";
@@ -23,6 +24,11 @@ export interface WidgetChannelOption extends WidgetTargetOption {
   categoryId: string;
 }
 
+/** Same idea for kanban: a column is only offered once its board is picked. */
+export interface WidgetKanbanColumnOption extends WidgetTargetOption {
+  boardId: string;
+}
+
 export interface WidgetTargets {
   bookmarkCategories: WidgetTargetOption[];
   services: WidgetTargetOption[];
@@ -30,19 +36,42 @@ export interface WidgetTargets {
   mailAccounts: WidgetTargetOption[];
   messageCategories: WidgetTargetOption[];
   messageChannels: WidgetChannelOption[];
+  kanbanBoards: WidgetTargetOption[];
+  kanbanColumns: WidgetKanbanColumnOption[];
 }
 
 export async function listConfigurableTargets(
   workspaceId: string,
 ): Promise<WidgetTargets> {
-  const [categories, services, servers, mailAccounts, messageCategories] =
-    await Promise.all([
-      bookmarksService.list(workspaceId),
-      servicesService.list(workspaceId),
-      serversService.listLocalServerMetrics(workspaceId),
-      mailAccountsService.listAccounts(workspaceId),
-      messagesService.listCategories(workspaceId),
-    ]);
+  const [
+    categories,
+    services,
+    servers,
+    mailAccounts,
+    messageCategories,
+    kanbanBoards,
+  ] = await Promise.all([
+    bookmarksService.list(workspaceId),
+    servicesService.list(workspaceId),
+    serversService.listLocalServerMetrics(workspaceId),
+    mailAccountsService.listAccounts(workspaceId),
+    messagesService.listCategories(workspaceId),
+    kanbanService.listBoards(workspaceId),
+  ]);
+
+  // Boards are listed with their columns so the config dialog can narrow the
+  // column select the moment a board is chosen, without a second request.
+  const kanbanColumns: WidgetKanbanColumnOption[] = [];
+  for (const summary of kanbanBoards) {
+    const board = await kanbanService.getBoard(workspaceId, summary.id);
+    for (const column of board?.columns ?? []) {
+      kanbanColumns.push({
+        id: column.id,
+        name: column.name,
+        boardId: summary.id,
+      });
+    }
+  }
 
   // Subcategories are offered too, prefixed with their parent, so "Prod / DB"
   // is selectable and unambiguous.
@@ -82,5 +111,10 @@ export async function listConfigurableTargets(
         categoryId: category.id,
       })),
     ),
+    kanbanBoards: kanbanBoards.map((board) => ({
+      id: board.id,
+      name: board.name,
+    })),
+    kanbanColumns,
   };
 }

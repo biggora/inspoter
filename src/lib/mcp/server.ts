@@ -5,6 +5,7 @@ import type { McpToolContext, McpToolDefinition } from "@/lib/mcp/tool";
 import { mailTools } from "@/lib/mcp/tools/mail";
 import { alertTools } from "@/lib/mcp/tools/alerts";
 import { bookmarkTools } from "@/lib/mcp/tools/bookmarks";
+import { kanbanTools } from "@/lib/mcp/tools/kanban";
 import { messageTools } from "@/lib/mcp/tools/messages";
 import { serverTools } from "@/lib/mcp/tools/servers";
 import { serviceTools } from "@/lib/mcp/tools/services";
@@ -22,6 +23,7 @@ export const ALL_TOOLS: readonly McpToolDefinition[] = [
   ...mailTools,
   ...alertTools,
   ...bookmarkTools,
+  ...kanbanTools,
   ...messageTools,
   ...serverTools,
   ...serviceTools,

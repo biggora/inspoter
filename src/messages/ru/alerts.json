@@ -34,6 +34,7 @@
   "categorySourceModelLabel": "Поставлено моделью",
   "categorySourceRuleLabel": "Поставлено правилом",
   "deleteAlertLabel": "Удалить оповещение",
+  "createTaskLabel": "Создать Kanban-задачу",
   "deleteAlertTitle": "Удалить оповещение?",
   "deleteAlertDescription": "Оповещение будет удалено безвозвратно.",
   "deleteAlertButton": "Удалить оповещение",

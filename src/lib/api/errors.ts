@@ -16,10 +16,24 @@ import {
   DashboardWidgetNotFoundError,
 } from "@/lib/services/dashboards";
 import {
+  KanbanLimitReachedError,
+  KanbanNotFoundError,
+  KanbanValidationError,
+} from "@/lib/services/kanban";
+import {
+  KanbanLabelLimitReachedError,
+  KanbanLabelNameConflictError,
+  KanbanLabelNotFoundError,
+} from "@/lib/services/kanban-labels";
+import {
   EncryptionNotConfiguredError,
   OutgoingWebhookNotFoundError,
   WebhookDeliveryNotFoundError,
 } from "@/lib/services/outgoingWebhooks";
+import {
+  WorkspaceMemberRequiredError,
+  WorkspaceOwnerRequiredError,
+} from "@/lib/services/workspace-auth";
 import { ServerMetricsError } from "@/lib/services/serverMetrics";
 import { CredentialDeleteConflictError } from "@/lib/services/credentials";
 import {
@@ -102,6 +116,39 @@ export function toErrorResponse(
     return jsonResponse(
       { error: error.code, message: error.message },
       { status: 400 },
+    );
+  }
+  if (
+    error instanceof KanbanNotFoundError ||
+    error instanceof KanbanLabelNotFoundError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof KanbanValidationError) {
+    return jsonResponse({ error: error.message }, { status: 400 });
+  }
+  if (
+    error instanceof KanbanLimitReachedError ||
+    error instanceof KanbanLabelLimitReachedError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 409 },
+    );
+  }
+  if (error instanceof KanbanLabelNameConflictError) {
+    return jsonResponse({ error: error.code }, { status: 409 });
+  }
+  if (error instanceof WorkspaceOwnerRequiredError) {
+    return jsonResponse(
+      { error: "WORKSPACE_OWNER_REQUIRED", message: error.message },
+      { status: 403 },
+    );
+  }
+  if (error instanceof WorkspaceMemberRequiredError) {
+    return jsonResponse(
+      { error: "WORKSPACE_MEMBER_REQUIRED", message: error.message },
+      { status: 403 },
     );
   }
   if (

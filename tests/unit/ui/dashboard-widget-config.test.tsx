@@ -23,6 +23,8 @@ const targets: WidgetTargets = {
     { id: "srv-3", name: "staging-01" },
   ],
   mailAccounts: [],
+  kanbanBoards: [],
+  kanbanColumns: [],
   messageCategories: [
     { id: "cat-1", name: "Incidents" },
     { id: "cat-2", name: "Releases" },
