@@ -119,8 +119,11 @@ function LabelMenu({
         <Icon name="ri-arrow-down-s-line" aria-hidden data-icon="inline-end" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{t("bulkLabelPickerLabel")}</DropdownMenuLabel>
+        {/* Menu.GroupLabel must live inside Menu.Group — Base UI throws
+          "MenuGroupContext is missing" (production error #31) otherwise, so
+          the header and the items share the one group. */}
         <DropdownMenuGroup>
+          <DropdownMenuLabel>{t("bulkLabelPickerLabel")}</DropdownMenuLabel>
           {labels.map((label) => (
             <DropdownMenuItem key={label.id} onClick={() => onPick(label.id)}>
               {label.name}
