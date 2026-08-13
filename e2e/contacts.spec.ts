@@ -29,7 +29,10 @@ async function createContact(
     email,
   }: { firstName: string; lastName: string; email: string },
 ) {
-  await page.getByRole("button", { name: "New contact" }).click();
+  // The toolbar and the empty-state both expose a "New contact" button, so
+  // pin the toolbar one (it is the first match in DOM order and is always
+  // present, regardless of whether the list is empty).
+  await page.getByRole("button", { name: "New contact" }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("First name").fill(firstName);
   await dialog.getByLabel("Last name").fill(lastName);
@@ -72,7 +75,7 @@ test("finds a contact by a phone number typed without its formatting", async ({
   page,
 }) => {
   const lastName = `Dialer-${RUN}`;
-  await page.getByRole("button", { name: "New contact" }).click();
+  await page.getByRole("button", { name: "New contact" }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("First name").fill("Boris");
   await dialog.getByLabel("Last name").fill(lastName);
@@ -97,7 +100,9 @@ test("imports a vCard file and reports what it did", async ({ page }) => {
 
   await expect(dialog.getByText("Import finished")).toBeVisible();
   await expect(dialog.getByText(/Read from file: 2/)).toBeVisible();
-  await dialog.getByRole("button", { name: "Close" }).click();
+  // The dialog carries both an auto-rendered X close (first) and this footer
+  // "Close" button (last); pick the footer one explicitly.
+  await dialog.getByRole("button", { name: "Close" }).last().click();
 
   await page.getByLabel("Search contacts").fill("Inspot Support");
   await expect(
@@ -125,6 +130,10 @@ test("groups duplicates and merges them into one contact", async ({ page }) => {
     .first();
   await expect(group).toBeVisible();
   await group.getByRole("button", { name: /^Merge/ }).click();
+  // The merge is async (POST + router.refresh); navigating immediately would
+  // abort it. The duplicates page re-renders without this group once the
+  // merge lands, so waiting for it to disappear proves the POST completed.
+  await expect(group).toBeHidden();
 
   await page.goto(`/contacts?query=Mendez-${RUN}`);
   await expect(
@@ -139,7 +148,9 @@ test("exports the address book as a vCard download", async ({ page }) => {
     email: `export.${RUN}@example.com`,
   });
 
-  await page.getByRole("button", { name: "Export" }).click();
+  // The toolbar Export button shares its accessible name with the per-row
+  // "Actions for Export Target-…" menu trigger; the toolbar one is first.
+  await page.getByRole("button", { name: "Export" }).first().click();
   const dialog = page.getByRole("dialog");
   const download = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Export", exact: true }).click();
@@ -160,7 +171,8 @@ test("applies a label and filters the list by it", async ({ page }) => {
   await labelDialog.getByRole("button", { name: "Add label" }).click();
   await labelDialog.getByLabel("Name").fill(labelName);
   await labelDialog.getByRole("button", { name: "Save" }).click();
-  await labelDialog.getByRole("button", { name: "Close" }).click();
+  // Same X-vs-footer "Close" ambiguity as the import dialog: pick the footer.
+  await labelDialog.getByRole("button", { name: "Close" }).last().click();
 
   await page.getByLabel("Search contacts").fill(`Person-${RUN}`);
   await page.getByLabel(`Select Labeled Person-${RUN}`).check();

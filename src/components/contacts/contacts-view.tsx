@@ -13,6 +13,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import type { ContactBulkAction } from "@/lib/services/contacts";
 import {
+  contactLabelsApi,
   contactsApi,
   type ContactLabelSummary,
   type ContactListItem,
@@ -58,6 +59,31 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
   const [deleteTargets, setDeleteTargets] = useState<ContactListItem[] | null>(
     null,
   );
+
+  // Labels are server-rendered, but the bulk "Add label"/"Remove label" menus
+  // and the sidebar read them client-side. A create/edit/delete inside the
+  // Manage-labels dialog fires `router.refresh()`, yet that refresh is
+  // fire-and-forget and races the dialog close and any later navigation — so
+  // the menus would show a stale list until a fresh server payload committed.
+  // Holding a local copy (synced from the prop on each server render and
+  // re-fetched immediately on change) keeps the menus live without waiting on
+  // RSC commit timing.
+  const [localLabels, setLocalLabels] = useState(labels);
+  const [prevLabels, setPrevLabels] = useState(labels);
+  if (labels !== prevLabels) {
+    setPrevLabels(labels);
+    setLocalLabels(labels);
+  }
+
+  async function refreshLabels(): Promise<void> {
+    try {
+      setLocalLabels(await contactLabelsApi.list());
+    } catch {
+      // The server refresh below still reconciles the list; a transient fetch
+      // failure must not strand the operator in the dialog.
+    }
+    router.refresh();
+  }
   const [busy, setBusy] = useState(false);
 
   // Both of the reconciliations below adjust state while rendering rather than
@@ -218,7 +244,7 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <ContactsSidebar
-          labels={labels}
+          labels={localLabels}
           filters={filters}
           onManageLabels={() => setLabelsOpen(true)}
         />
@@ -227,7 +253,7 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
           {selected.size > 0 && (
             <SelectionToolbar
               count={selected.size}
-              labels={labels}
+              labels={localLabels}
               busy={busy}
               onClear={() => setSelected(new Set())}
               onDelete={() => setDeleteTargets(selectedContacts)}
@@ -320,7 +346,7 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
       <ContactFormDialog
         open={formOpen}
         contact={null}
-        labels={labels}
+        labels={localLabels}
         onOpenChange={setFormOpen}
         onSaved={() => {
           toast.success(t("createdToast"));
@@ -340,9 +366,9 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
       />
       <ManageContactLabelsDialog
         open={labelsOpen}
-        labels={labels}
+        labels={localLabels}
         onOpenChange={setLabelsOpen}
-        onChanged={() => router.refresh()}
+        onChanged={refreshLabels}
       />
       <DeleteContactsDialog
         contacts={deleteTargets}

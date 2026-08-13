@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -129,6 +129,12 @@ export function CardDetailDialog({
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
 
+  // Checklist and comment mutations persist straight to the server but bypass
+  // `handleSave`/`onSaved`, so the board's card counts (checklist progress,
+  // comment chip) would stay stale until a manual reload. Tracking whether any
+  // such mutation landed lets `onOpenChange` trigger a refresh on close.
+  const dirtyRef = useRef(false);
+
   // `null` doubles as "not loaded yet": the fetch below is fired once per
   // mount and resolves to an empty set on failure, so there is no separate
   // loading flag to keep in sync.
@@ -165,6 +171,9 @@ export function CardDetailDialog({
   // so they load when an existing card opens rather than with the board.
   useEffect(() => {
     if (!card) return;
+    // A freshly opened (or switched-to) card has no in-flight edits, so the
+    // dirty flag — which drives the close-time board refresh — resets here.
+    dirtyRef.current = false;
     let cancelled = false;
     Promise.all([checklistApi.list(card.id), commentsApi.list(card.id)])
       .then(([items, thread]) => {
@@ -245,6 +254,9 @@ export function CardDetailDialog({
         await cardsApi.create({ ...payload, columnId, labelIds });
       }
       toast.success(card ? t("updatedToast") : t("createdToast"));
+      // Save already drives the board refresh through `onSaved`; clearing the
+      // dirty flag prevents a second refresh when the dialog closes.
+      dirtyRef.current = false;
       onSaved();
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -264,6 +276,7 @@ export function CardDetailDialog({
       const item = await checklistApi.add(card.id, text);
       setChecklist((items) => [...items, item]);
       setChecklistDraft("");
+      dirtyRef.current = true;
     } catch {
       toast.error(t("genericError"));
     }
@@ -277,6 +290,7 @@ export function CardDetailDialog({
       setChecklist((items) =>
         items.map((entry) => (entry.id === item.id ? updated : entry)),
       );
+      dirtyRef.current = true;
     } catch {
       toast.error(t("genericError"));
     }
@@ -286,6 +300,7 @@ export function CardDetailDialog({
     try {
       await checklistApi.remove(item.id);
       setChecklist((items) => items.filter((entry) => entry.id !== item.id));
+      dirtyRef.current = true;
     } catch {
       toast.error(t("genericError"));
     }
@@ -298,6 +313,7 @@ export function CardDetailDialog({
       const comment = await commentsApi.add(card.id, body);
       setComments((thread) => [...thread, comment]);
       setCommentDraft("");
+      dirtyRef.current = true;
     } catch {
       toast.error(t("genericError"));
     }
@@ -309,6 +325,7 @@ export function CardDetailDialog({
       setComments((thread) =>
         thread.filter((entry) => entry.id !== comment.id),
       );
+      dirtyRef.current = true;
     } catch {
       toast.error(t("genericError"));
     }
@@ -336,8 +353,22 @@ export function CardDetailDialog({
     linkOptions.map((option) => [option.id, option.name]),
   );
 
+  // Closing after a checklist/comment edit must push those changes to the
+  // board (card counts), so a dirty close fires `onSaved` (which the board
+  // wires to `router.refresh()`) in addition to the usual teardown through
+  // `onOpenChange`. Calling only `onSaved` would refresh the board but leave
+  // the dialog open, since `onOpenChange` is what clears the dialog state.
+  function handleOpenChange(open: boolean): void {
+    const dirty = dirtyRef.current;
+    dirtyRef.current = false;
+    if (!open && dirty) {
+      onSaved();
+    }
+    onOpenChange(open);
+  }
+
   return (
-    <Dialog open={state !== null} onOpenChange={onOpenChange}>
+    <Dialog open={state !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -749,7 +780,7 @@ export function CardDetailDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
             >
               {t("cancelButton")}
             </Button>

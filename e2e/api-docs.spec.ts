@@ -82,6 +82,9 @@ test("authenticated operator opens the documented Swagger reference without exte
     "/api/v1/messages/channels/{channelId}/messages",
     "/api/v1/messages/channels/{channelId}/webhooks",
     "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}",
+    "/api/v1/contacts",
+    "/api/v1/contacts/labels",
+    "/api/v1/contacts/{contactId}",
   ];
   const expectedOperations = {
     "/api/server-metrics": ["post"],
@@ -97,6 +100,9 @@ test("authenticated operator opens the documented Swagger reference without exte
     "/api/v1/messages/channels/{channelId}/messages": ["get", "post"],
     "/api/v1/messages/channels/{channelId}/webhooks": ["get", "post"],
     "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}": ["delete"],
+    "/api/v1/contacts": ["get", "post"],
+    "/api/v1/contacts/labels": ["get", "post"],
+    "/api/v1/contacts/{contactId}": ["get", "patch", "delete"],
   };
   const expectedOperationCount = Object.values(expectedOperations).reduce(
     (sum, methods) => sum + methods.length,
