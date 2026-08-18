@@ -350,6 +350,21 @@ export async function sendMail(
   const jsonAddresses = (addresses: string[]): Prisma.InputJsonValue =>
     addresses.map((address) => ({ name: null, address }));
   const entry = await db.$transaction(async (tx) => {
+    const existing = await tx.mailItem.findFirst({
+      where: {
+        workspaceId,
+        folderId: sentFolder.id,
+        messageId,
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      if (draft) {
+        await tx.mailItem.deleteMany({ where: { id: draft.id, workspaceId } });
+      }
+      return existing;
+    }
+
     const created = await tx.mailItem.create({
       data: {
         workspaceId,

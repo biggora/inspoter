@@ -507,6 +507,41 @@ describe("sendMail", () => {
     ]);
   });
 
+  it("keeps sent mail deduplicated after a sync refresh", async () => {
+    const account = await createSyncedAccount("send-sync-dedupe");
+    const sent = await folderByPath(account.id, "Sent");
+
+    const result = await sendMail(workspaceId, {
+      accountId: account.id,
+      to: ["dest@example.ru"],
+      cc: [],
+      bcc: [],
+      subject: `${NAME_PREFIX}-send-sync-dedupe`,
+      bodyText: "Duplicate check body",
+      bodyHtml: "<p>Duplicate check body.</p>",
+    });
+
+    const created = await db.mailItem.findUnique({
+      where: { id: result.id! },
+      select: { messageId: true },
+    });
+    expect(created?.messageId).toMatch(/^<mock-sent-/);
+    const createdMessageId = created?.messageId;
+    expect(createdMessageId).not.toBeNull();
+
+    const outcome = await syncAccount(account.id, workspaceId);
+    expect(outcome.status).toBe("synced");
+
+    expect(
+      await db.mailItem.count({
+        where: {
+          folderId: sent.id,
+          messageId: createdMessageId!,
+        },
+      }),
+    ).toBe(1);
+  });
+
   it("reply threads In-Reply-To/References and marks the original answered", async () => {
     const account = await createSyncedAccount("send-reply");
     const inbox = await folderByPath(account.id, "INBOX");

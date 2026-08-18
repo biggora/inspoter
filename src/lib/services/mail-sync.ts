@@ -82,21 +82,41 @@ async function insertNewMessages(
   messages: RemoteMessage[],
 ): Promise<number> {
   if (messages.length === 0) return 0;
-  // Pre-filter against stored UIDs instead of catching P2002 per row — the
+  const remoteUids = messages.map((message) => message.uid);
+  const remoteMessageIds = messages
+    .map((message) => message.messageId)
+    .filter((messageId): messageId is string => messageId !== null);
+
+  // Pre-filter by UID plus Message-ID instead of catching P2002 per row — the
   // lease makes concurrent writers impossible, so this is race-free here.
   const existing = await db.mailItem.findMany({
     where: {
       workspaceId: account.workspaceId,
       folderId: folder.id,
-      uid: { in: messages.map((m) => m.uid) },
+      OR: [
+        { uid: { in: remoteUids } },
+        ...(remoteMessageIds.length > 0
+          ? [{ messageId: { in: remoteMessageIds } }]
+          : []),
+      ],
     },
-    select: { uid: true },
+    select: { uid: true, messageId: true },
   });
-  const existingUids = new Set(existing.map((item) => item.uid));
+  const existingUids = new Set(
+    existing
+      .map((item) => item.uid)
+      .filter((uid): uid is bigint => uid !== null),
+  );
+  const existingMessageIds = new Set(
+    existing
+      .map((item) => item.messageId)
+      .filter((messageId): messageId is string => messageId !== null),
+  );
 
   let created = 0;
   for (const message of messages) {
     if (existingUids.has(message.uid)) continue;
+    if (message.messageId && existingMessageIds.has(message.messageId)) continue;
     await persistIncomingMail({
       workspaceId: account.workspaceId,
       accountId: account.id,
