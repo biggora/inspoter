@@ -52,6 +52,21 @@ const ERROR_TRANSLATION_KEYS: Record<string, string> = {
   MAILBOX_ALREADY_CONNECTED: "mailboxAlreadyConnectedError",
 };
 
+// Transport codes that mean "nothing answered on that host:port" — a blocked or
+// wrong port rather than a credentials problem, which is the one failure the
+// raw error text cannot explain on its own. Anything else (EAUTH, EENVELOPE, a
+// server NO/BAD) already reads clearly in the technical line. "ETIMEOUT" with a
+// single D is imapflow's spelling of a socket timeout; both are needed.
+const UNREACHABLE_CODES = new Set([
+  "ETIMEDOUT",
+  "ETIMEOUT",
+  "ECONNREFUSED",
+  "ESOCKET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ECONNRESET",
+]);
+
 interface MailAccountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -300,6 +315,26 @@ export function MailAccountDialog({
 
   const testOk = testResult !== null && testResult.imapOk && testResult.smtpOk;
 
+  // SMTP is checked first: when both transports fail, the SMTP hint is the
+  // actionable one for a blocked submission port, and the raw error line below
+  // still names both.
+  function unreachableHint(): string | null {
+    if (!testResult) return null;
+    for (const failure of [testResult.smtpFailure, testResult.imapFailure]) {
+      if (failure?.code && UNREACHABLE_CODES.has(failure.code)) {
+        return t(
+          failure.protocol === "SMTP"
+            ? "smtpUnreachableHint"
+            : "imapUnreachableHint",
+          { host: failure.host, port: failure.port },
+        );
+      }
+    }
+    return null;
+  }
+
+  const hint = unreachableHint();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -413,37 +448,46 @@ export function MailAccountDialog({
           </FieldGroup>
 
           {testResult && (
-            <p
-              className={
-                testOk
-                  ? "flex items-center gap-1.5 text-sm text-[var(--success-text)]"
-                  : "flex items-center gap-1.5 text-sm text-[var(--error-text)]"
-              }
-              role="status"
-            >
-              {testOk ? (
-                <>
-                  <Icon
-                    name="ri-checkbox-circle-line"
-                    aria-hidden
-                    className="text-base shrink-0"
-                  />
-                  {t("connectionSuccess")}
-                </>
-              ) : (
-                <>
-                  <Icon
-                    name="ri-close-circle-line"
-                    aria-hidden
-                    className="text-base shrink-0"
-                  />
-                  {testResult.error ??
-                    (testResult.imapOk
-                      ? t("smtpConnectionError")
-                      : t("imapConnectionError"))}
-                </>
+            <div className="flex flex-col gap-1" role="status">
+              <p
+                className={
+                  testOk
+                    ? "flex items-start gap-1.5 text-sm text-[var(--success-text)]"
+                    : "flex items-start gap-1.5 text-sm text-[var(--error-text)]"
+                }
+              >
+                {testOk ? (
+                  <>
+                    <Icon
+                      name="ri-checkbox-circle-line"
+                      aria-hidden
+                      className="text-base shrink-0"
+                    />
+                    {t("connectionSuccess")}
+                  </>
+                ) : (
+                  <>
+                    <Icon
+                      name="ri-close-circle-line"
+                      aria-hidden
+                      className="text-base shrink-0"
+                    />
+                    {hint ??
+                      testResult.error ??
+                      (testResult.imapOk
+                        ? t("smtpConnectionError")
+                        : t("imapConnectionError"))}
+                  </>
+                )}
+              </p>
+              {/* With a hint the localized sentence leads and the raw transport
+                  error stays available underneath for the operator to quote. */}
+              {!testOk && hint && testResult.error && (
+                <span className="text-xs break-words text-[var(--text-secondary)]">
+                  {testResult.error}
+                </span>
               )}
-            </p>
+            </div>
           )}
 
           {errors.global && (

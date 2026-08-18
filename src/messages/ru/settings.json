@@ -89,6 +89,8 @@
   "connectionSuccess": "Подключение успешно.",
   "smtpConnectionError": "Не удалось подключиться к SMTP-серверу.",
   "imapConnectionError": "Не удалось подключиться к IMAP-серверу.",
+  "smtpUnreachableHint": "SMTP-сервер {host} не ответил на порту {port}. Скорее всего порт заблокирован сетью или хостинг-провайдером либо сервер его не слушает. Попробуйте порт 587 с STARTTLS.",
+  "imapUnreachableHint": "IMAP-сервер {host} не ответил на порту {port}. Скорее всего порт заблокирован сетью или хостинг-провайдером либо сервер его не слушает. Попробуйте порт 143 с STARTTLS.",
   "addAccountTitle": "Добавить аккаунт",
   "editAccountTitle": "Изменить «{name}»",
   "testConnectionButton": "Проверить подключение",

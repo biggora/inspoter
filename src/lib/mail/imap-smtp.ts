@@ -9,6 +9,8 @@ import {
   MailTransportError,
   type MailConnectionConfig,
   type MailDriver,
+  type MailVerifyFailure,
+  type MailVerifyResult,
   type OutgoingMessage,
   type RemoteFolder,
   type RemoteMessage,
@@ -30,7 +32,17 @@ import {
 const IMAP_CONNECT_TIMEOUT_MS = 30_000;
 const IMAP_GREETING_TIMEOUT_MS = 20_000;
 const IMAP_SOCKET_TIMEOUT_MS = 120_000;
-const SMTP_TIMEOUT_MS = 15_000;
+// SMTP gets its own triple rather than one shared value. connect stays below
+// IMAP's 30s because verify() probes the two sequentially — every second here
+// is a second the operator watches a spinner. greeting is generous because
+// anti-spam tarpits delay the banner on purpose. socket is an *inactivity*
+// timeout that also covers the DATA upload, so it has to fit an attachment up
+// to MAIL_MAX_ATTACHMENT_BYTES (25 MiB) over a slow uplink — the old 15s could
+// abort a large send mid-stream. All three stay tighter than nodemailer's own
+// defaults (2min / 30s / 10min).
+const SMTP_CONNECT_TIMEOUT_MS = 20_000;
+const SMTP_GREETING_TIMEOUT_MS = 20_000;
+const SMTP_SOCKET_TIMEOUT_MS = 60_000;
 const SNIPPET_LENGTH = 120;
 // IMAP server responses are short; cap them so a chatty server can't blow up
 // the stored syncError.
@@ -70,6 +82,36 @@ function errorMessage(error: unknown): string {
   const responseText = (error as { responseText?: unknown }).responseText;
   if (typeof responseText !== "string" || !responseText) return error.message;
   return `${error.message}: ${responseText.slice(0, MAX_RESPONSE_TEXT_LENGTH)}`;
+}
+
+// nodemailer errors have a different shape than imapflow's: no responseText,
+// but a machine-readable code (ETIMEDOUT, ECONNREFUSED, ESOCKET, EDNS, EAUTH,
+// EENVELOPE) and, for a server-side rejection, the reply line on `response`.
+// Without the code an operator sees a bare "Connection timeout" with no way to
+// tell a blocked port from a wrong password. Reads only those fields — the
+// transporter options, the only place the password lives, are never touched.
+function smtpErrorDetail(error: unknown): {
+  code: string | null;
+  message: string;
+} {
+  const base = errorMessage(error);
+  const raw = error as { code?: unknown; response?: unknown };
+  const code = errorCode(error);
+  const response =
+    typeof raw?.response === "string" && raw.response ? raw.response : null;
+  const parts = [base];
+  if (code) parts.push(`(${code})`);
+  if (response && !base.includes(response)) {
+    parts.push(`— ${response.slice(0, MAX_RESPONSE_TEXT_LENGTH)}`);
+  }
+  return { code, message: parts.join(" ") };
+}
+
+// imapflow reports its own codes ("ETIMEOUT" — one D — for a socket timeout) on
+// the same property, so verify()'s IMAP branch reuses this guard.
+function errorCode(error: unknown): string | null {
+  const raw = (error as { code?: unknown })?.code;
+  return typeof raw === "string" && raw ? raw : null;
 }
 
 function makeSnippet(text: string): string {
@@ -128,6 +170,7 @@ export class ImapSmtpMailDriver implements MailDriver {
       `[mail] IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${message}`,
     );
     this.config.onTransportError?.(
+      "mail:imap",
       `IMAP connection error for ${this.config.email} (${this.config.imapHost}): ${message}`,
       JSON.stringify({
         email: this.config.email,
@@ -135,6 +178,40 @@ export class ImapSmtpMailDriver implements MailDriver {
         imapPort: this.config.imapPort,
       }),
     );
+  }
+
+  // Deliberate asymmetry with IMAP: handleConnectionError above exists because
+  // an ImapFlow socket failure arrives on an event channel that would otherwise
+  // swallow it. SMTP has no such channel — the caller already sees these errors
+  // — so this method is purely about operator visibility, filing the failure on
+  // the Logs page next to the mail:imap entries. Both call sites (verify() and
+  // send()) are user-initiated and infrequent, so this cannot flood the table.
+  private reportSmtpFailure(
+    op: string,
+    detail: { code: string | null; message: string },
+  ): MailVerifyFailure {
+    const { email, smtpHost, smtpPort, smtpSecurity } = this.config;
+    const message = `SMTP ${op} failed for ${email} (${smtpHost}:${smtpPort}): ${detail.message}`;
+    console.error(`[mail] ${message}`);
+    this.config.onTransportError?.(
+      "mail:smtp",
+      message,
+      JSON.stringify({
+        email,
+        smtpHost,
+        smtpPort,
+        smtpSecurity,
+        code: detail.code,
+        op,
+      }),
+    );
+    return {
+      protocol: "SMTP",
+      host: smtpHost,
+      port: smtpPort,
+      code: detail.code,
+      message: detail.message,
+    };
   }
 
   private getTransporter(): Transporter {
@@ -148,9 +225,9 @@ export class ImapSmtpMailDriver implements MailDriver {
           user: this.config.username,
           pass: this.config.smtpPassword ?? this.config.imapPassword,
         },
-        connectionTimeout: SMTP_TIMEOUT_MS,
-        greetingTimeout: SMTP_TIMEOUT_MS,
-        socketTimeout: SMTP_TIMEOUT_MS,
+        connectionTimeout: SMTP_CONNECT_TIMEOUT_MS,
+        greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+        socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
       });
     }
     return this.transporter;
@@ -196,13 +273,11 @@ export class ImapSmtpMailDriver implements MailDriver {
     }
   }
 
-  async verify(): Promise<{
-    imapOk: boolean;
-    smtpOk: boolean;
-    error: string | null;
-  }> {
+  async verify(): Promise<MailVerifyResult> {
     let imapOk = false;
     let smtpOk = false;
+    let imapFailure: MailVerifyFailure | null = null;
+    let smtpFailure: MailVerifyFailure | null = null;
     const errors: string[] = [];
     // Throwaway IMAP client — verify must not leave a cached connection behind.
     const client = this.createImapClient();
@@ -211,7 +286,17 @@ export class ImapSmtpMailDriver implements MailDriver {
       await client.logout();
       imapOk = true;
     } catch (error) {
-      errors.push(`IMAP: ${errorMessage(error)}`);
+      const message = errorMessage(error);
+      imapFailure = {
+        protocol: "IMAP",
+        host: this.config.imapHost,
+        port: this.config.imapPort,
+        code: errorCode(error),
+        message,
+      };
+      errors.push(
+        `IMAP ${this.config.imapHost}:${this.config.imapPort}: ${message}`,
+      );
     } finally {
       // A failed connect() can leave the socket open (see getClient()), and a
       // failed logout() leaves it open by definition. close() on an already
@@ -222,9 +307,19 @@ export class ImapSmtpMailDriver implements MailDriver {
       await this.getTransporter().verify();
       smtpOk = true;
     } catch (error) {
-      errors.push(`SMTP: ${errorMessage(error)}`);
+      const detail = smtpErrorDetail(error);
+      smtpFailure = this.reportSmtpFailure("verify", detail);
+      errors.push(
+        `SMTP ${this.config.smtpHost}:${this.config.smtpPort}: ${detail.message}`,
+      );
     }
-    return { imapOk, smtpOk, error: errors.length ? errors.join("; ") : null };
+    return {
+      imapOk,
+      smtpOk,
+      error: errors.length ? errors.join("; ") : null,
+      imapFailure,
+      smtpFailure,
+    };
   }
 
   async listFolders(): Promise<RemoteFolder[]> {
@@ -445,10 +540,12 @@ export class ImapSmtpMailDriver implements MailDriver {
     try {
       await this.getTransporter().sendMail({ envelope, raw });
     } catch (error) {
-      throw new MailTransportError(`SMTP send failed: ${errorMessage(error)}`, {
-        cause: error,
-        op: "send",
-      });
+      const detail = smtpErrorDetail(error);
+      this.reportSmtpFailure("send", detail);
+      throw new MailTransportError(
+        `SMTP send failed (${this.config.smtpHost}:${this.config.smtpPort}): ${detail.message}`,
+        { cause: error, op: "send" },
+      );
     }
     return { messageId, raw };
   }

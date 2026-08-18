@@ -59,8 +59,8 @@ export async function getMailDriver(account: MailAccount): Promise<MailDriver> {
     username: account.username,
     imapPassword: credential.imapPassword,
     smtpPassword: credential.smtpPassword,
-    onTransportError: (message, details) =>
-      logError(account.workspaceId, "mail:imap", message, details),
+    onTransportError: (source, message, details) =>
+      logError(account.workspaceId, source, message, details),
   });
 }
 
@@ -84,11 +84,14 @@ export type {
   MailAddress,
   MailConnectionConfig,
   MailDriver,
+  MailLogSource,
   MailMoveResult,
   OutgoingMessage,
   OutgoingAttachment,
   RemoteAttachment,
   RemoteFolder,
+  MailVerifyFailure,
+  MailVerifyResult,
   RemoteMessage,
   RemoteMessageFlags,
 } from "@/lib/mail/types";

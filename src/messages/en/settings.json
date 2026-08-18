@@ -89,6 +89,8 @@
   "connectionSuccess": "Connection successful.",
   "smtpConnectionError": "Failed to connect to the SMTP server.",
   "imapConnectionError": "Failed to connect to the IMAP server.",
+  "smtpUnreachableHint": "The SMTP server {host} did not respond on port {port}. The port is probably blocked by your network or hosting provider, or the server is not listening on it. Try port 587 with STARTTLS.",
+  "imapUnreachableHint": "The IMAP server {host} did not respond on port {port}. The port is probably blocked by your network or hosting provider, or the server is not listening on it. Try port 143 with STARTTLS.",
   "addAccountTitle": "Add account",
   "editAccountTitle": "Edit \"{name}\"",
   "testConnectionButton": "Test connection",

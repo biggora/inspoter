@@ -191,6 +191,8 @@ describe("MockMailDriver", () => {
       imapOk: true,
       smtpOk: true,
       error: null,
+      imapFailure: null,
+      smtpFailure: null,
     });
   });
 

@@ -370,6 +370,12 @@ describe("testConnection", () => {
       workspaceId,
       accountInput({ mode: "MOCK" }),
     );
-    expect(result).toEqual({ imapOk: true, smtpOk: true, error: null });
+    expect(result).toEqual({
+      imapOk: true,
+      smtpOk: true,
+      error: null,
+      imapFailure: null,
+      smtpFailure: null,
+    });
   });
 });

@@ -14,6 +14,7 @@ import {
   maskSecret,
 } from "@/lib/crypto/credentials";
 import { getMailDriver, getMailDriverFromConfig } from "@/lib/mail";
+import type { MailLogSource, MailVerifyResult } from "@/lib/mail";
 import { EncryptionNotConfiguredError } from "@/lib/services/credentials";
 import { logError } from "@/lib/services/logs";
 
@@ -564,7 +565,7 @@ export interface TestConnectionData {
 export async function testConnection(
   workspaceId: string,
   input: TestConnectionData,
-): Promise<{ imapOk: boolean; smtpOk: boolean; error: string | null }> {
+): Promise<MailVerifyResult> {
   const driver = getMailDriverFromConfig(
     {
       email: input.email,
@@ -576,14 +577,18 @@ export async function testConnection(
       smtpSecurity: input.smtpSecurity,
       username: input.username,
       imapPassword: input.password,
-      // Mirrors getMailDriver() so out-of-band IMAP socket errors from a
-      // "Test connection" attempt reach the Logs page too — skipped for
-      // the mock path since MockMailDriver never emits transport errors.
+      // Mirrors getMailDriver() so transport failures from a "Test
+      // connection" attempt — out-of-band IMAP socket errors and SMTP verify
+      // failures alike — reach the Logs page too. Skipped for the mock path
+      // since MockMailDriver never emits transport errors.
       ...(input.mode === "MOCK"
         ? {}
         : {
-            onTransportError: (message: string, details: string) =>
-              logError(workspaceId, "mail:imap", message, details),
+            onTransportError: (
+              source: MailLogSource,
+              message: string,
+              details: string,
+            ) => logError(workspaceId, source, message, details),
           }),
     },
     { mock: input.mode === "MOCK" },

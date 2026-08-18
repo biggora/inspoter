@@ -2,6 +2,7 @@ import {
   MailTransportError,
   type MailAddress,
   type MailDriver,
+  type MailVerifyResult,
   type OutgoingMessage,
   type RemoteAttachment,
   type RemoteFolder,
@@ -185,12 +186,14 @@ export class MockMailDriver implements MailDriver {
     return message;
   }
 
-  async verify(): Promise<{
-    imapOk: boolean;
-    smtpOk: boolean;
-    error: string | null;
-  }> {
-    return { imapOk: true, smtpOk: true, error: null };
+  async verify(): Promise<MailVerifyResult> {
+    return {
+      imapOk: true,
+      smtpOk: true,
+      error: null,
+      imapFailure: null,
+      smtpFailure: null,
+    };
   }
 
   async listFolders(): Promise<RemoteFolder[]> {

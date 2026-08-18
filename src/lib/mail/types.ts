@@ -74,6 +74,35 @@ export interface MailMoveResult {
   destinationUid: bigint | null;
 }
 
+// Log source for a transport failure — feeds the Logs page Source filter, which
+// is built from whatever strings the returned rows carry (no enum to extend).
+export type MailLogSource = "mail:imap" | "mail:smtp";
+
+// Per-transport detail for one failed verify() probe. The settings dialog needs
+// the machine-readable code to decide whether to offer the "port unreachable"
+// hint; message is the same English text that goes into MailVerifyResult.error
+// and into the Logs page, where a technical string is what an operator wants.
+export interface MailVerifyFailure {
+  protocol: "IMAP" | "SMTP";
+  host: string;
+  port: number;
+  /**
+   * nodemailer/imapflow error code (ETIMEDOUT, ECONNREFUSED, EAUTH, …); null
+   * when the error carried none — never invent one.
+   */
+  code: string | null;
+  message: string;
+}
+
+export interface MailVerifyResult {
+  imapOk: boolean;
+  smtpOk: boolean;
+  /** Joined human-readable summary — same contract as before, now with host:port and code. */
+  error: string | null;
+  imapFailure: MailVerifyFailure | null;
+  smtpFailure: MailVerifyFailure | null;
+}
+
 // Raw connection settings — built either from a MailAccount DB row (with the
 // decrypted password) or straight from dialog input for /api/mail/accounts/test.
 export interface MailConnectionConfig {
@@ -88,15 +117,22 @@ export interface MailConnectionConfig {
   imapPassword: string;
   smtpPassword?: string;
   /**
-   * Called when a connection-level failure arrives on the ImapFlow 'error'
-   * event channel, which bypasses the awaited call's catch block. Injected by
-   * getMailDriver() so the transport layer stays free of DB imports.
+   * Called for transport failures worth surfacing on the Logs page. For IMAP
+   * that is the ImapFlow 'error' event channel, which bypasses the awaited
+   * call's catch block; SMTP has no such channel, so verify()/send() call this
+   * from their own catch blocks purely for operator visibility. The source
+   * argument says which transport failed. Injected by getMailDriver() so the
+   * transport layer stays free of DB imports.
    */
-  onTransportError?: (message: string, details: string) => void;
+  onTransportError?: (
+    source: MailLogSource,
+    message: string,
+    details: string,
+  ) => void;
 }
 
 export interface MailDriver {
-  verify(): Promise<{ imapOk: boolean; smtpOk: boolean; error: string | null }>;
+  verify(): Promise<MailVerifyResult>;
   listFolders(): Promise<RemoteFolder[]>;
   fetchMessages(
     folderPath: string,

@@ -57,10 +57,24 @@ export type UpdateMailAccountInput = Partial<CreateMailAccountInput> & {
   isDefault?: true;
 };
 
+// Mirrors MailVerifyFailure on the server. This module deliberately keeps its
+// own DTOs rather than importing server types, so the two are kept in sync by
+// hand — see src/lib/mail/types.ts.
+export interface TestConnectionFailure {
+  protocol: "IMAP" | "SMTP";
+  host: string;
+  port: number;
+  /** Transport error code (ETIMEDOUT, ECONNREFUSED, EAUTH, …); null when absent. */
+  code: string | null;
+  message: string;
+}
+
 export interface TestConnectionResult {
   imapOk: boolean;
   smtpOk: boolean;
   error: string | null;
+  imapFailure: TestConnectionFailure | null;
+  smtpFailure: TestConnectionFailure | null;
 }
 
 export class ApiError extends Error {
