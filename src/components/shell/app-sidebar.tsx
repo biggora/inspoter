@@ -25,6 +25,12 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 // Additive nav items rendered below the main sections, in a separate group —
 // always visible, never part of Workspace.hiddenSections.
 const ADDITIVE_NAV_ITEMS = [SETTINGS_NAV_ITEM, HELP_NAV_ITEM];
+const NAV_ITEM_CLASS_NAME = cn(
+  "shell-nav-item",
+  "group-data-[collapsible=icon]:mx-auto",
+  "group-data-[collapsible=icon]:justify-center",
+  "group-data-[collapsible=icon]:p-0!",
+);
 
 // AC-SHELL-001/002/004 (design.md §3.2). Single <nav> landmark hosting the
 // seven PRD sections plus Settings (design.md §9 C-1) — below `lg`/1024px
@@ -95,7 +101,7 @@ export function AppSidebar({
                         isActive={active}
                         tooltip={t(item.labelKey)}
                         data-active={active ? "true" : "false"}
-                        className="shell-nav-item"
+                        className={NAV_ITEM_CLASS_NAME}
                         render={<Link href={item.href} />}
                       >
                         <span className="shell-icon-tile">
@@ -124,7 +130,7 @@ export function AppSidebar({
                         isActive={active}
                         tooltip={t(item.labelKey)}
                         data-active={active ? "true" : "false"}
-                        className="shell-nav-item"
+                        className={NAV_ITEM_CLASS_NAME}
                         render={<Link href={item.href} />}
                       >
                         <span className="shell-icon-tile">
