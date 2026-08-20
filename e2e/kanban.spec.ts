@@ -230,6 +230,32 @@ test.describe("Kanban cards", () => {
     ).toBeVisible();
     expect(await cardTitles(column(page, "Backlog"))).toEqual([]);
   });
+
+  test("drags a card to another column with the pointer", async ({ page }) => {
+    const name = unique("e2e-pointer-move");
+    await createBoard(page, name);
+    await openBoard(page, name);
+    await addCard(page, "Backlog", "Deploy the worker");
+
+    const moveResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/kanban/cards/move" &&
+        response.request().method() === "PATCH"
+      );
+    });
+    await card(page, "Deploy the worker")
+      .getByRole("button", { name: "Move card Deploy the worker" })
+      .dragTo(column(page, "In progress"));
+    await moveResponse;
+
+    await expect(
+      column(page, "In progress").getByRole("article", {
+        name: "Deploy the worker",
+      }),
+    ).toBeVisible();
+    expect(await cardTitles(column(page, "Backlog"))).toEqual([]);
+  });
 });
 
 test.describe("Kanban filtering", () => {

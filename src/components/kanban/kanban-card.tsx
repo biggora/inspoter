@@ -97,7 +97,7 @@ export function KanbanCard({ card, dragDisabled, onOpen }: KanbanCardProps) {
           {...listeners}
           aria-label={t("cardDragHandleLabel", { title: card.title })}
           className={cn(
-            "shrink-0 touch-none opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
+            "shrink-0 touch-none opacity-70 transition-all hover:opacity-100 focus-visible:opacity-100",
             dragDisabled
               ? "cursor-not-allowed"
               : "cursor-grab active:cursor-grabbing",

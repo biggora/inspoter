@@ -117,7 +117,7 @@ export function KanbanColumn({
           {...listeners}
           aria-label={t("columnDragHandleLabel", { name: column.name })}
           className={cn(
-            "shrink-0 touch-none opacity-0 transition-all group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
+            "shrink-0 touch-none opacity-70 transition-all hover:opacity-100 focus-visible:opacity-100",
             dragDisabled
               ? "cursor-not-allowed"
               : "cursor-grab active:cursor-grabbing",

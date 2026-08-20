@@ -15,8 +15,10 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -61,6 +63,29 @@ import { KanbanColumn } from "./kanban-column";
 import { LabelManagerDialog } from "./label-manager-dialog";
 
 const ALL = "all";
+
+// Columns and cards share one DndContext, but they must never compete for the
+// same collision. Without filtering, a card dragged over a column can resolve
+// to the column's sortable container (`type: "column"`) instead of its card
+// drop zone. `handleDragEnd` then has no destination and silently does nothing.
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const activeType = args.active.data.current?.type;
+  const acceptedTypes =
+    activeType === "card"
+      ? new Set(["card", "column-drop"])
+      : new Set(["column"]);
+  const droppableContainers = args.droppableContainers.filter((container) =>
+    acceptedTypes.has(String(container.data.current?.type)),
+  );
+  const scopedArgs = { ...args, droppableContainers };
+
+  // Pointer position gives natural card placement. Keyboard drags have no
+  // pointer coordinates, so fall back to geometry for Arrow-key movement.
+  const pointerCollisions = pointerWithin(scopedArgs);
+  return pointerCollisions.length > 0
+    ? pointerCollisions
+    : closestCorners(scopedArgs);
+};
 
 type ReorderAction =
   | { type: "columns"; order: string[] }
@@ -468,7 +493,7 @@ export function KanbanBoardView({
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={kanbanCollisionDetection}
           onDragEnd={handleDragEnd}
         >
           <SortableContext
