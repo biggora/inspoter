@@ -904,6 +904,84 @@ export async function deleteComment(
 
 // --- Card detail ---
 
+// The dashboard renders the board tree; the agent surfaces want a flat,
+// searchable list instead. A workspace's boards are a small, already-loaded
+// structure, so the flattening and the search predicate live here in memory
+// rather than in SQL — and here rather than in either caller, so the MCP tools
+// and /api/v1/kanban/cards cannot drift apart.
+export interface FlatKanbanCard {
+  id: string;
+  title: string;
+  boardId: string;
+  boardName: string;
+  columnId: string;
+  columnName: string;
+  isDone: boolean;
+  priority: KanbanPriority;
+  dueDate: string | null;
+  assignee: string | null;
+  labels: string[];
+  linkedType: KanbanLinkType | null;
+  linkedLabel: string | null;
+}
+
+export interface KanbanCardSearchFilters {
+  /** Case-insensitive substring of the title, a label, or the linked record. */
+  query?: string;
+  boardId?: string;
+  columnId?: string;
+  /** Exclude cards sitting in a terminal (done) column. */
+  openOnly?: boolean;
+  limit?: number;
+}
+
+export async function searchCards(
+  workspaceId: string,
+  filters: KanbanCardSearchFilters,
+): Promise<{ items: FlatKanbanCard[]; total: number }> {
+  const summaries = await listBoards(workspaceId);
+  const wanted = filters.boardId
+    ? summaries.filter((board) => board.id === filters.boardId)
+    : summaries;
+
+  const flat: FlatKanbanCard[] = [];
+  for (const summary of wanted) {
+    const board = await getBoard(workspaceId, summary.id);
+    if (!board) continue;
+    for (const column of board.columns) {
+      for (const card of column.cards) {
+        flat.push({
+          id: card.id,
+          title: card.title,
+          boardId: board.id,
+          boardName: board.name,
+          columnId: column.id,
+          columnName: column.name,
+          isDone: column.isDone,
+          priority: card.priority,
+          dueDate: card.dueDate?.toISOString() ?? null,
+          assignee: card.assignee?.username ?? null,
+          labels: card.labels.map((label) => label.name),
+          linkedType: card.linkedType,
+          linkedLabel: card.linkedLabel,
+        });
+      }
+    }
+  }
+
+  const needle = filters.query?.trim().toLowerCase();
+  const items = flat.filter((card) => {
+    if (filters.columnId && card.columnId !== filters.columnId) return false;
+    if (filters.openOnly && card.isDone) return false;
+    if (!needle) return true;
+    return [card.title, card.linkedLabel ?? "", ...card.labels].some((field) =>
+      field.toLowerCase().includes(needle),
+    );
+  });
+
+  return { items: items.slice(0, filters.limit ?? 100), total: items.length };
+}
+
 export async function getCard(
   workspaceId: string,
   cardId: string,

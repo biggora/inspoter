@@ -118,12 +118,23 @@ async function requireLabelInWorkspace(
   if (!label) throw new KanbanLabelNotFoundError();
 }
 
+// An API token has no operator behind it, so its own workspace scope is the
+// authority and the membership check is skipped — same contract as
+// src/lib/services/contacts.ts and service-labels.ts.
+async function requireWriteAccess(
+  workspaceId: string,
+  operatorId: string | null,
+): Promise<void> {
+  if (operatorId !== null)
+    await requireWorkspaceMember(workspaceId, operatorId);
+}
+
 export async function createLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   input: CreateKanbanLabelInput,
 ): Promise<KanbanLabelSummary> {
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
   const name = normalizeLabelDisplayName(input.name);
   const normalizedName = normalizeLabelName(input.name);
   const color = parseLabelColor(input.color);
@@ -156,14 +167,14 @@ export async function createLabel(
 
 export async function updateLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
   input: UpdateKanbanLabelInput,
 ): Promise<KanbanLabelSummary> {
   // Workspace scope first, so a foreign id always gets the same
   // non-disclosing 404 regardless of the caller's role.
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   const name =
     input.name === undefined
@@ -195,11 +206,11 @@ export async function updateLabel(
 
 export async function deleteLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
 ): Promise<void> {
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   try {
     await db.kanbanLabel.delete({

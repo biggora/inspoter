@@ -15,6 +15,12 @@ import { toToolError } from "@/lib/mcp/errors";
 export interface McpToolContext {
   workspaceId: string;
   scopes: readonly McpScope[];
+  /**
+   * Presenting token's id. Stands in for an operator id where a row records
+   * its author — a kanban comment, for instance — so authorship survives a
+   * rename and two tokens sharing a name stay distinct.
+   */
+  tokenId: string;
   /** Presenting token's name — what a tool writes as the author of its work. */
   tokenName: string;
 }

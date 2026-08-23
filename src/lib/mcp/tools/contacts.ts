@@ -4,6 +4,14 @@ import * as contactLabelsService from "@/lib/services/contact-labels";
 import { defineTool, type McpToolDefinition } from "@/lib/mcp/tool";
 import { McpResourceNotFoundError } from "@/lib/mcp/errors";
 import { CONTACT_FIELD_KINDS } from "@/lib/contacts/model";
+import {
+  CONTACT_EXPORT_FORMATS,
+  CONTACT_IMPORT_FORMATS,
+} from "@/lib/contacts/formats";
+import {
+  contactLabelSchema,
+  contactLabelUpdateSchema,
+} from "@/lib/validation/contacts";
 
 // The Contacts half of the agent surface: an assistant can look someone up,
 // keep a record current, and load an address book that arrived as a vCard.
@@ -109,6 +117,59 @@ export const contactTools: McpToolDefinition[] = [
   }),
 
   defineTool({
+    name: "contacts_duplicates",
+    scope: "contacts:read",
+    title: "Find duplicate contacts",
+    description:
+      "Group contacts that share an email, a phone number or a display name. Feed a group's ids straight into contacts_merge.",
+    inputSchema: z.object({}),
+    readOnly: true,
+    handler: (_args, ctx) =>
+      contactsService.findDuplicateGroups(ctx.workspaceId),
+  }),
+
+  defineTool({
+    name: "contacts_suggest",
+    scope: "contacts:read",
+    title: "Suggest mail recipients",
+    description:
+      "Look up email addresses by name or by address. Matches the address itself and the contact's searchable text, so a person's name finds their address.",
+    inputSchema: z.object({
+      query: z.string().min(1),
+      limit: z.number().int().min(1).max(50).optional(),
+    }),
+    readOnly: true,
+    handler: (args, ctx) =>
+      contactsService.suggestRecipients(
+        ctx.workspaceId,
+        args.query,
+        args.limit,
+      ),
+  }),
+
+  defineTool({
+    name: "contacts_export",
+    scope: "contacts:read",
+    title: "Export the address book",
+    description:
+      "Serialize contacts to vCard, Google CSV, Outlook CSV or LDIF and return the file's text. Select either explicit `contactIds` or the same filters contacts_list takes.",
+    inputSchema: z.object({
+      format: z.enum(CONTACT_EXPORT_FORMATS),
+      contactIds: z.array(z.string()).max(10_000).optional(),
+      labelId: z.string().optional(),
+      query: z.string().optional(),
+      starred: z.boolean().optional(),
+    }),
+    readOnly: true,
+    handler: (args, ctx) =>
+      contactsService.exportContacts(ctx.workspaceId, {
+        ...args,
+        // Only vCard can carry a photo, so only vCard pays for reading them.
+        includePhotos: args.format.startsWith("vcard"),
+      }),
+  }),
+
+  defineTool({
     name: "contacts_create",
     scope: "contacts:write",
     title: "Create a contact",
@@ -158,6 +219,109 @@ export const contactTools: McpToolDefinition[] = [
   }),
 
   defineTool({
+    name: "contacts_bulk",
+    scope: "contacts:write",
+    title: "Act on many contacts at once",
+    description:
+      "Star, unstar, label, unlabel or delete up to 1000 contacts in one call. Ids outside the token's workspace are ignored rather than rejected; the answer says how many rows were actually touched.",
+    inputSchema: z.object({
+      contactIds: z.array(z.string()).min(1).max(1000),
+      action: z.discriminatedUnion("type", [
+        z.object({ type: z.literal("delete") }),
+        z.object({ type: z.literal("star"), starred: z.boolean() }),
+        z.object({ type: z.literal("addLabel"), labelId: z.string() }),
+        z.object({ type: z.literal("removeLabel"), labelId: z.string() }),
+      ]),
+    }),
+    readOnly: false,
+    handler: async (args, ctx) => ({
+      updated: await contactsService.bulkUpdate(
+        ctx.workspaceId,
+        null,
+        args.contactIds,
+        args.action,
+      ),
+    }),
+  }),
+
+  defineTool({
+    name: "contacts_merge",
+    scope: "contacts:write",
+    title: "Merge duplicate contacts",
+    description:
+      "Fold every contact in `otherIds` into `primaryId` and delete them. The primary's own values win; anything the others knew that it lacked is appended. This cannot be undone.",
+    inputSchema: z.object({
+      primaryId: z.string(),
+      otherIds: z.array(z.string()).min(1).max(50),
+    }),
+    readOnly: false,
+    handler: (args, ctx) =>
+      contactsService.mergeContacts(
+        ctx.workspaceId,
+        null,
+        args.primaryId,
+        args.otherIds,
+      ),
+  }),
+
+  defineTool({
+    name: "contact_label_create",
+    scope: "contacts:write",
+    title: "Create a contact label",
+    description:
+      "Create a workspace contact label. Names are unique regardless of case.",
+    inputSchema: z.object({
+      name: z.string().min(1).max(60),
+      color: z
+        .string()
+        .describe(
+          "A preset name (SLATE, RED, AMBER, GREEN, BLUE, VIOLET) or a hex value such as #616367.",
+        ),
+    }),
+    readOnly: false,
+    handler: (args, ctx) =>
+      contactLabelsService.createLabel(
+        ctx.workspaceId,
+        null,
+        contactLabelSchema.parse(args),
+      ),
+  }),
+
+  defineTool({
+    name: "contact_label_update",
+    scope: "contacts:write",
+    title: "Update a contact label",
+    description: "Rename or recolor one contact label.",
+    inputSchema: z.object({
+      id: z.string(),
+      name: z.string().min(1).max(60).optional(),
+      color: z.string().optional(),
+    }),
+    readOnly: false,
+    handler: ({ id, ...input }, ctx) =>
+      contactLabelsService.updateLabel(
+        ctx.workspaceId,
+        null,
+        id,
+        contactLabelUpdateSchema.parse(input),
+      ),
+  }),
+
+  defineTool({
+    name: "contact_label_delete",
+    scope: "contacts:write",
+    title: "Delete a contact label",
+    description:
+      "Delete one contact label. The contacts carrying it keep their other labels.",
+    inputSchema: z.object({ id: z.string() }),
+    readOnly: false,
+    handler: async (args, ctx) => {
+      await contactLabelsService.deleteLabel(ctx.workspaceId, null, args.id);
+      return { deleted: args.id };
+    },
+  }),
+
+  defineTool({
     name: "contacts_import",
     scope: "contacts:write",
     title: "Import an address book",
@@ -165,6 +329,12 @@ export const contactTools: McpToolDefinition[] = [
       "Import contacts from the text of a vCard (2.1, 3.0, 4.0), Google CSV, Outlook CSV or LDIF file. The format is detected from the content. Returns how many contacts were created, updated and skipped.",
     inputSchema: z.object({
       content: z.string().min(1).describe("The file's text content"),
+      format: z
+        .enum(CONTACT_IMPORT_FORMATS)
+        .optional()
+        .describe(
+          "Override the detected format when the content is ambiguous.",
+        ),
       duplicateStrategy: z
         .enum(["skip", "update", "create"])
         .optional()
@@ -179,6 +349,7 @@ export const contactTools: McpToolDefinition[] = [
         null,
         new TextEncoder().encode(args.content),
         {
+          format: args.format,
           duplicateStrategy: args.duplicateStrategy ?? "skip",
           maxContacts: IMPORT_LIMITS.maxContacts,
           maxPhotoBytes: IMPORT_LIMITS.maxPhotoBytes,

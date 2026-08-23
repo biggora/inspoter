@@ -57,6 +57,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("bookmarks"),
     titleKey: "bookmarksTitle",
     cardDescriptionKey: "bookmarksCardDescription",
+    // No incoming webhook: a bookmark is added by hand or by an agent, not
+    // pushed in from the outside.
+    managementApi: {
+      endpoint: "GET|POST /api/v1/bookmarks",
+      curl: `curl "http://your-host/api/v1/bookmarks?query=grafana" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`,
+    },
+  },
+  {
+    slug: "kanban",
+    href: "/help/kanban",
+    icon: iconFor("kanban"),
+    titleKey: "kanbanTitle",
+    cardDescriptionKey: "kanbanCardDescription",
+    // No incoming webhook: a card is created by hand or by an agent.
+    managementApi: {
+      endpoint: "POST /api/v1/kanban/cards",
+      curl: `curl -X POST http://your-host/api/v1/kanban/cards \\
+  -H "Authorization: Bearer YOUR_TOKEN" -H "Content-Type: application/json" \\
+  -d '{"columnId":"COLUMN_ID","title":"Rotate the API token","priority":"HIGH"}'`,
+    },
+    outgoing: true,
   },
   {
     slug: "domains",
@@ -87,6 +109,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     icon: iconFor("services"),
     titleKey: "servicesTitle",
     cardDescriptionKey: "servicesCardDescription",
+    // No incoming webhook: the dashboard runs the checks itself, so there is
+    // nothing for an external system to push in.
+    managementApi: {
+      endpoint: "GET|POST /api/v1/services",
+      curl: `curl "http://your-host/api/v1/services?status=DOWN" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`,
+    },
     outgoing: true,
   },
   {
@@ -101,6 +130,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"sender":"noreply@example.com","subject":"Test","body":"Hello"}'`,
+    },
+    // Unlike the webhook above, this works an existing IMAP mailbox rather
+    // than filing into the built-in one: search, send, file drafts, label,
+    // and sync.
+    managementApi: {
+      endpoint: "GET /api/v1/mail",
+      curl: `curl "http://your-host/api/v1/mail?unread=true" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`,
     },
     outgoing: true,
   },

@@ -5,8 +5,7 @@ import * as kanbanService from "@/lib/services/kanban";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
 import { recordActivity } from "@/lib/services/activity";
-import { emitWebhookEvent } from "@/lib/services/webhook-events";
-import { cardWebhookPayload } from "@/lib/kanban/webhook-payload";
+import { emitCardMoves } from "@/lib/kanban/card-events";
 
 export async function PATCH(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -28,19 +27,7 @@ export async function PATCH(request: NextRequest) {
       parsed.data.columns,
     );
 
-    // Only a card that actually changed column is an event; reordering
-    // within a column is not something a subscriber cares about.
-    for (const outcome of outcomes) {
-      const card = await kanbanService.getCard(workspace.id, outcome.cardId);
-      if (!card) continue;
-      const payload = cardWebhookPayload(card, {
-        fromColumnId: outcome.fromColumnId,
-      });
-      void emitWebhookEvent(workspace.id, "KANBAN_CARD_MOVED", payload);
-      if (outcome.completed) {
-        void emitWebhookEvent(workspace.id, "KANBAN_CARD_COMPLETED", payload);
-      }
-    }
+    await emitCardMoves(workspace.id, outcomes);
 
     if (outcomes.length > 0) {
       recordActivity(workspace.id, {

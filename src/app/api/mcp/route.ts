@@ -60,6 +60,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     buildMcpServer({
       workspaceId: token.workspaceId,
       scopes: token.scopes,
+      tokenId: token.tokenId,
       tokenName: token.tokenName,
     }),
   );

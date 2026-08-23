@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
+import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { MailTransportError } from "@/lib/mail";
 import { MailListResourceNotFoundError } from "@/lib/services/mail";
@@ -9,6 +10,28 @@ import {
   MailSendRateLimitError,
 } from "@/lib/services/mail-actions";
 import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
+import { WebhookAccountHasNoTransportError } from "@/lib/mail/types";
+import {
+  MailLabelInUseError,
+  MailLabelLimitReachedError,
+  MailLabelNameConflictError,
+  MailLabelResourceNotFoundError,
+} from "@/lib/services/mail-labels";
+import { MailLabelAssignmentResourceNotFoundError } from "@/lib/services/mail-label-assignments";
+import {
+  ActiveMailFilterRuleLimitReachedError,
+  MailFilterRulePredicateRequiredError,
+  MailFilterRuleResourceNotFoundError,
+} from "@/lib/services/mail-filter-rules";
+import {
+  MailFilterRunResourceNotFoundError,
+  MailFilterRunRetryConflictError,
+} from "@/lib/services/mail-filter-runs";
+import {
+  AttachmentTooLargeError,
+  AttachmentUnavailableError,
+  MailAttachmentNotFoundError,
+} from "@/lib/services/mail-attachments";
 import {
   MailDraftContextNotFoundError,
   MailDraftFolderUnavailableError,
@@ -16,10 +39,40 @@ import {
 } from "@/lib/services/mail-drafts";
 import { ServiceNotFoundError } from "@/lib/services/services";
 import {
+  ServiceLabelLimitReachedError,
+  ServiceLabelNameConflictError,
+  ServiceLabelNotFoundError,
+} from "@/lib/services/service-labels";
+import {
   AlertCategoryNotFoundError,
   AlertNotFoundError,
 } from "@/lib/services/alerts";
-import { CategoryHierarchyValidationError } from "@/lib/services/bookmarks";
+import {
+  BookmarkReorderValidationError,
+  CategoryHierarchyValidationError,
+} from "@/lib/services/bookmarks";
+import {
+  ContactImportTooLargeError,
+  ContactMergeValidationError,
+  ContactNotFoundError,
+  ContactPhotoTooLargeError,
+} from "@/lib/services/contacts";
+import {
+  ContactLabelLimitReachedError,
+  ContactLabelNameConflictError,
+  ContactLabelNotFoundError,
+} from "@/lib/services/contact-labels";
+import { UnknownContactFormatError } from "@/lib/contacts/formats";
+import {
+  KanbanLimitReachedError,
+  KanbanNotFoundError,
+  KanbanValidationError,
+} from "@/lib/services/kanban";
+import {
+  KanbanLabelLimitReachedError,
+  KanbanLabelNameConflictError,
+  KanbanLabelNotFoundError,
+} from "@/lib/services/kanban-labels";
 import { ChannelNotFoundError } from "@/lib/services/messages";
 import { ChannelWebhookNotFoundError } from "@/lib/services/webhookTokens";
 import { logError } from "@/lib/services/logs";
@@ -48,12 +101,44 @@ const EXPECTED_ERRORS = [
   MailSendNotAllowedError,
   MailSendRateLimitError,
   MailAccountNotFoundError,
+  WebhookAccountHasNoTransportError,
+  MailLabelResourceNotFoundError,
+  MailLabelNameConflictError,
+  MailLabelLimitReachedError,
+  MailLabelInUseError,
+  MailLabelAssignmentResourceNotFoundError,
+  MailFilterRuleResourceNotFoundError,
+  ActiveMailFilterRuleLimitReachedError,
+  MailFilterRulePredicateRequiredError,
+  MailFilterRunResourceNotFoundError,
+  MailFilterRunRetryConflictError,
+  MailAttachmentNotFoundError,
+  AttachmentTooLargeError,
+  AttachmentUnavailableError,
   MailDraftNotFoundError,
   MailDraftContextNotFoundError,
   MailDraftFolderUnavailableError,
   MailTransportError,
   ServiceNotFoundError,
+  ServiceLabelNotFoundError,
+  ServiceLabelNameConflictError,
+  ServiceLabelLimitReachedError,
   CategoryHierarchyValidationError,
+  BookmarkReorderValidationError,
+  ContactNotFoundError,
+  ContactMergeValidationError,
+  ContactImportTooLargeError,
+  ContactPhotoTooLargeError,
+  ContactLabelNotFoundError,
+  ContactLabelNameConflictError,
+  ContactLabelLimitReachedError,
+  UnknownContactFormatError,
+  KanbanNotFoundError,
+  KanbanValidationError,
+  KanbanLimitReachedError,
+  KanbanLabelNotFoundError,
+  KanbanLabelNameConflictError,
+  KanbanLabelLimitReachedError,
   AlertNotFoundError,
   AlertCategoryNotFoundError,
   ChannelNotFoundError,
@@ -84,6 +169,16 @@ export function toToolError(
 ): CallToolResult {
   if (isExpected(error)) {
     return toolError(error.message);
+  }
+
+  // Conditional argument rules (a monitor needs a url or a host depending on
+  // its type) are enforced by re-parsing with the shared validation schema, so
+  // a ZodError is bad input the model can correct rather than a bug to log.
+  if (error instanceof z.ZodError) {
+    const issues = error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; ");
+    return toolError(`Invalid arguments — ${issues}`);
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {

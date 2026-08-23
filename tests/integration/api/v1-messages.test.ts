@@ -9,7 +9,11 @@ import {
 } from "@/app/api/v1/messages/categories/route";
 import { PATCH as renameCategory } from "@/app/api/v1/messages/categories/[categoryId]/route";
 import { POST as createChannel } from "@/app/api/v1/messages/channels/route";
-import { PATCH as renameChannel } from "@/app/api/v1/messages/channels/[channelId]/route";
+import {
+  GET as getChannel,
+  PATCH as renameChannel,
+} from "@/app/api/v1/messages/channels/[channelId]/route";
+import { POST as markChannelRead } from "@/app/api/v1/messages/channels/[channelId]/read/route";
 import {
   GET as listMessages,
   POST as sendMessage,
@@ -431,5 +435,72 @@ describe("channel webhooks", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("channel lookup and read state", () => {
+  it("reads one channel by id", async () => {
+    const response = await getChannel(
+      request(`/api/v1/messages/channels/${channelId}`, { token: readToken }),
+      params({ channelId }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await body<{ id: string; name: string }>(response)).toMatchObject({
+      id: channelId,
+    });
+  });
+
+  it("answers 404 for a channel of another workspace", async () => {
+    const response = await getChannel(
+      request(`/api/v1/messages/channels/${otherChannelId}`, {
+        token: readToken,
+      }),
+      params({ channelId: otherChannelId }),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("clears a channel's unread messages", async () => {
+    await sendMessage(
+      request(`/api/v1/messages/channels/${channelId}/messages`, {
+        method: "POST",
+        token: writeToken,
+        body: { content: "unread until marked" },
+      }),
+      params({ channelId }),
+    );
+    expect(
+      await db.message.count({ where: { channelId, isRead: false } }),
+    ).toBeGreaterThan(0);
+
+    const response = await markChannelRead(
+      request(`/api/v1/messages/channels/${channelId}/read`, {
+        method: "POST",
+        token: writeToken,
+      }),
+      params({ channelId }),
+    );
+
+    expect(response.status).toBe(200);
+    expect((await body<{ updated: number }>(response)).updated).toBeGreaterThan(
+      0,
+    );
+    expect(
+      await db.message.count({ where: { channelId, isRead: false } }),
+    ).toBe(0);
+  });
+
+  it("keeps mark-read behind the write scope", async () => {
+    const response = await markChannelRead(
+      request(`/api/v1/messages/channels/${channelId}/read`, {
+        method: "POST",
+        token: readToken,
+      }),
+      params({ channelId }),
+    );
+
+    expect(response.status).toBe(403);
   });
 });

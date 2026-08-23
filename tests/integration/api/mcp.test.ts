@@ -8,6 +8,7 @@ import * as alertsService from "@/lib/services/alerts";
 import * as bookmarksService from "@/lib/services/bookmarks";
 import * as servicesService from "@/lib/services/services";
 import * as mailService from "@/lib/services/mail";
+import * as mailAccountsService from "@/lib/services/mail-accounts";
 import { MCP_SCOPES } from "@/lib/mcp/scopes";
 import { ALL_TOOLS } from "@/lib/mcp/server";
 import { DELETE, GET, POST } from "@/app/api/mcp/route";
@@ -638,5 +639,1021 @@ describe("workspace isolation", () => {
     });
 
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("services write tools", () => {
+  it("creates, updates, pauses and deletes a monitor", async () => {
+    const created = await callTool(fullToken, "service_create", {
+      name: "Agent-made monitor",
+      monitorType: "TCP",
+      host: "127.0.0.1",
+      port: 9,
+      intervalSeconds: 300,
+    });
+    const id = (created.payload as { id: string }).id;
+    expect((created.payload as { monitorType: string }).monitorType).toBe(
+      "TCP",
+    );
+
+    const updated = await callTool(fullToken, "service_update", {
+      id,
+      name: "Agent-made monitor (renamed)",
+      retries: 3,
+    });
+    expect(updated.payload).toMatchObject({
+      name: "Agent-made monitor (renamed)",
+      retries: 3,
+    });
+
+    const paused = await callTool(fullToken, "service_set_active", {
+      id,
+      isActive: false,
+    });
+    expect((paused.payload as { isActive: boolean }).isActive).toBe(false);
+
+    const deleted = await callTool(fullToken, "service_delete", { id });
+    expect(deleted.payload).toMatchObject({ id, deleted: true });
+    expect(await db.service.findUnique({ where: { id } })).toBeNull();
+  });
+
+  it("reports a monitor missing its type-specific target as bad arguments", async () => {
+    const result = await callTool(fullToken, "service_create", {
+      name: "No target",
+      monitorType: "HTTP",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.text).toContain("url");
+    expect(await db.service.count({ where: { name: "No target" } })).toBe(0);
+  });
+
+  it("manages service labels and assigns them to a service", async () => {
+    const label = await callTool(fullToken, "service_label_create", {
+      name: "Critical path",
+      color: "RED",
+    });
+    const labelId = (label.payload as { id: string }).id;
+
+    const renamed = await callTool(fullToken, "service_label_update", {
+      id: labelId,
+      name: "Critical",
+    });
+    expect((renamed.payload as { name: string }).name).toBe("Critical");
+
+    const assigned = await callTool(fullToken, "service_labels_set", {
+      id: serviceId,
+      labelIds: [labelId],
+    });
+    expect(
+      (assigned.payload as { labels: Array<{ id: string }> }).labels,
+    ).toEqual([expect.objectContaining({ id: labelId })]);
+
+    const filtered = await callTool(fullToken, "services_list", { labelId });
+    expect(
+      (filtered.payload as Array<{ id: string }>).map((s) => s.id),
+    ).toEqual([serviceId]);
+
+    const removed = await callTool(fullToken, "service_label_delete", {
+      id: labelId,
+    });
+    expect(removed.payload).toMatchObject({ id: labelId, deleted: true });
+  });
+
+  it("reports a duplicate label name as a tool error rather than a crash", async () => {
+    const first = await callTool(fullToken, "service_label_create", {
+      name: "Edge",
+      color: "BLUE",
+    });
+    const duplicate = await callTool(fullToken, "service_label_create", {
+      name: "edge",
+      color: "GREEN",
+    });
+
+    expect(duplicate.isError).toBe(true);
+    expect(duplicate.text).toContain("already exists");
+    await callTool(fullToken, "service_label_delete", {
+      id: (first.payload as { id: string }).id,
+    });
+  });
+
+  it("refuses to touch a service of another workspace", async () => {
+    const result = await callTool(otherWorkspaceToken, "service_update", {
+      id: serviceId,
+      name: "Cross-tenant rename",
+    });
+
+    expect(result.isError).toBe(true);
+    const stored = await db.service.findUnique({ where: { id: serviceId } });
+    expect(stored?.name).toBe("Public API");
+  });
+
+  it("denies the write tools to a read-only services token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "services-ro", [
+        "services:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "service_checks",
+      "service_get",
+      "service_labels_list",
+      "services_list",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "service_delete",
+      arguments: { id: serviceId },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(await db.service.findUnique({ where: { id: serviceId } })).not.toBe(
+      null,
+    );
+  });
+});
+
+describe("bookmarks write tools", () => {
+  it("updates, moves and deletes a bookmark", async () => {
+    const created = await callTool(fullToken, "bookmark_create", {
+      name: "Grafana",
+      url: "https://grafana.example.invalid",
+      categoryId,
+    });
+    const id = (created.payload as { id: string }).id;
+
+    const nested = await callTool(fullToken, "bookmark_category_create", {
+      name: "Dashboards",
+      parentCategoryId: categoryId,
+    });
+    const nestedId = (nested.payload as { id: string }).id;
+
+    const updated = await callTool(fullToken, "bookmark_update", {
+      id,
+      name: "Grafana (prod)",
+      categoryId: nestedId,
+      color: "accent",
+    });
+    expect(updated.payload).toMatchObject({
+      name: "Grafana (prod)",
+      categoryId: nestedId,
+      color: "accent",
+    });
+
+    // The flat search carries the parent category, so a model can tell a
+    // nested bookmark from a top-level one.
+    const found = await callTool(fullToken, "bookmarks_search", {
+      query: "Grafana",
+    });
+    expect(
+      (found.payload as { items: Array<Record<string, unknown>> }).items[0],
+    ).toMatchObject({
+      categoryName: "Dashboards",
+      parentCategoryName: "Runbooks",
+    });
+
+    const deleted = await callTool(fullToken, "bookmark_delete", { id });
+    expect(deleted.payload).toMatchObject({ id, deleted: true });
+    expect(await db.bookmark.findUnique({ where: { id } })).toBeNull();
+  });
+
+  it("refuses to nest a category more than one level deep", async () => {
+    const parent = await callTool(fullToken, "bookmark_category_create", {
+      name: "Level one",
+    });
+    const child = await callTool(fullToken, "bookmark_category_create", {
+      name: "Level two",
+      parentCategoryId: (parent.payload as { id: string }).id,
+    });
+
+    const tooDeep = await callTool(fullToken, "bookmark_category_create", {
+      name: "Level three",
+      parentCategoryId: (child.payload as { id: string }).id,
+    });
+
+    expect(tooDeep.isError).toBe(true);
+    expect(await db.category.count({ where: { name: "Level three" } })).toBe(0);
+  });
+
+  it("reorders the bookmarks of a category", async () => {
+    const first = await callTool(fullToken, "bookmark_create", {
+      name: "First",
+      url: "https://first.example.invalid",
+      categoryId,
+    });
+    const second = await callTool(fullToken, "bookmark_create", {
+      name: "Second",
+      url: "https://second.example.invalid",
+      categoryId,
+    });
+    const ids = [first, second].map(
+      (result) => (result.payload as { id: string }).id,
+    );
+
+    const existing = await db.bookmark.findMany({
+      where: { categoryId },
+      orderBy: { position: "asc" },
+      select: { id: true },
+    });
+    const reversed = existing.map((row) => row.id).reverse();
+
+    const result = await callTool(fullToken, "bookmarks_reorder", {
+      categories: [{ categoryId, bookmarkIds: reversed }],
+    });
+    expect(result.payload).toEqual({ reordered: true });
+
+    const after = await db.bookmark.findMany({
+      where: { categoryId },
+      orderBy: { position: "asc" },
+      select: { id: true },
+    });
+    expect(after.map((row) => row.id)).toEqual(reversed);
+
+    for (const id of ids) {
+      await callTool(fullToken, "bookmark_delete", { id });
+    }
+  });
+
+  it("refuses to touch a bookmark of another workspace", async () => {
+    const created = await callTool(fullToken, "bookmark_create", {
+      name: "Private",
+      url: "https://private.example.invalid",
+      categoryId,
+    });
+    const id = (created.payload as { id: string }).id;
+
+    const result = await callTool(otherWorkspaceToken, "bookmark_delete", {
+      id,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(await db.bookmark.findUnique({ where: { id } })).not.toBe(null);
+    await callTool(fullToken, "bookmark_delete", { id });
+  });
+
+  it("denies the write tools to a read-only bookmarks token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "bookmarks-ro", [
+        "bookmarks:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "bookmark_categories_list",
+      "bookmark_favicon_suggest",
+      "bookmarks_get",
+      "bookmarks_search",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "bookmark_category_create",
+      arguments: { name: "Should not exist" },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(
+      await db.category.count({ where: { name: "Should not exist" } }),
+    ).toBe(0);
+  });
+});
+
+describe("contacts tools", () => {
+  async function createContact(name: string, email: string) {
+    const result = await callTool(fullToken, "contacts_create", {
+      firstName: name,
+      fields: [{ kind: "EMAIL", value: email, isPrimary: true }],
+    });
+    return (result.payload as { id: string }).id;
+  }
+
+  it("creates, reads, updates and deletes a contact", async () => {
+    const id = await createContact("Ada", "ada@example.invalid");
+
+    const read = await callTool(fullToken, "contacts_get", { contactId: id });
+    expect((read.payload as { displayName: string }).displayName).toContain(
+      "Ada",
+    );
+
+    const updated = await callTool(fullToken, "contacts_update", {
+      contactId: id,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      fields: [{ kind: "EMAIL", value: "ada@example.invalid" }],
+    });
+    expect((updated.payload as { displayName: string }).displayName).toBe(
+      "Ada Lovelace",
+    );
+
+    const deleted = await callTool(fullToken, "contacts_delete", {
+      contactId: id,
+    });
+    expect(deleted.payload).toEqual({ deleted: id });
+    expect(await db.contact.findUnique({ where: { id } })).toBeNull();
+  });
+
+  it("groups duplicates and merges them into one record", async () => {
+    const primary = await createContact("Grace", "grace@example.invalid");
+    const duplicate = await createContact("Grace", "grace@example.invalid");
+
+    const groups = await callTool(fullToken, "contacts_duplicates", {});
+    const found = (
+      groups.payload as Array<{ contacts: Array<{ id: string }> }>
+    ).find((group) => group.contacts.some((entry) => entry.id === primary));
+    expect(found?.contacts.map((entry) => entry.id).sort()).toEqual(
+      [primary, duplicate].sort(),
+    );
+
+    const merged = await callTool(fullToken, "contacts_merge", {
+      primaryId: primary,
+      otherIds: [duplicate],
+    });
+    expect((merged.payload as { id: string }).id).toBe(primary);
+    expect(
+      await db.contact.findUnique({ where: { id: duplicate } }),
+    ).toBeNull();
+
+    await callTool(fullToken, "contacts_delete", { contactId: primary });
+  });
+
+  it("stars and deletes many contacts in one call", async () => {
+    const ids = await Promise.all([
+      createContact("Bulk one", "bulk1@example.invalid"),
+      createContact("Bulk two", "bulk2@example.invalid"),
+    ]);
+
+    const starred = await callTool(fullToken, "contacts_bulk", {
+      contactIds: ids,
+      action: { type: "star", starred: true },
+    });
+    expect(starred.payload).toEqual({ updated: 2 });
+    expect(
+      await db.contact.count({ where: { id: { in: ids }, starred: true } }),
+    ).toBe(2);
+
+    const removed = await callTool(fullToken, "contacts_bulk", {
+      contactIds: ids,
+      action: { type: "delete" },
+    });
+    expect(removed.payload).toEqual({ updated: 2 });
+    expect(await db.contact.count({ where: { id: { in: ids } } })).toBe(0);
+  });
+
+  it("ignores foreign ids in a bulk action rather than failing", async () => {
+    const mine = await createContact("Mine", "mine@example.invalid");
+
+    const result = await callTool(otherWorkspaceToken, "contacts_bulk", {
+      contactIds: [mine],
+      action: { type: "delete" },
+    });
+
+    expect(result.payload).toEqual({ updated: 0 });
+    expect(await db.contact.findUnique({ where: { id: mine } })).not.toBe(null);
+    await callTool(fullToken, "contacts_delete", { contactId: mine });
+  });
+
+  it("manages contact labels and reports a duplicate name as a tool error", async () => {
+    const created = await callTool(fullToken, "contact_label_create", {
+      name: "Suppliers",
+      color: "GREEN",
+    });
+    const labelId = (created.payload as { id: string }).id;
+
+    const duplicate = await callTool(fullToken, "contact_label_create", {
+      name: "suppliers",
+      color: "BLUE",
+    });
+    expect(duplicate.isError).toBe(true);
+
+    const renamed = await callTool(fullToken, "contact_label_update", {
+      id: labelId,
+      name: "Vendors",
+    });
+    expect((renamed.payload as { name: string }).name).toBe("Vendors");
+
+    const removed = await callTool(fullToken, "contact_label_delete", {
+      id: labelId,
+    });
+    expect(removed.payload).toEqual({ deleted: labelId });
+  });
+
+  it("imports a vCard and exports the address book as text", async () => {
+    const vcard = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      "FN:Imported Person",
+      "N:Person;Imported;;;",
+      "EMAIL:imported@example.invalid",
+      "END:VCARD",
+    ].join("\r\n");
+
+    const imported = await callTool(fullToken, "contacts_import", {
+      content: vcard,
+    });
+    expect(imported.payload).toMatchObject({ format: "vcard", created: 1 });
+
+    const exported = await callTool(fullToken, "contacts_export", {
+      format: "vcard-4.0",
+      query: "Imported Person",
+    });
+    expect(exported.payload).toMatchObject({ count: 1 });
+    expect((exported.payload as { content: string }).content).toContain(
+      "Imported Person",
+    );
+
+    const suggestions = await callTool(fullToken, "contacts_suggest", {
+      query: "imported",
+    });
+    expect(
+      (suggestions.payload as Array<{ value: string }>).map(
+        (entry) => entry.value,
+      ),
+    ).toContain("imported@example.invalid");
+
+    const found = await callTool(fullToken, "contacts_list", {
+      query: "Imported Person",
+    });
+    const contactId = (found.payload as { contacts: Array<{ id: string }> })
+      .contacts[0].id;
+    await callTool(fullToken, "contacts_delete", { contactId });
+  });
+
+  it("denies the write tools to a read-only contacts token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "contacts-ro", [
+        "contacts:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "contact_labels_list",
+      "contacts_duplicates",
+      "contacts_export",
+      "contacts_get",
+      "contacts_list",
+      "contacts_suggest",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "contacts_create",
+      arguments: { firstName: "Should not exist" },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(
+      await db.contact.count({ where: { firstName: "Should not exist" } }),
+    ).toBe(0);
+  });
+});
+
+describe("messages read state and channel lookup", () => {
+  it("reads one channel by id and refuses a foreign one", async () => {
+    const { payload } = await callTool(fullToken, "message_channel_get", {
+      channelId,
+    });
+    expect((payload as { id: string }).id).toBe(channelId);
+
+    const foreign = await callTool(otherWorkspaceToken, "message_channel_get", {
+      channelId,
+    });
+    expect(foreign.isError).toBe(true);
+  });
+
+  it("clears a channel's unread messages", async () => {
+    await callTool(fullToken, "message_send", {
+      channelId,
+      content: "unread until the agent marks it",
+    });
+    expect(
+      await db.message.count({ where: { channelId, isRead: false } }),
+    ).toBeGreaterThan(0);
+
+    const { payload } = await callTool(fullToken, "message_channel_mark_read", {
+      channelId,
+    });
+
+    expect((payload as { updated: number }).updated).toBeGreaterThan(0);
+    expect(
+      await db.message.count({ where: { channelId, isRead: false } }),
+    ).toBe(0);
+  });
+
+  it("keeps mark-read behind the write scope", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "messages-ro", [
+        "messages:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "channel_webhooks_list",
+      "message_categories_list",
+      "message_channel_get",
+      "messages_list",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "message_channel_mark_read",
+      arguments: { channelId },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+  });
+});
+
+describe("kanban tools", () => {
+  async function board(name: string) {
+    const created = await callTool(fullToken, "kanban_board_create", { name });
+    return (created.payload as { id: string }).id;
+  }
+
+  async function column(boardId: string, name: string, isDone = false) {
+    const created = await callTool(fullToken, "kanban_column_create", {
+      boardId,
+      name,
+      color: "BLUE",
+      isDone,
+    });
+    return (created.payload as { id: string }).id;
+  }
+
+  it("builds a board, moves a card into a terminal column and completes it", async () => {
+    const boardId = await board("Agent board");
+    const todo = await column(boardId, "Todo");
+    const done = await column(boardId, "Done", true);
+
+    const created = await callTool(fullToken, "kanban_card_create", {
+      columnId: todo,
+      title: "Rotate the API token",
+      priority: "HIGH",
+    });
+    const cardId = (created.payload as { id: string }).id;
+    expect(created.payload).toMatchObject({ priority: "HIGH", columnId: todo });
+
+    const moved = await callTool(fullToken, "kanban_card_move", {
+      cardId,
+      columnId: done,
+    });
+    expect(moved.payload).toMatchObject({ columnId: done });
+    expect(
+      (await db.kanbanCard.findUnique({ where: { id: cardId } }))?.completedAt,
+    ).not.toBeNull();
+
+    const read = await callTool(fullToken, "kanban_board_get", { boardId });
+    expect(
+      (
+        read.payload as { columns: Array<{ id: string; cards: unknown[] }> }
+      ).columns.find((entry) => entry.id === done)?.cards,
+    ).toHaveLength(1);
+  });
+
+  it("updates a card, sets its labels and deletes it", async () => {
+    const boardId = await board("Card lifecycle");
+    const columnId = await column(boardId, "Backlog");
+    const created = await callTool(fullToken, "kanban_card_create", {
+      columnId,
+      title: "Draft",
+    });
+    const cardId = (created.payload as { id: string }).id;
+
+    const label = await callTool(fullToken, "kanban_label_create", {
+      name: "Ops",
+      color: "AMBER",
+    });
+    const labelId = (label.payload as { id: string }).id;
+
+    const updated = await callTool(fullToken, "kanban_card_update", {
+      id: cardId,
+      title: "Drafted",
+      priority: "URGENT",
+    });
+    expect(updated.payload).toMatchObject({
+      title: "Drafted",
+      priority: "URGENT",
+    });
+
+    const labelled = await callTool(fullToken, "kanban_card_labels_set", {
+      cardId,
+      labelIds: [labelId],
+    });
+    expect(
+      (labelled.payload as { labels: Array<{ id: string }> }).labels,
+    ).toEqual([expect.objectContaining({ id: labelId })]);
+
+    const cleared = await callTool(fullToken, "kanban_card_labels_set", {
+      cardId,
+      labelIds: [],
+    });
+    expect((cleared.payload as { labels: unknown[] }).labels).toEqual([]);
+
+    const deleted = await callTool(fullToken, "kanban_card_delete", {
+      id: cardId,
+    });
+    expect(deleted.payload).toEqual({ deleted: cardId });
+    expect(
+      await db.kanbanCard.findUnique({ where: { id: cardId } }),
+    ).toBeNull();
+  });
+
+  it("keeps a checklist and comments on a card", async () => {
+    const boardId = await board("Checklist board");
+    const columnId = await column(boardId, "Doing");
+    const created = await callTool(fullToken, "kanban_card_create", {
+      columnId,
+      title: "Release checklist",
+    });
+    const cardId = (created.payload as { id: string }).id;
+
+    const item = await callTool(fullToken, "kanban_checklist_add", {
+      cardId,
+      text: "Tag the release",
+    });
+    const itemId = (item.payload as { id: string }).id;
+
+    const ticked = await callTool(fullToken, "kanban_checklist_update", {
+      itemId,
+      isDone: true,
+    });
+    expect((ticked.payload as { isDone: boolean }).isDone).toBe(true);
+
+    const listed = await callTool(fullToken, "kanban_checklist_list", {
+      cardId,
+    });
+    expect(listed.payload).toHaveLength(1);
+
+    const comment = await callTool(fullToken, "kanban_comment_add", {
+      cardId,
+      body: "Blocked on the migration.",
+    });
+    // A comment an agent writes carries the token name, so the board shows
+    // which agent wrote it.
+    expect((comment.payload as { authorName: string }).authorName).toBe("full");
+    const commentId = (comment.payload as { id: string }).id;
+
+    const comments = await callTool(fullToken, "kanban_comments_list", {
+      cardId,
+    });
+    expect(comments.payload).toHaveLength(1);
+
+    const removedComment = await callTool(fullToken, "kanban_comment_delete", {
+      commentId,
+    });
+    expect(removedComment.payload).toEqual({ deleted: commentId });
+
+    const removedItem = await callTool(fullToken, "kanban_checklist_delete", {
+      itemId,
+    });
+    expect(removedItem.payload).toEqual({ deleted: itemId });
+  });
+
+  it("refuses to delete a comment another author wrote", async () => {
+    const boardId = await board("Authorship board");
+    const columnId = await column(boardId, "Notes");
+    const created = await callTool(fullToken, "kanban_card_create", {
+      columnId,
+      title: "Operator note",
+    });
+    const cardId = (created.payload as { id: string }).id;
+
+    const comment = await db.kanbanComment.create({
+      data: {
+        workspaceId,
+        cardId,
+        cardWorkspaceId: workspaceId,
+        authorOperatorId: "some-operator",
+        authorName: "Operator",
+        body: "Written by a person.",
+      },
+    });
+
+    const result = await callTool(fullToken, "kanban_comment_delete", {
+      commentId: comment.id,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(
+      await db.kanbanComment.findUnique({ where: { id: comment.id } }),
+    ).not.toBe(null);
+  });
+
+  it("reorders boards and columns", async () => {
+    const first = await board("Order one");
+    const second = await board("Order two");
+    const reordered = await callTool(fullToken, "kanban_boards_reorder", {
+      order: [second, first],
+    });
+    expect(reordered.payload).toEqual({ reordered: true });
+    const boards = await db.kanbanBoard.findMany({
+      where: { id: { in: [first, second] } },
+      orderBy: { position: "asc" },
+      select: { id: true },
+    });
+    expect(boards.map((entry) => entry.id)).toEqual([second, first]);
+
+    const left = await column(first, "Left");
+    const right = await column(first, "Right");
+    const columnsReordered = await callTool(
+      fullToken,
+      "kanban_columns_reorder",
+      { boardId: first, order: [right, left] },
+    );
+    expect(columnsReordered.payload).toEqual({ reordered: true });
+    const columns = await db.kanbanColumn.findMany({
+      where: { boardId: first },
+      orderBy: { position: "asc" },
+      select: { id: true },
+    });
+    expect(columns.map((entry) => entry.id)).toEqual([right, left]);
+  });
+
+  it("reports a card missing its link partner as bad arguments", async () => {
+    const boardId = await board("Link board");
+    const columnId = await column(boardId, "Inbox");
+
+    const result = await callTool(fullToken, "kanban_card_create", {
+      columnId,
+      title: "Half a link",
+      linkedType: "SERVICE",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(await db.kanbanCard.count({ where: { title: "Half a link" } })).toBe(
+      0,
+    );
+  });
+
+  it("refuses to touch a card of another workspace", async () => {
+    const boardId = await board("Private board");
+    const columnId = await column(boardId, "Private");
+    const created = await callTool(fullToken, "kanban_card_create", {
+      columnId,
+      title: "Private card",
+    });
+    const cardId = (created.payload as { id: string }).id;
+
+    const result = await callTool(otherWorkspaceToken, "kanban_card_delete", {
+      id: cardId,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(await db.kanbanCard.findUnique({ where: { id: cardId } })).not.toBe(
+      null,
+    );
+  });
+
+  it("never offers a board or column delete, even at full scope", async () => {
+    const names = await listToolNames(fullToken);
+
+    expect(names).not.toContain("kanban_board_delete");
+    expect(names).not.toContain("kanban_column_delete");
+  });
+
+  it("denies the write tools to a read-only kanban token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "kanban-ro", [
+        "kanban:read",
+      ])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "kanban_board_get",
+      "kanban_boards_list",
+      "kanban_card_get",
+      "kanban_cards_search",
+      "kanban_checklist_list",
+      "kanban_comments_list",
+      "kanban_labels_list",
+      "kanban_link_targets_list",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "kanban_board_create",
+      arguments: { name: "Should not exist" },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(
+      await db.kanbanBoard.count({ where: { name: "Should not exist" } }),
+    ).toBe(0);
+  });
+});
+
+// The workspace's WEBHOOK account has no IMAP or SMTP transport, and
+// mail-actions skips the driver for a webhook item — so read state, moves,
+// deletes and labels run here without a network, while the two paths that
+// genuinely need a transport are asserted through their refusals.
+describe("mail write tools", () => {
+  async function seedMail(subject: string) {
+    const { id } = await mailService.create(workspaceId, {
+      sender: "ops@example.invalid",
+      subject,
+      body: `Body of ${subject}.`,
+    });
+    return id;
+  }
+
+  it("marks a message read, moves it and deletes it", async () => {
+    const id = await seedMail("agent-lifecycle");
+    const mailbox =
+      await mailAccountsService.getOrCreateWebhookAccount(workspaceId);
+    const archive = await db.mailFolder.create({
+      data: {
+        workspaceId,
+        accountId: mailbox.account.id,
+        accountWorkspaceId: workspaceId,
+        name: "Agent archive",
+        path: "AgentArchive",
+        specialUse: "ARCHIVE",
+      },
+    });
+
+    const marked = await callTool(fullToken, "mail_set_read", {
+      id,
+      isRead: true,
+    });
+    expect(marked.payload).toEqual({ id, isRead: true });
+
+    const moved = await callTool(fullToken, "mail_move", {
+      id,
+      targetFolderId: archive.id,
+    });
+    expect(moved.payload).toEqual({ id, folderId: archive.id });
+
+    // The webhook account has no Trash, so the first delete is permanent.
+    const deleted = await callTool(fullToken, "mail_delete", { id });
+    expect(deleted.payload).toEqual({ id, status: "deleted" });
+    expect(await db.mailItem.findUnique({ where: { id } })).toBeNull();
+  });
+
+  it("puts a label on a message and takes it off again", async () => {
+    const id = await seedMail("agent-labelled");
+    const label = await callTool(fullToken, "mail_label_create", {
+      name: "Invoices",
+      color: "GREEN",
+    });
+    const labelId = (label.payload as { id: string }).id;
+
+    await callTool(fullToken, "mail_label_assign", { id, labelId });
+    expect(
+      await db.mailItemLabel.count({ where: { mailItemId: id, labelId } }),
+    ).toBe(1);
+
+    const removed = await callTool(fullToken, "mail_label_remove", {
+      id,
+      labelId,
+    });
+    expect(removed.payload).toEqual({ id, labelId, removed: true });
+
+    const renamed = await callTool(fullToken, "mail_label_update", {
+      id: labelId,
+      color: "AMBER",
+    });
+    expect((renamed.payload as { color: string }).color).toBe("AMBER");
+
+    const gone = await callTool(fullToken, "mail_label_delete", {
+      id: labelId,
+    });
+    expect(gone.payload).toEqual({ deleted: labelId });
+  });
+
+  it("manages an account's filter rules", async () => {
+    const mailbox =
+      await mailAccountsService.getOrCreateWebhookAccount(workspaceId);
+    const label = await callTool(fullToken, "mail_label_create", {
+      name: "From ops",
+      color: "RED",
+    });
+    const labelId = (label.payload as { id: string }).id;
+
+    const created = await callTool(fullToken, "mail_filter_rule_create", {
+      accountId: mailbox.account.id,
+      labelId,
+      name: "Ops mail",
+      conditions: [
+        {
+          field: "FROM",
+          operator: "CONTAINS",
+          value: "ops@example.invalid",
+          isNegated: false,
+        },
+      ],
+    });
+    const ruleId = (created.payload as { id: string }).id;
+
+    const listed = await callTool(fullToken, "mail_filter_rules_list", {
+      accountId: mailbox.account.id,
+    });
+    expect(
+      (listed.payload as Array<{ id: string }>).map((entry) => entry.id),
+    ).toEqual([ruleId]);
+
+    const paused = await callTool(fullToken, "mail_filter_rule_update", {
+      id: ruleId,
+      isActive: false,
+    });
+    expect((paused.payload as { isActive: boolean }).isActive).toBe(false);
+
+    const removed = await callTool(fullToken, "mail_filter_rule_delete", {
+      id: ruleId,
+    });
+    expect(removed.payload).toEqual({ deleted: ruleId });
+    await callTool(fullToken, "mail_label_delete", { id: labelId });
+  });
+
+  it("reports a rule with no predicate as bad arguments", async () => {
+    const mailbox =
+      await mailAccountsService.getOrCreateWebhookAccount(workspaceId);
+    const label = await callTool(fullToken, "mail_label_create", {
+      name: "No predicate",
+      color: "SLATE",
+    });
+    const labelId = (label.payload as { id: string }).id;
+
+    const result = await callTool(fullToken, "mail_filter_rule_create", {
+      accountId: mailbox.account.id,
+      labelId,
+      name: "Empty rule",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(
+      await db.mailFilterRule.count({ where: { name: "Empty rule" } }),
+    ).toBe(0);
+    await callTool(fullToken, "mail_label_delete", { id: labelId });
+  });
+
+  it("returns an attachment base64-encoded", async () => {
+    const id = await seedMail("agent-attachment");
+    const content = Buffer.from("report,rows\n1,2\n", "utf8");
+    const attachment = await db.mailAttachment.create({
+      data: {
+        mailItemId: id,
+        filename: "report.csv",
+        contentType: "text/csv",
+        sizeBytes: content.byteLength,
+        content,
+      },
+    });
+
+    const { payload } = await callTool(fullToken, "mail_attachment_get", {
+      id,
+      attachmentId: attachment.id,
+    });
+
+    expect(payload).toMatchObject({
+      filename: "report.csv",
+      contentType: "text/csv",
+    });
+    expect(
+      Buffer.from(
+        (payload as { contentBase64: string }).contentBase64,
+        "base64",
+      ).toString("utf8"),
+    ).toBe("report,rows\n1,2\n");
+  });
+
+  it("refuses to sync the inbound-only webhook account", async () => {
+    const mailbox =
+      await mailAccountsService.getOrCreateWebhookAccount(workspaceId);
+
+    const result = await callTool(fullToken, "mail_sync_start", {
+      accountId: mailbox.account.id,
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  it("never offers account management, even at full scope", async () => {
+    const names = await listToolNames(fullToken);
+
+    for (const forbidden of [
+      "mail_account_create",
+      "mail_account_update",
+      "mail_account_delete",
+      "mail_account_test",
+    ]) {
+      expect(names).not.toContain(forbidden);
+    }
+  });
+
+  it("denies the write tools to a read-only mail token", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "mail-ro", ["mail:read"])
+    ).token;
+
+    expect(await listToolNames(readOnly)).toEqual([
+      "mail_accounts_list",
+      "mail_attachment_get",
+      "mail_filter_run_get",
+      "mail_filter_rules_list",
+      "mail_folders_list",
+      "mail_get",
+      "mail_labels_list",
+      "mail_search",
+    ]);
+
+    const body = await rpc(readOnly, "tools/call", {
+      name: "mail_label_create",
+      arguments: { name: "Should not exist", color: "BLUE" },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(
+      await db.mailLabel.count({ where: { name: "Should not exist" } }),
+    ).toBe(0);
   });
 });

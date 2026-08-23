@@ -189,6 +189,22 @@ export const kanbanCardMoveSchema = z
   })
   .strict();
 
+// Only the agent-facing /api/v1/kanban family parses a query string: the
+// dashboard loads the board once and filters it in the browser. Values arrive
+// as strings, hence the coercion.
+export const kanbanCardSearchQuerySchema = z
+  .object({
+    query: z.string().trim().min(1).optional(),
+    boardId: idSchema.optional(),
+    columnId: idSchema.optional(),
+    openOnly: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+  })
+  .strict();
+
 export const kanbanCardLabelsSchema = z
   .object({
     labelIds: z.array(idSchema),

@@ -67,6 +67,26 @@ export const messageTools: McpToolDefinition[] = [
   }),
 
   defineTool({
+    name: "message_channel_get",
+    scope: "messages:read",
+    title: "Read one channel",
+    description:
+      "Read a single channel by id — its name, the category it belongs to, and whether it still holds unread messages.",
+    inputSchema: z.object({ channelId }),
+    readOnly: true,
+    handler: async (args, ctx) => {
+      const channel = await messagesService.getChannelForWorkspace(
+        ctx.workspaceId,
+        args.channelId,
+      );
+      if (!channel) {
+        throw new McpResourceNotFoundError("Channel", args.channelId);
+      }
+      return channel;
+    },
+  }),
+
+  defineTool({
     name: "channel_webhooks_list",
     scope: "messages:read",
     title: "List a channel's webhooks",
@@ -170,6 +190,20 @@ export const messageTools: McpToolDefinition[] = [
         author: args.author ?? ctx.tokenName,
         origin: "AGENT",
       }),
+  }),
+
+  defineTool({
+    name: "message_channel_mark_read",
+    scope: "messages:write",
+    title: "Mark a channel read",
+    description:
+      "Clear one channel's unread messages. Read state is per channel and workspace-wide, so this is the same action opening the channel in the dashboard performs.",
+    inputSchema: z.object({ channelId }),
+    readOnly: false,
+    handler: async (args, ctx) => {
+      await requireChannel(ctx.workspaceId, args.channelId);
+      return messagesService.markChannelRead(ctx.workspaceId, args.channelId);
+    },
   }),
 
   defineTool({

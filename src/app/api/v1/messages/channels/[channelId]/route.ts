@@ -16,6 +16,19 @@ interface RouteContext {
   params: Promise<{ channelId: string }>;
 }
 
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireApiToken(request, "messages:read");
+  if (auth instanceof NextResponse) return auth;
+  const { channelId } = await params;
+
+  const channel = await messagesService.getChannelForWorkspace(
+    auth.workspaceId,
+    channelId,
+  );
+  if (!channel) return apiNotFound("Channel");
+  return apiJsonResponse(channel);
+}
+
 // Rename only — deleting a channel would take its message history with it.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireApiToken(request, "messages:write");

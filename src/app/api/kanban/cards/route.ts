@@ -5,8 +5,7 @@ import * as kanbanService from "@/lib/services/kanban";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { recordActivity } from "@/lib/services/activity";
-import { emitWebhookEvent } from "@/lib/services/webhook-events";
-import { cardWebhookPayload } from "@/lib/kanban/webhook-payload";
+import { emitCardCreated } from "@/lib/kanban/card-events";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -31,11 +30,7 @@ export async function POST(request: NextRequest) {
       entityId: card.id,
       entityLabel: card.title,
     });
-    void emitWebhookEvent(
-      workspace.id,
-      "KANBAN_CARD_CREATED",
-      cardWebhookPayload(card),
-    );
+    emitCardCreated(workspace.id, card);
     return jsonResponse(card, { status: 201 });
   } catch (error) {
     return toErrorResponse(error, workspace.id);
