@@ -32,6 +32,32 @@
     "Use the search box to filter by name, description, or URL, and the category dropdown to show only one category.",
     "Use a category's or bookmark's menu to rename or delete it — deleting a category also deletes its bookmarks."
   ],
+  "bookmarksManagementApiIntro": "Bookmarks can also be searched and managed by an external system or an AI assistant. Grant a token the Bookmarks permissions under <tokens>Settings → Webhooks</tokens>: the same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "bookmarksManagementApiFields": [
+    "bookmarks:read — search bookmarks and list categories.",
+    "bookmarks:write — create, update, delete and reorder bookmarks and categories.",
+    "Deleting a category is deliberately absent from the API: it takes every bookmark inside it with it, so that stays an operator action in the interface."
+  ],
+  "kanbanTitle": "Kanban",
+  "kanbanCardDescription": "Track work on drag-and-drop boards with columns, checklists and comments.",
+  "kanbanIntroP1": "Kanban holds any number of boards, each with columns you define — for example To do, Doing, Done — and cards that move between them. A card carries a title, description, priority, due date, an assignee from the workspace, and colored labels.",
+  "kanbanIntroP2": "A card can also link to a server, domain, service, alert or hosting account, so the board doubles as a task list tied to the infrastructure it is about. Mark one column terminal and dropping a card into it marks the card complete.",
+  "kanbanSteps": [
+    "Click \"New board\" to create a board, then \"Add column\" to lay out its stages.",
+    "Click \"Add card\" in a column to create a card with a title, priority and due date.",
+    "Drag a card between columns to move it, or within a column to reorder it; dropping it into the terminal column (marked Done) completes the card.",
+    "Open a card to add a checklist, leave comments, assign it to a workspace member, attach labels, or link it to a server, domain, service, alert or hosting account.",
+    "Use \"Manage labels\" to create colored labels shared across the board's cards.",
+    "Use a board's, column's or card's menu to rename or delete it — deleting a board or column also deletes the cards inside it."
+  ],
+  "kanbanManagementApiIntro": "Boards can also be read and managed by an external system or an AI assistant. Grant a token the Kanban permissions under <tokens>Settings → Webhooks</tokens>: the same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "kanbanManagementApiFields": [
+    "kanban:read — list boards, search cards, and read checklists, comments and labels.",
+    "kanban:write — create and update boards, columns, cards, checklists, comments and labels, and move cards between columns.",
+    "Deleting a board or a column is deliberately absent from the API: either takes every card inside it with it, so that stays an operator action in the interface.",
+    "A comment posted by a token is signed with the token's name, and only that same token can delete it again."
+  ],
+  "kanbanOutgoingWebhook": "Kanban has no incoming webhook — cards are created from the interface or through the API above. Moving a card does fire outgoing events, though: KANBAN_CARD_CREATED, KANBAN_CARD_MOVED and, when a card lands in the terminal column, KANBAN_CARD_COMPLETED. Subscribe an external URL to any of them under <outgoing>Settings → Outgoing webhooks</outgoing> to forward them to a chat, pager, or automation.",
   "domainsTitle": "Domains",
   "domainsCardDescription": "View and manage DNS records across connected providers.",
   "domainsIntroP1": "Domains lists every domain from your connected DNS providers (Cloudflare, Hetzner DNS, GoDaddy) in one table, with the number of DNS records and which provider manages it.",
@@ -77,6 +103,11 @@
     "Use \"Manage labels\" to create labels, then the search box and label filter to narrow the list.",
     "Click a card's title to open its detail page, or use the card menu to edit or delete it."
   ],
+  "servicesManagementApiIntro": "Services can also be created and managed by an external system or an AI assistant — defining a monitor, pausing it, or triggering a check on demand. Grant a token the Services permissions under <tokens>Settings → Webhooks</tokens>: the same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "servicesManagementApiFields": [
+    "services:read — list and read monitored services, their check history, and labels.",
+    "services:write — create, update, delete, pause or resume a service, check it on demand, and manage labels."
+  ],
   "servicesOutgoingWebhook": "Services have no incoming webhook — the dashboard runs the checks itself. Status changes do fire a SERVICE_STATUS event outwards, though: subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing> to forward them to a chat, pager, or automation.",
   "mailTitle": "Mail",
   "mailCardDescription": "A three-pane webmail client for connected IMAP accounts.",
@@ -96,6 +127,12 @@
     "subject — required: the subject line.",
     "body — required: the message text.",
     "receivedAt — optional: ISO 8601 date-time; defaults to the moment the request arrives."
+  ],
+  "mailManagementApiIntro": "The webhook above only delivers a single message into the built-in webhook mailbox. When an external system or an AI assistant should work an IMAP mailbox instead — search and read mail, send and file drafts, apply labels, manage filter rules, and trigger a sync — grant a token the Mail permissions under <tokens>Settings → Webhooks</tokens>. The same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "mailManagementApiFields": [
+    "mail:read — search and read mail, folders, labels, filter rules and attachments.",
+    "mail:write — mark read, move, delete, label, send, save drafts, manage filter rules and labels, and trigger a sync.",
+    "Creating, editing, deleting or testing a mail account is deliberately absent from the API — that would put a password through the token's context, so accounts stay an operator action in Settings → Mail."
   ],
   "mailOutgoingWebhook": "Mail arriving in a mailbox also fires a MAIL_RECEIVED event outwards — subscribe an external URL to it under <outgoing>Settings → Outgoing webhooks</outgoing>.",
   "messagesTitle": "Messages",

@@ -141,6 +141,7 @@
   "scopeAccessCreateAndMove": "Создание и перемещение",
   "scopeAccessCategorize": "Категоризация",
   "scopeAccessManage": "Управление и отправка",
+  "scopeAccessEditAndCheck": "Создание, изменение и запуск проверок",
   "editScopesButton": "Права",
   "editScopesTitle": "Права токена «{name}»",
   "scopesUpdatedToast": "Права токена обновлены.",

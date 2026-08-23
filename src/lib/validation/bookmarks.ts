@@ -91,6 +91,21 @@ export const bookmarkReorderSchema = z.object({
     .max(2), // a drag ever touches at most 2 categories (source + destination)
 });
 
+// Only the agent-facing /api/v1/bookmarks family parses a query string: the
+// dashboard loads the whole tree once and filters it in the browser. Values
+// arrive as strings, hence the coercion on limit.
+export const bookmarkSearchQuerySchema = z
+  .object({
+    query: z.string().trim().min(1).optional(),
+    categoryId: z.string().trim().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+  })
+  .strict();
+
+export const faviconSuggestQuerySchema = z
+  .object({ url: httpUrlSchema })
+  .strict();
+
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type BookmarkInput = z.infer<typeof bookmarkSchema>;
 export type BookmarkUpdateInput = z.infer<typeof bookmarkUpdateSchema>;

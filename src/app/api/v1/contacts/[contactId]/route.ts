@@ -2,11 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import * as contactsService from "@/lib/services/contacts";
 import {
   apiJsonResponse,
+  apiNotFound,
   apiValidationError,
   recordTokenActivity,
   requireApiToken,
 } from "@/lib/api/token-auth";
 import { contactUpdateSchema } from "@/lib/validation/contacts";
+import { mapContactApiError } from "@/app/api/v1/contacts/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,12 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const { contactId } = await params;
 
   const contact = await contactsService.getContact(auth.workspaceId, contactId);
-  if (contact === null) {
-    return apiJsonResponse(
-      { error: { code: "not_found", message: "Contact not found." } },
-      { status: 404 },
-    );
-  }
+  if (contact === null) return apiNotFound("Contact");
   return apiJsonResponse(contact);
 }
 
@@ -55,13 +52,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     });
     return apiJsonResponse(contact);
   } catch (error) {
-    if (error instanceof contactsService.ContactNotFoundError) {
-      return apiJsonResponse(
-        { error: { code: "not_found", message: "Contact not found." } },
-        { status: 404 },
-      );
-    }
-    throw error;
+    return mapContactApiError(error);
   }
 }
 
@@ -79,12 +70,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
     return apiJsonResponse({ deleted: contactId });
   } catch (error) {
-    if (error instanceof contactsService.ContactNotFoundError) {
-      return apiJsonResponse(
-        { error: { code: "not_found", message: "Contact not found." } },
-        { status: 404 },
-      );
-    }
-    throw error;
+    return mapContactApiError(error);
   }
 }

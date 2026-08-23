@@ -76,7 +76,10 @@ const SCOPE_GROUPS: ReadonlyArray<{
   {
     key: "services",
     labelKey: "scopeGroupServices",
-    scopes: [{ scope: "services:read", accessKey: "scopeAccessRead" }],
+    scopes: [
+      { scope: "services:read", accessKey: "scopeAccessRead" },
+      { scope: "services:write", accessKey: "scopeAccessEditAndCheck" },
+    ],
   },
   {
     key: "logs",

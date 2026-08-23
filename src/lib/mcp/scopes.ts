@@ -22,6 +22,12 @@ export const MCP_SCOPES = [
   "contacts:write",
   "servers:read",
   "services:read",
+  // Covers running a check on demand and deleting a service. A deleted service
+  // takes its check history with it, but the monitor itself is a handful of
+  // settings the operator can retype — nothing irreplaceable is lost the way it
+  // is with a mail account or a message channel — so it stays inside the single
+  // write scope.
+  "services:write",
   "logs:read",
   "kanban:read",
   // Covers creating and moving cards. Moving a card into a terminal column

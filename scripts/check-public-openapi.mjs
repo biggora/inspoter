@@ -34,8 +34,18 @@ function resolveSchema(spec, schema) {
   return schema?.$ref ? resolveLocalRef(spec, schema.$ref) : schema;
 }
 
+// The agent-facing operations share their auth, limit and error responses
+// through components.responses, so a response entry is often a $ref and has to
+// be resolved before its description, headers or schema can be read.
+function resolveResponse(response) {
+  return response?.$ref ? resolveLocalRef(spec, response.$ref) : response;
+}
+
 function jsonResponseSchema(response) {
-  return resolveSchema(spec, response?.content?.["application/json"]?.schema);
+  return resolveSchema(
+    spec,
+    resolveResponse(response)?.content?.["application/json"]?.schema,
+  );
 }
 
 function hasKeyDeep(value, keyNames) {
@@ -95,6 +105,10 @@ try {
 const discordPath = "/api/discord/webhooks/{webhookId}/{token}";
 const messagesBase = "/api/v1/messages";
 const contactsBase = "/api/v1/contacts";
+const servicesBase = "/api/v1/services";
+const bookmarksBase = "/api/v1/bookmarks";
+const kanbanBase = "/api/v1/kanban";
+const mailBase = "/api/v1/mail";
 // The ingest and MCP surfaces are POST-only; the Discord webhook is also
 // readable (Get Webhook with Token), and the Messages management API is a
 // regular REST family, so the allowed methods are pinned per path.
@@ -108,13 +122,68 @@ const expectedMethods = {
   [`${messagesBase}/categories`]: ["get", "post"],
   [`${messagesBase}/categories/{categoryId}`]: ["patch"],
   [`${messagesBase}/channels`]: ["post"],
-  [`${messagesBase}/channels/{channelId}`]: ["patch"],
+  [`${messagesBase}/channels/{channelId}`]: ["get", "patch"],
+  [`${messagesBase}/channels/{channelId}/read`]: ["post"],
   [`${messagesBase}/channels/{channelId}/messages`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
   [contactsBase]: ["get", "post"],
+  [`${contactsBase}/bulk`]: ["patch"],
+  [`${contactsBase}/duplicates`]: ["get"],
+  [`${contactsBase}/export`]: ["get"],
+  [`${contactsBase}/import`]: ["post"],
   [`${contactsBase}/labels`]: ["get", "post"],
+  [`${contactsBase}/labels/{labelId}`]: ["delete", "patch"],
+  [`${contactsBase}/merge`]: ["post"],
+  [`${contactsBase}/suggest`]: ["get"],
   [`${contactsBase}/{contactId}`]: ["delete", "get", "patch"],
+  [`${contactsBase}/{contactId}/photo`]: ["delete", "get", "post"],
+  [bookmarksBase]: ["get", "post"],
+  [`${bookmarksBase}/categories`]: ["get", "post"],
+  [`${bookmarksBase}/categories/reorder`]: ["patch"],
+  [`${bookmarksBase}/categories/{categoryId}`]: ["patch"],
+  [`${bookmarksBase}/favicon-suggest`]: ["get"],
+  [`${bookmarksBase}/reorder`]: ["patch"],
+  [`${bookmarksBase}/{bookmarkId}`]: ["delete", "get", "patch"],
+  [`${kanbanBase}/boards`]: ["get", "post"],
+  [`${kanbanBase}/boards/reorder`]: ["patch"],
+  [`${kanbanBase}/boards/{boardId}`]: ["get", "patch"],
+  [`${kanbanBase}/cards`]: ["get", "post"],
+  [`${kanbanBase}/cards/move`]: ["patch"],
+  [`${kanbanBase}/cards/{cardId}`]: ["delete", "get", "patch"],
+  [`${kanbanBase}/cards/{cardId}/checklist`]: ["get", "post"],
+  [`${kanbanBase}/cards/{cardId}/comments`]: ["get", "post"],
+  [`${kanbanBase}/cards/{cardId}/labels`]: ["put"],
+  [`${kanbanBase}/checklist/{itemId}`]: ["delete", "patch"],
+  [`${kanbanBase}/columns`]: ["post"],
+  [`${kanbanBase}/columns/reorder`]: ["patch"],
+  [`${kanbanBase}/columns/{columnId}`]: ["patch"],
+  [`${kanbanBase}/comments/{commentId}`]: ["delete"],
+  [`${kanbanBase}/labels`]: ["get", "post"],
+  [`${kanbanBase}/labels/{labelId}`]: ["delete", "patch"],
+  [`${kanbanBase}/link-targets`]: ["get"],
+  [mailBase]: ["get"],
+  [`${mailBase}/accounts`]: ["get"],
+  [`${mailBase}/accounts/{accountId}/folders`]: ["get"],
+  [`${mailBase}/accounts/{accountId}/sync`]: ["post"],
+  [`${mailBase}/drafts`]: ["post"],
+  [`${mailBase}/filter-rules`]: ["get", "post"],
+  [`${mailBase}/filter-rules/{ruleId}`]: ["delete", "patch"],
+  [`${mailBase}/filter-runs/{runId}`]: ["get"],
+  [`${mailBase}/filter-runs/{runId}/retry`]: ["post"],
+  [`${mailBase}/labels`]: ["get", "post"],
+  [`${mailBase}/labels/{labelId}`]: ["delete", "patch"],
+  [`${mailBase}/send`]: ["post"],
+  [`${mailBase}/{mailId}`]: ["delete", "get", "patch"],
+  [`${mailBase}/{mailId}/attachments/{attachmentId}`]: ["get"],
+  [`${mailBase}/{mailId}/labels/{labelId}`]: ["delete", "put"],
+  [`${mailBase}/{mailId}/move`]: ["post"],
+  [servicesBase]: ["get", "post"],
+  [`${servicesBase}/labels`]: ["get", "post"],
+  [`${servicesBase}/labels/{labelId}`]: ["delete", "patch"],
+  [`${servicesBase}/{serviceId}`]: ["delete", "get", "patch"],
+  [`${servicesBase}/{serviceId}/check-now`]: ["post"],
+  [`${servicesBase}/{serviceId}/checks`]: ["get"],
 };
 const expectedPaths = Object.keys(expectedMethods).sort();
 const actualPaths = Object.keys(spec.paths ?? {}).sort();
@@ -193,14 +262,21 @@ for (const { label, publicPath, operation } of allOperations) {
     );
   }
   check(
-    Boolean(operation.responses?.["401"]?.headers?.["WWW-Authenticate"]),
+    Boolean(
+      resolveResponse(operation.responses?.["401"])?.headers?.[
+        "WWW-Authenticate"
+      ],
+    ),
     `${label} response 401 must define WWW-Authenticate`,
   );
   check(
-    Boolean(operation.responses?.["429"]?.headers?.["Retry-After"]),
+    Boolean(
+      resolveResponse(operation.responses?.["429"])?.headers?.["Retry-After"],
+    ),
     `${label} response 429 must define Retry-After`,
   );
-  for (const [status, response] of Object.entries(operation.responses ?? {})) {
+  for (const [status, entry] of Object.entries(operation.responses ?? {})) {
+    const response = resolveResponse(entry);
     if (status === "500") {
       check(
         typeof response.description === "string" &&

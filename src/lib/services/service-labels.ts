@@ -13,6 +13,17 @@ import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
 
 export const SERVICE_LABEL_LIMIT = 100;
 
+// An API token has no operator behind it, so its own workspace scope is the
+// authority and the membership check is skipped — same contract as
+// src/lib/services/contacts.ts.
+async function requireWriteAccess(
+  workspaceId: string,
+  operatorId: string | null,
+): Promise<void> {
+  if (operatorId !== null)
+    await requireWorkspaceMember(workspaceId, operatorId);
+}
+
 export class ServiceLabelNameConflictError extends Error {
   readonly code = "LABEL_NAME_CONFLICT";
 
@@ -118,10 +129,10 @@ async function requireLabelInWorkspace(
 
 export async function createLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   input: CreateServiceLabelInput,
 ): Promise<ServiceLabelSummary> {
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
   const name = normalizeLabelDisplayName(input.name);
   const normalizedName = normalizeLabelName(input.name);
   const color = parseLabelColor(input.color);
@@ -155,14 +166,14 @@ export async function createLabel(
 
 export async function updateLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
   input: UpdateServiceLabelInput,
 ): Promise<ServiceLabelSummary> {
   // Resolve workspace scope before the membership check so foreign ids always
   // use the same non-disclosing 404 contract (mirrors mail-labels.ts).
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   const name =
     input.name === undefined
@@ -194,11 +205,11 @@ export async function updateLabel(
 
 export async function deleteLabel(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
 ): Promise<void> {
   await requireLabelInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   try {
     await db.serviceLabel.delete({

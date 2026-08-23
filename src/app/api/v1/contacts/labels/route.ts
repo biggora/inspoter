@@ -7,6 +7,7 @@ import {
   requireApiToken,
 } from "@/lib/api/token-auth";
 import { contactLabelSchema } from "@/lib/validation/contacts";
+import { mapContactApiError } from "@/app/api/v1/contacts/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,18 +44,6 @@ export async function POST(request: NextRequest) {
     });
     return apiJsonResponse(label, { status: 201 });
   } catch (error) {
-    if (error instanceof contactLabelsService.ContactLabelNameConflictError) {
-      return apiJsonResponse(
-        { error: { code: "conflict", message: error.message } },
-        { status: 409 },
-      );
-    }
-    if (error instanceof contactLabelsService.ContactLabelLimitReachedError) {
-      return apiJsonResponse(
-        { error: { code: "conflict", message: error.message } },
-        { status: 409 },
-      );
-    }
-    throw error;
+    return mapContactApiError(error);
   }
 }

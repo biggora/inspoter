@@ -1,7 +1,35 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Request } from "@playwright/test";
 
 import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
+
+// specs/openapi.json is the single source of truth for what the Swagger
+// reference documents, and scripts/check-public-openapi.mjs is the one place
+// that pins which paths and methods may appear in it. Reading the spec here
+// keeps this assertion honest without making every new route a three-file edit.
+const spec = JSON.parse(
+  fs.readFileSync(
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../specs/openapi.json",
+    ),
+    "utf8",
+  ),
+) as { paths: Record<string, Record<string, unknown>> };
+const expectedOperations: Record<string, string[]> = Object.fromEntries(
+  Object.entries(spec.paths).map(([name, item]) => [
+    name,
+    Object.keys(item).filter((key) => key !== "parameters"),
+  ]),
+);
+const expectedPaths = Object.keys(expectedOperations);
+const expectedOperationCount = Object.values(expectedOperations).reduce(
+  (sum, methods) => sum + methods.length,
+  0,
+);
 
 test.use({ trace: "off", screenshot: "off", video: "off" });
 
@@ -64,51 +92,6 @@ test("authenticated operator opens the documented Swagger reference without exte
   await page.locator('a[href$="/settings/api-docs"]').click();
   await expect(page).toHaveURL(new RegExp(`${API_DOCS_PATH}$`));
 
-  // The public OpenAPI spec (specs/openapi.json) is the single source of truth
-  // for what the Swagger reference documents. It is asserted verbatim by
-  // scripts/check-public-openapi.mjs, so mirror that surface here: every path
-  // and method the spec declares must render in the UI, and nothing else.
-  const expectedPaths = [
-    "/api/server-metrics",
-    "/api/webhooks/{type}",
-    "/api/webhooks/channels/{webhookId}/{token}",
-    "/api/mcp",
-    "/api/discord/webhooks/{webhookId}/{token}",
-    "/api/discord/webhooks/{webhookId}/{token}/slack",
-    "/api/v1/messages/categories",
-    "/api/v1/messages/categories/{categoryId}",
-    "/api/v1/messages/channels",
-    "/api/v1/messages/channels/{channelId}",
-    "/api/v1/messages/channels/{channelId}/messages",
-    "/api/v1/messages/channels/{channelId}/webhooks",
-    "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}",
-    "/api/v1/contacts",
-    "/api/v1/contacts/labels",
-    "/api/v1/contacts/{contactId}",
-  ];
-  const expectedOperations = {
-    "/api/server-metrics": ["post"],
-    "/api/webhooks/{type}": ["post"],
-    "/api/webhooks/channels/{webhookId}/{token}": ["post"],
-    "/api/mcp": ["post"],
-    "/api/discord/webhooks/{webhookId}/{token}": ["get", "post"],
-    "/api/discord/webhooks/{webhookId}/{token}/slack": ["post"],
-    "/api/v1/messages/categories": ["get", "post"],
-    "/api/v1/messages/categories/{categoryId}": ["patch"],
-    "/api/v1/messages/channels": ["post"],
-    "/api/v1/messages/channels/{channelId}": ["patch"],
-    "/api/v1/messages/channels/{channelId}/messages": ["get", "post"],
-    "/api/v1/messages/channels/{channelId}/webhooks": ["get", "post"],
-    "/api/v1/messages/channels/{channelId}/webhooks/{webhookId}": ["delete"],
-    "/api/v1/contacts": ["get", "post"],
-    "/api/v1/contacts/labels": ["get", "post"],
-    "/api/v1/contacts/{contactId}": ["get", "patch", "delete"],
-  };
-  const expectedOperationCount = Object.values(expectedOperations).reduce(
-    (sum, methods) => sum + methods.length,
-    0,
-  );
-
   // Swagger UI renders one operation block (and therefore one
   // `.opblock-summary-path`) per HTTP method on every path, so a path with
   // both GET and POST contributes two summaries. Assert the operation count
@@ -118,9 +101,7 @@ test("authenticated operator opens the documented Swagger reference without exte
   expect(
     Array.from(
       new Set(
-        (await operationPaths.allTextContents()).map((path) =>
-          path.trim(),
-        ),
+        (await operationPaths.allTextContents()).map((path) => path.trim()),
       ),
     ).sort(),
   ).toEqual([...expectedPaths].sort());
@@ -142,9 +123,9 @@ test("authenticated operator opens the documented Swagger reference without exte
       ).toHaveCount(1);
     }
   }
-  expect(
-    await page.locator(".swagger-ui .opblock-summary").count(),
-  ).toBe(expectedOperationCount);
+  expect(await page.locator(".swagger-ui .opblock-summary").count()).toBe(
+    expectedOperationCount,
+  );
   await expect(page.getByText("/api/services", { exact: false })).toHaveCount(
     0,
   );

@@ -149,6 +149,73 @@ export async function list(
     }));
 }
 
+// The dashboard renders the category tree list() returns; the agent surfaces
+// want a flat, searchable list instead. A workspace's bookmarks are a small,
+// already-loaded set, so the flattening and the search predicate live here in
+// memory rather than in SQL — and here rather than in either caller, so the MCP
+// tools and /api/v1/bookmarks cannot drift apart.
+export interface FlatBookmark extends Bookmark {
+  categoryName: string;
+  parentCategoryName: string | null;
+}
+
+export interface BookmarkSearchFilters {
+  /** Case-insensitive substring of the name, url or description. */
+  query?: string;
+  categoryId?: string;
+}
+
+export function flatten(categories: CategoryWithBookmarks[]): FlatBookmark[] {
+  const flat: FlatBookmark[] = [];
+  const push = (
+    bookmarks: Bookmark[],
+    category: Category,
+    parent: Category | null,
+  ) => {
+    for (const bookmark of bookmarks) {
+      flat.push({
+        ...bookmark,
+        categoryName: category.name,
+        parentCategoryName: parent?.name ?? null,
+      });
+    }
+  };
+
+  for (const category of categories) {
+    push(category.bookmarks, category, null);
+    for (const child of category.childCategories) {
+      push(child.bookmarks, child, category);
+    }
+  }
+  return flat;
+}
+
+export function filterFlat(
+  items: FlatBookmark[],
+  filters: BookmarkSearchFilters,
+): FlatBookmark[] {
+  const needle = filters.query?.trim().toLowerCase();
+  return items.filter((bookmark) => {
+    if (filters.categoryId && bookmark.categoryId !== filters.categoryId) {
+      return false;
+    }
+    if (!needle) return true;
+    return [bookmark.name, bookmark.url, bookmark.description ?? ""].some(
+      (field) => field.toLowerCase().includes(needle),
+    );
+  });
+}
+
+// One page of the flat list, in the { items, total } shape both agent
+// surfaces answer with.
+export async function search(
+  workspaceId: string,
+  filters: BookmarkSearchFilters & { limit?: number },
+): Promise<{ items: FlatBookmark[]; total: number }> {
+  const items = filterFlat(flatten(await list(workspaceId)), filters);
+  return { items: items.slice(0, filters.limit ?? 100), total: items.length };
+}
+
 export async function getBookmark(
   id: string,
   workspaceId: string,

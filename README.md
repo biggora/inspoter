@@ -12,7 +12,7 @@ Inspoter — self-hosted панель для управления доменам
 - почтовые аккаунты IMAP/SMTP, сообщения и вложения;
 - каналы сообщений, входящие и исходящие webhook, совместимые с Discord;
 - закладки, логи и оповещения;
-- MCP-сервер и REST API управления разделом «Сообщения» для ИИ-ассистентов, с правами на уровне API-токена;
+- MCP-сервер и агентский REST API для ИИ-ассистентов: почта, закладки, контакты, сообщения, kanban и сервисы, с правами на уровне API-токена;
 - рабочие пространства, участники и переключение между командами;
 - интерфейс на английском и русском языках;
 - вход по паролю или через Authentik OIDC.
@@ -91,7 +91,7 @@ docker compose exec app pnpm db:seed
 | `AUTHENTIK_ISSUER`, `AUTHENTIK_CLIENT_ID`, `AUTHENTIK_CLIENT_SECRET`, `AUTHENTIK_REDIRECT_URI` | необязательны, задаются вместе | Включают вход через Authentik OIDC. Если группа не задана, доступен вход по паролю.                                                                                                         |
 | `LIST_PAGE_SIZE`                                                                               | необязательна                  | Размер страницы; значение по умолчанию — `50`.                                                                                                                                              |
 | `WEBHOOK_RATE_LIMIT`, `WEBHOOK_RATE_WINDOW_MS`, `WEBHOOK_MAX_BODY_BYTES`                       | необязательны                  | Ограничения для входящих webhook.                                                                                                                                                           |
-| `WEBHOOK_AUTO_DISABLE_AFTER`                                                                   | необязательна                  | Сколько неудачных доставок подряд отключают исходящий webhook (по умолчанию 10). Счётчик обнуляется успешной доставкой и ручным включением.                                                  |
+| `WEBHOOK_AUTO_DISABLE_AFTER`                                                                   | необязательна                  | Сколько неудачных доставок подряд отключают исходящий webhook (по умолчанию 10). Счётчик обнуляется успешной доставкой и ручным включением.                                                 |
 | `BACKUP_MAX_IMPORT_BYTES`, `BACKUP_IMPORT_TX_TIMEOUT_MS`                                       | необязательны                  | Резервное копирование (`/settings/backup`): максимальный размер импортируемого архива (по умолчанию 512 МиБ) и таймаут транзакции импорта (по умолчанию 5 минут).                           |
 | `SERVER_METRICS_RATE_LIMIT`, `SERVER_METRICS_RATE_WINDOW_MS`                                   | необязательны                  | Rate limiting для публичного метрик-эндпоинта: максимум запросов на пару «токен + IP-адрес источника» (по умолчанию 12) и окно в мс (по умолчанию 60 000).                                  |
 | `LLM_REQUEST_TIMEOUT_MS`, `LLM_CALL_RATE_LIMIT`, `LLM_CALL_RATE_WINDOW_MS`                     | необязательны                  | Модели ИИ: таймаут одного запроса к модели (по умолчанию 60 000 мс) и лимит вызовов на рабочее пространство (по умолчанию 60 вызовов в час). Адрес модели и ключ задаются в UI, а не здесь. |
@@ -231,17 +231,17 @@ Discord-URL — такой же секрет, как обычный: обрат�
 
 У каждого исходящего вебхука в **Настройках → Исходящих вебхуках** есть формат доставки:
 
-| Формат                  | Что уходит на провод                                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `INSPOT` (по умолчанию) | Собственный конверт с подписью HMAC-SHA256 в `X-Inspot-Signature`. Существующие подписки не меняются.          |
-| `DISCORD_EXECUTE`       | Тело Discord Execute Webhook: событие уходит карточкой embed. Указывайте URL вебхука Discord-канала.           |
-| `DISCORD_EVENTS`        | Конверт Discord Webhook Events с подписью Ed25519, PING при создании, таймаут 3 с. Публичный ключ виден в UI.  |
+| Формат                  | Что уходит на провод                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `INSPOT` (по умолчанию) | Собственный конверт с подписью HMAC-SHA256 в `X-Inspot-Signature`. Существующие подписки не меняются.         |
+| `DISCORD_EXECUTE`       | Тело Discord Execute Webhook: событие уходит карточкой embed. Указывайте URL вебхука Discord-канала.          |
+| `DISCORD_EVENTS`        | Конверт Discord Webhook Events с подписью Ed25519, PING при создании, таймаут 3 с. Публичный ключ виден в UI. |
 
 `DISCORD_EXECUTE` уважает `retry_after` из ответа `429`. После `WEBHOOK_AUTO_DISABLE_AFTER` неудачных доставок подряд вебхук отключается автоматически, а ручное включение обнуляет счётчик.
 
 ## MCP (Model Context Protocol)
 
-`POST /api/mcp` — эндпоинт Model Context Protocol: ИИ-ассистент (Claude Code и Claude Desktop, Cursor, VS Code) получает доступ к почте, оповещениям, закладкам, сообщениям, серверам, сервисам и логам рабочего пространства. Транспорт — Streamable HTTP без сессий; авторизация — тот же универсальный API-токен, что и у webhook, через заголовок `Authorization: Bearer <токен>`.
+`POST /api/mcp` — эндпоинт Model Context Protocol: ИИ-ассистент (Claude Code и Claude Desktop, Cursor, VS Code) получает доступ к почте, оповещениям, закладкам, контактам, сообщениям, kanban, серверам, сервисам и логам рабочего пространства. Транспорт — Streamable HTTP без сессий; авторизация — тот же универсальный API-токен, что и у webhook, через заголовок `Authorization: Bearer <токен>`.
 
 ### Выдача токена
 
@@ -267,66 +267,80 @@ Discord-URL — такой же секрет, как обычный: обрат�
 
 ### Инструменты и права
 
-`tools/list` показывает только те инструменты, на которые у токена есть права.
+`tools/list` показывает только те инструменты, на которые у токена есть права. Всего 109 инструментов на 15 правах.
 
-| Право             | Инструменты                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------- |
-| `mail:read`       | `mail_accounts_list`, `mail_folders_list`, `mail_labels_list`, `mail_search`, `mail_get` |
-| `mail:write`      | `mail_draft_save`, `mail_send`                                                           |
-| `alerts:read`     | `alerts_search`, `alerts_get`, `alert_categories_list`                                   |
-| `alerts:write`    | `alerts_set_category`, `alert_category_create`                                           |
-| `bookmarks:read`  | `bookmarks_search`, `bookmarks_get`, `bookmark_categories_list`                          |
-| `bookmarks:write` | `bookmark_create`                                                                        |
-| `messages:read`   | `message_categories_list`, `messages_list`, `channel_webhooks_list`                      |
-| `messages:write`  | `message_category_create`, `message_category_rename`, `message_channel_create`, `message_channel_rename`, `message_send`, `channel_webhook_create`, `channel_webhook_revoke` |
-| `servers:read`    | `servers_list`, `server_get`                                                             |
-| `services:read`   | `services_list`, `service_get`, `service_checks`                                         |
-| `logs:read`       | `logs_search`                                                                            |
+| Право             | Инструменты                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mail:read`       | `mail_accounts_list`, `mail_folders_list`, `mail_labels_list`, `mail_search`, `mail_get`, `mail_attachment_get`, `mail_filter_rules_list`, `mail_filter_run_get`                                                                                                                                                                                                                                                                                                  |
+| `mail:write`      | `mail_draft_save`, `mail_send`, `mail_set_read`, `mail_move`, `mail_delete`, `mail_label_assign`, `mail_label_remove`, `mail_label_create`, `mail_label_update`, `mail_label_delete`, `mail_filter_rule_create`, `mail_filter_rule_update`, `mail_filter_rule_delete`, `mail_filter_run_retry`, `mail_sync_start`                                                                                                                                                 |
+| `alerts:read`     | `alerts_search`, `alerts_get`, `alert_categories_list`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `alerts:write`    | `alerts_set_category`, `alert_category_create`                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `bookmarks:read`  | `bookmarks_search`, `bookmarks_get`, `bookmark_categories_list`, `bookmark_favicon_suggest`                                                                                                                                                                                                                                                                                                                                                                       |
+| `bookmarks:write` | `bookmark_create`, `bookmark_update`, `bookmark_delete`, `bookmarks_reorder`, `bookmark_category_create`, `bookmark_category_rename`, `bookmark_categories_reorder`                                                                                                                                                                                                                                                                                               |
+| `kanban:read`     | `kanban_boards_list`, `kanban_board_get`, `kanban_cards_search`, `kanban_card_get`, `kanban_labels_list`, `kanban_checklist_list`, `kanban_comments_list`, `kanban_link_targets_list`                                                                                                                                                                                                                                                                             |
+| `kanban:write`    | `kanban_board_create`, `kanban_board_rename`, `kanban_boards_reorder`, `kanban_column_create`, `kanban_column_update`, `kanban_columns_reorder`, `kanban_card_create`, `kanban_card_update`, `kanban_card_move`, `kanban_card_delete`, `kanban_card_labels_set`, `kanban_checklist_add`, `kanban_checklist_update`, `kanban_checklist_delete`, `kanban_comment_add`, `kanban_comment_delete`, `kanban_label_create`, `kanban_label_update`, `kanban_label_delete` |
+| `messages:read`   | `message_categories_list`, `message_channel_get`, `messages_list`, `channel_webhooks_list`                                                                                                                                                                                                                                                                                                                                                                        |
+| `messages:write`  | `message_category_create`, `message_category_rename`, `message_channel_create`, `message_channel_rename`, `message_channel_mark_read`, `message_send`, `channel_webhook_create`, `channel_webhook_revoke`                                                                                                                                                                                                                                                         |
+| `contacts:read`   | `contacts_list`, `contacts_get`, `contact_labels_list`, `contacts_duplicates`, `contacts_suggest`, `contacts_export`                                                                                                                                                                                                                                                                                                                                              |
+| `contacts:write`  | `contacts_create`, `contacts_update`, `contacts_delete`, `contacts_bulk`, `contacts_merge`, `contacts_import`, `contact_label_create`, `contact_label_update`, `contact_label_delete`                                                                                                                                                                                                                                                                             |
+| `servers:read`    | `servers_list`, `server_get`                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `services:read`   | `services_list`, `service_get`, `service_checks`, `service_labels_list`                                                                                                                                                                                                                                                                                                                                                                                           |
+| `services:write`  | `service_create`, `service_update`, `service_delete`, `service_set_active`, `service_check_now`, `service_labels_set`, `service_label_create`, `service_label_update`, `service_label_delete`                                                                                                                                                                                                                                                                     |
+| `logs:read`       | `logs_search`                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+### Чего агент не может
+
+Три вида действий сознательно не опубликованы ни как инструмент MCP, ни как маршрут `/api/v1`:
+
+- **Каскадные удаления.** Доска и колонка kanban, категория закладок, категория и канал «Сообщений», почтовый аккаунт — каждое такое удаление уносит содержимое, которого агент не видел. Удалять листья (карточку, пункт чек-листа, комментарий, закладку, метку, письмо, сервис, контакт) он может.
+- **Учётные данные почты.** Создание, изменение, удаление и проверка аккаунта IMAP/SMTP означают передачу пароля через контекст ассистента. Аккаунты заводит оператор в `/settings/mail`; агенту доступны чтение писем, раскладка по папкам и меткам, отправка, правила фильтрации и запуск синхронизации.
+- **Питание серверов.** Право `servers:read` не имеет пары на запись: start/stop/restart VPS остаётся действием оператора.
+
+### Заметки по разделам
 
 Категоризация оповещений: `alerts_search` с `categoryId: "none"` возвращает оповещения без категории, `alert_category_create` заводит категорию (существующая по такому же имени переиспользуется), `alerts_set_category` привязывает оповещение к категории или снимает привязку при `categoryId: null`. Проставленная так категория помечается в интерфейсе как «Поставлено моделью», и оператор может её изменить.
 
-Черновики и отправка работают с любого IMAP-аккаунта рабочего пространства: `mail_accounts_list` возвращает доступные аккаунты, их `id` передаётся в `mail_draft_save` и `mail_send`. Системный аккаунт `WEBHOOK` только принимает почту и отправлять через него нельзя.
+Почта: черновики и отправка работают с любого IMAP-аккаунта рабочего пространства — `mail_accounts_list` возвращает доступные аккаунты, их `id` передаётся в `mail_draft_save` и `mail_send`. Системный аккаунт `WEBHOOK` только принимает почту: отправка и синхронизация через него отклоняются. `mail_delete` при первом вызове переносит письмо в «Корзину» аккаунта, а из «Корзины» (или из аккаунта без неё) удаляет насовсем — что именно произошло, сказано в поле `status`. Вложения отдаются в base64 через `mail_attachment_get`.
+
+Kanban: комментарий, написанный агентом, подписан именем токена, и удалить его может только тот же токен — чужие комментарии отвечают тем же 404, что и посторонний id. Перемещение карточки в терминальную колонку (`isDone`) завершает карточку и поднимает исходящий webhook `KANBAN_CARD_COMPLETED` — ровно так же, как перетаскивание мышью в интерфейсе. Назначить исполнителя можно только на участника рабочего пространства.
+
+Сервисы: `service_check_now` запускает проверку вне расписания и работает даже на приостановленном сервисе. `service_set_active` — это короткая форма `service_update` для паузы и возобновления.
 
 Показатели серверов (CPU, load, память, swap, диск, uptime) приходят прямо в ответе `servers_list` и `server_get` в поле `metrics`; история проверок сервисов — в `service_checks`.
 
-Раздел «Сообщения»: `message_categories_list` возвращает дерево категорий с каналами, `message_category_create` и `message_channel_create` работают по принципу get-or-create (совпадение имени без учёта регистра, поэтому повторный запуск того же сценария ничего не дублирует), `message_send` пишет в канал. Удаления категорий и каналов у агента нет — оно уносит всю переписку и остаётся действием оператора в интерфейсе. Право `messages:write` включает и управление вебхуками канала: `channel_webhook_create` возвращает URL с секретом один раз, `channel_webhook_revoke` его отзывает.
+Раздел «Сообщения»: `message_categories_list` возвращает дерево категорий с каналами, `message_category_create` и `message_channel_create` работают по принципу get-or-create (совпадение имени без учёта регистра, поэтому повторный запуск того же сценария ничего не дублирует), `message_send` пишет в канал. Право `messages:write` включает и управление вебхуками канала: `channel_webhook_create` возвращает URL с секретом один раз, `channel_webhook_revoke` его отзывает.
 
-Rate limit общий с webhook-эндпоинтами и настраивается через `WEBHOOK_RATE_LIMIT` и `WEBHOOK_RATE_WINDOW_MS`. `GET` и `DELETE` на `/api/mcp` отвечают `405`: сессии протокола не поддерживаются.
+Rate limit общий с webhook-эндпоинтами и настраивается через `WEBHOOK_RATE_LIMIT` и `WEBHOOK_RATE_WINDOW_MS`. У `mail_send` поверх него действует отдельный лимит отправки `MAIL_SEND_RATE_LIMIT`. `GET` и `DELETE` на `/api/mcp` отвечают `405`: сессии протокола не поддерживаются.
 
-## API управления разделом «Сообщения»
+## Агентский REST API
 
-`/api/v1/messages/**` — то же самое, что даёт MCP, но обычным REST: для клиентов и скриптов без поддержки MCP. Авторизация — тот же bearer-токен и те же права `messages:read` / `messages:write`; рабочее пространство берётся из токена, сессионная cookie и заголовок `X-Inspoter-Workspace` не участвуют. Полная схема — в **Настройки → Документация API** (`/settings/api-docs`).
+`/api/v1/**` — то же самое, что даёт MCP, но обычным REST: для клиентов и скриптов без поддержки MCP. Авторизация — тот же bearer-токен и те же права; рабочее пространство берётся из токена, сессионная cookie и заголовок `X-Inspoter-Workspace` не участвуют. Полная схема всех 71 пути — в **Настройки → Документация API** (`/settings/api-docs`).
 
-| Метод и путь                                                       | Право            | Действие                                                       |
-| ------------------------------------------------------------------ | ---------------- | -------------------------------------------------------------- |
-| `GET /api/v1/messages/categories`                                   | `messages:read`  | категории с каналами                                            |
-| `POST /api/v1/messages/categories`                                  | `messages:write` | get-or-create категории: `201` — создана, `200` — уже была      |
-| `PATCH /api/v1/messages/categories/{categoryId}`                    | `messages:write` | переименование категории                                        |
-| `POST /api/v1/messages/channels`                                    | `messages:write` | get-or-create канала в категории                                |
-| `PATCH /api/v1/messages/channels/{channelId}`                       | `messages:write` | переименование канала                                           |
-| `GET /api/v1/messages/channels/{channelId}/messages`                | `messages:read`  | лента канала с курсорной пагинацией                             |
-| `POST /api/v1/messages/channels/{channelId}/messages`               | `messages:write` | отправка сообщения                                              |
-| `GET /api/v1/messages/channels/{channelId}/webhooks`                | `messages:read`  | вебхуки канала без секретов                                     |
-| `POST /api/v1/messages/channels/{channelId}/webhooks`               | `messages:write` | новый вебхук канала; URL с секретом отдаётся один раз           |
-| `DELETE /api/v1/messages/channels/{channelId}/webhooks/{webhookId}` | `messages:write` | отзыв вебхука                                                   |
+| Семейство              | Право         | Что покрывает                                                                                                              |
+| ---------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/bookmarks/**` | `bookmarks:*` | плоский поиск закладок, CRUD закладки, дерево категорий, переупорядочивание, подсказка иконки                              |
+| `/api/v1/contacts/**`  | `contacts:*`  | CRUD контакта, метки, массовые действия, дубликаты и слияние, импорт и экспорт, подсказка адресатов, фотография            |
+| `/api/v1/kanban/**`    | `kanban:*`    | доски, колонки, карточки, перемещение, метки, чек-листы, комментарии, цели для связи                                       |
+| `/api/v1/mail/**`      | `mail:*`      | поиск и чтение писем, прочитано/не прочитано, папки, метки, вложения, черновики, отправка, правила фильтров, синхронизация |
+| `/api/v1/messages/**`  | `messages:*`  | категории, каналы, лента, отправка, отметка «прочитано», вебхуки канала                                                    |
+| `/api/v1/services/**`  | `services:*`  | CRUD мониторов, пауза, проверка по требованию, история проверок, метки                                                     |
 
 ```bash
-curl -X POST https://dashboard.example.com/api/v1/messages/categories \
-  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
-  -d '{"name":"Deployments"}'
+curl -H "Authorization: Bearer <токен>" \
+  "https://dashboard.example.com/api/v1/services?status=DOWN"
 
-curl -X POST https://dashboard.example.com/api/v1/messages/channels \
-  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
-  -d '{"categoryId":"<id категории>","name":"releases"}'
+curl -X POST https://dashboard.example.com/api/v1/kanban/cards \
+  -H "Authorization: Bearer <токен>" -H "Content-Type: application/json" \
+  -d '{"columnId":"<id колонки>","title":"Проверить бэкапы","priority":"HIGH"}'
 
-curl -X POST https://dashboard.example.com/api/v1/messages/channels/<id канала>/messages \
-  -H "Authorization: Bearer ВАШ_ТОКЕН" -H "Content-Type: application/json" \
-  -d '{"content":"Деплой завершён на web-01."}'
+curl -X PATCH https://dashboard.example.com/api/v1/mail/<id письма> \
+  -H "Authorization: Bearer <токен>" -H "Content-Type: application/json" \
+  -d '{"isRead":true}'
 ```
 
-Ошибки приходят в виде `{ "error": { "code", "message" } }`: `401` — токена нет либо он отозван, канальный или без прав MCP; `403` — не хватает нужного права; `404` — объекта нет в рабочем пространстве токена; `400` (`VALIDATION_FAILED`) — тело не прошло проверку, поле `issues` указывает на конкретное поле; `429` — превышен общий с webhook rate limit.
+Ошибки приходят в виде `{ "error": { "code", "message" } }`: `401` — токена нет либо он отозван, канальный или без прав MCP; `403` — не хватает нужного права; `404` — объекта нет в рабочем пространстве токена; `400` (`VALIDATION_FAILED`) — тело или строка запроса не прошли проверку, поле `issues` указывает на конкретное поле; `409` — конфликт имени или достигнутый лимит; `413` — загружаемый файл больше допустимого; `429` — превышен общий с webhook rate limit; `502` (`UPSTREAM_FAILED`) — почтовый сервер отказал, локально ничего не изменилось.
 
-Сообщения, отправленные по токену (и через REST, и через MCP), сохраняются с признаком `AGENT` и в ленте помечаются как «Агент»; автором становится имя токена, если явный `author` не передан. Изменения, сделанные REST-маршрутами, попадают в журнал действий под именем токена — MCP-инструменты в журнал не пишут, как и остальные существующие инструменты.
+Сообщения, отправленные по токену (и через REST, и через MCP), сохраняются с признаком `AGENT` и в ленте помечаются как «Агент»; автором становится имя токена, если явный `author` не передан. Изменения, сделанные REST-маршрутами, попадают в журнал действий под именем токена — MCP-инструменты в журнал не пишут.
 
 ## Метрики серверов (VPS Metrics Agent)
 

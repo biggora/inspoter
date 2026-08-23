@@ -74,6 +74,17 @@ export interface UpdateMailFilterRuleInput {
   position?: number;
 }
 
+// An API token has no operator behind it, so its own workspace scope is the
+// authority and the membership check is skipped — same contract as
+// src/lib/services/contacts.ts.
+async function requireWriteAccess(
+  workspaceId: string,
+  operatorId: string | null,
+): Promise<void> {
+  if (operatorId !== null)
+    await requireWorkspaceMember(workspaceId, operatorId);
+}
+
 const RULE_SELECT = {
   id: true,
   accountId: true,
@@ -221,7 +232,7 @@ function mapKnownMutationError(error: unknown): never {
 
 export async function listMailFilterRules(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   accountId: string,
 ) {
   const account = await db.mailAccount.findFirst({
@@ -229,7 +240,7 @@ export async function listMailFilterRules(
     select: { id: true },
   });
   if (!account) throw new MailFilterRuleResourceNotFoundError();
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   const rules = await db.mailFilterRule.findMany({
     where: { workspaceId, accountId },
@@ -243,7 +254,7 @@ export const listExactSenderRules = listMailFilterRules;
 
 export async function createMailFilterRule(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   input: CreateMailFilterRuleInput,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ) {
@@ -282,7 +293,7 @@ export async function createMailFilterRule(
   ) {
     throw new MailFilterRuleResourceNotFoundError();
   }
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   try {
     return await runAccountTransaction(input.accountId, async (tx) => {
@@ -375,13 +386,13 @@ export const createExactSenderRule = createMailFilterRule;
 
 export async function updateMailFilterRule(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
   input: UpdateMailFilterRuleInput,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ) {
   const scopedRule = await requireRuleInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   try {
     return await runAccountTransaction(scopedRule.accountId, async (tx) => {
@@ -539,12 +550,12 @@ export async function updateMailFilterRule(
 
 export async function deleteMailFilterRule(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ): Promise<void> {
   const scopedRule = await requireRuleInWorkspace(workspaceId, id);
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
 
   try {
     await runAccountTransaction(scopedRule.accountId, async (tx) => {

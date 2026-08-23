@@ -107,6 +107,17 @@ const DEFAULT_RUNTIME: MailFilterRunRuntime = {
   leaseToken: randomUUID,
 };
 
+// An API token has no operator behind it, so its own workspace scope is the
+// authority and the membership check is skipped — same contract as
+// src/lib/services/contacts.ts.
+async function requireWriteAccess(
+  workspaceId: string,
+  operatorId: string | null,
+): Promise<void> {
+  if (operatorId !== null)
+    await requireWorkspaceMember(workspaceId, operatorId);
+}
+
 function sanitizeWorkerError(error: unknown): string {
   const raw = error instanceof Error ? error.message : "Filter run failed.";
   return raw.replace(/[\r\n\t]+/gu, " ").slice(0, MAX_ERROR_LENGTH);
@@ -168,7 +179,7 @@ export async function createMailFilterRunInTransaction(
 
 export async function getMailFilterRun(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
 ) {
   const run = await db.mailFilterRun.findFirst({
@@ -176,13 +187,13 @@ export async function getMailFilterRun(
     select: MAIL_FILTER_RUN_DTO_SELECT,
   });
   if (!run) throw new MailFilterRunResourceNotFoundError();
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
   return toMailFilterRunDto(run);
 }
 
 export async function retryMailFilterRun(
   workspaceId: string,
-  operatorId: string,
+  operatorId: string | null,
   id: string,
 ) {
   const scoped = await db.mailFilterRun.findFirst({
@@ -190,7 +201,7 @@ export async function retryMailFilterRun(
     select: { id: true, status: true },
   });
   if (!scoped) throw new MailFilterRunResourceNotFoundError();
-  await requireWorkspaceMember(workspaceId, operatorId);
+  await requireWriteAccess(workspaceId, operatorId);
   if (scoped.status !== "FAILED") throw new MailFilterRunRetryConflictError();
 
   const updated = await db.mailFilterRun.updateMany({

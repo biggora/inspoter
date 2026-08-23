@@ -840,4 +840,100 @@ and the two visible consequences it does have — the «Агент» badge and t
 «Сообщения» permission group — are asserted by MGA-UI-002 and MGA-UI-001 at the
 component level. The Activity journal entries the REST writes produce are
 verified only by reading the code path; no case asserts a stored `Activity`
-row, which is the one gap worth closing if this API grows further.
+row for the Messages family. The suites added in §16 do assert it for the
+families that followed (AGT-SVC-002, AGT-BM-002, AGT-KAN-003), so the gap is
+now confined to Messages.
+
+---
+
+## 16. Agent surface across every section (§3.14, FR-AGT-001..003)
+
+The Messages tables above (§15) stay as they are — they cover the first
+section opened to a token. This section covers the five that followed and the
+rules that hold across all of them.
+
+All rows are **PENDING**: the suites are written but the test database has
+never been brought up in this environment (`pnpm test:db:prepare` requires
+`ALLOW_TEST_DB_RESET=1`, which is refused here). Running
+`pnpm test:integration` is what turns them into PASS.
+
+### 16.1 Contract gate and documentation (unit + e2e, no database)
+
+| ID          | Acceptance/evidence target                                                                                                                                     | Trace      | Status  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-DOC-001 | `scripts/check-public-openapi.mjs` pins the 71-path inventory and the methods allowed per path; every operation has a unique operation id and bearer security. | AC-AGT-008 | PASS    |
+| AGT-DOC-002 | `tests/unit/openapi/public-openapi.test.ts` asserts operation properties only and reads the inventory from the specification.                                  | AC-AGT-008 | PASS    |
+| AGT-DOC-003 | `e2e/api-docs.spec.ts` renders exactly the specification's paths and methods at `/settings/api-docs`, with no external request.                                | AC-AGT-008 | PENDING |
+| AGT-DOC-004 | `tests/unit/mcp/scopes.test.ts` pins the twelve non-destructive Messages tools and, by name, the absence of every cascading delete and of mail account tools.  | AC-AGT-005 | PASS    |
+| AGT-DOC-005 | Every tool declares a known scope and no two tools share a name; a full-scope token is advertised the whole catalogue.                                         | AC-AGT-001 | PASS    |
+
+### 16.2 Services (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                          | Trace      | Status  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-SVC-001 | No token, an unknown, revoked or scopeless token answers 401; a `services:read` token answers 403 on a write and creates nothing.   | AC-AGT-001 | PENDING |
+| AGT-SVC-002 | Create, read, update, pause and delete a monitor over REST; `Activity` carries create/update/delete under the token's name.         | AC-AGT-004 | PENDING |
+| AGT-SVC-003 | A monitor missing its type-specific target answers 400 with issues (REST) and a readable argument error (MCP); nothing is created.  | AC-AGT-001 | PENDING |
+| AGT-SVC-004 | `check-now` records a check and the history endpoint returns it; a paused service can still be checked.                             | AC-AGT-003 | PENDING |
+| AGT-SVC-005 | Label create, rename, assign, filter-by-label and delete; a duplicate name answers 409 `LABEL_NAME_CONFLICT` on both surfaces.      | AC-AGT-003 | PENDING |
+| AGT-SVC-006 | A foreign-workspace service or label answers 404 (REST) or a tool error (MCP) on read, update and delete, and the row is untouched. | AC-AGT-002 | PENDING |
+
+### 16.3 Bookmarks (integration, real database)
+
+| ID         | Acceptance/evidence target                                                                                                                         | Trace      | Status  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-BM-001 | The flat list carries each bookmark's category and, for a nested one, its parent category; an unknown query parameter answers 400.                 | AC-AGT-003 | PENDING |
+| AGT-BM-002 | Create, read, update, move between categories and delete; `Activity` carries all three writes under the token's name.                              | AC-AGT-004 | PENDING |
+| AGT-BM-003 | A non-http url and a category of another workspace both answer 400 and create nothing.                                                             | AC-AGT-002 | PENDING |
+| AGT-BM-004 | Reorder applies the given order within a category; a reorder naming a foreign bookmark answers 400.                                                | AC-AGT-002 | PENDING |
+| AGT-BM-005 | A category nests exactly one level: a third level answers 400 (REST) or a tool error (MCP) and creates nothing. Promotion back to top level works. | AC-AGT-003 | PENDING |
+| AGT-BM-006 | No operation deletes a bookmark category on either surface.                                                                                        | AC-AGT-005 | PENDING |
+
+### 16.4 Contacts (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                            | Trace      | Status  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-CNT-001 | The family answers 404 in the shared uppercase code the rest of `/api/v1` uses, and 403 without the write scope.                      | AC-AGT-001 | PENDING |
+| AGT-CNT-002 | A bulk star and a bulk delete report the rows actually touched; foreign ids are ignored rather than rejected and survive.             | AC-AGT-002 | PENDING |
+| AGT-CNT-003 | Duplicate detection groups records sharing an address; merge folds them into the primary and deletes the others.                      | AC-AGT-003 | PENDING |
+| AGT-CNT-004 | A vCard import reports what it created; the export returns it as text; the suggestion endpoint finds its address.                     | AC-AGT-003 | PENDING |
+| AGT-CNT-005 | Label create, rename and delete; a case-differing duplicate answers 409 `LABEL_NAME_CONFLICT`; a foreign label answers 404 and stays. | AC-AGT-002 | PENDING |
+| AGT-CNT-006 | A photo is stored, served with its content type and cleared; an SVG upload answers 415 and no photo is stored.                        | AC-AGT-003 | PENDING |
+
+### 16.5 Kanban (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                              | Trace      | Status  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-KAN-001 | A board, its columns and a card are created over the agent surface; the board detail lists them in order.                               | AC-AGT-003 | PENDING |
+| AGT-KAN-002 | Moving a card into a terminal column sets `completedAt` and reports the move; a reorder inside one column reports nothing moved.        | AC-AGT-003 | PENDING |
+| AGT-KAN-003 | Card update, wholesale label replacement (including clearing) and delete; `Activity` carries create/update/move/delete under the token. | AC-AGT-004 | PENDING |
+| AGT-KAN-004 | Checklist add, tick, list and delete; comment add, list and delete.                                                                     | AC-AGT-003 | PENDING |
+| AGT-KAN-005 | A comment written by an agent carries the token's name; deleting a comment written by anyone else answers 404 and the comment stays.    | AC-AGT-007 | PENDING |
+| AGT-KAN-006 | A card carrying `linkedType` without `linkedId` answers 400 (REST) or a readable argument error (MCP); nothing is created.              | AC-AGT-001 | PENDING |
+| AGT-KAN-007 | Board and column reorder apply the given order; a foreign board or card answers 404 (REST) or a tool error (MCP).                       | AC-AGT-002 | PENDING |
+| AGT-KAN-008 | No operation deletes a board or a column on either surface, even at full scope.                                                         | AC-AGT-005 | PENDING |
+
+### 16.6 Mail (integration, real database)
+
+The webhook account has no IMAP or SMTP transport and `mail-actions` skips the
+driver for its items, so read state, moves, deletes and labels are exercised
+without a network. The two paths that genuinely need a transport are asserted
+through their refusals.
+
+| ID           | Acceptance/evidence target                                                                                                                                 | Trace      | Status  |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-MAIL-001 | List, read, mark read, move between folders and delete a message; a `mail:read` token answers 403 on the read-state write.                                 | AC-AGT-001 | PENDING |
+| AGT-MAIL-002 | Deleting from an account without a Trash reports `status: "deleted"`; the row is gone.                                                                     | AC-AGT-003 | PENDING |
+| AGT-MAIL-003 | A move into another account's folder answers 400 and the message stays where it was.                                                                       | AC-AGT-002 | PENDING |
+| AGT-MAIL-004 | An attachment is returned base64-encoded and decodes to the stored bytes.                                                                                  | AC-AGT-003 | PENDING |
+| AGT-MAIL-005 | The account listing exposes no password or password hint, and no operation creates, edits, deletes or tests an account.                                    | AC-AGT-006 | PENDING |
+| AGT-MAIL-006 | Sending from and syncing the inbound-only webhook account are both refused with 400 (REST) or a tool error (MCP).                                          | AC-AGT-006 | PENDING |
+| AGT-MAIL-007 | Label create, assign, remove, recolor and delete; a case-differing duplicate answers 409 `LABEL_NAME_CONFLICT`.                                            | AC-AGT-003 | PENDING |
+| AGT-MAIL-008 | Filter rule create, list by account, pause and delete; a rule with no predicate answers 400 and creates nothing; the list without `accountId` answers 400. | AC-AGT-001 | PENDING |
+
+### 16.7 Messages, extended (integration, real database)
+
+| ID          | Acceptance/evidence target                                                                                                                | Trace      | Status  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
+| AGT-MSG-001 | A single channel is readable by id on both surfaces; a foreign channel answers 404 (REST) or a tool error (MCP).                          | AC-AGT-002 | PENDING |
+| AGT-MSG-002 | Marking a channel read clears its unread messages and reports how many; a `messages:read` token answers 403 (REST) or a tool error (MCP). | AC-AGT-001 | PENDING |

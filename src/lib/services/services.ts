@@ -154,6 +154,39 @@ export async function listOverview(
   }));
 }
 
+export interface ServiceOverviewFilters {
+  /** Substring of the name, description, URL or host. */
+  query?: string;
+  status?: ServiceStatus;
+  labelId?: string;
+}
+
+// Applied in memory rather than pushed into SQL: listOverview() already loads
+// the workspace's whole (small) service list, and both agent surfaces — the
+// MCP tools and /api/v1/services — need exactly this predicate, so it lives
+// here rather than being written twice.
+export function filterOverview(
+  items: ServiceOverviewItem[],
+  filters: ServiceOverviewFilters,
+): ServiceOverviewItem[] {
+  const needle = filters.query?.trim().toLowerCase();
+  return items.filter((service) => {
+    if (filters.status && service.currentStatus !== filters.status) {
+      return false;
+    }
+    if (
+      filters.labelId &&
+      !service.labels.some((label) => label.id === filters.labelId)
+    ) {
+      return false;
+    }
+    if (!needle) return true;
+    return [service.name, service.description, service.url, service.host]
+      .filter((field): field is string => typeof field === "string")
+      .some((field) => field.toLowerCase().includes(needle));
+  });
+}
+
 export async function get(
   id: string,
   workspaceId: string,

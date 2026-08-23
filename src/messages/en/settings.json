@@ -141,6 +141,7 @@
   "scopeAccessCreateAndMove": "Create and move",
   "scopeAccessCategorize": "Categorize",
   "scopeAccessManage": "Manage and post",
+  "scopeAccessEditAndCheck": "Create, update and run checks",
   "editScopesButton": "Permissions",
   "editScopesTitle": "Permissions for \"{name}\"",
   "scopesUpdatedToast": "Token permissions updated.",

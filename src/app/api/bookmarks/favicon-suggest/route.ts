@@ -3,16 +3,11 @@ import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
 import { httpUrlSchema } from "@/lib/validation/bookmarks";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
+import { suggestFavicon } from "@/lib/bookmarks/favicon";
 
-// Favicon suggestion for the bookmark dialog (Phase 3). SSRF-safe by
-// construction: we never fetch the bookmark's own URL/host. Only the
-// hostname is extracted and passed as a query-string value to Google's
-// public favicon-inference endpoint — the outbound TCP target is always
-// www.google.com, never the bookmark's host.
-
-export function buildFaviconSuggestUrl(hostname: string): string {
-  return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
-}
+// Favicon suggestion for the bookmark dialog (Phase 3). The SSRF-safe probe
+// itself lives in @/lib/bookmarks/favicon, shared with the agent surfaces.
+export { buildFaviconSuggestUrl } from "@/lib/bookmarks/favicon";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -26,20 +21,5 @@ export async function GET(request: NextRequest) {
     return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const hostname = new URL(parsed.data).hostname;
-  const suggestUrl = buildFaviconSuggestUrl(hostname);
-
-  try {
-    const res = await fetch(suggestUrl, {
-      method: "HEAD",
-      signal: AbortSignal.timeout(3000),
-    });
-    const contentType = res.headers.get("content-type");
-    if (res.ok && contentType?.startsWith("image/")) {
-      return jsonResponse({ icon: suggestUrl });
-    }
-    return jsonResponse({ icon: null });
-  } catch {
-    return jsonResponse({ icon: null });
-  }
+  return jsonResponse({ icon: await suggestFavicon(parsed.data) });
 }

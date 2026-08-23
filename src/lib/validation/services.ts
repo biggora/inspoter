@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MonitorType } from "@/generated/prisma/client";
+import { MonitorType, ServiceStatus } from "@/generated/prisma/client";
 import { isLabelColor, type LabelColor } from "@/lib/label-color";
 import { normalizeLabelDisplayName } from "@/lib/label-normalization";
 import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
@@ -160,6 +160,26 @@ export const serviceUpdateSchema = z
 
 export type ServiceCreateSchemaInput = z.infer<typeof serviceCreateSchema>;
 export type ServiceUpdateSchemaInput = z.infer<typeof serviceUpdateSchema>;
+
+// --- Query strings ---
+// Only the agent-facing /api/v1/services family parses a query string: the
+// dashboard loads the whole list once and filters it in the browser. Values
+// arrive as strings, hence the coercion on pageSize.
+
+export const serviceListQuerySchema = z
+  .object({
+    query: z.string().trim().min(1).optional(),
+    status: z.enum(ServiceStatus).optional(),
+    labelId: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
+export const serviceChecksQuerySchema = z
+  .object({
+    cursor: z.string().min(1).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  })
+  .strict();
 
 // --- Service labels ---
 // Unlike the schemas above these emit machine-readable codes rather than

@@ -68,7 +68,7 @@ describe("tool selection", () => {
   // deleting a category takes every channel and message inside it with it. The
   // guarantee is the absence of a tool, so it is pinned as an exact catalogue:
   // adding a delete tool later has to fail here first.
-  it("gives a full-scope Messages token exactly the ten non-destructive tools", () => {
+  it("gives a full-scope Messages token exactly the twelve non-destructive tools", () => {
     const names = selectTools(["messages:read", "messages:write"])
       .map((tool) => tool.name)
       .sort();
@@ -81,11 +81,42 @@ describe("tool selection", () => {
       "message_category_create",
       "message_category_rename",
       "message_channel_create",
+      "message_channel_get",
+      "message_channel_mark_read",
       "message_channel_rename",
       "message_send",
       "messages_list",
     ]);
   });
+
+  // The same rule, applied to the domains that gained a delete tool: an agent
+  // removes leaves (a card, a checklist item, a bookmark, a label), never a
+  // container whose deletion would cascade to content it cannot see. These are
+  // absence guarantees, so each is pinned by name.
+  it.each([
+    [
+      "kanban",
+      ["kanban:read", "kanban:write"],
+      ["kanban_board_delete", "kanban_column_delete"],
+    ],
+    [
+      "bookmarks",
+      ["bookmarks:read", "bookmarks:write"],
+      ["bookmark_category_delete"],
+    ],
+    [
+      "mail",
+      ["mail:read", "mail:write"],
+      ["mail_account_delete", "mail_account_create"],
+    ],
+  ] as const)(
+    "never gives a full-scope %s token a cascading delete",
+    (_domain, scopes, forbidden) => {
+      const names = selectTools([...scopes]).map((tool) => tool.name);
+
+      for (const name of forbidden) expect(names).not.toContain(name);
+    },
+  );
 
   it("declares a known scope for every tool and no duplicate names", () => {
     const names = ALL_TOOLS.map((tool) => tool.name);
