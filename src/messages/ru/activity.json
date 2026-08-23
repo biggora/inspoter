@@ -33,6 +33,8 @@
   "entityKanbanColumn": "Kanban-колонка",
   "entityKanbanCard": "Kanban-карточка",
   "entityKanbanLabel": "Kanban-метка",
+  "entityNote": "Заметка",
+  "entityNoteFolder": "Папка заметок",
   "entityService": "Сервис",
   "entityCredential": "Провайдер",
   "entityDnsRecord": "DNS-запись",

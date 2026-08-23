@@ -130,6 +130,20 @@
     "moveColumnsInvalid": "Перенос затрагивает не более двух колонок",
     "updateRequired": "Укажите хотя бы одно поле для изменения"
   },
+  "note": {
+    "titleRequired": "Заголовок обязателен",
+    "titleTooLong": "Заголовок не должен превышать 120 символов",
+    "contentTooLong": "Содержимое не должно превышать 256 КиБ",
+    "folderNameRequired": "Название папки обязательно",
+    "folderNameTooLong": "Название папки не должно превышать 60 символов",
+    "versionRequired": "Версия обязательна",
+    "orderRequired": "Порядок не может быть пустым",
+    "folderIdInvalid": "Некорректная папка",
+    "updateFieldsRequired": "Укажите хотя бы одно поле для изменения",
+    "tagNameRequired": "Название тега обязательно",
+    "tagNameTooLong": "Название тега не должно превышать 40 символов",
+    "tagColorInvalid": "Выберите корректный цвет"
+  },
   "backup": {
     "passphraseRequired": "Укажите пароль",
     "passphraseTooShort": "Пароль должен содержать не менее 10 символов",

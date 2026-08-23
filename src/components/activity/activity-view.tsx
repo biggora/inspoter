@@ -58,6 +58,8 @@ const ENTITY_TYPE_LABEL_KEYS: Record<string, string> = {
   kanban_column: "entityKanbanColumn",
   kanban_card: "entityKanbanCard",
   kanban_label: "entityKanbanLabel",
+  note: "entityNote",
+  note_folder: "entityNoteFolder",
   service: "entityService",
   credential: "entityCredential",
   dns_record: "entityDnsRecord",

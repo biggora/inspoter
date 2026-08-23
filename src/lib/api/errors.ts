@@ -26,6 +26,18 @@ import {
   KanbanLabelNotFoundError,
 } from "@/lib/services/kanban-labels";
 import {
+  NoteLimitReachedError,
+  NoteNotFoundError,
+  NoteTitleConflictError,
+  NoteVersionConflictError,
+} from "@/lib/services/notes";
+import {
+  NoteFolderLimitReachedError,
+  NoteFolderNameConflictError,
+  NoteFolderNotFoundError,
+  NoteHierarchyValidationError,
+} from "@/lib/services/note-folders";
+import {
   EncryptionNotConfiguredError,
   OutgoingWebhookNotFoundError,
   WebhookDeliveryNotFoundError,
@@ -138,6 +150,39 @@ export function toErrorResponse(
   }
   if (error instanceof KanbanLabelNameConflictError) {
     return jsonResponse({ error: error.code }, { status: 409 });
+  }
+  if (
+    error instanceof NoteNotFoundError ||
+    error instanceof NoteFolderNotFoundError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof NoteHierarchyValidationError) {
+    return jsonResponse({ error: error.message }, { status: 400 });
+  }
+  if (error instanceof NoteFolderNameConflictError) {
+    return jsonResponse({ error: error.code }, { status: 409 });
+  }
+  if (
+    error instanceof NoteLimitReachedError ||
+    error instanceof NoteFolderLimitReachedError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 409 },
+    );
+  }
+  if (error instanceof NoteTitleConflictError) {
+    return jsonResponse(
+      { error: error.code, suggestedTitle: error.suggestedTitle },
+      { status: 409 },
+    );
+  }
+  if (error instanceof NoteVersionConflictError) {
+    return jsonResponse(
+      { error: error.code, currentVersion: error.currentVersion },
+      { status: 409 },
+    );
   }
   if (error instanceof WorkspaceOwnerRequiredError) {
     return jsonResponse(

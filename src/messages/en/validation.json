@@ -130,6 +130,20 @@
     "moveColumnsInvalid": "A move affects at most two columns",
     "updateRequired": "Provide at least one field to update"
   },
+  "note": {
+    "titleRequired": "Title is required",
+    "titleTooLong": "Title must not exceed 120 characters",
+    "contentTooLong": "Content must not exceed 256 KiB",
+    "folderNameRequired": "Folder name is required",
+    "folderNameTooLong": "Folder name must not exceed 60 characters",
+    "versionRequired": "Version is required",
+    "orderRequired": "Order cannot be empty",
+    "folderIdInvalid": "Invalid folder",
+    "updateFieldsRequired": "Provide at least one field to update",
+    "tagNameRequired": "Tag name is required",
+    "tagNameTooLong": "Tag name must not exceed 40 characters",
+    "tagColorInvalid": "Choose a valid color"
+  },
   "backup": {
     "passphraseRequired": "Password is required",
     "passphraseTooShort": "Password must be at least 10 characters",

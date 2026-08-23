@@ -33,6 +33,8 @@
   "entityKanbanColumn": "Kanban column",
   "entityKanbanCard": "Kanban card",
   "entityKanbanLabel": "Kanban label",
+  "entityNote": "Note",
+  "entityNoteFolder": "Note folder",
   "entityService": "Service",
   "entityCredential": "Provider",
   "entityDnsRecord": "DNS record",

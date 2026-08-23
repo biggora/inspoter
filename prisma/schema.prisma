@@ -128,6 +128,12 @@ model Workspace {
   kanbanCardLabels        KanbanCardLabel[]
   kanbanChecklistItems    KanbanChecklistItem[]
   kanbanComments          KanbanComment[]
+  noteFolders             NoteFolder[]
+  notes                   Note[]
+  noteLinks               NoteLink[]
+  noteTags                NoteTag[]
+  noteTagLinks            NoteTagLink[]
+  noteAssets              NoteAsset[]
 }
 
 model WorkspaceMember {
@@ -955,15 +961,15 @@ model ContactAddress {
 }
 
 model ContactLabel {
-  id             String                  @id @default(cuid())
+  id             String                   @id @default(cuid())
   workspaceId    String
-  workspace      Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace      Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name           String
   normalizedName String
   color          String
-  position       Int                     @default(0)
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  position       Int                      @default(0)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
   contacts       ContactLabelAssignment[]
 
   @@unique([id, workspaceId])
@@ -1577,4 +1583,152 @@ model ServerMetricSample {
   @@unique([localServerId, capturedAt])
   @@index([workspaceId, localServerId, capturedAt])
   @@index([capturedAt])
+}
+
+// --- Notes (Obsidian-style note vault) ---
+// A workspace holds one vault: an arbitrarily nested folder tree of
+// markdown notes, wiki-links between them, managed color tags, and image
+// attachments. Notes is a distinct feature from the single-note "sticky"
+// dashboard widget (DashboardWidgetKind.NOTE) — see the NOTES enum value
+// added in the migration for that name collision.
+model NoteFolder {
+  id                      String       @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                    String
+  normalizedName          String
+  parentFolderId          String?
+  parentFolderWorkspaceId String?
+  parentFolder            NoteFolder?  @relation("NoteFolderParent", fields: [parentFolderId, parentFolderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  childFolders            NoteFolder[] @relation("NoteFolderParent")
+  // Materialized depth from the vault root. This is the cheap half of cycle
+  // protection — it only rejects depth overflow and immediate
+  // self-parenting via the migration's CHECK constraints. A longer cycle
+  // (A -> B -> C -> A) requires comparing rows to each other and is caught
+  // by a recursive CTE in src/lib/services/note-folders.ts before a move is
+  // committed.
+  depth                   Int          @default(0)
+  position                Int          @default(0)
+  notes                   Note[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  // Sibling name uniqueness (both within a parent and among root folders) is
+  // enforced by two partial unique indexes in the migration SQL — Prisma's
+  // @@unique cannot express a WHERE clause.
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, parentFolderId, position, id])
+}
+
+model Note {
+  id                String                   @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folderId          String?
+  folderWorkspaceId String?
+  folder            NoteFolder?              @relation(fields: [folderId, folderWorkspaceId], references: [id, workspaceId], onDelete: Cascade) // null = vault root
+  title             String
+  normalizedTitle   String
+  // Source-of-truth CommonMark text — NEVER HTML. Rendered only through the
+  // ProseMirror schema (src/components/notes/note-editor*), so no
+  // sanitize-html pass is needed here, unlike KanbanCard.description.
+  content           String                   @default("")
+  // Plain-text lead of the body, for list rows.
+  excerpt           String                   @default("")
+  isPinned          Boolean                  @default(false)
+  // Optimistic concurrency counter. Deliberately NOT updatedAt: re-indexing
+  // links after someone else's rename also touches updatedAt, which would
+  // look like a conflict to whoever is mid-typing.
+  version           Int                      @default(1)
+  /// Generated STORED tsvector column, created and indexed with GIN in raw
+  /// SQL — Prisma has no tsvector type. The generated client never reads or
+  /// writes this field; all full-text search queries go through $queryRaw
+  /// in src/lib/services/notes.ts.
+  searchVector      Unsupported("tsvector")?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  outgoingLinks NoteLink[]    @relation("NoteLinkSource")
+  incomingLinks NoteLink[]    @relation("NoteLinkTarget")
+  tags          NoteTagLink[]
+  assets        NoteAsset[]
+
+  @@unique([id, workspaceId])
+  // Global-in-workspace title uniqueness is what makes [[Note]] resolvable
+  // without a disambiguation policy.
+  @@unique([workspaceId, normalizedTitle])
+  @@index([workspaceId, folderId, normalizedTitle])
+  @@index([workspaceId, updatedAt, id])
+}
+
+model NoteLink {
+  id                    String    @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceNoteId          String
+  sourceNoteWorkspaceId String
+  sourceNote            Note      @relation("NoteLinkSource", fields: [sourceNoteId, sourceNoteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  targetNoteId          String?
+  targetNoteWorkspaceId String?
+  // SetNull, not Cascade: deleting a note must turn links to it into
+  // visible unresolved links, not erase the fact that it was referenced.
+  targetNote            Note?     @relation("NoteLinkTarget", fields: [targetNoteId, targetNoteWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  // Normalized target title exactly as written inside [[ ]].
+  targetTitle           String
+  // The |alias| half of [[Note|alias]].
+  displayText           String?
+  occurrences           Int       @default(1)
+  createdAt             DateTime  @default(now())
+
+  @@unique([sourceNoteId, targetTitle])
+  @@index([workspaceId, targetNoteId])
+  @@index([workspaceId, targetTitle])
+}
+
+model NoteTag {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String // same encoding as KanbanLabel.color
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  notes          NoteTagLink[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model NoteTagLink {
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  noteId          String
+  noteWorkspaceId String
+  note            Note      @relation(fields: [noteId, noteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  tagId           String
+  tagWorkspaceId  String
+  tag             NoteTag   @relation(fields: [tagId, tagWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt       DateTime  @default(now())
+
+  @@unique([noteId, tagId])
+  @@index([workspaceId, tagId, noteId])
+}
+
+model NoteAsset {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  noteId          String
+  noteWorkspaceId String
+  note            Note      @relation(fields: [noteId, noteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  filename        String
+  contentType     String
+  sizeBytes       Int
+  content         Bytes
+  createdAt       DateTime  @default(now())
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, noteId, createdAt])
 }
