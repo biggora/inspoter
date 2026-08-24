@@ -19,6 +19,7 @@ export interface CredentialDto {
   isValid: boolean | null;
   lastCheckedAt: string | null;
   autoRefreshEnabled: boolean;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,7 +48,7 @@ export type UpsertCredentialInput =
   // `mode` is omitted by the dialog on purpose — the route defaults it to
   // REAL, and only tests/e2e post MOCK.
   | {
-      provider: "OPENAI_COMPATIBLE";
+      provider: "OPENAI_COMPATIBLE" | "ANTHROPIC_COMPATIBLE";
       label: string;
       baseUrl: string;
       model: string;
@@ -122,6 +123,11 @@ export const credentialsApi = {
     request<CredentialDto>(`/api/credentials/${id}/auto-refresh`, {
       method: "PATCH",
       body: JSON.stringify({ enabled }),
+    }),
+  setDefault: (id: string, isDefault: boolean) =>
+    request<CredentialDto>(`/api/credentials/${id}/default`, {
+      method: "PATCH",
+      body: JSON.stringify({ isDefault }),
     }),
   remove: (id: string) =>
     request<void>(`/api/credentials/${id}`, { method: "DELETE" }),

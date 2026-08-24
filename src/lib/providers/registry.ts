@@ -43,8 +43,19 @@ export const PROVIDER_REGISTRY: Record<ProviderType, ProviderMeta> = {
     fields: ["hostname", "username", "apiToken"],
     booleanFields: ["allowInsecure"],
   },
+  // The two LLM entries differ only in the wire format their driver speaks,
+  // so the operator picks the transport here and types the same three fields
+  // either way. Order matters: PROVIDER_OPTIONS in
+  // provider-credential-dialog.tsx is built from Object.keys(), so the
+  // OpenAI-compatible transport stays first and is what an operator reaches
+  // for by default.
   OPENAI_COMPATIBLE: {
     label: "OpenAI-compatible",
+    category: "LLM",
+    fields: ["baseUrl", "model", "apiKey"],
+  },
+  ANTHROPIC_COMPATIBLE: {
+    label: "Anthropic-compatible",
     category: "LLM",
     fields: ["baseUrl", "model", "apiKey"],
   },
@@ -61,4 +72,12 @@ export const HOSTING_PROVIDER_TYPES: ProviderType[] = [
   "HOSTINGER",
   "CPANEL_WHM",
   "CPANEL_UAPI",
+];
+
+// Read by src/lib/llm/registry.ts to find the workspace's model credential.
+// Order is the tie-breaker only in theory: the registry picks the credential
+// flagged as default and falls back to the oldest one, never to this order.
+export const LLM_PROVIDER_TYPES: ProviderType[] = [
+  "OPENAI_COMPATIBLE",
+  "ANTHROPIC_COMPATIBLE",
 ];

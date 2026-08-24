@@ -81,6 +81,15 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
 // Non-secret fields (host/username) render as plain text; secrets as password.
 const SECRET_FIELDS = new Set(["apiToken", "apiKey", "apiSecret"]);
 
+// The two LLM transports take the same three fields, so the base URL is the
+// only thing telling an operator which one a vendor speaks — z.ai in
+// particular is reachable through both. The hint names the addresses instead
+// of leaving them to the README.
+const BASE_URL_HINT_KEYS: Partial<Record<ProviderType, string>> = {
+  OPENAI_COMPATIBLE: "hintOpenAiBaseUrl",
+  ANTHROPIC_COMPATIBLE: "hintAnthropicBaseUrl",
+};
+
 function fieldLabel(field: string, t: (key: string) => string): string {
   const key = FIELD_LABEL_KEYS[field];
   return key ? t(key) : field;
@@ -303,6 +312,13 @@ export function ProviderCredentialDialog({
                     aria-invalid={!!message || undefined}
                     aria-describedby={message ? `${fieldId}-error` : undefined}
                   />
+                  {field === "baseUrl" &&
+                    provider &&
+                    BASE_URL_HINT_KEYS[provider] && (
+                      <FieldDescription>
+                        {t(BASE_URL_HINT_KEYS[provider])}
+                      </FieldDescription>
+                    )}
                   <FieldError id={`${fieldId}-error`}>{message}</FieldError>
                 </Field>
               );

@@ -549,3 +549,86 @@ export function deleteMailDraftAttachment(
     { method: "DELETE" },
   );
 }
+
+// --- AI features (specs/ai-integration.md scenarios 1-3) ---
+//
+// All three are POST even though nothing is mutated: the call is not
+// idempotent and costs tokens, and a GET is something the browser is entitled
+// to prefetch. Every one takes an AbortSignal — the model deadline is 60 s,
+// so an operator who moves on must be able to drop the request.
+//
+// Failures arrive as a stable code in ApiError.message (AI_UNAVAILABLE,
+// AI_RATE_LIMIT, …), which the component maps to a message key.
+
+export interface MailAiSummaryDto {
+  summary: string;
+  bullets: string[];
+  actionItems: string[];
+  model: string;
+  truncated: boolean;
+}
+
+export interface MailAiReplyDraftDto {
+  bodyText: string;
+  model: string;
+  truncated: boolean;
+}
+
+export interface MailAiFilterProposalDto {
+  name: string;
+  matchMode: MailFilterMatchMode;
+  conditions: MailFilterConditionInput[];
+  droppedConditions: number;
+  reason: string | null;
+  model: string;
+  truncated: boolean;
+}
+
+function postAi<T>(
+  id: string,
+  action: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  return request<T>(`/api/mail/${encodeURIComponent(id)}/ai/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export function summarizeMailMessage(
+  id: string,
+  language: string,
+  signal?: AbortSignal,
+): Promise<MailAiSummaryDto> {
+  return postAi<MailAiSummaryDto>(id, "summary", { language }, signal);
+}
+
+export function draftMailReply(
+  id: string,
+  language: string,
+  instruction: string | undefined,
+  signal?: AbortSignal,
+): Promise<MailAiReplyDraftDto> {
+  return postAi<MailAiReplyDraftDto>(
+    id,
+    "reply-draft",
+    instruction ? { language, instruction } : { language },
+    signal,
+  );
+}
+
+export function proposeMailFilterRule(
+  id: string,
+  language: string,
+  signal?: AbortSignal,
+): Promise<MailAiFilterProposalDto> {
+  return postAi<MailAiFilterProposalDto>(
+    id,
+    "filter-rule",
+    { language },
+    signal,
+  );
+}

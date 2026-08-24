@@ -42,6 +42,8 @@ function useMockCredential() {
       model: "llama3.1",
       apiKey: "secret",
       mode: "MOCK",
+      isDefault: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
     },
   ]);
 }
