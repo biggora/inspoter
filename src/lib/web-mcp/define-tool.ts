@@ -10,7 +10,11 @@ import { z } from "zod";
 
 export interface WebMcpToolConfig<TSchema extends z.ZodObject> {
   name: string;
-  title?: string;
+  /**
+   * Human-readable label. Required rather than optional: some agent clients
+   * surface it as the tool's caption, where a blank reads as an unnamed tool.
+   */
+  title: string;
   description: string;
   inputSchema: TSchema;
   /** Defaults to false — set true for tools that only read data. */
@@ -22,7 +26,7 @@ export interface WebMcpToolConfig<TSchema extends z.ZodObject> {
 
 export interface WebMcpTool {
   name: string;
-  title?: string;
+  title: string;
   description: string;
   inputSchema: object;
   annotations: {
@@ -87,7 +91,11 @@ function warnBudgets(name: string, description: string, inputSchema: object): vo
 export function defineWebMcpTool<TSchema extends z.ZodObject>(
   config: WebMcpToolConfig<TSchema>,
 ): WebMcpTool {
-  const inputSchema = z.toJSONSchema(config.inputSchema);
+  // `io: "input"` because this schema describes what a caller sends, not what
+  // the handler receives. The default ("output") treats a field carrying
+  // `.default()` as required — true after parsing, but it would oblige a
+  // strict client to always pass a value the schema itself supplies.
+  const inputSchema = z.toJSONSchema(config.inputSchema, { io: "input" });
 
   warnBudgets(config.name, config.description, inputSchema);
 

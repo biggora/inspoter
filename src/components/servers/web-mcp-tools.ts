@@ -39,6 +39,7 @@ export function createPowerActionTool(
 ): WebMcpTool {
   return defineWebMcpTool({
     name: "server_power_action",
+    title: "Server power action",
     description:
       "Starts, stops, or restarts the server currently shown on this page. Only valid actions for the server's current status will succeed.",
     inputSchema: powerActionInputSchema,

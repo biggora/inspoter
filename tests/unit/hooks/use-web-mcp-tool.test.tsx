@@ -25,6 +25,7 @@ import {
 function makeTool(overrides: Partial<WebMcpTool> = {}): WebMcpTool {
   return {
     name: "example_tool",
+    title: "Example tool",
     description: "An example tool.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: false, untrustedContentHint: false },

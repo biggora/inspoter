@@ -72,6 +72,10 @@ describe("createSetCategoryTool", () => {
     expect(ctx.setCategoryBulk).not.toHaveBeenCalled();
   });
 
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createSetCategoryTool(makeCtx()).title).toBe("Set alert category");
+  });
+
   it("rejects more than 50 alertIds via schema validation, without calling the handler", async () => {
     const ctx = makeCtx();
     const tool = createSetCategoryTool(ctx);

@@ -207,6 +207,22 @@ describe("createMoveCardTool", () => {
     expect(expectToolError(result)).toBe("network down");
     expect(ctx.refresh).toHaveBeenCalledTimes(1);
   });
+
+  // The schema supplies `position: "end"`, so a caller may omit it — the
+  // advertised JSON Schema must say so rather than demanding a value.
+  it("advertises position as optional, since the schema supplies the default", () => {
+    const schema = createMoveCardTool(ctx).inputSchema as {
+      required?: string[];
+      properties?: Record<string, { default?: unknown }>;
+    };
+
+    expect(schema.required).toEqual(["card", "targetColumn"]);
+    expect(schema.properties?.position?.default).toBe("end");
+  });
+
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createMoveCardTool(ctx).title).toBe("Move kanban card");
+  });
 });
 
 describe("createCreateCardTool", () => {
@@ -299,5 +315,9 @@ describe("createCreateCardTool", () => {
       dueDate: undefined,
     });
     expect(result.isError).toBeUndefined();
+  });
+
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createCreateCardTool(ctx).title).toBe("Create kanban card");
   });
 });

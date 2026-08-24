@@ -129,6 +129,20 @@ describe("createSearchNotesTool", () => {
     });
   });
 
+  // Paired with the test above: the default lives in the zod schema and is
+  // applied by `safeParse`, so the advertised JSON Schema must present `limit`
+  // as something the caller may omit rather than must send.
+  it("advertises limit as optional, since the schema supplies the default", () => {
+    const tool = createSearchNotesTool(makeCtx());
+    const schema = tool.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { default?: unknown }>;
+    };
+
+    expect(schema.required ?? []).not.toContain("limit");
+    expect(schema.properties?.limit?.default).toBe(10);
+  });
+
   it("rejects a limit above 25 via schema validation, without calling search", async () => {
     const ctx = makeCtx();
     const tool = createSearchNotesTool(ctx);
@@ -163,6 +177,10 @@ describe("createSearchNotesTool", () => {
       readOnlyHint: true,
       untrustedContentHint: true,
     });
+  });
+
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createSearchNotesTool(makeCtx()).title).toBe("Search notes");
   });
 });
 
@@ -307,5 +325,9 @@ describe("createCreateNoteTool", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toBe("A note already exists.");
     expect(ctx.refresh).not.toHaveBeenCalled();
+  });
+
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createCreateNoteTool(makeCtx()).title).toBe("Create note");
   });
 });
