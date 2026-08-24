@@ -10,6 +10,7 @@ import {
 } from "vitest";
 
 import { defineWebMcpTool } from "@/lib/web-mcp/define-tool";
+import { expectToolError, expectToolJson, expectToolText } from "./test-utils";
 
 const simpleSchema = z.object({ x: z.string().describe("x") });
 
@@ -67,7 +68,7 @@ describe("defineWebMcpTool", () => {
     });
   });
 
-  it("calls the handler with parsed input and returns its result on valid input", async () => {
+  it("calls the handler with parsed input and returns its result as a JSON text block", async () => {
     const handler = vi.fn().mockResolvedValue({ result: 42 });
     const tool = defineWebMcpTool({
       name: "example_tool",
@@ -80,10 +81,53 @@ describe("defineWebMcpTool", () => {
 
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith({ x: "hello" });
-    expect(result).toEqual({ result: 42 });
+    expect(result).toEqual({
+      content: [{ type: "text", text: JSON.stringify({ result: 42 }) }],
+    });
+    expect(result.isError).toBeUndefined();
+    expect(expectToolJson(result)).toEqual({ result: 42 });
   });
 
-  it("returns { error } without calling the handler on invalid input", async () => {
+  it("passes a string handler result through as raw text, not double-encoded JSON", async () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      description: "An example tool.",
+      inputSchema: simpleSchema,
+      handler: async () => "plain text result",
+    });
+
+    const result = await tool.execute({ x: "hello" });
+
+    expect(expectToolText(result)).toBe("plain text result");
+  });
+
+  it("JSON-stringifies a non-string handler result", async () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      description: "An example tool.",
+      inputSchema: simpleSchema,
+      handler: async () => [1, 2, 3],
+    });
+
+    const result = await tool.execute({ x: "hello" });
+
+    expect(expectToolText(result)).toBe("[1,2,3]");
+  });
+
+  it("encodes an undefined handler result as null", async () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      description: "An example tool.",
+      inputSchema: simpleSchema,
+      handler: async () => undefined,
+    });
+
+    const result = await tool.execute({ x: "hello" });
+
+    expect(expectToolText(result)).toBe("null");
+  });
+
+  it("returns an isError result without calling the handler on invalid input", async () => {
     const handler = vi.fn();
     const tool = defineWebMcpTool({
       name: "example_tool",
@@ -95,13 +139,10 @@ describe("defineWebMcpTool", () => {
     const result = await tool.execute({ x: 123 });
 
     expect(handler).toHaveBeenCalledTimes(0);
-    expect(result).toMatchObject({ error: expect.any(String) });
-    expect((result as { error: string }).error.startsWith("Invalid input")).toBe(
-      true,
-    );
+    expect(expectToolError(result).startsWith("Invalid input: ")).toBe(true);
   });
 
-  it("resolves to { error: message } when the handler throws an Error", async () => {
+  it("resolves to an isError result carrying the message when the handler throws an Error", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
       description: "An example tool.",
@@ -112,11 +153,25 @@ describe("defineWebMcpTool", () => {
     });
 
     await expect(tool.execute({ x: "hello" })).resolves.toEqual({
-      error: "boom",
+      content: [{ type: "text", text: "boom" }],
+      isError: true,
     });
   });
 
-  it("resolves to { error: <fallback> } when the handler throws a non-Error string", async () => {
+  it("never rejects — a throwing handler resolves rather than propagating", async () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      description: "An example tool.",
+      inputSchema: simpleSchema,
+      handler: async () => {
+        throw new Error("boom");
+      },
+    });
+
+    await expect(tool.execute({ x: "hello" })).resolves.toBeDefined();
+  });
+
+  it("falls back to a generic message when the handler throws a non-Error string", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
       description: "An example tool.",
@@ -126,12 +181,12 @@ describe("defineWebMcpTool", () => {
       },
     });
 
-    await expect(tool.execute({ x: "hello" })).resolves.toEqual({
-      error: "Unexpected error.",
-    });
+    const result = await tool.execute({ x: "hello" });
+
+    expect(expectToolError(result)).toBe("Unexpected error.");
   });
 
-  it("resolves to { error: <fallback> } when the handler throws a non-Error object", async () => {
+  it("falls back to a generic message when the handler throws a non-Error object", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
       description: "An example tool.",
@@ -141,9 +196,9 @@ describe("defineWebMcpTool", () => {
       },
     });
 
-    await expect(tool.execute({ x: "hello" })).resolves.toEqual({
-      error: "Unexpected error.",
-    });
+    const result = await tool.execute({ x: "hello" });
+
+    expect(expectToolError(result)).toBe("Unexpected error.");
   });
 
   describe("dev-mode budget warnings", () => {
@@ -251,7 +306,7 @@ describe("defineWebMcpTool", () => {
       expect(warnSpy).toHaveBeenCalled();
       const result = await tool.execute({ x: "hello" });
       expect(handler).toHaveBeenCalledWith({ x: "hello" });
-      expect(result).toEqual({ ok: true });
+      expect(expectToolJson(result)).toEqual({ ok: true });
     });
   });
 });

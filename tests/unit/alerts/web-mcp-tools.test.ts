@@ -4,6 +4,7 @@ import {
   createSetCategoryTool,
   type SetCategoryToolContext,
 } from "@/components/alerts/web-mcp-tools";
+import { expectToolError, expectToolJson } from "../web-mcp/test-utils";
 
 function makeCtx(overrides: Partial<SetCategoryToolContext> = {}): SetCategoryToolContext {
   return {
@@ -58,19 +59,16 @@ describe("createSetCategoryTool", () => {
       categoryId: "cat-1",
     });
 
-    expect(result).toEqual({ updated: 7 });
+    expect(expectToolJson(result)).toEqual({ updated: 7 });
   });
 
   it("rejects an empty alertIds array via schema validation, without calling the handler", async () => {
     const ctx = makeCtx();
     const tool = createSetCategoryTool(ctx);
 
-    const result = (await tool.execute({
-      alertIds: [],
-      categoryId: "cat-1",
-    })) as { error: string };
+    const result = await tool.execute({ alertIds: [], categoryId: "cat-1" });
 
-    expect(result.error).toContain("Invalid input");
+    expect(expectToolError(result)).toContain("Invalid input");
     expect(ctx.setCategoryBulk).not.toHaveBeenCalled();
   });
 
@@ -79,12 +77,9 @@ describe("createSetCategoryTool", () => {
     const tool = createSetCategoryTool(ctx);
 
     const alertIds = Array.from({ length: 51 }, (_, i) => `alert-${i}`);
-    const result = (await tool.execute({
-      alertIds,
-      categoryId: "cat-1",
-    })) as { error: string };
+    const result = await tool.execute({ alertIds, categoryId: "cat-1" });
 
-    expect(result.error).toContain("Invalid input");
+    expect(expectToolError(result)).toContain("Invalid input");
     expect(ctx.setCategoryBulk).not.toHaveBeenCalled();
   });
 });

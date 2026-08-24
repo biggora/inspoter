@@ -5,6 +5,7 @@ import {
   createPowerActionTool,
   type PowerActionToolContext,
 } from "@/components/servers/web-mcp-tools";
+import { expectToolError, expectToolJson } from "../web-mcp/test-utils";
 
 const server: ProviderServerDto = {
   localServerId: "server-1",
@@ -64,14 +65,14 @@ describe("createPowerActionTool", () => {
     const result = await tool.execute({ action: "stop" });
 
     expect(ctx.triggerPowerAction).toHaveBeenCalledWith(server, "stop");
-    expect(result).toEqual({
+    expect(expectToolJson(result)).toEqual({
       server: "web-prod-01",
       action: "stop",
       requested: true,
     });
   });
 
-  it("does not call triggerPowerAction and returns a descriptive error when unavailable", async () => {
+  it("does not call triggerPowerAction and flags isError when the action is unavailable", async () => {
     const ctx = makeCtx({
       getAvailableActions: vi
         .fn()
@@ -81,21 +82,22 @@ describe("createPowerActionTool", () => {
     });
     const tool = createPowerActionTool(ctx);
 
-    const result = (await tool.execute({ action: "stop" })) as { error: string };
+    const result = await tool.execute({ action: "stop" });
+    const message = expectToolError(result);
 
     expect(ctx.triggerPowerAction).not.toHaveBeenCalled();
-    expect(result.error).toContain("web-prod-01");
-    expect(result.error).toContain("running");
-    expect(result.error).toContain("start");
+    expect(message).toContain("web-prod-01");
+    expect(message).toContain("running");
+    expect(message).toContain("start");
   });
 
   it("reports 'none' when no actions are available at all", async () => {
     const ctx = makeCtx({ getAvailableActions: vi.fn().mockReturnValue([]) });
     const tool = createPowerActionTool(ctx);
 
-    const result = (await tool.execute({ action: "start" })) as { error: string };
+    const result = await tool.execute({ action: "start" });
 
     expect(ctx.triggerPowerAction).not.toHaveBeenCalled();
-    expect(result.error).toContain("none");
+    expect(expectToolError(result)).toContain("none");
   });
 });

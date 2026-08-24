@@ -29,7 +29,23 @@ export interface WebMcpTool {
     readOnlyHint: boolean;
     untrustedContentHint: boolean;
   };
-  execute: (input: Record<string, unknown>) => Promise<unknown>;
+  execute: (input: Record<string, unknown>) => Promise<WebMcpToolResult>;
+}
+
+/** The MCP tool-result shape agents expect back from `execute`. */
+export interface WebMcpToolResult {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+}
+
+function toolResult(value: unknown): WebMcpToolResult {
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value ?? null);
+  return { content: [{ type: "text", text }] };
+}
+
+function toolError(message: string): WebMcpToolResult {
+  return { content: [{ type: "text", text: message }], isError: true };
 }
 
 const MAX_NAME_LENGTH = 30;
@@ -84,23 +100,27 @@ export function defineWebMcpTool<TSchema extends z.ZodObject>(
       readOnlyHint: config.readOnly ?? false,
       untrustedContentHint: config.untrustedOutput ?? false,
     },
-    // Never throws or rejects — always resolves, either with the handler's
-    // result or `{ error: string }`, since WebMCP execute callbacks are
-    // expected to report failure in-band rather than reject.
-    async execute(rawInput: Record<string, unknown>): Promise<unknown> {
+    // Never throws or rejects — always resolves to a tool result, flagging
+    // failure with `isError` in-band, since an agent reads the failure rather
+    // than catching it. The schema the browser advertises is advisory only,
+    // so input is validated here before the handler ever sees it.
+    async execute(
+      rawInput: Record<string, unknown>,
+    ): Promise<WebMcpToolResult> {
       const parsed = config.inputSchema.safeParse(rawInput);
       if (!parsed.success) {
-        return {
-          error:
-            "Invalid input: " +
+        return toolError(
+          "Invalid input: " +
             parsed.error.issues.map((issue) => issue.message).join("; "),
-        };
+        );
       }
 
       try {
-        return await config.handler(parsed.data);
+        return toolResult(await config.handler(parsed.data));
       } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unexpected error." };
+        return toolError(
+          err instanceof Error ? err.message : "Unexpected error.",
+        );
       }
     },
   };

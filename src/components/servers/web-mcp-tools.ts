@@ -49,11 +49,11 @@ export function createPowerActionTool(
         .map((entry) => entry.action);
 
       if (!available.includes(action)) {
-        return {
-          error: `Action '${action}' is not available for '${ctx.server.name}' in its current status ('${ctx.server.status}'). Available: ${
+        throw new Error(
+          `Action '${action}' is not available for '${ctx.server.name}' in its current status ('${ctx.server.status}'). Available: ${
             available.length > 0 ? available.join(", ") : "none"
           }.`,
-        };
+        );
       }
 
       await ctx.triggerPowerAction(ctx.server, action);
