@@ -14,15 +14,32 @@ import { expectToolError, expectToolJson, expectToolText } from "./test-utils";
 
 const simpleSchema = z.object({ x: z.string().describe("x") });
 
+// One required field, one carrying `.default()`, one `.optional()` — the three
+// cases the advertised `required` array has to distinguish.
+const mixedSchema = z.object({
+  requiredField: z.string().describe("Always supplied by the caller"),
+  defaultedField: z.number().default(10).describe("Falls back to 10"),
+  optionalField: z.string().optional().describe("May be omitted entirely"),
+});
+
+/** Narrow view of the JSON Schema fields these tests assert on. */
+function schemaOf(tool: { inputSchema: object }): {
+  required?: string[];
+  properties?: Record<string, { default?: unknown }>;
+} {
+  return tool.inputSchema;
+}
+
 describe("defineWebMcpTool", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
   it("converts inputSchema to JSON Schema via z.toJSONSchema()", () => {
-    const expectedJsonSchema = z.toJSONSchema(simpleSchema);
+    const expectedJsonSchema = z.toJSONSchema(simpleSchema, { io: "input" });
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => ({ ok: true }),
@@ -38,9 +55,73 @@ describe("defineWebMcpTool", () => {
     });
   });
 
+  it("carries config.title onto the tool verbatim", () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      title: "Search notes",
+      description: "An example tool.",
+      inputSchema: simpleSchema,
+      handler: async () => ({ ok: true }),
+    });
+
+    expect(tool.title).toBe("Search notes");
+  });
+
+  // The conversion runs with `io: "input"`. Under the "output" default a
+  // `.default()` field lands in `required` — accurate for what the handler
+  // receives, but it would oblige a strict client to always send a value the
+  // schema itself supplies.
+  it("leaves a .default() field out of required while keeping its default as a hint", () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      title: "Example tool",
+      description: "An example tool.",
+      inputSchema: mixedSchema,
+      handler: async () => ({ ok: true }),
+    });
+    const schema = schemaOf(tool);
+
+    expect(schema.required).not.toContain("defaultedField");
+    expect(schema.properties?.defaultedField?.default).toBe(10);
+    // Pins that `required` is still produced — dropping it altogether would
+    // also satisfy the assertion above.
+    expect(schema.required).toEqual(["requiredField"]);
+  });
+
+  it("leaves an .optional() field out of required", () => {
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      title: "Example tool",
+      description: "An example tool.",
+      inputSchema: mixedSchema,
+      handler: async () => ({ ok: true }),
+    });
+
+    expect(schemaOf(tool).required).not.toContain("optionalField");
+  });
+
+  it("still applies a .default() at execute() time, however the schema advertises it", async () => {
+    const handler = vi.fn().mockResolvedValue({ ok: true });
+    const tool = defineWebMcpTool({
+      name: "example_tool",
+      title: "Example tool",
+      description: "An example tool.",
+      inputSchema: mixedSchema,
+      handler,
+    });
+
+    await tool.execute({ requiredField: "value" });
+
+    expect(handler).toHaveBeenCalledWith({
+      requiredField: "value",
+      defaultedField: 10,
+    });
+  });
+
   it("defaults annotations to false when readOnly/untrustedOutput are omitted", () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => ({ ok: true }),
@@ -55,6 +136,7 @@ describe("defineWebMcpTool", () => {
   it("reflects config.readOnly and config.untrustedOutput in annotations", () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       readOnly: true,
@@ -72,6 +154,7 @@ describe("defineWebMcpTool", () => {
     const handler = vi.fn().mockResolvedValue({ result: 42 });
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler,
@@ -91,6 +174,7 @@ describe("defineWebMcpTool", () => {
   it("passes a string handler result through as raw text, not double-encoded JSON", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => "plain text result",
@@ -104,6 +188,7 @@ describe("defineWebMcpTool", () => {
   it("JSON-stringifies a non-string handler result", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => [1, 2, 3],
@@ -117,6 +202,7 @@ describe("defineWebMcpTool", () => {
   it("encodes an undefined handler result as null", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => undefined,
@@ -131,6 +217,7 @@ describe("defineWebMcpTool", () => {
     const handler = vi.fn();
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler,
@@ -145,6 +232,7 @@ describe("defineWebMcpTool", () => {
   it("resolves to an isError result carrying the message when the handler throws an Error", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => {
@@ -161,6 +249,7 @@ describe("defineWebMcpTool", () => {
   it("never rejects — a throwing handler resolves rather than propagating", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => {
@@ -174,6 +263,7 @@ describe("defineWebMcpTool", () => {
   it("falls back to a generic message when the handler throws a non-Error string", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => {
@@ -189,6 +279,7 @@ describe("defineWebMcpTool", () => {
   it("falls back to a generic message when the handler throws a non-Error object", async () => {
     const tool = defineWebMcpTool({
       name: "example_tool",
+      title: "Example tool",
       description: "An example tool.",
       inputSchema: simpleSchema,
       handler: async () => {
@@ -216,6 +307,7 @@ describe("defineWebMcpTool", () => {
       vi.stubEnv("NODE_ENV", "development");
       defineWebMcpTool({
         name: "a_very_long_tool_name_that_exceeds_the_budget",
+        title: "Example tool",
         description: "Short description.",
         inputSchema: simpleSchema,
         handler: async () => ({}),
@@ -233,6 +325,7 @@ describe("defineWebMcpTool", () => {
       vi.stubEnv("NODE_ENV", "development");
       defineWebMcpTool({
         name: "example_tool",
+        title: "Example tool",
         description: "x".repeat(501),
         inputSchema: simpleSchema,
         handler: async () => ({}),
@@ -252,6 +345,7 @@ describe("defineWebMcpTool", () => {
       });
       defineWebMcpTool({
         name: "example_tool",
+        title: "Example tool",
         description: "Short description.",
         inputSchema: longDescSchema,
         handler: async () => ({}),
@@ -269,6 +363,7 @@ describe("defineWebMcpTool", () => {
       const noDescSchema = z.object({ y: z.string() });
       defineWebMcpTool({
         name: "example_tool",
+        title: "Example tool",
         description: "Short description.",
         inputSchema: noDescSchema,
         handler: async () => ({}),
@@ -285,6 +380,7 @@ describe("defineWebMcpTool", () => {
       vi.stubEnv("NODE_ENV", "production");
       defineWebMcpTool({
         name: "a_very_long_tool_name_that_exceeds_the_budget",
+        title: "Example tool",
         description: "x".repeat(501),
         inputSchema: z.object({ y: z.string() }),
         handler: async () => ({}),
@@ -298,6 +394,7 @@ describe("defineWebMcpTool", () => {
       const handler = vi.fn().mockResolvedValue({ ok: true });
       const tool = defineWebMcpTool({
         name: "a_very_long_tool_name_that_exceeds_the_budget",
+        title: "Example tool",
         description: "x".repeat(501),
         inputSchema: simpleSchema,
         handler,

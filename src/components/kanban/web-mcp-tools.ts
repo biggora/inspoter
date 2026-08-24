@@ -92,6 +92,7 @@ export interface MoveCardToolContext {
 export function createMoveCardTool(ctx: MoveCardToolContext): WebMcpTool {
   return defineWebMcpTool({
     name: "kanban_move_card",
+    title: "Move kanban card",
     description:
       "Moves a kanban card to a different column on the currently open board. Identify the card and destination column by their visible title or id.",
     inputSchema: moveCardInputSchema,
@@ -201,6 +202,7 @@ export interface CreateCardToolContext {
 export function createCreateCardTool(ctx: CreateCardToolContext): WebMcpTool {
   return defineWebMcpTool({
     name: "kanban_create_card",
+    title: "Create kanban card",
     description:
       "Creates a new kanban card in the specified column on the currently open board.",
     inputSchema: createCardInputSchema,

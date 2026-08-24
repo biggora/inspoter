@@ -88,6 +88,7 @@ export function createSearchNotesTool(
 ): WebMcpTool {
   return defineWebMcpTool({
     name: "note_search",
+    title: "Search notes",
     description:
       "Searches the workspace notes by full-text query, or lists the most recently updated notes when no query is given. Returns id, title and a short excerpt for each match — not the full note body.",
     inputSchema: searchNotesInputSchema,
@@ -145,6 +146,7 @@ export interface CreateNoteToolContext {
 export function createCreateNoteTool(ctx: CreateNoteToolContext): WebMcpTool {
   return defineWebMcpTool({
     name: "note_create",
+    title: "Create note",
     description:
       "Creates a new note in the workspace. Identify the target folder by its visible name or id, or omit it to file the note at the root.",
     inputSchema: createNoteInputSchema,

@@ -100,4 +100,8 @@ describe("createPowerActionTool", () => {
     expect(ctx.triggerPowerAction).not.toHaveBeenCalled();
     expect(expectToolError(result)).toContain("none");
   });
+
+  it("carries a non-empty title for agent clients that caption the tool", () => {
+    expect(createPowerActionTool(makeCtx()).title).toBe("Server power action");
+  });
 });

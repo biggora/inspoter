@@ -36,6 +36,7 @@ export function createSetCategoryTool(
 ): WebMcpTool {
   return defineWebMcpTool({
     name: "alert_set_category",
+    title: "Set alert category",
     description:
       "Assigns or clears the category for one or more alerts on the currently open Alerts page, identified by their ids. Pass categoryId: null to remove the category.",
     inputSchema: setCategoryInputSchema,
