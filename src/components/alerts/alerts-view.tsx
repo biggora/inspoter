@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useWebMcpTool } from "@/hooks/use-web-mcp-tool";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -54,6 +55,7 @@ import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { alertMessage, categoryLabel } from "./localize";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
+import { createSetCategoryTool } from "./web-mcp-tools";
 
 const SEVERITY_KEYS: Record<string, string> = {
   all: "severityAllOption",
@@ -143,6 +145,13 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useWebMcpTool(
+    createSetCategoryTool({
+      setCategoryBulk: alertsApi.setCategoryBulk,
+      refresh: () => setReloadToken((prev) => prev + 1),
+    }),
+  );
 
   // Reaching this section is the acknowledgement: the operator is looking at
   // the list, so the topbar indicator has nothing left to report. Fire and
@@ -472,6 +481,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
               {items.map((alert) => (
                 <TableRow
                   key={alert.id}
+                  data-alert-id={alert.id}
                   ref={(el) => {
                     if (el) alertRowRefs.current[alert.id] = el;
                   }}

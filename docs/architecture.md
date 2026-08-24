@@ -1,9 +1,9 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.20
-**Status:** Contacts section implemented and verified
+**Version:** 1.21
+**Status:** Browser-native WebMCP tools implemented and verified
 **Owner:** Architect
-**Date:** 2026-08-12
+**Date:** 2026-08-24
 **Normative inputs:** `docs/prd.md` v3.16, `docs/design.md` v2.21, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
 **Implementation evidence:** repository state and retained Phase 5 runtime evidence on 2026-07-21
 
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.21 (2026-08-24):** adds a browser-native WebMCP layer — `document.modelContext.registerTool()` exposing page tools to an in-tab AI browser agent, entirely separate from the server-side Agent API for external clients in §6.6. `src/types/web-mcp.d.ts` declares the ambient `document.modelContext` API; `src/lib/web-mcp/` (`defineWebMcpTool()`, `isWebMcpSupported()`) and `src/hooks/use-web-mcp-tool.ts` back four tools, each validating its own zod input at runtime and calling the same `api.ts` functions the UI already uses: `kanban_move_card` and `kanban_create_card` (`src/components/kanban/web-mcp-tools.ts`, wired into `kanban-board-view.tsx`), `alert_set_category` (`src/components/alerts/web-mcp-tools.ts`, wired into `alerts-view.tsx`, which also gains a `data-alert-id` attribute on each table row), and `server_power_action` (`src/components/servers/web-mcp-tools.ts`, wired into `server-detail-view.tsx`, registered only while that server's own detail page is mounted and power actions are available). No migration, no new env var, no new auth path, no change to `src/lib/mcp/`. New section §7H.
 - **v1.20 (2026-08-23):** completes the agent surface across all six operator-facing sections and renames §6.6 from "Messages management API" to "Agent API". MCP grows from 44 tools to 109 and `/api/v1/**` from 16 paths to 71: bookmarks, kanban, mail and services gain a REST family of their own, and contacts and messages gain the operations they were missing. Adds the `services:write` scope (15 in total) and widens `McpToolContext` with the token id, so a row that records its author can name the token rather than its (renameable) label. Search predicates shared by both surfaces move into the services (`bookmarks.search()`, `kanban.searchCards()`, `services.filterOverview()`); the kanban card webhook fan-out moves into `src/lib/kanban/card-events.ts`; the favicon probe into `src/lib/bookmarks/favicon.ts`. Services whose write path took an operator id now accept `null` for a token. `specs/openapi.json` gains `components.responses` for the shared auth, limit and error answers, and the path inventory is pinned in `scripts/check-public-openapi.mjs` alone — the unit test and the api-docs e2e read the spec. No migration. Updates §3.2; rewrites §6.6.
 - **v1.19 (2026-08-06):** adds the eleventh dashboard widget kind, `MESSAGES`, through migration `20260806120000_dashboard_messages_widget` (the enum value plus a `Message(workspaceId, createdAt, id)` index, which the existing channel-first index cannot serve for a cross-channel read). The tile watches a whole message category or hand-picked channels of one, optionally unread only, resolved by the new `messages.listRecentMessages()` beside the section's existing `listMessages()` timeline; `listConfigurableTargets()` grows the category and channel option lists. `/messages` accepts `?channel=…` as a deep-link hint, mirroring `/mail?account=…&message=…`. Updates §7E.2 and §7E.7.
 - **v1.18 (2026-08-05):** documents the agent-facing Messages management API as CURRENT (FR-MSG-004): the REST family `/api/v1/messages/**` — the first versioned namespace in the tree — and the ten MCP tools in `src/lib/mcp/tools/messages.ts` under the new `messages:read`/`messages:write` scopes, both calling the same `messages.ts`/`webhookTokens.ts` services. Adds `src/lib/api/token-auth.ts` (bearer authentication, scope check, shared webhook rate limiter, `{ error: { code, message } }` envelope) and the fifth NFR-SEC-001 exemption in `src/proxy.ts`. `MessageOrigin` gains `AGENT` through migration `20260805120000_message_origin_agent`; `McpToolContext` carries the token name so agent-written messages are attributable. `scripts/check-public-openapi.mjs` now pins allowed methods per path instead of requiring POST-only, and `specs/openapi.json` grows from 6 to 13 paths. Updates §3.2 and §6.5. New section §6.6.
@@ -1274,6 +1275,27 @@ Token routes: `/api/v1/contacts` (GET, POST), `/api/v1/contacts/{contactId}` (GE
 Tests: `tests/unit/contacts/` — 95 across the four formats, their round-trips, the fixtures (Google vCard 3.0 and CSV, a Nokia 2.1 card with quoted-printable Cyrillic, an Outlook CSV, a Thunderbird LDIF) and the normalization/merge rules.
 
 **Out of scope (v1):** a trash with delayed purge, auto-collected "other contacts", a contact-frequency signal, CardDAV synchronization, and photos in the CSV/LDIF exports.
+
+## 7H. Browser-native WebMCP tools — CURRENT (2026-08-24)
+
+**CURRENT:** `document.modelContext.registerTool()` is a W3C draft API that lets a page register tools directly with an AI agent running in the same browser tab (for example Claude in Chrome), with no server round trip of its own. This is distinct from both of the other agent-facing surfaces already in the codebase: §6.6's Agent API is called by an *external* client (Claude Code/Desktop, Cursor) that authenticates over the network with a bearer token against `POST /api/mcp` and `/api/v1/**`; `specs/ai-integration.md` covers the product calling *out* to an LLM provider through `src/lib/llm/`. WebMCP is neither — it is an in-browser agent calling tools *inside* the user's own already-authenticated tab, reusing the session's existing `fetch` calls and never touching `src/lib/mcp/`. `src/types/web-mcp.d.ts` declares the ambient `ModelContext`/`ModelContextTool` types from the WebIDL; `src/lib/web-mcp/support.ts` (`isWebMcpSupported()`) and `src/lib/web-mcp/define-tool.ts` (`defineWebMcpTool()` — turns a zod schema and handler into a tool object, converting the schema to JSON Schema with `z.toJSONSchema()`, runtime-validating input with `safeParse`, and never throwing or rejecting) are the shared infrastructure; `src/hooks/use-web-mcp-tool.ts` (`useWebMcpTool(tool, enabled)`) registers and unregisters a tool via `AbortController`, keyed on the tool's name so a new render's `execute` closure never forces a re-registration.
+
+Four tools are registered across three pilot features:
+
+| Tool                  | Host component                                             | `api.ts` call                     | Annotations                                             |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------ | ----------------------------------------------------------- |
+| `kanban_move_card`     | `src/components/kanban/kanban-board-view.tsx`                 | `cardsApi.move`                    | `readOnlyHint: false`, `untrustedContentHint: false`       |
+| `kanban_create_card`   | `src/components/kanban/kanban-board-view.tsx`                 | `cardsApi.create`                  | `readOnlyHint: false`, `untrustedContentHint: false`       |
+| `alert_set_category`   | `src/components/alerts/alerts-view.tsx`                       | `alertsApi.setCategoryBulk`        | `readOnlyHint: false`, `untrustedContentHint: false`       |
+| `server_power_action`  | `src/components/servers/server-detail-view.tsx`                | server power-action trigger (`use-server-power-action.ts`, itself backed by the servers `api.ts`) | `readOnlyHint: false`, `untrustedContentHint: false`       |
+
+Each factory lives beside its feature's `api.ts` in a new `web-mcp-tools.ts` (`src/components/{kanban,alerts,servers}/web-mcp-tools.ts`), following the existing one-file-per-feature convention.
+
+**Identifier resolution.** Kanban addresses a card or column by name-or-id: the handler resolves it as an exact id match, then an exact case-insensitive title match, then a unique case-insensitive title substring, returning a candidate list on ambiguity. Alerts uses real ids — `alerts-view.tsx` gains a purely additive `data-alert-id={alert.id}` attribute on each `<TableRow>` so a page-reading agent can correlate a visible row with its id. Servers takes no identifier at all: `server_power_action` is registered only while that server's own detail page is mounted, with `enabled` gated on `powerActionsAvailable === true`, so "this server" comes from page context exactly like the on-page buttons.
+
+**Out of scope (not implemented):** the declarative `toolname`/`tooldescription` HTML form attributes; `exposedTo` cross-origin tool sharing; the `toolchange` event and the `getTools()`/`executeTool()` discovery APIs; `kanban_update_card` and label-setting; alert-category CRUD tools; `alertsApi.markAllRead()` as a tool; and WebMCP tools on the servers grid/list page (`servers-view.tsx`, as opposed to the single-server detail page).
+
+No Prisma migration, no new environment variable, no new authentication path, and no change to `src/lib/mcp/` or `POST /api/mcp`.
 
 ## 8. Request sequences
 
