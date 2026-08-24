@@ -595,6 +595,7 @@ describe("messages tools", () => {
     expect(await listToolNames(readOnly)).toEqual([
       "channel_webhooks_list",
       "message_categories_list",
+      "message_channel_get",
       "messages_list",
     ]);
 
@@ -1063,8 +1064,8 @@ describe("contacts tools", () => {
       query: "imported",
     });
     expect(
-      (suggestions.payload as Array<{ value: string }>).map(
-        (entry) => entry.value,
+      (suggestions.payload as Array<{ email: string }>).map(
+        (entry) => entry.email,
       ),
     ).toContain("imported@example.invalid");
 
@@ -1158,6 +1159,17 @@ describe("messages read state and channel lookup", () => {
 });
 
 describe("kanban tools", () => {
+  // Runs under a fresh full-scope token: this suite plus the ones above
+  // would push the shared fullToken past its per-token request budget
+  // (WEBHOOK_RATE_LIMIT) and the limiter would answer 429s.
+  let fullToken: string;
+
+  beforeAll(async () => {
+    fullToken = (
+      await webhookTokensService.create(workspaceId, "kanban", MCP_SCOPES)
+    ).token;
+  });
+
   async function board(name: string) {
     const created = await callTool(fullToken, "kanban_board_create", { name });
     return (created.payload as { id: string }).id;
@@ -1283,7 +1295,9 @@ describe("kanban tools", () => {
     });
     // A comment an agent writes carries the token name, so the board shows
     // which agent wrote it.
-    expect((comment.payload as { authorName: string }).authorName).toBe("full");
+    expect((comment.payload as { authorName: string }).authorName).toBe(
+      "kanban",
+    );
     const commentId = (comment.payload as { id: string }).id;
 
     const comments = await callTool(fullToken, "kanban_comments_list", {
@@ -1334,6 +1348,10 @@ describe("kanban tools", () => {
 
   it("reorders boards and columns", async () => {
     const first = await board("Order one");
+    // createBoard seeds Backlog/In progress/Done (kanban.ts
+    // DEFAULT_COLUMNS); this test asserts an exact column order, so clear
+    // the seed columns before adding its own pair.
+    await db.kanbanColumn.deleteMany({ where: { boardId: first } });
     const second = await board("Order two");
     const reordered = await callTool(fullToken, "kanban_boards_reorder", {
       order: [second, first],
@@ -1438,6 +1456,18 @@ describe("kanban tools", () => {
 // deletes and labels run here without a network, while the two paths that
 // genuinely need a transport are asserted through their refusals.
 describe("mail write tools", () => {
+  // The suites above spend the shared fullToken's per-token request budget
+  // (WEBHOOK_RATE_LIMIT, keyed by token id — webhooks/ratelimit.ts), and
+  // every later request would answer 429, so this suite runs under a fresh
+  // full-scope token.
+  let fullToken: string;
+
+  beforeAll(async () => {
+    fullToken = (
+      await webhookTokensService.create(workspaceId, "mail-write", MCP_SCOPES)
+    ).token;
+  });
+
   async function seedMail(subject: string) {
     const { id } = await mailService.create(workspaceId, {
       sender: "ops@example.invalid",
@@ -1526,7 +1556,7 @@ describe("mail write tools", () => {
       name: "Ops mail",
       conditions: [
         {
-          field: "FROM",
+          field: "FROM_ADDRESS",
           operator: "CONTAINS",
           value: "ops@example.invalid",
           isNegated: false,
@@ -1639,8 +1669,8 @@ describe("mail write tools", () => {
     expect(await listToolNames(readOnly)).toEqual([
       "mail_accounts_list",
       "mail_attachment_get",
-      "mail_filter_run_get",
       "mail_filter_rules_list",
+      "mail_filter_run_get",
       "mail_folders_list",
       "mail_get",
       "mail_labels_list",

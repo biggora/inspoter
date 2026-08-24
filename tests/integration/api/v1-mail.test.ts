@@ -45,6 +45,9 @@ import {
 // sending and syncing — are asserted through their refusals instead.
 
 const PREFIX = `v1-mail-${randomUUID()}`;
+// Mail label names cap at 40 chars (validation/mail.ts), too short for
+// PREFIX plus a suffix, so label tests build names from this instead.
+const SHORT = randomUUID().slice(0, 8);
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -350,7 +353,7 @@ describe("labels", () => {
       request("/api/v1/mail/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-invoices`, color: "GREEN" },
+        body: { name: `${SHORT}-invoices`, color: "GREEN" },
       }),
     );
     expect(created.status).toBe(201);
@@ -414,7 +417,7 @@ describe("labels", () => {
       request("/api/v1/mail/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-receipts`, color: "BLUE" },
+        body: { name: `${SHORT}-receipts`, color: "BLUE" },
       }),
     );
     const labelId = (await body<{ id: string }>(first)).id;
@@ -423,7 +426,7 @@ describe("labels", () => {
       request("/api/v1/mail/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-RECEIPTS`, color: "RED" },
+        body: { name: `${SHORT}-RECEIPTS`, color: "RED" },
       }),
     );
     expect(duplicate.status).toBe(409);
@@ -447,7 +450,7 @@ describe("filter rules", () => {
       request("/api/v1/mail/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-alerts`, color: "RED" },
+        body: { name: `${SHORT}-alerts`, color: "RED" },
       }),
     );
     const labelId = (await body<{ id: string }>(label)).id;
@@ -462,7 +465,7 @@ describe("filter rules", () => {
           name: `${PREFIX}-from-ops`,
           conditions: [
             {
-              field: "FROM",
+              field: "FROM_ADDRESS",
               operator: "CONTAINS",
               value: "ops@example.invalid",
               isNegated: false,
@@ -518,7 +521,7 @@ describe("filter rules", () => {
       request("/api/v1/mail/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-empty`, color: "SLATE" },
+        body: { name: `${SHORT}-empty`, color: "SLATE" },
       }),
     );
     const labelId = (await body<{ id: string }>(label)).id;
