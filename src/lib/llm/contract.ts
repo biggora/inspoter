@@ -27,6 +27,19 @@ export interface LlmCompletionRequest {
   system?: string;
   maxTokens?: number;
   signal?: AbortSignal;
+  // Ask the endpoint for a single JSON object. A hint to the transport, never
+  // a guarantee: OpenAI-compatible endpoints support response_format
+  // unevenly (Ollama, vLLM and DeepSeek disagree) and the Anthropic Messages
+  // API has no such field at all. The format contract is therefore always
+  // repeated in the system prompt, and the answer is always validated by the
+  // caller through src/lib/llm/json.ts.
+  responseFormat?: "text" | "json";
+  // Deterministic answer for the MOCK driver, which returns it verbatim; REAL
+  // drivers ignore it. It exists for e2e: a feature needs a reproducible
+  // answer of the right shape, and src/lib/llm must not know domain types —
+  // so the caller builds the answer from the same input it builds the prompt
+  // from (see src/lib/mail/ai-prompts.ts).
+  mockAnswer?: string;
 }
 
 export interface LlmCompletion {

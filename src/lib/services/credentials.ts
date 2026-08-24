@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { ProviderType } from "@/generated/prisma/client";
+import { PROVIDER_REGISTRY } from "@/lib/providers/registry";
 import {
   encrypt,
   decrypt,
@@ -41,6 +42,7 @@ export interface CredentialSummary {
   isValid: boolean | null;
   lastCheckedAt: Date | null;
   autoRefreshEnabled: boolean;
+  isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +50,11 @@ export interface CredentialSummary {
 export type DecryptedCredential = CredentialData & {
   id: string;
   label: string;
+  // src/lib/llm/registry.ts picks the active model by isDefault and falls
+  // back to the oldest credential, so a decrypted credential has to carry
+  // both — before this it carried neither and the choice was invisible.
+  isDefault: boolean;
+  createdAt: Date;
 };
 
 interface CredentialRecord {
@@ -59,6 +66,7 @@ interface CredentialRecord {
   isValid: boolean | null;
   lastCheckedAt: Date | null;
   autoRefreshEnabled: boolean;
+  isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +81,7 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
     isValid: credential.isValid,
     lastCheckedAt: credential.lastCheckedAt,
     autoRefreshEnabled: credential.autoRefreshEnabled,
+    isDefault: credential.isDefault,
     createdAt: credential.createdAt,
     updatedAt: credential.updatedAt,
   };
@@ -87,7 +96,12 @@ function computeMaskedHint(data: CredentialData): string {
   if (data.type === "WEBHOOK_SECRET" || data.type === "WEBHOOK_ED25519_KEY") {
     return maskSecret(data.secret);
   }
-  if (data.type === "OPENAI_COMPATIBLE") return maskSecret(data.apiKey);
+  if (
+    data.type === "OPENAI_COMPATIBLE" ||
+    data.type === "ANTHROPIC_COMPATIBLE"
+  ) {
+    return maskSecret(data.apiKey);
+  }
   return maskSecret(data.apiToken);
 }
 
@@ -97,13 +111,21 @@ function decryptRow(row: {
   encryptedData: string;
   iv: string;
   authTag: string;
+  isDefault: boolean;
+  createdAt: Date;
 }): DecryptedCredential {
   const data = decrypt({
     encryptedData: row.encryptedData,
     iv: row.iv,
     authTag: row.authTag,
   });
-  return { ...data, id: row.id, label: row.label };
+  return {
+    ...data,
+    id: row.id,
+    label: row.label,
+    isDefault: row.isDefault,
+    createdAt: row.createdAt,
+  };
 }
 
 export async function listCredentials(
@@ -116,12 +138,23 @@ export async function listCredentials(
   return credentials.map(toSummary);
 }
 
+// `provider` accepts a list so a caller that spans several types — the LLM
+// registry covers two transports — does not have to decrypt every other
+// credential in the workspace just to find its own.
 export async function getDecryptedCredentials(
   workspaceId: string,
-  provider?: ProviderType,
+  provider?: ProviderType | readonly ProviderType[],
 ): Promise<DecryptedCredential[]> {
   const credentials = await db.providerCredential.findMany({
-    where: { workspaceId, ...(provider ? { provider } : {}) },
+    where: {
+      workspaceId,
+      ...(provider
+        ? {
+            provider:
+              typeof provider === "string" ? provider : { in: [...provider] },
+          }
+        : {}),
+    },
     orderBy: { createdAt: "asc" },
   });
   if (!credentials.length) return [];
@@ -240,6 +273,53 @@ export async function setAutoRefreshEnabled(
     data: { autoRefreshEnabled: enabled },
   });
   return toSummary(credential);
+}
+
+// The workspace's active credential for this credential's category. Kept
+// apart from updateCredential for the same reason as setAutoRefreshEnabled:
+// choosing which model answers must not mean re-entering the API key.
+//
+// Exclusivity is enforced here rather than by a unique index because the
+// category (DNS/HOSTING/LLM) lives in PROVIDER_REGISTRY, not in the
+// database. Clearing the flag is a legal state: with no default anywhere the
+// LLM registry falls back to the oldest credential, exactly as before the
+// flag existed.
+export async function setDefaultCredential(
+  id: string,
+  workspaceId: string,
+  isDefault: boolean,
+): Promise<CredentialSummary> {
+  const existing = await db.providerCredential.findFirst({
+    where: { id, workspaceId },
+  });
+  if (!existing) {
+    throw new CredentialNotFoundError(id);
+  }
+
+  const category = PROVIDER_REGISTRY[existing.provider].category;
+  const siblings = (Object.keys(PROVIDER_REGISTRY) as ProviderType[]).filter(
+    (type) => PROVIDER_REGISTRY[type].category === category,
+  );
+
+  return db.$transaction(async (tx) => {
+    if (isDefault) {
+      await tx.providerCredential.updateMany({
+        where: {
+          workspaceId,
+          provider: { in: siblings },
+          id: { not: id },
+          isDefault: true,
+        },
+        data: { isDefault: false },
+      });
+    }
+
+    const credential = await tx.providerCredential.update({
+      where: { id },
+      data: { isDefault },
+    });
+    return toSummary(credential);
+  });
 }
 
 export class CredentialDeleteConflictError extends Error {

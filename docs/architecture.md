@@ -1,7 +1,7 @@
 # Inspot Dashboard — Architecture
 
-**Version:** 1.20
-**Status:** Contacts section implemented and verified
+**Version:** 1.21
+**Status:** Mail AI features implemented and verified
 **Owner:** Architect
 **Date:** 2026-08-12
 **Normative inputs:** `docs/prd.md` v3.16, `docs/design.md` v2.21, Q-13, Q-14, Q-15, `specs/mail-label-filtering-plan.md` v0.3, `docs/remediation-plan.md`, `docs/progress.md`, `docs/idea.md`
@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.21 (2026-08-25):** turns the LLM scaffolding into a shipped feature and widens it to a second transport. `src/lib/llm/anthropic.ts` speaks `POST {baseUrl}/v1/messages` for z.ai/GLM and Anthropic (mandatory `max_tokens`, content blocks, the typed HTTP 400 bodies, 529 as `rate_limit`, `embed()` reporting `unsupported`); `LlmCompletionRequest` gains `responseFormat` and `mockAnswer`, and `src/lib/llm/json.ts` extracts and validates a JSON answer without ever putting model output into a failure message. Migration `20260825120000_llm_anthropic_default_credential` adds the `ANTHROPIC_COMPATIBLE` `ProviderType` value and `ProviderCredential.isDefault`, so the operator picks the active model at `/settings/providers` (`PATCH /api/credentials/[id]/default`) instead of the oldest credential winning by insert order. The Mail section gains three request-scoped features — summary, reply draft, filter-rule proposal — through `src/lib/services/mail-ai.ts`, `src/lib/mail/ai-prompts.ts`, `src/lib/validation/mail-ai.ts` and `POST /api/mail/[id]/ai/**`, none of which writes anything: the model proposes and the operator confirms. No `/api/v1/**` twins and no MCP tools, on purpose. Rewrites §7F; new §7F.6.
 - **v1.20 (2026-08-23):** completes the agent surface across all six operator-facing sections and renames §6.6 from "Messages management API" to "Agent API". MCP grows from 44 tools to 109 and `/api/v1/**` from 16 paths to 71: bookmarks, kanban, mail and services gain a REST family of their own, and contacts and messages gain the operations they were missing. Adds the `services:write` scope (15 in total) and widens `McpToolContext` with the token id, so a row that records its author can name the token rather than its (renameable) label. Search predicates shared by both surfaces move into the services (`bookmarks.search()`, `kanban.searchCards()`, `services.filterOverview()`); the kanban card webhook fan-out moves into `src/lib/kanban/card-events.ts`; the favicon probe into `src/lib/bookmarks/favicon.ts`. Services whose write path took an operator id now accept `null` for a token. `specs/openapi.json` gains `components.responses` for the shared auth, limit and error answers, and the path inventory is pinned in `scripts/check-public-openapi.mjs` alone — the unit test and the api-docs e2e read the spec. No migration. Updates §3.2; rewrites §6.6.
 - **v1.19 (2026-08-06):** adds the eleventh dashboard widget kind, `MESSAGES`, through migration `20260806120000_dashboard_messages_widget` (the enum value plus a `Message(workspaceId, createdAt, id)` index, which the existing channel-first index cannot serve for a cross-channel read). The tile watches a whole message category or hand-picked channels of one, optionally unread only, resolved by the new `messages.listRecentMessages()` beside the section's existing `listMessages()` timeline; `listConfigurableTargets()` grows the category and channel option lists. `/messages` accepts `?channel=…` as a deep-link hint, mirroring `/mail?account=…&message=…`. Updates §7E.2 and §7E.7.
 - **v1.18 (2026-08-05):** documents the agent-facing Messages management API as CURRENT (FR-MSG-004): the REST family `/api/v1/messages/**` — the first versioned namespace in the tree — and the ten MCP tools in `src/lib/mcp/tools/messages.ts` under the new `messages:read`/`messages:write` scopes, both calling the same `messages.ts`/`webhookTokens.ts` services. Adds `src/lib/api/token-auth.ts` (bearer authentication, scope check, shared webhook rate limiter, `{ error: { code, message } }` envelope) and the fifth NFR-SEC-001 exemption in `src/proxy.ts`. `MessageOrigin` gains `AGENT` through migration `20260805120000_message_origin_agent`; `McpToolContext` carries the token name so agent-written messages are attributable. `scripts/check-public-openapi.mjs` now pins allowed methods per path instead of requiring POST-only, and `specs/openapi.json` grows from 6 to 13 paths. Updates §3.2 and §6.5. New section §6.6.
@@ -1112,12 +1113,12 @@ isolation), `e2e/dashboards.spec.ts` (create → add → configure → drag → 
 reload → delete) and `e2e/dashboards-visual.spec.ts` (light/dark/phone with
 attached screenshots).
 
-## 7F. LLM provider scaffolding — CURRENT (2026-08-02)
+## 7F. LLM provider and the mail AI features — CURRENT (2026-08-25)
 
-This slice is infrastructure only: `src/lib/llm/` exists, is tested, and has no
-feature calling it yet. Future AI features (mail summaries, suggested filter
-rules, alert/log digests) plug into `src/lib/services/llm.ts` and add nothing to
-the boundary described here.
+`src/lib/llm/` is the transport layer: two drivers, a deterministic mock, and a
+single audited entry point in `src/lib/services/llm.ts`. The first features
+calling it are the three mail scenarios in §7F.6. Everything a future feature
+needs is here; nothing about the boundary below changes when one is added.
 
 ### 7F.1 Contract and drivers (`src/lib/llm/`)
 
@@ -1136,7 +1137,7 @@ embeddings). It is a hard requirement, not a convenience: a real model is
 non-deterministic by construction, so the Playwright suite must never reach one.
 
 `openai.ts` is the REAL driver for any OpenAI-compatible endpoint (Ollama,
-vLLM, LM Studio, OpenRouter, OpenAI) — `POST <baseUrl>/chat/completions` and
+vLLM, LM Studio, OpenRouter, DeepSeek, OpenAI) — `POST <baseUrl>/chat/completions` and
 `POST <baseUrl>/embeddings`. It deliberately does **not** reuse
 `src/lib/providers/http.ts`: that client retries three times, which is right for
 a listing call and wrong for a model call, where every attempt costs tokens or a
@@ -1147,19 +1148,59 @@ headers and bodies are never logged or returned, upstream bodies are truncated
 to 200 characters, and the API key is scrubbed from every message that can reach
 a `LogEntry` or the UI.
 
-`registry.ts` resolves the driver from the active workspace's
-`OPENAI_COMPATIBLE` credential, exactly as `src/lib/providers/dns/index.ts`
-does — no env fallback and no default endpoint. Without that credential it
-returns `null` and the whole layer is off, which is the same "no provider →
-empty state, no error" behavior Domains and Hosting already have. A workspace
-has one active model: the store allows several credentials per type, so the
-oldest one wins rather than an arbitrary row.
+`anthropic.ts` is the REAL driver for any Anthropic-compatible endpoint —
+z.ai/GLM (`https://api.z.ai/api/anthropic`) or Anthropic itself —
+`POST <baseUrl>/v1/messages`. Three things differ from the OpenAI shape and
+account for the whole file: `system` is a top-level field rather than a
+message, the answer is a list of content blocks rather than one string, and
+`max_tokens` is mandatory on every request (the driver defaults it to 1024).
+Its error mapping is also not status-only: Anthropic reports authentication,
+permission, rate-limit and overload conditions as HTTP 400 with a typed body, so
+the body is read once and used both for the category and for the truncated
+snippet. HTTP 529 (overloaded) maps to `rate_limit` rather than `upstream`,
+because the only distinction a caller acts on is whether retrying later is worth
+it. The Messages API has no embeddings endpoint, so `embed()` reports
+`unsupported` without touching the network.
+
+**Structured output.** `LlmCompletionRequest` carries two optional fields
+beyond the prompt. `responseFormat: "json"` is a hint to the transport —
+`openai.ts` sends `response_format: { type: "json_object" }`, `anthropic.ts`
+prefills the assistant turn with an opening brace — and never a guarantee, since
+OpenAI-compatible endpoints support it unevenly and the Messages API lacks it
+entirely. Every JSON answer therefore passes through four defences, none of
+which is trusted alone: the transport hint, a format contract repeated in the
+system prompt, defensive extraction in `json.ts` (fenced block, then successive
+opening braces against the last closing one, so a stray prefill brace or a short
+preamble is skipped rather than swallowed), and a zod schema owned by the
+feature. `json.ts` differs from the drivers on one point deliberately: its
+failure message names the schema paths that did not match and **nothing** of
+what the model wrote, because for a model the "upstream body" is a restatement
+of the operator's own mail.
+
+`mockAnswer` is a deterministic answer the MOCK driver returns verbatim and
+every REAL driver ignores. It exists so e2e can assert feature-shaped output
+without teaching `src/lib/llm` any domain types: the caller builds the answer
+from the same message it builds the prompt from (see §7F.6), and a unit test
+parses every mock answer with the schema the real answer is parsed with, so the
+two cannot drift apart.
+
+`registry.ts` resolves the driver from the workspace's LLM credential —
+`OPENAI_COMPATIBLE` or `ANTHROPIC_COMPATIBLE`, listed in `LLM_PROVIDER_TYPES` —
+exactly as `src/lib/providers/dns/index.ts` does, with no env fallback and no
+default endpoint. Without such a credential it returns `null` and the whole
+layer is off, the same "no provider → empty state, no error" behavior Domains
+and Hosting already have. A workspace has one active model: the credential
+flagged `isDefault` wins, and with no flag anywhere the oldest one does, which
+is what the layer did before the flag existed. `MOCK` is checked before the
+transport, so the deterministic driver is selected regardless of which endpoint
+the credential names.
 
 ### 7F.2 Credential storage
 
 Reuses the existing encrypted `ProviderCredential` model. The migration
-`20260802120000_llm_provider` adds one `ProviderType` value,
-`OPENAI_COMPATIBLE`; no new table and no new column. Base URL, model name, API
+`20260802120000_llm_provider` added `OPENAI_COMPATIBLE` and
+`20260825120000_llm_anthropic_default_credential` added
+`ANTHROPIC_COMPATIBLE` plus the one column below; no new table. Base URL, model name, API
 key and the driver `mode` live inside the AES-256-GCM payload
 (`CREDENTIAL_ENCRYPTION_KEY`), the key never leaves the database in plaintext,
 and the only thing exposed outward is `maskedHint` (last four characters).
@@ -1168,7 +1209,22 @@ and the only thing exposed outward is `maskedHint` (last four characters).
 credential is always REAL), while tests and e2e post `MOCK` explicitly.
 Management is the ordinary `/settings/providers` path — `PROVIDER_REGISTRY`
 gains an `LLM` category, `credentials.ts` computes the hint from `apiKey`, and
-`upsertCredentialSchema` gains one discriminated-union member.
+`upsertCredentialSchema` gains one discriminated-union member per transport.
+The two LLM entries take the same three fields, so choosing a vendor is
+choosing a transport and a base URL: DeepSeek and a local Ollama are
+OpenAI-compatible, z.ai/GLM is Anthropic-compatible. The dialog needs no new
+JSX for either — it renders from `PROVIDER_REGISTRY[provider].fields`.
+
+`ProviderCredential.isDefault` marks the workspace's active credential for its
+category; only `src/lib/llm` reads it today. Exclusivity is held by
+`credentialsService.setDefaultCredential()` inside a transaction rather than by
+a unique index, because the category (DNS/HOSTING/LLM) lives in
+`PROVIDER_REGISTRY` and a column duplicating it would be a second source of
+truth. Clearing the flag is a legal state — the registry falls back to
+oldest-wins — and deleting the credential needs no cleanup, since the flag goes
+with the row. The toggle is its own route, `PATCH /api/credentials/[id]/default`,
+for the same reason `../auto-refresh` is: choosing which model answers must not
+mean re-entering the API key.
 
 ### 7F.3 Audit and limits (`src/lib/services/llm.ts`)
 
@@ -1196,8 +1252,17 @@ with workspace content in the request body. It is operator-configured: nothing
 leaves the machine until someone adds the credential, and the recommended
 deployment is a local model (`http://127.0.0.1:11434/v1` for Ollama), which
 keeps that content on the host. A cloud endpoint is equally supported and equally
-explicit — the base URL is whatever the operator typed, so the choice of who
-sees the data is theirs, made once, in the UI.
+explicit — DeepSeek (`https://api.deepseek.com/v1`) and OpenAI over the
+OpenAI-compatible transport, z.ai/GLM (`https://api.z.ai/api/anthropic`) and
+Anthropic over the Anthropic-compatible one. The base URL is whatever the
+operator typed, so the choice of who sees the data is theirs, made once, in the
+UI.
+
+With §7F.6 that choice stops being hypothetical: summarizing a message sends its
+body — normalized, quoted history stripped, capped at
+`MAX_PROMPT_BODY_CHARS` = 8000 characters — to whichever endpoint the credential
+names. The cap is both a cost and a privacy bound, and the README states the
+price plainly at the point of connecting a provider.
 
 Unlike the weather widget the base URL is operator-supplied text, so it is an
 SSRF surface by construction — a self-hosted operator can point the application
@@ -1207,14 +1272,92 @@ same trade-off already accepted for mail servers in §7A.6.
 
 ### 7F.5 Tests
 
-`tests/unit/llm/mock.test.ts` (determinism as a property), `openai.test.ts`
-(status → category mapping, response parsing, transport failure, deadline, key
-redaction), `registry.test.ts` (no credential → `null`, driver selection, oldest
-credential wins), `tests/unit/services/llm.test.ts` (disabled layer, audit
-details, rate-limit window and its per-workspace isolation), and the
-`OPENAI_COMPATIBLE` lifecycle case in
-`tests/integration/services/credentials.test.ts` (encrypted round-trip through
-create → read → update → delete).
+Unit: `tests/unit/llm/mock.test.ts` (determinism as a property, plus the
+`mockAnswer` passthrough), `openai.test.ts` and `anthropic.test.ts` (status →
+category mapping — including the typed HTTP 400 bodies and 529 — response
+parsing, transport failure, deadline, the one-attempt rule, key redaction, the
+JSON prefill, and `embed()` reporting `unsupported` without a request),
+`json.test.ts` (extraction from fenced blocks and from prose, a stray prefill
+brace, and the promise that a failure message never carries model output),
+`registry.test.ts` (no credential → `null`, both transports, MOCK before
+transport, `isDefault` beating oldest-wins and the oldest-wins fallback),
+`tests/unit/services/llm.test.ts` (disabled layer, audit details, rate-limit
+window and its per-workspace isolation), `tests/unit/mail/ai-prompts.test.ts`
+(body hygiene, `bodyHtml` never read, and every mock answer parsed by the
+schema its real counterpart uses), `tests/unit/validation/mail-ai.test.ts` (the
+condition sanitizer), `tests/unit/ui/message-pane-ai.test.tsx`, and the two
+credential-dialog cases in `tests/unit/ui/forms.test.tsx`.
+
+Integration: `tests/integration/services/credentials.test.ts` (encrypted
+round-trip for both LLM types, `setDefaultCredential` exclusivity per category),
+`tests/integration/api/credentials-default.test.ts`,
+`tests/integration/api/mail-ai.test.ts` (the three routes against a MOCK
+credential: response shapes, 400/404, 501 with no credential, 429 at the window,
+one audit row per call) and `tests/integration/services/mail-ai.test.ts`.
+
+E2E: `e2e/mail-ai.spec.ts` seeds a `mode: "MOCK"` LLM credential through the
+real API and drives all three features, plus an axe scan of the summary panel.
+Its `baseUrl` points at the discard port, so a regression in driver selection
+fails the suite instead of calling out.
+
+### 7F.6 Mail AI features (`src/lib/services/mail-ai.ts`)
+
+Three features, all request-scoped, all obeying the rule from
+`specs/ai-integration.md`: **the model proposes, deterministic code executes.**
+
+| #   | Feature                     | What the model produces                | What persists it                                         |
+| --- | --------------------------- | -------------------------------------- | -------------------------------------------------------- |
+| 1   | Summary in the reading pane | Summary, bullets, action items         | Nothing — the panel is view state                        |
+| 2   | Reply draft                 | Body text for the composer             | The existing draft autosave, after the operator edits it |
+| 3   | Filter-rule proposal        | A rule name, match mode and conditions | The operator submitting the ordinary rule form           |
+
+`src/lib/mail/ai-prompts.ts` is a pure module holding the prompts, the body
+hygiene and each feature's mock answer. It sits beside `src/lib/mail/mock.ts`
+rather than under `src/lib/llm` because a prompt is domain knowledge about a
+message while `src/lib/llm` is transport; putting it there would make the
+transport layer depend on `MailDetailDto`. Only `bodyText` is ever read —
+`bodyHtml` is a token tax, noise for the model, and one more injection surface.
+Quoted history is cut, blank runs collapse, and the result is capped. Every
+system prompt frames the body as untrusted data between explicit delimiters;
+that is a mitigation, not a guarantee, and it holds because the only outputs a
+model has here are text in a composer and conditions that still pass
+`mailFilterConditionSchema` and a human.
+
+The service writes nothing, and imports neither `mail-drafts.ts` nor
+`mail-filter-rules.ts`. Scenario 2 fills the composer instead of creating a
+draft for three reasons: `saveMailDraft` needs a `DRAFTS` folder that webhook
+accounts do not have, an editable text the operator can close without a trace
+matches "propose, then confirm" better than a row in IMAP someone has to go
+delete, and it needs no new persistence code. Scenario 3 never proposes a label,
+a folder or any identifier — the operator has to pick a label or the form will
+not submit, which makes confirmation structural rather than a courtesy. Proposed
+conditions are re-validated one at a time with the same schema that checks
+hand-typed input; a rejected field/operator pair costs that one condition and
+the count is shown, because dropping it silently would be exactly the hidden
+model decision the spec rules out.
+
+Routes are `POST /api/mail/[id]/ai/{summary,reply-draft,filter-rule}`. POST
+rather than GET even though nothing is mutated: the call is not idempotent, it
+costs tokens and it counts against the rate limit, while a GET is something the
+browser and Next are entitled to prefetch. `src/lib/api/llm-result.ts` maps the
+result to a stable code (`AI_UNAVAILABLE` 501, `AI_RATE_LIMIT` 429,
+`AI_TIMEOUT` 504, `AI_AUTH` / `AI_UPSTREAM` / `AI_INVALID_RESPONSE` 502) rather
+than to the driver message, which goes to the Logs page instead.
+
+There are deliberately **no `/api/v1/**` twins and no MCP tools** for these.
+Those surfaces exist so an external assistant can drive the product; handing an
+LLM assistant a "call an LLM" tool is a loop with no operator in it, and the
+whole contract here rests on the human being there. `llmService.complete` also
+wants an `operatorId`, while token routes pass `null` — the audit row would come
+out nameless.
+
+Nothing here needs the `MailFilterActionJob` pattern: one model call for one
+message, bounded by `LLM_REQUEST_TIMEOUT_MS`, with an operator watching a
+spinner. A job would add a table and polling in exchange for a worse experience.
+The client carries an `AbortController` instead, cancelled on unmount and when
+another message is selected. The point where the job pattern does become
+mandatory is a whole-folder summary, or a proposal built from many messages at
+once.
 
 ## 7G. Contacts — CURRENT (2026-08-12)
 

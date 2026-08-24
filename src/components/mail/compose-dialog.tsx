@@ -10,7 +10,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import {
   ApiError,
   deleteMailDraftAttachment,
+  draftMailReply,
   saveMailDraft,
   sendMail,
   uploadMailDraftAttachment,
@@ -142,6 +143,23 @@ function DiscardChangesDialog({
   );
 }
 
+// Plain text to the minimum HTML the editor understands. The result is
+// re-sanitized server-side by sanitizeOutgoingMailHtml when the draft is
+// saved, so this only has to be well-formed, not trusted.
+function toParagraphHtml(text: string): string {
+  const escape = (value: string) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  return text
+    .split(/\n{2,}/)
+    .map(
+      (paragraph) => `<p>${escape(paragraph).replaceAll("\n", "<br />")}</p>`,
+    )
+    .join("");
+}
+
 function OriginalPreview({ original }: { original: MailDetailDto }) {
   const t = useTranslations("mail");
   return (
@@ -176,6 +194,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
     ref,
   ) {
     const t = useTranslations("mail");
+    const locale = useLocale();
     const formRef = useRef<HTMLFormElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const draftIdRef = useRef(initialDraft?.id);
@@ -220,6 +239,15 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
     const [submitting, setSubmitting] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    // AI reply draft (specs/ai-integration.md scenario 2). The model fills the
+    // editor the operator already opened; nothing is written until the
+    // existing autosave runs, and sending still needs an explicit click. The
+    // editor is uncontrolled after mount, so applying a draft means bumping
+    // the version and letting it remount with new initialHtml.
+    const [aiDrafting, setAiDrafting] = useState(false);
+    const [aiDraftHtml, setAiDraftHtml] = useState<string | null>(null);
+    const [aiDraftVersion, setAiDraftVersion] = useState(0);
+    const aiAbortRef = useRef<AbortController | null>(null);
 
     const baseId = useId();
     const fieldId = (field: string) => `${baseId}-${field}`;
@@ -234,6 +262,56 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
       changeVersionRef.current += 1;
       setDirty(true);
       setSaveStatus("idle");
+    }
+
+    // Leaving the composer must not hold a model request open for its full
+    // 60 s deadline.
+    useEffect(() => {
+      const controller = aiAbortRef;
+      return () => {
+        controller.current?.abort();
+      };
+    }, []);
+
+    async function handleAiDraft() {
+      if (!original) return;
+      aiAbortRef.current?.abort();
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
+      setAiDrafting(true);
+      try {
+        const draft = await draftMailReply(
+          original.id,
+          locale,
+          undefined,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        const html = toParagraphHtml(draft.bodyText);
+        setAiDraftHtml(html);
+        setAiDraftVersion((value) => value + 1);
+        setBody({ html, text: draft.bodyText, isEmpty: false });
+        markDirty();
+        toast.success(t("aiDraftReplyAppliedToast"));
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const code = error instanceof ApiError ? error.message : "";
+        const key =
+          code === "AI_UNAVAILABLE"
+            ? "errorAiUnavailable"
+            : code === "AI_AUTH"
+              ? "errorAiAuth"
+              : code === "AI_RATE_LIMIT"
+                ? "errorAiRateLimit"
+                : code === "AI_TIMEOUT"
+                  ? "errorAiTimeout"
+                  : code === "AI_INVALID_RESPONSE"
+                    ? "errorAiInvalidResponse"
+                    : "errorAiUpstream";
+        toast.error(t(key));
+      } finally {
+        if (!controller.signal.aborted) setAiDrafting(false);
+      }
     }
 
     function updateValue(setValue: (value: string) => void, value: string) {
@@ -523,13 +601,42 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
           </Field>
 
           <Field data-invalid={!!bodyError || undefined}>
-            <FieldLabel id={`${fieldId("body")}-label`}>
-              {t("bodyLabel")}
-            </FieldLabel>
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel id={`${fieldId("body")}-label`}>
+                {t("bodyLabel")}
+              </FieldLabel>
+              {mode === "reply" && original && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={aiDrafting}
+                  onClick={handleAiDraft}
+                >
+                  {aiDrafting ? (
+                    <Spinner
+                      aria-label={t("aiDraftReplyLoadingLabel")}
+                      data-icon="inline-start"
+                    />
+                  ) : (
+                    <Icon
+                      name="ri-sparkling-2-line"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  )}
+                  {t("aiDraftReplyButton")}
+                </Button>
+              )}
+            </div>
             <RichTextEditor
+              // Remounted when a model draft arrives: the editor reads
+              // initialHtml once, so replacing the body means replacing the
+              // editor.
+              key={`body-${aiDraftVersion}`}
               id={fieldId("body")}
               labelledBy={`${fieldId("body")}-label`}
-              initialHtml={initialDraft?.bodyHtml}
+              initialHtml={aiDraftHtml ?? initialDraft?.bodyHtml}
               autoFocus={mode === "reply" && !initialDraft}
               compact={variant === "inline"}
               invalid={!!bodyError}
