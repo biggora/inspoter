@@ -7,6 +7,7 @@ import {
   type CreateCardToolContext,
   type MoveCardToolContext,
 } from "@/components/kanban/web-mcp-tools";
+import { expectToolError, expectToolJson } from "../web-mcp/test-utils";
 
 function makeCard(
   overrides: Partial<KanbanCardDetail> & { id: string; title: string; columnId: string },
@@ -83,7 +84,7 @@ describe("createMoveCardTool", () => {
       targetColumn: "col-done",
     });
 
-    expect(result).toMatchObject({
+    expect(expectToolJson(result)).toMatchObject({
       movedCard: "Fix login bug",
       fromColumn: "Backlog",
       toColumn: "Done",
@@ -97,7 +98,7 @@ describe("createMoveCardTool", () => {
       targetColumn: "done",
     });
 
-    expect(result).toMatchObject({ movedCard: "Fix login bug" });
+    expect(expectToolJson(result)).toMatchObject({ movedCard: "Fix login bug" });
   });
 
   it("resolves card and column by a unique case-insensitive substring", async () => {
@@ -107,55 +108,59 @@ describe("createMoveCardTool", () => {
       targetColumn: "don",
     });
 
-    expect(result).toMatchObject({ movedCard: "Fix login bug", toColumn: "Done" });
+    expect(expectToolJson(result)).toMatchObject({
+      movedCard: "Fix login bug",
+      toColumn: "Done",
+    });
   });
 
-  it("returns a listing error when the card query is ambiguous", async () => {
+  it("flags isError with a listing message when the card query is ambiguous", async () => {
     backlog.cards.push(
       makeCard({ id: "card-3", title: "Fix logout bug", columnId: "col-backlog" }),
     );
     const tool = createMoveCardTool(ctx);
-    const result = (await tool.execute({
+    const result = await tool.execute({
       card: "fix",
       targetColumn: "col-done",
-    })) as { error: string };
+    });
+    const message = expectToolError(result);
 
-    expect(result.error).toContain("Fix login bug");
-    expect(result.error).toContain("Fix logout bug");
+    expect(message).toContain("Fix login bug");
+    expect(message).toContain("Fix logout bug");
     expect(ctx.move).not.toHaveBeenCalled();
   });
 
-  it("returns a not-found error when the card query matches nothing", async () => {
+  it("flags isError with a not-found message when the card query matches nothing", async () => {
     const tool = createMoveCardTool(ctx);
-    const result = (await tool.execute({
+    const result = await tool.execute({
       card: "does not exist",
       targetColumn: "col-done",
-    })) as { error: string };
+    });
 
-    expect(result.error).toContain("No match found");
+    expect(expectToolError(result)).toContain("No match found");
     expect(ctx.move).not.toHaveBeenCalled();
   });
 
   it("blocks the move while the board is filtered", async () => {
     ctx.isFiltering = true;
     const tool = createMoveCardTool(ctx);
-    const result = (await tool.execute({
+    const result = await tool.execute({
       card: "card-1",
       targetColumn: "col-done",
-    })) as { error: string };
+    });
 
-    expect(result.error).toMatch(/filtered/i);
+    expect(expectToolError(result)).toMatch(/filtered/i);
     expect(ctx.move).not.toHaveBeenCalled();
   });
 
-  it("returns an error when the card is already in the target column", async () => {
+  it("flags isError when the card is already in the target column", async () => {
     const tool = createMoveCardTool(ctx);
-    const result = (await tool.execute({
+    const result = await tool.execute({
       card: "card-1",
       targetColumn: "col-backlog",
-    })) as { error: string };
+    });
 
-    expect(result.error).toContain("already in");
+    expect(expectToolError(result)).toContain("already in");
     expect(ctx.move).not.toHaveBeenCalled();
   });
 
@@ -194,12 +199,12 @@ describe("createMoveCardTool", () => {
   it("still calls refresh (for rollback) and reports an error when ctx.move rejects", async () => {
     ctx.move = vi.fn().mockRejectedValue(new Error("network down"));
     const tool = createMoveCardTool(ctx);
-    const result = (await tool.execute({
+    const result = await tool.execute({
       card: "card-1",
       targetColumn: "col-done",
-    })) as { error: string };
+    });
 
-    expect(result.error).toBeTruthy();
+    expect(expectToolError(result)).toBe("network down");
     expect(ctx.refresh).toHaveBeenCalledTimes(1);
   });
 });
@@ -246,14 +251,11 @@ describe("createCreateCardTool", () => {
     );
   });
 
-  it("returns an error and does not call create when the column is not found", async () => {
+  it("flags isError and does not call create when the column is not found", async () => {
     const tool = createCreateCardTool(ctx);
-    const result = (await tool.execute({
-      column: "nope",
-      title: "New card",
-    })) as { error: string };
+    const result = await tool.execute({ column: "nope", title: "New card" });
 
-    expect(result.error).toContain("No match found");
+    expect(expectToolError(result)).toContain("No match found");
     expect(ctx.create).not.toHaveBeenCalled();
   });
 
@@ -275,7 +277,7 @@ describe("createCreateCardTool", () => {
       dueDate: "2026-09-01T00:00:00.000Z",
     });
     expect(ctx.refresh).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({
+    expect(expectToolJson(result)).toMatchObject({
       cardId: "card-new",
       title: "New card",
       column: "Backlog",
@@ -296,6 +298,6 @@ describe("createCreateCardTool", () => {
       priority: undefined,
       dueDate: undefined,
     });
-    expect(result).not.toHaveProperty("error");
+    expect(result.isError).toBeUndefined();
   });
 });

@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
 import { RouteProgressProvider } from "@/components/shell/route-progress";
+import { WebMcpGlobalTools } from "@/components/shell/web-mcp-global-tools";
 import { getUnreadCounts } from "@/lib/services/notification-counts";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,9 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
       <RouteProgressProvider>
+        {/* Outside the `{children}` slot on purpose — stays mounted across
+            client-side navigation, so its tools survive a route change. */}
+        <WebMcpGlobalTools />
         <AppSidebar
           workspaceName={workspace.name}
           workspaceId={workspace.id}

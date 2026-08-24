@@ -98,10 +98,9 @@ export function createMoveCardTool(ctx: MoveCardToolContext): WebMcpTool {
     readOnly: false,
     async handler(input) {
       if (ctx.isFiltering) {
-        return {
-          error:
-            "The board is currently filtered, so card positions on screen don't reflect the full column order. Clear the filters before moving a card.",
-        };
+        throw new Error(
+          "The board is currently filtered, so card positions on screen don't reflect the full column order. Clear the filters before moving a card.",
+        );
       }
 
       const flatCards = ctx.columns.flatMap((column) =>
@@ -117,14 +116,14 @@ export function createMoveCardTool(ctx: MoveCardToolContext): WebMcpTool {
         flatCards,
         (card) => card.title,
       );
-      if ("error" in cardResult) return { error: cardResult.error };
+      if ("error" in cardResult) throw new Error(cardResult.error);
 
       const columnResult = resolveEntity(
         input.targetColumn,
         ctx.columns,
         (column) => column.name,
       );
-      if ("error" in columnResult) return { error: columnResult.error };
+      if ("error" in columnResult) throw new Error(columnResult.error);
 
       const card = cardResult.match;
       const targetColumn = columnResult.match;
@@ -132,13 +131,15 @@ export function createMoveCardTool(ctx: MoveCardToolContext): WebMcpTool {
         (column) => column.id === card.columnId,
       );
       if (!sourceColumn) {
-        return { error: `Could not locate the current column for "${card.title}".` };
+        throw new Error(
+          `Could not locate the current column for "${card.title}".`,
+        );
       }
 
       if (sourceColumn.id === targetColumn.id) {
-        return {
-          error: `"${card.title}" is already in "${targetColumn.name}". Reordering within a column isn't supported yet.`,
-        };
+        throw new Error(
+          `"${card.title}" is already in "${targetColumn.name}". Reordering within a column isn't supported yet.`,
+        );
       }
 
       const remaining = sourceColumn.cards
@@ -210,7 +211,7 @@ export function createCreateCardTool(ctx: CreateCardToolContext): WebMcpTool {
         ctx.columns,
         (column) => column.name,
       );
-      if ("error" in columnResult) return { error: columnResult.error };
+      if ("error" in columnResult) throw new Error(columnResult.error);
 
       const column = columnResult.match;
 
