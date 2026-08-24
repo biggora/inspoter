@@ -421,6 +421,46 @@ describe("standardized form contracts", () => {
     });
   });
 
+  it("submits an Anthropic-compatible credential through the same three fields", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <ProviderCredentialDialog
+        open
+        mode="create"
+        existing={null}
+        onOpenChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "Provider" }));
+    await user.click(
+      await screen.findByRole("option", { name: "Anthropic-compatible (LLM)" }),
+    );
+
+    // The transport is the only difference between the two LLM entries, so an
+    // operator types the same three fields either way.
+    await user.type(screen.getByLabelText("Name"), "GLM");
+    await user.type(
+      screen.getByLabelText("API base URL"),
+      "https://api.z.ai/api/anthropic",
+    );
+    await user.type(screen.getByLabelText("Model"), "glm-4.6");
+    const apiKey = screen.getByLabelText("API key");
+    expect(apiKey).toHaveAttribute("type", "password");
+    await user.type(apiKey, "zai-key-value");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.credentialsCreate).toHaveBeenCalledWith({
+      provider: "ANTHROPIC_COMPATIBLE",
+      label: "GLM",
+      baseUrl: "https://api.z.ai/api/anthropic",
+      model: "glm-4.6",
+      apiKey: "zai-key-value",
+    });
+  });
+
   it("renders generic provider API failures at form level without invalidating fields", async () => {
     const user = userEvent.setup();
     mocks.credentialsCreate.mockRejectedValueOnce(

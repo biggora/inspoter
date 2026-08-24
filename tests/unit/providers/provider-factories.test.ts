@@ -38,6 +38,8 @@ describe("getServerProvidersForWorkspace()", () => {
         label: "Prod Hetzner",
         type: "HETZNER_CLOUD",
         apiToken: "secret",
+        isDefault: false,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
     ]);
 
@@ -66,6 +68,8 @@ describe("getDnsProvidersForWorkspace()", () => {
         label: "Cloudflare Main",
         type: "CLOUDFLARE_DNS",
         apiToken: "secret",
+        isDefault: false,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
       {
         id: "cred-gd",
@@ -73,6 +77,8 @@ describe("getDnsProvidersForWorkspace()", () => {
         type: "GODADDY_DNS",
         apiKey: "key",
         apiSecret: "secret",
+        isDefault: false,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
     ]);
 

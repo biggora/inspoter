@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { MailAccountDialog } from "@/components/settings/mail-account-dialog";
@@ -31,10 +31,13 @@ import {
   fetchMailLabels,
   moveMailItem,
   patchMailItem,
+  proposeMailFilterRule,
   removeMailLabel,
+  summarizeMailMessage,
   syncAccount,
   SYNC_IN_PROGRESS,
   type MailAccountDto,
+  type MailAiFilterProposalDto,
   type MailDetailDto,
   type MailDraftDto,
   type MailFolderDto,
@@ -58,7 +61,7 @@ import {
 } from "./manage-labels-dialog";
 import { MailSidebar, type MailSidebarProps } from "./mail-sidebar";
 import { MessageList } from "./message-list";
-import { MessagePane } from "./message-pane";
+import { MessagePane, type MailAiSummaryState } from "./message-pane";
 
 function mailDetailToDraft(detail: MailDetailDto): MailDraftDto {
   return {
@@ -160,6 +163,10 @@ function MailClientCoordinator({
   initialMessageId: string | null;
 }) {
   const t = useTranslations("mail");
+  // The model answers in the interface language. It travels as an explicit
+  // request field rather than being read from Accept-Language server-side,
+  // which keeps the routes testable.
+  const locale = useLocale();
   const [accounts, setAccounts] = useState<MailAccountDto[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [accountsReload, setAccountsReload] = useState(0);
@@ -214,6 +221,26 @@ function MailClientCoordinator({
   const mobileNavTriggerRef = useRef<HTMLButtonElement>(null);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [filterRuleOpen, setFilterRuleOpen] = useState(false);
+  // AI state (specs/ai-integration.md scenarios 1 and 3). aiEnabled is turned
+  // off for the rest of the session by the first 501 AI_UNAVAILABLE: there is
+  // no probe request, so "is a model configured" is only answered by asking.
+  const [aiEnabled, setAiEnabled] = useState(true);
+  // Both AI states are stored against the message they belong to and derived
+  // back out below. Resetting them in the detail effect would mean calling
+  // setState from an effect body for something that is really just derived
+  // state (react-hooks/set-state-in-effect).
+  const [summaryState, setSummaryState] = useState<{
+    messageId: string;
+    state: MailAiSummaryState;
+  } | null>(null);
+  const [proposingFilterFor, setProposingFilterFor] = useState<string | null>(
+    null,
+  );
+  const [filterProposal, setFilterProposal] =
+    useState<MailAiFilterProposalDto | null>(null);
+  // The model deadline is 60 s. An operator who selects another message must
+  // not leave a request holding a connection until then.
+  const aiAbortRef = useRef<AbortController | null>(null);
   const [pendingFilterRunId, setPendingFilterRunId] = useState<string | null>(
     null,
   );
@@ -445,6 +472,12 @@ function MailClientCoordinator({
       );
     }
 
+    // A summary belongs to the message it was made for. The stored state is
+    // keyed by message id so switching messages drops it without a setState
+    // here; what does belong in the effect is cancelling a request that is
+    // still in flight for the message being left.
+    aiAbortRef.current?.abort();
+
     async function run() {
       setDetailLoading(true);
       setDetailError(null);
@@ -486,6 +519,22 @@ function MailClientCoordinator({
       cancelled = true;
     };
   }, [selectedMessageId, detailReload, t]);
+
+  // Derived from the keyed state above: a summary or a pending suggestion only
+  // exists for the message currently open.
+  const summary: MailAiSummaryState =
+    summaryState && summaryState.messageId === selectedMessageId
+      ? summaryState.state
+      : { status: "idle" };
+  const proposingFilter = proposingFilterFor === selectedMessageId;
+
+  // Leaving the page must not hold a model request open for its full deadline.
+  useEffect(() => {
+    const controller = aiAbortRef;
+    return () => {
+      controller.current?.abort();
+    };
+  }, []);
 
   function resetToFirstPage() {
     setPageCursors([undefined]);
@@ -796,7 +845,92 @@ function MailClientCoordinator({
   function handleFilterRuleOpenChange(open: boolean) {
     setFilterRuleOpen(open);
     if (!open) {
+      setFilterProposal(null);
       requestAnimationFrame(() => filterRuleTriggerRef.current?.focus());
+    }
+  }
+
+  // The routes answer with a stable code rather than a driver message, so the
+  // mapping from failure to wording lives here — same shape as
+  // ERROR_TRANSLATION_KEYS in filter-rule-dialog.tsx.
+  function aiErrorKey(error: unknown): string {
+    const code = error instanceof ApiError ? error.message : "";
+    switch (code) {
+      case "AI_UNAVAILABLE":
+        return "errorAiUnavailable";
+      case "AI_AUTH":
+        return "errorAiAuth";
+      case "AI_RATE_LIMIT":
+        return "errorAiRateLimit";
+      case "AI_TIMEOUT":
+        return "errorAiTimeout";
+      case "AI_INVALID_RESPONSE":
+        return "errorAiInvalidResponse";
+      default:
+        return "errorAiUpstream";
+    }
+  }
+
+  function isAiUnavailable(error: unknown): boolean {
+    return error instanceof ApiError && error.message === "AI_UNAVAILABLE";
+  }
+
+  // Only one AI request may be in flight for the pane: a second click, or a
+  // move to another message, cancels the first.
+  function startAiRequest(): AbortSignal {
+    aiAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiAbortRef.current = controller;
+    return controller.signal;
+  }
+
+  async function handleSummarize() {
+    if (!detail) return;
+    const messageId = detail.id;
+    const signal = startAiRequest();
+    setSummaryState({ messageId, state: { status: "loading" } });
+    try {
+      const result = await summarizeMailMessage(messageId, locale, signal);
+      // The operator may have moved on while the model was answering.
+      if (signal.aborted) return;
+      setSummaryState({
+        messageId,
+        state: {
+          status: "ready",
+          summary: result.summary,
+          bullets: result.bullets,
+          actionItems: result.actionItems,
+          truncated: result.truncated,
+        },
+      });
+    } catch (error) {
+      if (signal.aborted) return;
+      if (isAiUnavailable(error)) setAiEnabled(false);
+      setSummaryState({
+        messageId,
+        state: { status: "error", messageKey: aiErrorKey(error) },
+      });
+    }
+  }
+
+  async function handleProposeFilter() {
+    if (!detail) return;
+    const messageId = detail.id;
+    const signal = startAiRequest();
+    setProposingFilterFor(messageId);
+    try {
+      const proposal = await proposeMailFilterRule(messageId, locale, signal);
+      if (signal.aborted) return;
+      // Nothing is created here: the proposal only pre-fills the same dialog
+      // the manual "filter messages like this" button opens.
+      setFilterProposal(proposal);
+      setFilterRuleOpen(true);
+    } catch (error) {
+      if (signal.aborted) return;
+      if (isAiUnavailable(error)) setAiEnabled(false);
+      toast.error(t(aiErrorKey(error)));
+    } finally {
+      if (!signal.aborted) setProposingFilterFor(null);
     }
   }
 
@@ -1096,8 +1230,17 @@ function MailClientCoordinator({
             onRetryLabels={() => setLabelsReload((value) => value + 1)}
             onToggleLabel={handleToggleLabel}
             canCreateFilter
-            onCreateFilter={() => setFilterRuleOpen(true)}
+            onCreateFilter={() => {
+              setFilterProposal(null);
+              setFilterRuleOpen(true);
+            }}
             filterTriggerRef={filterRuleTriggerRef}
+            aiEnabled={aiEnabled}
+            summary={summary}
+            onSummarize={handleSummarize}
+            onDismissSummary={() => setSummaryState(null)}
+            proposingFilter={proposingFilter}
+            onProposeFilter={handleProposeFilter}
             replyComposer={
               compose?.mode === "reply" &&
               detail &&
@@ -1142,6 +1285,7 @@ function MailClientCoordinator({
           onOpenChange={handleFilterRuleOpenChange}
           detail={detail}
           accountName={selectedAccount.name}
+          proposal={filterProposal}
           onSaved={handleFilterRuleSaved}
         />
       )}

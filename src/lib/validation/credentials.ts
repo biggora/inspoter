@@ -11,6 +11,13 @@ export const updateCredentialAutoRefreshSchema = z.object({
   enabled: z.boolean(),
 });
 
+// Per-credential "active provider of its category" flag, apart from
+// upsertCredentialSchema for the same reason as auto-refresh above: choosing
+// which model answers must not mean re-entering the API key.
+export const updateCredentialDefaultSchema = z.object({
+  isDefault: z.boolean(),
+});
+
 export const upsertCredentialSchema = z.discriminatedUnion("provider", [
   z.object({
     provider: z.literal("CLOUDFLARE_DNS"),
@@ -65,6 +72,14 @@ export const upsertCredentialSchema = z.discriminatedUnion("provider", [
     apiKey: z.string().min(1),
     mode: z.enum(["MOCK", "REAL"]).default("REAL"),
   }),
+  z.object({
+    provider: z.literal("ANTHROPIC_COMPATIBLE"),
+    label: z.string().trim().min(1).max(100),
+    baseUrl: z.string().trim().url().max(500),
+    model: z.string().trim().min(1).max(200),
+    apiKey: z.string().min(1),
+    mode: z.enum(["MOCK", "REAL"]).default("REAL"),
+  }),
 ]);
 
 export type UpsertCredentialInput = z.infer<typeof upsertCredentialSchema>;
@@ -104,6 +119,14 @@ export function toCredentialData(input: UpsertCredentialInput): CredentialData {
     case "OPENAI_COMPATIBLE":
       return {
         type: "OPENAI_COMPATIBLE",
+        baseUrl: input.baseUrl,
+        model: input.model,
+        apiKey: input.apiKey,
+        mode: input.mode,
+      };
+    case "ANTHROPIC_COMPATIBLE":
+      return {
+        type: "ANTHROPIC_COMPATIBLE",
         baseUrl: input.baseUrl,
         model: input.model,
         apiKey: input.apiKey,

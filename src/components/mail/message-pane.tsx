@@ -38,6 +38,21 @@ import {
 type Format = ReturnType<typeof useFormatter>;
 type Translate = (key: string) => string;
 
+// The AI summary is a per-message piece of view state, so it is modeled as a
+// union rather than three loose booleans: "loading with a stale summary still
+// on screen" is not a state this pane should be able to represent.
+export type MailAiSummaryState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | {
+      status: "ready";
+      summary: string;
+      bullets: string[];
+      actionItems: string[];
+      truncated: boolean;
+    }
+  | { status: "error"; messageKey: string };
+
 function formatFullDate(iso: string, format: Format): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -99,6 +114,17 @@ export interface MessagePaneProps {
   canCreateFilter: boolean;
   onCreateFilter: () => void;
   filterTriggerRef: RefObject<HTMLButtonElement | null>;
+  /**
+   * False once a request has come back 501 AI_UNAVAILABLE, which hides the AI
+   * controls for the rest of the session. There is no probe request on render:
+   * whether a model is configured only matters after a click.
+   */
+  aiEnabled: boolean;
+  summary: MailAiSummaryState;
+  onSummarize: () => void;
+  onDismissSummary: () => void;
+  proposingFilter: boolean;
+  onProposeFilter: () => void;
   replyComposer?: ReactNode;
 }
 
@@ -132,6 +158,12 @@ export function MessagePane({
   canCreateFilter,
   onCreateFilter,
   filterTriggerRef,
+  aiEnabled,
+  summary,
+  onSummarize,
+  onDismissSummary,
+  proposingFilter,
+  onProposeFilter,
   replyComposer,
 }: MessagePaneProps) {
   const t = useTranslations("mail");
@@ -440,7 +472,64 @@ export function MessagePane({
             {t("filterMessagesLikeThisButton")}
           </Button>
         )}
+        {aiEnabled && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={summary.status === "loading"}
+              onClick={onSummarize}
+            >
+              {summary.status === "loading" ? (
+                <Spinner
+                  aria-label={t("aiSummaryLoadingLabel")}
+                  data-icon="inline-start"
+                />
+              ) : (
+                <Icon
+                  name="ri-sparkling-2-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+              )}
+              {t("aiSummarizeButton")}
+            </Button>
+            {canCreateFilter && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={proposingFilter}
+                onClick={onProposeFilter}
+              >
+                {proposingFilter ? (
+                  <Spinner
+                    aria-label={t("aiProposeFilterLoadingLabel")}
+                    data-icon="inline-start"
+                  />
+                ) : (
+                  <Icon
+                    name="ri-magic-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                )}
+                {t("aiProposeFilterButton")}
+              </Button>
+            )}
+          </>
+        )}
       </div>
+
+      {summary.status !== "idle" && (
+        <div
+          data-slot="message-ai-summary"
+          className="border-b border-background-100 px-6 py-4"
+        >
+          <AiSummary summary={summary} onDismiss={onDismissSummary} />
+        </div>
+      )}
 
       {detail.attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 border-b border-background-100 px-6 py-3">
@@ -490,6 +579,92 @@ export function MessagePane({
           {replyComposer}
         </div>
       )}
+    </div>
+  );
+}
+
+// The summary panel. Presentational like the rest of this file: it renders a
+// MailAiSummaryState and never fetches. The disclaimer is not decoration —
+// specs/ai-integration.md requires the model's output to be visibly a
+// proposal the operator checks, never a fact the product asserts.
+function AiSummary({
+  summary,
+  onDismiss,
+}: {
+  summary: MailAiSummaryState;
+  onDismiss: () => void;
+}) {
+  const t = useTranslations("mail");
+
+  if (summary.status === "loading") {
+    return (
+      <LoadingRegion>
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="mt-2 h-4 w-full" />
+        <Skeleton className="mt-2 h-4 w-4/5" />
+      </LoadingRegion>
+    );
+  }
+
+  if (summary.status === "error") {
+    return (
+      <Alert variant="error">
+        <AlertDescription>{t(summary.messageKey)}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (summary.status !== "ready") return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-medium text-foreground">
+          {t("aiSummaryTitle")}
+        </h3>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("aiSummaryDismissButton")}
+          onClick={onDismiss}
+        >
+          <Icon name="ri-close-line" aria-hidden className="text-base" />
+        </Button>
+      </div>
+
+      <p className="text-sm text-foreground">{summary.summary}</p>
+
+      {summary.bullets.length > 0 && (
+        <ul className="list-disc pl-5 text-sm text-muted-foreground">
+          {summary.bullets.map((bullet) => (
+            <li key={bullet}>{bullet}</li>
+          ))}
+        </ul>
+      )}
+
+      {summary.actionItems.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h4 className="text-xs font-medium text-foreground">
+            {t("aiSummaryActionItemsTitle")}
+          </h4>
+          <ul className="list-disc pl-5 text-sm text-muted-foreground">
+            {summary.actionItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {summary.truncated && (
+        <p className="text-xs text-muted-foreground">
+          {t("aiSummaryTruncatedNotice")}
+        </p>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        {t("aiSummaryDisclaimer")}
+      </p>
     </div>
   );
 }

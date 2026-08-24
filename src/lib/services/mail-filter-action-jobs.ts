@@ -61,8 +61,10 @@ function idempotencyScope(input: EnqueueMailFilterActionsInput): string {
 export async function enqueueMailFilterActionJobs(
   tx: Prisma.TransactionClient,
   input: EnqueueMailFilterActionsInput,
+  runtime: Pick<MailFilterActionJobRuntime, "now"> = DEFAULT_RUNTIME,
 ): Promise<number> {
   const scope = idempotencyScope(input);
+  const now = runtime.now();
   const jobs: Prisma.MailFilterActionJobCreateManyInput[] = [];
 
   if (input.setRead != null && input.setRead !== input.currentIsRead) {
@@ -77,6 +79,7 @@ export async function enqueueMailFilterActionJobs(
       type: "SET_READ",
       readValue: input.setRead,
       idempotencyKey: `${scope}:${input.mailItemId}:set-read`,
+      nextAttemptAt: now,
       maxAttempts: MAIL_FILTER_ACTION_JOB_MAX_ATTEMPTS,
     });
   }
@@ -93,6 +96,7 @@ export async function enqueueMailFilterActionJobs(
       type: "MOVE_TO_FOLDER",
       targetFolderId: input.moveToFolderId,
       idempotencyKey: `${scope}:${input.mailItemId}:move`,
+      nextAttemptAt: now,
       maxAttempts: MAIL_FILTER_ACTION_JOB_MAX_ATTEMPTS,
     });
   }

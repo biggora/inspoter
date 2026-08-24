@@ -77,6 +77,7 @@ export function ProviderCredentialsView() {
   const [savingAutoRefresh, setSavingAutoRefresh] = useState<string | null>(
     null,
   );
+  const [savingDefault, setSavingDefault] = useState<string | null>(null);
 
   const load = useCallback(() => {
     return credentialsApi
@@ -138,6 +139,40 @@ export function ProviderCredentialsView() {
     }
   }
 
+  // Optimistic like the toggle above, with one addition: setting the flag
+  // clears it on every other credential of the same category, because that is
+  // what the service does server-side. Without the local sweep the table would
+  // show two defaults until the next reload. Clearing it is allowed too — with
+  // no default anywhere the LLM registry falls back to the oldest credential.
+  async function handleDefaultChange(
+    credential: CredentialDto,
+    isDefault: boolean,
+  ) {
+    const previous = credentials;
+    setSavingDefault(credential.id);
+    setCredentials((prev) =>
+      prev.map((entry) => {
+        if (entry.id === credential.id) return { ...entry, isDefault };
+        if (
+          !isDefault ||
+          PROVIDER_REGISTRY[entry.provider].category !==
+            PROVIDER_REGISTRY[credential.provider].category
+        ) {
+          return entry;
+        }
+        return { ...entry, isDefault: false };
+      }),
+    );
+    try {
+      await credentialsApi.setDefault(credential.id, isDefault);
+    } catch {
+      setCredentials(previous);
+      toast.error(t("defaultSaveError"));
+    } finally {
+      setSavingDefault(null);
+    }
+  }
+
   return (
     <PageBody>
       <PageHeader
@@ -175,6 +210,7 @@ export function ProviderCredentialsView() {
               <TableHead>{t("nameHeader")}</TableHead>
               <TableHead>{t("keyHeader")}</TableHead>
               <TableHead>{t("categoryHeader")}</TableHead>
+              <TableHead>{t("defaultHeader")}</TableHead>
               <TableHead>{t("autoRefreshHeader")}</TableHead>
               <TableHead className="text-right">{t("actionsHeader")}</TableHead>
             </TableRow>
@@ -195,6 +231,22 @@ export function ProviderCredentialsView() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {categoryLabel(meta.category, t)}
+                  </TableCell>
+                  <TableCell>
+                    {meta.category === "LLM" ? (
+                      <Checkbox
+                        checked={credential.isDefault}
+                        disabled={savingDefault !== null}
+                        aria-label={t("defaultAria", {
+                          label: credential.label,
+                        })}
+                        onCheckedChange={(value) =>
+                          handleDefaultChange(credential, value === true)
+                        }
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">&mdash;</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Checkbox

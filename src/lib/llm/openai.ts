@@ -193,6 +193,12 @@ export class OpenAiCompatibleLlmProvider implements LlmProvider {
         ...(request.maxTokens !== undefined
           ? { max_tokens: request.maxTokens }
           : {}),
+        // Belt to the system prompt's braces: endpoints that honour it stop
+        // wrapping the object in prose, and endpoints that don't simply
+        // ignore an unknown key.
+        ...(request.responseFormat === "json"
+          ? { response_format: { type: "json_object" } }
+          : {}),
         stream: false,
       },
       request.signal,

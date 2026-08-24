@@ -54,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "skills/react-best-practices/SKILL.md",
       "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    },
+    "web-mcp": {
+      "source": "biggora/claude-plugins-registry",
+      "sourceType": "github",
+      "skillPath": "src/skills/web-mcp/SKILL.md",
+      "computedHash": "182744246619c7a326208a3b82404d5f6d883c2e7ad0036d6972ea0ccb125d4f"
     }
   }
 }

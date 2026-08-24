@@ -73,6 +73,10 @@ describe("createCredential + getDecryptedCredentials", () => {
       label: `${NAME_PREFIX}-hetzner-cloud`,
       type: "HETZNER_CLOUD",
       apiToken: "hc-secret-token-value",
+      // Carried by DecryptedCredential so src/lib/llm/registry.ts can pick
+      // the active model; asserted here so the shape stays exhaustive.
+      isDefault: false,
+      createdAt: expect.any(Date),
     });
   });
 
@@ -100,6 +104,10 @@ describe("createCredential + getDecryptedCredentials", () => {
       type: "GODADDY_DNS",
       apiKey: "gd-key-value",
       apiSecret: "gd-secret-value",
+      // Carried by DecryptedCredential so src/lib/llm/registry.ts can pick
+      // the active model; asserted here so the shape stays exhaustive.
+      isDefault: false,
+      createdAt: expect.any(Date),
     });
   });
 });
@@ -135,6 +143,10 @@ describe("OPENAI_COMPATIBLE credential lifecycle", () => {
       model: "llama3.1",
       apiKey: "llm-secret-key-value",
       mode: "REAL",
+      // Carried by DecryptedCredential so src/lib/llm/registry.ts can pick
+      // the active model; asserted here so the shape stays exhaustive.
+      isDefault: false,
+      createdAt: expect.any(Date),
     });
 
     const updated = await credentialsService.updateCredential(
@@ -236,6 +248,10 @@ describe("updateCredential", () => {
       label: `${NAME_PREFIX}-cf-update-v2`,
       type: "CLOUDFLARE_DNS",
       apiToken: "cf-update-token-v2",
+      // Carried by DecryptedCredential so src/lib/llm/registry.ts can pick
+      // the active model; asserted here so the shape stays exhaustive.
+      isDefault: false,
+      createdAt: expect.any(Date),
     });
   });
 
@@ -565,5 +581,195 @@ describe("createCredential + updateCredential with allowInsecure", () => {
     );
 
     expect(updated.allowInsecure).toBe(false);
+  });
+});
+
+describe("ANTHROPIC_COMPATIBLE credential lifecycle", () => {
+  it("round-trips the second LLM transport through encryption", async () => {
+    const created = await credentialsService.createCredential(
+      workspaceId,
+      "ANTHROPIC_COMPATIBLE",
+      `${NAME_PREFIX}-glm`,
+      {
+        type: "ANTHROPIC_COMPATIBLE",
+        baseUrl: "https://api.z.ai/api/anthropic",
+        model: "glm-4.6",
+        apiKey: "zai-secret-key-value",
+        mode: "REAL",
+      },
+    );
+
+    // Same rule as OPENAI_COMPATIBLE: the hint comes from the API key.
+    expect(created.provider).toBe("ANTHROPIC_COMPATIBLE");
+    expect(created.maskedHint).toBe("****alue");
+    expect(created.isDefault).toBe(false);
+
+    expect(
+      await credentialsService.getDecryptedCredentialById(
+        created.id,
+        workspaceId,
+      ),
+    ).toMatchObject({
+      type: "ANTHROPIC_COMPATIBLE",
+      baseUrl: "https://api.z.ai/api/anthropic",
+      model: "glm-4.6",
+      apiKey: "zai-secret-key-value",
+      mode: "REAL",
+    });
+
+    await credentialsService.deleteCredential(created.id, workspaceId);
+  });
+
+  it("returns both LLM transports when queried with a list of types", async () => {
+    const openai = await credentialsService.createCredential(
+      workspaceId,
+      "OPENAI_COMPATIBLE",
+      `${NAME_PREFIX}-both-openai`,
+      {
+        type: "OPENAI_COMPATIBLE",
+        baseUrl: "https://api.deepseek.com/v1",
+        model: "deepseek-chat",
+        apiKey: "ds-key",
+        mode: "REAL",
+      },
+    );
+    const anthropic = await credentialsService.createCredential(
+      workspaceId,
+      "ANTHROPIC_COMPATIBLE",
+      `${NAME_PREFIX}-both-anthropic`,
+      {
+        type: "ANTHROPIC_COMPATIBLE",
+        baseUrl: "https://api.z.ai/api/anthropic",
+        model: "glm-4.6",
+        apiKey: "zai-key",
+        mode: "REAL",
+      },
+    );
+
+    const decrypted = await credentialsService.getDecryptedCredentials(
+      workspaceId,
+      ["OPENAI_COMPATIBLE", "ANTHROPIC_COMPATIBLE"],
+    );
+    const ids = decrypted.map((entry) => entry.id);
+    expect(ids).toContain(openai.id);
+    expect(ids).toContain(anthropic.id);
+    // A DNS credential of the same workspace must not be decrypted along the
+    // way: the filter is the whole reason getDecryptedCredentials takes a list.
+    expect(decrypted.every((entry) => entry.type.includes("COMPATIBLE"))).toBe(
+      true,
+    );
+
+    await credentialsService.deleteCredential(openai.id, workspaceId);
+    await credentialsService.deleteCredential(anthropic.id, workspaceId);
+  });
+});
+
+describe("setDefaultCredential", () => {
+  async function makeLlmCredential(suffix: string) {
+    return credentialsService.createCredential(
+      workspaceId,
+      "OPENAI_COMPATIBLE",
+      `${NAME_PREFIX}-default-${suffix}`,
+      {
+        type: "OPENAI_COMPATIBLE",
+        baseUrl: "http://127.0.0.1:11434/v1",
+        model: "llama3.1",
+        apiKey: `key-${suffix}`,
+        mode: "REAL",
+      },
+    );
+  }
+
+  it("moves the flag off the other credentials of the same category", async () => {
+    const first = await makeLlmCredential("first");
+    const second = await makeLlmCredential("second");
+
+    await credentialsService.setDefaultCredential(first.id, workspaceId, true);
+    const afterFirst = await credentialsService.listCredentials(workspaceId);
+    expect(afterFirst.find((c) => c.id === first.id)?.isDefault).toBe(true);
+    expect(afterFirst.find((c) => c.id === second.id)?.isDefault).toBe(false);
+
+    await credentialsService.setDefaultCredential(second.id, workspaceId, true);
+    const afterSecond = await credentialsService.listCredentials(workspaceId);
+    expect(afterSecond.find((c) => c.id === first.id)?.isDefault).toBe(false);
+    expect(afterSecond.find((c) => c.id === second.id)?.isDefault).toBe(true);
+
+    await credentialsService.deleteCredential(first.id, workspaceId);
+    await credentialsService.deleteCredential(second.id, workspaceId);
+  });
+
+  it("leaves a credential of another category alone", async () => {
+    const llm = await makeLlmCredential("category");
+    const dns = await credentialsService.createCredential(
+      workspaceId,
+      "CLOUDFLARE_DNS",
+      `${NAME_PREFIX}-default-dns`,
+      { type: "CLOUDFLARE_DNS", apiToken: "cf-token" },
+    );
+    await credentialsService.setDefaultCredential(dns.id, workspaceId, true);
+
+    await credentialsService.setDefaultCredential(llm.id, workspaceId, true);
+
+    const list = await credentialsService.listCredentials(workspaceId);
+    expect(list.find((c) => c.id === llm.id)?.isDefault).toBe(true);
+    // The DNS flag is untouched: exclusivity is per category, and the category
+    // is a PROVIDER_REGISTRY concept rather than a database one.
+    expect(list.find((c) => c.id === dns.id)?.isDefault).toBe(true);
+
+    await credentialsService.deleteCredential(llm.id, workspaceId);
+    await credentialsService.deleteCredential(dns.id, workspaceId);
+  });
+
+  it("clears the flag, leaving the category without a default", async () => {
+    const credential = await makeLlmCredential("clear");
+    await credentialsService.setDefaultCredential(
+      credential.id,
+      workspaceId,
+      true,
+    );
+
+    const cleared = await credentialsService.setDefaultCredential(
+      credential.id,
+      workspaceId,
+      false,
+    );
+
+    expect(cleared.isDefault).toBe(false);
+    await credentialsService.deleteCredential(credential.id, workspaceId);
+  });
+
+  it("is idempotent when the credential is already the default", async () => {
+    const credential = await makeLlmCredential("idempotent");
+    await credentialsService.setDefaultCredential(
+      credential.id,
+      workspaceId,
+      true,
+    );
+    const again = await credentialsService.setDefaultCredential(
+      credential.id,
+      workspaceId,
+      true,
+    );
+
+    expect(again.isDefault).toBe(true);
+    await credentialsService.deleteCredential(credential.id, workspaceId);
+  });
+
+  it("throws CredentialNotFoundError for another workspace's credential", async () => {
+    const other = await db.workspace.create({
+      data: {
+        name: "Other Workspace",
+        slug: `other-${randomUUID()}`,
+        updatedAt: new Date(),
+      },
+    });
+    const credential = await makeLlmCredential("foreign");
+
+    await expect(
+      credentialsService.setDefaultCredential(credential.id, other.id, true),
+    ).rejects.toBeInstanceOf(credentialsService.CredentialNotFoundError);
+
+    await credentialsService.deleteCredential(credential.id, workspaceId);
+    await db.workspace.delete({ where: { id: other.id } });
   });
 });

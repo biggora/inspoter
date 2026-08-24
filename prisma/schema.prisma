@@ -1386,8 +1386,12 @@ enum ProviderType {
   CPANEL_WHM
   CPANEL_UAPI
   // OpenAI-compatible chat/embeddings endpoint (Ollama, vLLM, LM Studio,
-  // OpenRouter, OpenAI itself) — see src/lib/llm.
+  // OpenRouter, DeepSeek, OpenAI itself) — see src/lib/llm.
   OPENAI_COMPATIBLE
+  // Anthropic-compatible messages endpoint (z.ai/GLM, Anthropic itself) —
+  // see src/lib/llm/anthropic.ts. Chat only: the Messages API has no
+  // embeddings endpoint, so embed() reports "unsupported".
+  ANTHROPIC_COMPATIBLE
 }
 
 model ProviderCredential {
@@ -1411,6 +1415,13 @@ model ProviderCredential {
   // fetch ignore it — turning it off freezes the data, it never empties
   // the section.
   autoRefreshEnabled Boolean      @default(true)
+  // Active credential of its category for the workspace (only src/lib/llm
+  // reads it today). "One default per category" is held by
+  // credentialsService.setDefaultCredential, not by the database: the
+  // category lives in src/lib/providers/registry.ts, and a column would be
+  // a second source of truth. No flag anywhere means the previous
+  // oldest-wins behavior.
+  isDefault          Boolean      @default(false)
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,6 +40,7 @@ import {
   fetchFolders,
   fetchMailLabels,
   patchMailFilterRule,
+  type MailAiFilterProposalDto,
   type MailDetailDto,
   type MailFilterConditionInput,
   type MailFilterMatchMode,
@@ -92,6 +94,13 @@ export interface FilterRuleFormProps {
   accountName: string;
   defaultFromAddress?: string;
   initialRule?: MailFilterRuleDto;
+  /**
+   * A model's suggestion, used only to pre-fill the form. Nothing is stored:
+   * the rule is created by the operator's submit, and the label — which the
+   * model never proposes — still has to be chosen here, so confirmation is
+   * structural rather than a courtesy step.
+   */
+  proposal?: MailAiFilterProposalDto;
   onSaved: (result: FilterRuleSaveResult) => void;
   onCancel: () => void;
   onSubmittingChange?: (submitting: boolean) => void;
@@ -109,6 +118,7 @@ interface MailFilterConditionDraft extends MailFilterConditionInput {
 function initialConditions(
   initialRule: MailFilterRuleDto | undefined,
   defaultFromAddress: string,
+  proposal?: MailAiFilterProposalDto,
 ): MailFilterConditionDraft[] {
   const stored = initialRule?.conditions;
   if (stored && stored.length > 0) {
@@ -118,6 +128,16 @@ function initialConditions(
       operator,
       value,
       isNegated,
+    }));
+  }
+
+  // Checked after initialRule on purpose: editing an existing rule always
+  // wins over a suggestion. Conditions here already passed the server-side
+  // sanitizer, so they are the same shape an operator could have typed.
+  if (proposal && proposal.conditions.length > 0) {
+    return proposal.conditions.map((condition, index) => ({
+      key: `proposed-${index}`,
+      ...condition,
     }));
   }
 
@@ -158,6 +178,7 @@ export function FilterRuleForm({
   accountName,
   defaultFromAddress = "",
   initialRule,
+  proposal,
   onSaved,
   onCancel,
   onSubmittingChange,
@@ -174,10 +195,11 @@ export function FilterRuleForm({
   );
   const [ruleName, setRuleName] = useState(
     initialRule?.name ??
+      proposal?.name ??
       t("filterRuleDefaultName", { sender: defaultFromAddress }),
   );
   const [matchMode, setMatchMode] = useState<MailFilterMatchMode>(
-    initialRule?.matchMode ?? "ALL",
+    initialRule?.matchMode ?? proposal?.matchMode ?? "ALL",
   );
   const [readAction, setReadAction] = useState<ReadAction>(
     initialRule?.setRead === true
@@ -190,7 +212,7 @@ export function FilterRuleForm({
     initialRule?.moveToFolderId ?? KEEP_FOLDER_VALUE,
   );
   const [conditions, setConditions] = useState<MailFilterConditionDraft[]>(() =>
-    initialConditions(initialRule, defaultFromAddress),
+    initialConditions(initialRule, defaultFromAddress, proposal),
   );
   const nextConditionKey = useRef(conditions.length);
   const [applyToExistingMail, setApplyToExistingMail] = useState(false);
@@ -461,6 +483,29 @@ export function FilterRuleForm({
               </SelectContent>
             </Select>
           </Field>
+
+          {proposal && (
+            <div className="flex flex-col gap-2">
+              {proposal.reason && (
+                <p className="text-xs text-muted-foreground">
+                  {t("aiProposalReasonLabel", { reason: proposal.reason })}
+                </p>
+              )}
+              {proposal.droppedConditions > 0 && (
+                // Saying so is deliberate. Dropping a model's condition
+                // silently is exactly the hidden decision
+                // specs/ai-integration.md forbids, even though the alternative
+                // reads as an admission.
+                <Alert>
+                  <AlertDescription>
+                    {t("aiProposalDroppedConditionsNotice", {
+                      count: proposal.droppedConditions,
+                    })}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
 
           <Field data-invalid={Boolean(fieldErrors.predicate)}>
             <div className="flex items-center justify-between gap-3">
@@ -911,6 +956,8 @@ export interface FilterRuleDialogProps {
   onOpenChange: (open: boolean) => void;
   detail: MailDetailDto;
   accountName: string;
+  /** Present when the dialog was opened from the AI suggestion button. */
+  proposal?: MailAiFilterProposalDto | null;
   onSaved: (result: FilterRuleSaveResult) => void;
 }
 
@@ -919,6 +966,7 @@ export function FilterRuleDialog({
   onOpenChange,
   detail,
   accountName,
+  proposal,
   onSaved,
 }: FilterRuleDialogProps) {
   const t = useTranslations("mail");
@@ -939,9 +987,14 @@ export function FilterRuleDialog({
           </DialogDescription>
         </DialogHeader>
         <FilterRuleForm
+          // Remounted per proposal so a suggestion that arrives while the
+          // dialog is already open replaces the pre-filled state instead of
+          // being ignored by the useState initializers.
+          key={proposal ? `proposal-${proposal.name}` : "manual"}
           accountId={detail.accountId}
           accountName={accountName}
           defaultFromAddress={detail.from}
+          proposal={proposal ?? undefined}
           onSaved={onSaved}
           onCancel={() => onOpenChange(false)}
           onSubmittingChange={setSubmitting}

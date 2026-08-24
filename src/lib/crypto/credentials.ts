@@ -40,6 +40,16 @@ export type CredentialData =
       model: string;
       apiKey: string;
       mode: "MOCK" | "REAL";
+    }
+  // Anthropic-compatible LLM endpoint (src/lib/llm/anthropic.ts): z.ai/GLM
+  // and Anthropic itself. Same fields as above — the two differ only in the
+  // wire format the driver speaks, never in what the operator has to enter.
+  | {
+      type: "ANTHROPIC_COMPATIBLE";
+      baseUrl: string;
+      model: string;
+      apiKey: string;
+      mode: "MOCK" | "REAL";
     };
 
 export interface EncryptedPayload {
