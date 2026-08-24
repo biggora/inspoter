@@ -169,3 +169,199 @@ export function createCreateNoteTool(ctx: CreateNoteToolContext): WebMcpTool {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// The full notes tool set
+// ---------------------------------------------------------------------------
+
+/**
+ * Every client API call the notes tools make, injected rather than imported so
+ * the factory unit-tests without React or `fetch`. Each member matches the
+ * signature of the same-named method in `src/components/notes/api.ts`.
+ */
+export interface NotesToolDeps
+  extends SearchNotesToolContext,
+    CreateNoteToolContext {
+  /** notesApi.get */
+  get: (id: string) => Promise<NoteDetail>;
+  /**
+   * notesApi.update. `version` is optimistic-concurrency state, never supplied
+   * by the agent — `note_update` reads the note first and passes its current
+   * version through.
+   */
+  update: (
+    id: string,
+    input: { title?: string; content?: string; version: number },
+  ) => Promise<NoteDetail>;
+  /** notesApi.remove */
+  remove: (id: string) => Promise<unknown>;
+}
+
+// Keeps a single result well inside the ~1500-char per-tool output budget.
+const MAX_CONTENT_LENGTH = 1200;
+const MAX_FOLDER_ROWS = 50;
+
+const noteIdField = z
+  .string()
+  .min(1)
+  .describe("Note id from note_search");
+
+/** The API's optimistic-concurrency code, set on ApiError by notes/api.ts. */
+const VERSION_CONFLICT_CODE = "NOTE_VERSION_CONFLICT";
+
+function isVersionConflict(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === VERSION_CONFLICT_CODE
+  );
+}
+
+// --- note_get ---
+
+function createGetNoteTool(deps: NotesToolDeps): WebMcpTool {
+  return defineWebMcpTool({
+    name: "note_get",
+    title: "Read a note",
+    description:
+      "Reads one note in full by id, including its markdown body. Use note_search to find the id first; long bodies are truncated.",
+    inputSchema: z.object({ noteId: noteIdField }).strict(),
+    readOnly: true,
+    // Note titles and bodies are operator-authored free text.
+    untrustedOutput: true,
+    async handler({ noteId }) {
+      const note = await deps.get(noteId);
+      return {
+        id: note.id,
+        title: note.title,
+        folderId: note.folderId,
+        isPinned: note.isPinned,
+        updatedAt: note.updatedAt,
+        content:
+          note.content.length > MAX_CONTENT_LENGTH
+            ? `${note.content.slice(0, MAX_CONTENT_LENGTH)}…`
+            : note.content,
+        truncated: note.content.length > MAX_CONTENT_LENGTH,
+      };
+    },
+  });
+}
+
+// --- note_update ---
+
+const updateNoteInputSchema = z
+  .object({
+    noteId: noteIdField,
+    title: z.string().trim().min(1).max(200).optional().describe("New title"),
+    content: z
+      .string()
+      .max(20000)
+      .optional()
+      .describe("New markdown body; replaces the existing one entirely"),
+  })
+  .strict()
+  .refine(
+    (input) => input.title !== undefined || input.content !== undefined,
+    "Pass title, content, or both.",
+  );
+
+function createUpdateNoteTool(deps: NotesToolDeps): WebMcpTool {
+  return defineWebMcpTool({
+    name: "note_update",
+    title: "Update a note",
+    description:
+      "Rewrites a note's title or body. Content replaces the whole body, so read the note with note_get first if you mean to append. Fails if someone else edited the note meanwhile.",
+    inputSchema: updateNoteInputSchema,
+    readOnly: false,
+    async handler({ noteId, title, content }) {
+      // The PATCH route takes a `version` for optimistic concurrency. Reading
+      // it here rather than asking the agent for it keeps the tool surface to
+      // things an agent actually knows — and narrows the conflict window to
+      // this read/write pair.
+      const current = await deps.get(noteId);
+
+      let updated: NoteDetail;
+      try {
+        updated = await deps.update(noteId, {
+          title,
+          content,
+          version: current.version,
+        });
+      } catch (err) {
+        if (isVersionConflict(err)) {
+          throw new Error(
+            `The note "${current.title}" changed while this update was being prepared, so nothing was written. Read it again with note_get and retry.`,
+          );
+        }
+        throw err;
+      }
+
+      deps.refresh();
+
+      return {
+        noteId: updated.id,
+        title: updated.title,
+        version: updated.version,
+      };
+    },
+  });
+}
+
+// --- note_delete ---
+
+function createDeleteNoteTool(deps: NotesToolDeps): WebMcpTool {
+  return defineWebMcpTool({
+    name: "note_delete",
+    title: "Delete a note",
+    description:
+      "Deletes one note by id. This cannot be undone — confirm with the operator before calling it.",
+    inputSchema: z.object({ noteId: noteIdField }).strict(),
+    readOnly: false,
+    async handler({ noteId }) {
+      await deps.remove(noteId);
+      deps.refresh();
+      return { deleted: noteId };
+    },
+  });
+}
+
+// --- note_folders_list ---
+
+function createFoldersListTool(deps: NotesToolDeps): WebMcpTool {
+  return defineWebMcpTool({
+    name: "note_folders_list",
+    title: "List note folders",
+    description:
+      "Lists the workspace's note folders with their nesting and note counts. The names and ids here are what note_create accepts as its folder.",
+    inputSchema: z.object({}).strict(),
+    readOnly: true,
+    async handler() {
+      const { folders } = await deps.listFolders();
+      return {
+        total: folders.length,
+        folders: folders.slice(0, MAX_FOLDER_ROWS).map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          parentFolderId: folder.parentFolderId,
+          noteCount: folder.noteCount,
+        })),
+      };
+    },
+  });
+}
+
+/**
+ * The whole notes tool set, registered from the dashboard shell. The two
+ * page-independent factories above stay exported and are composed here rather
+ * than reimplemented.
+ */
+export function createNotesTools(deps: NotesToolDeps): WebMcpTool[] {
+  return [
+    createSearchNotesTool(deps),
+    createFoldersListTool(deps),
+    createGetNoteTool(deps),
+    createCreateNoteTool(deps),
+    createUpdateNoteTool(deps),
+    createDeleteNoteTool(deps),
+  ];
+}

@@ -5,6 +5,12 @@
 // category/bookmark list (Simplicity First: no state management beyond
 // useState).
 
+import type { Bookmark } from "@/generated/prisma/client";
+import type {
+  BookmarkSearchFilters,
+  CategoryWithBookmarks,
+  FlatBookmark,
+} from "@/lib/services/bookmarks";
 import {
   getActiveWorkspaceId,
   WORKSPACE_HEADER_NAME,
@@ -73,17 +79,43 @@ export interface BookmarkInput {
   categoryId: string;
 }
 
+export type BookmarkSearchParams = BookmarkSearchFilters & { limit?: number };
+
+/** What POST/PATCH /api/categories answer with. */
+export interface CategorySummary {
+  id: string;
+  name: string;
+}
+
+/** GET /api/bookmarks — one page of the flat list, `{ items, total }`. */
+export interface BookmarkSearchResult {
+  items: FlatBookmark[];
+  total: number;
+}
+
+function searchQueryString(params: BookmarkSearchParams): string {
+  const search = new URLSearchParams();
+  if (params.query) search.set("query", params.query);
+  if (params.categoryId) search.set("categoryId", params.categoryId);
+  if (params.limit !== undefined) search.set("limit", String(params.limit));
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
 export const categoriesApi = {
+  // The tree the Bookmarks server component renders. Dates arrive
+  // JSON-serialized, as with every other client api module here.
+  list: () => request<CategoryWithBookmarks[]>("/api/categories"),
   // Phase 4: `parentCategoryId` is optional (omitted/null = top-level).
   // `null` on rename explicitly clears an existing parent (promotes the
   // category back to top-level) — see renameCategory in bookmarks.ts.
   create: (name: string, parentCategoryId: string | null = null) =>
-    request("/api/categories", {
+    request<CategorySummary>("/api/categories", {
       method: "POST",
       body: JSON.stringify({ name, parentCategoryId }),
     }),
   rename: (id: string, name: string, parentCategoryId: string | null = null) =>
-    request(`/api/categories/${id}`, {
+    request<CategorySummary>(`/api/categories/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ name, parentCategoryId }),
     }),
@@ -97,10 +129,17 @@ export const categoriesApi = {
 };
 
 export const bookmarksApi = {
+  search: (params: BookmarkSearchParams = {}) =>
+    request<BookmarkSearchResult>(`/api/bookmarks${searchQueryString(params)}`),
   create: (input: BookmarkInput) =>
-    request("/api/bookmarks", { method: "POST", body: JSON.stringify(input) }),
-  update: (id: string, input: BookmarkInput) =>
-    request(`/api/bookmarks/${id}`, {
+    request<Bookmark>("/api/bookmarks", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  // Partial: PATCH /api/bookmarks/[id] parses with bookmarkUpdateSchema, where
+  // every field is optional and an omitted one keeps its current value.
+  update: (id: string, input: Partial<BookmarkInput>) =>
+    request<Bookmark>(`/api/bookmarks/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),

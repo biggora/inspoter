@@ -48,7 +48,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useWebMcpTool } from "@/hooks/use-web-mcp-tool";
 import type {
   KanbanBoardDetail,
   KanbanCardDetail,
@@ -62,7 +61,6 @@ import { ColumnDialog, type ColumnDialogState } from "./column-dialog";
 import { DeleteCardDialog, DeleteColumnDialog } from "./delete-dialogs";
 import { KanbanColumn } from "./kanban-column";
 import { LabelManagerDialog } from "./label-manager-dialog";
-import { createCreateCardTool, createMoveCardTool } from "./web-mcp-tools";
 
 const ALL = "all";
 
@@ -197,24 +195,6 @@ export function KanbanBoardView({
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const isFiltering =
     normalizedQuery !== "" || labelFilter !== ALL || assigneeFilter !== ALL;
-
-  useWebMcpTool(
-    createMoveCardTool({
-      boardId: board.id,
-      columns: optimisticColumns,
-      isFiltering,
-      applyOptimisticReorder,
-      move: cardsApi.move,
-      refresh: () => router.refresh(),
-    }),
-  );
-  useWebMcpTool(
-    createCreateCardTool({
-      columns: optimisticColumns,
-      create: cardsApi.create,
-      refresh: () => router.refresh(),
-    }),
-  );
 
   function matches(card: KanbanCardDetail): boolean {
     if (

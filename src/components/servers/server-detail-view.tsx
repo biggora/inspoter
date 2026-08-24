@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/time-series-chart";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UsageMeter } from "@/components/ui/usage-meter";
-import { useWebMcpTool } from "@/hooks/use-web-mcp-tool";
 import { usageFromTotals } from "@/lib/format/bytes";
 import type { ServerStatus } from "@/lib/providers/servers/types";
 import {
@@ -40,15 +39,11 @@ import {
   statusState,
 } from "./format";
 import { MetricsAgentDialog } from "./metrics-agent-dialog";
-import {
-  getAvailableActions,
-  ServerPowerActions,
-} from "./server-power-actions";
+import { ServerPowerActions } from "./server-power-actions";
 import {
   useServerPowerAction,
   type PowerActionType,
 } from "./use-server-power-action";
-import { createPowerActionTool } from "./web-mcp-tools";
 
 // One server's page: everything its card states, plus the history the card
 // cannot show. The agent pushes a sample a minute and the app keeps 30 days of
@@ -201,22 +196,6 @@ export function ServerDetailView({
     },
     [triggerPowerAction],
   );
-
-  // Registered only while this server's page is mounted and power actions
-  // are genuinely available for it — mirroring the same condition that gates
-  // the visible <ServerPowerActions> buttons below (isProvider &&
-  // server.powerActionsAvailable).
-  const providerServer: ProviderServerDto | null =
-    server && server.origin === "provider" ? server : null;
-  const powerToolEnabled = providerServer?.powerActionsAvailable === true;
-  const powerTool = providerServer
-    ? createPowerActionTool({
-        server: providerServer,
-        getAvailableActions,
-        triggerPowerAction,
-      })
-    : null;
-  useWebMcpTool(powerTool, powerToolEnabled);
 
   const formatTime = useCallback(
     (iso: string) => {
