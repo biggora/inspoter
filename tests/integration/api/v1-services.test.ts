@@ -29,6 +29,9 @@ import {
 // cookie and no X-Inspoter-Workspace header are involved anywhere here.
 
 const PREFIX = `v1-services-${randomUUID()}`;
+// Service label names cap at 40 chars (validation/services.ts), too short
+// for PREFIX plus a suffix, so label tests build names from this instead.
+const SHORT = randomUUID().slice(0, 8);
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -353,7 +356,7 @@ describe("service labels", () => {
       request("/api/v1/services/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-critical`, color: "RED" },
+        body: { name: `${SHORT}-critical`, color: "RED" },
       }),
     );
     expect(created.status).toBe(201);
@@ -394,7 +397,7 @@ describe("service labels", () => {
       request("/api/v1/services/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-edge`, color: "BLUE" },
+        body: { name: `${SHORT}-edge`, color: "BLUE" },
       }),
     );
     const { id } = await body<{ id: string }>(first);
@@ -403,7 +406,7 @@ describe("service labels", () => {
       request("/api/v1/services/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-EDGE`, color: "GREEN" },
+        body: { name: `${SHORT}-EDGE`, color: "GREEN" },
       }),
     );
     expect(duplicate.status).toBe(409);
@@ -425,7 +428,7 @@ describe("service labels", () => {
       request("/api/v1/services/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-private`, color: "VIOLET" },
+        body: { name: `${SHORT}-private`, color: "VIOLET" },
       }),
     );
     const { id } = await body<{ id: string }>(created);

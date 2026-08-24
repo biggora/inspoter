@@ -54,6 +54,9 @@ import { GET as listLinkTargets } from "@/app/api/v1/kanban/link-targets/route";
 // cookie and no X-Inspoter-Workspace header are involved anywhere here.
 
 const PREFIX = `v1-kanban-${randomUUID()}`;
+// Kanban label names cap at 40 chars (validation/kanban.ts), too short for
+// PREFIX plus a suffix, so label tests build names from this instead.
+const SHORT = randomUUID().slice(0, 8);
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -118,6 +121,26 @@ async function newCard(column: string, title: string) {
   return (await body<{ id: string }>(response)).id;
 }
 
+// recordActivity is a fire-and-forget journal write (activity.ts), so the
+// DELETE response can return before its journal row lands. Poll for the
+// expected row count instead of racing the insert.
+async function cardActivity(
+  cardId: string,
+  expectedRows: number,
+): Promise<Array<{ action: string; operatorName: string }>> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const activity = await db.activity.findMany({
+      where: { workspaceId, entityType: "kanban_card", entityId: cardId },
+      select: { action: true, operatorName: true },
+    });
+    if (activity.length >= expectedRows) return activity;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    `kanban card activity journal never reached ${expectedRows} rows`,
+  );
+}
+
 beforeAll(async () => {
   const [workspace, otherWorkspace] = await Promise.all([
     db.workspace.create({
@@ -147,6 +170,10 @@ beforeAll(async () => {
   ).token;
 
   boardId = await newBoard(`${PREFIX}-board`);
+  // createBoard seeds the board with Backlog/In progress/Done (kanban.ts
+  // DEFAULT_COLUMNS); these suites assert exact column sets and orders, so
+  // the seed columns are cleared before the suite's own pair is created.
+  await db.kanbanColumn.deleteMany({ where: { boardId } });
   todoColumnId = await newColumn(boardId, "Todo");
   doneColumnId = await newColumn(boardId, "Done", true);
 });
@@ -349,10 +376,7 @@ describe("cards", () => {
     );
     expect(await body(removed)).toEqual({ deleted: cardId });
 
-    const activity = await db.activity.findMany({
-      where: { workspaceId, entityType: "kanban_card", entityId: cardId },
-      select: { action: true, operatorName: true },
-    });
+    const activity = await cardActivity(cardId, 4);
     expect(activity.map((entry) => entry.action).sort()).toEqual([
       "create",
       "delete",
@@ -389,7 +413,7 @@ describe("cards", () => {
       request("/api/v1/kanban/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-ops`, color: "AMBER" },
+        body: { name: `${SHORT}-ops`, color: "AMBER" },
       }),
     );
     expect(created.status).toBe(201);

@@ -307,8 +307,8 @@ describe("import, export and suggestions", () => {
       request("/api/v1/contacts/suggest?query=imported", { token: readToken }),
     );
     expect(
-      (await body<Array<{ value: string }>>(suggested)).map(
-        (entry) => entry.value,
+      (await body<Array<{ email: string }>>(suggested)).map(
+        (entry) => entry.email,
       ),
     ).toContain("imported@example.invalid");
   });
@@ -384,11 +384,13 @@ describe("labels", () => {
   });
 
   it("answers 404 for a label of another workspace", async () => {
+    // Contact label names cap at 60 chars (validation/contacts.ts), one
+    // char shorter than PREFIX plus a suffix, so use a short random name.
     const created = await createLabel(
       request("/api/v1/contacts/labels", {
         method: "POST",
         token: writeToken,
-        body: { name: `${PREFIX}-private-label`, color: "VIOLET" },
+        body: { name: `l-${randomUUID().slice(0, 8)}`, color: "VIOLET" },
       }),
     );
     const { id } = await body<{ id: string }>(created);
