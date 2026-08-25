@@ -96,6 +96,8 @@ interface FormErrors {
   name?: string;
   url?: string;
   events?: string;
+  botToken?: string;
+  targetChatId?: string;
 }
 
 type FormMode =
@@ -116,6 +118,10 @@ export function OutgoingWebhooksView() {
   const [events, setEvents] = useState<OutgoingWebhookEventValue[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [format, setFormat] = useState<OutgoingWebhookFormatValue>("INSPOT");
+  // Write-only: the stored token is never returned, so an empty field on edit
+  // means "keep the one you have".
+  const [botToken, setBotToken] = useState("");
+  const [targetChatId, setTargetChatId] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,6 +138,8 @@ export function OutgoingWebhooksView() {
 
   const nameId = useId();
   const urlId = useId();
+  const botTokenId = useId();
+  const targetChatIdId = useId();
   const isActiveId = useId();
   const formatId = useId();
 
@@ -162,6 +170,8 @@ export function OutgoingWebhooksView() {
       setEvents(webhook.events);
       setIsActive(webhook.isActive);
       setFormat(webhook.format);
+      setBotToken("");
+      setTargetChatId(webhook.targetChatId ?? "");
     } else if (formState?.mode === "create") {
       setName("");
       setUrl("");
@@ -196,10 +206,19 @@ export function OutgoingWebhooksView() {
     const trimmedUrl = url.trim();
 
     const nextErrors: FormErrors = {};
+    const isTelegram = format === "TELEGRAM_BOT";
     if (!trimmedName) nextErrors.name = t("nameRequiredError");
-    if (!trimmedUrl) nextErrors.url = t("urlRequiredError");
-    else if (!isValidHttpsUrl(trimmedUrl))
+    // Telegram builds its own target from the API base plus the bot token, so
+    // an empty field there means "the public API host".
+    if (!trimmedUrl && !isTelegram) nextErrors.url = t("urlRequiredError");
+    else if (trimmedUrl && !isValidHttpsUrl(trimmedUrl))
       nextErrors.url = t("urlInvalidError");
+    if (isTelegram && !targetChatId.trim()) {
+      nextErrors.targetChatId = t("chatIdRequiredError");
+    }
+    if (isTelegram && !botToken.trim() && formState?.mode !== "edit") {
+      nextErrors.botToken = t("botTokenRequiredError");
+    }
     if (events.length === 0) nextErrors.events = t("eventsRequiredError");
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -213,6 +232,10 @@ export function OutgoingWebhooksView() {
           events,
           isActive,
           format,
+          ...(botToken.trim() ? { botToken: botToken.trim() } : {}),
+          ...(format === "TELEGRAM_BOT"
+            ? { targetChatId: targetChatId.trim() }
+            : {}),
         });
         toast.success(t("webhookUpdatedToast"));
         setFormState(null);
@@ -224,6 +247,9 @@ export function OutgoingWebhooksView() {
           events,
           isActive,
           format,
+          ...(format === "TELEGRAM_BOT"
+            ? { botToken: botToken.trim(), targetChatId: targetChatId.trim() }
+            : {}),
         });
         setCreatedSecret(created);
         toast.success(t("webhookCreatedToast"));
@@ -487,6 +513,62 @@ export function OutgoingWebhooksView() {
                       {t(FORMAT_HINT_KEY[format])}
                     </p>
                   </Field>
+
+                  {format === "TELEGRAM_BOT" && (
+                    <>
+                      <Field data-invalid={!!errors.botToken || undefined}>
+                        <FieldLabel htmlFor={botTokenId}>
+                          {t("botTokenLabel")}
+                        </FieldLabel>
+                        <Input
+                          id={botTokenId}
+                          value={botToken}
+                          onChange={(event) => setBotToken(event.target.value)}
+                          placeholder="123456789:AA..."
+                          autoComplete="off"
+                          spellCheck={false}
+                          aria-invalid={!!errors.botToken || undefined}
+                          aria-describedby={
+                            errors.botToken ? `${botTokenId}-error` : undefined
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {t("botTokenHint")}
+                        </p>
+                        <FieldError id={`${botTokenId}-error`}>
+                          {errors.botToken}
+                        </FieldError>
+                      </Field>
+
+                      <Field data-invalid={!!errors.targetChatId || undefined}>
+                        <FieldLabel htmlFor={targetChatIdId}>
+                          {t("chatIdLabel")}
+                        </FieldLabel>
+                        <Input
+                          id={targetChatIdId}
+                          value={targetChatId}
+                          onChange={(event) =>
+                            setTargetChatId(event.target.value)
+                          }
+                          placeholder="-1001234567890"
+                          spellCheck={false}
+                          aria-required="true"
+                          aria-invalid={!!errors.targetChatId || undefined}
+                          aria-describedby={
+                            errors.targetChatId
+                              ? `${targetChatIdId}-error`
+                              : undefined
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {t("chatIdHint")}
+                        </p>
+                        <FieldError id={`${targetChatIdId}-error`}>
+                          {errors.targetChatId}
+                        </FieldError>
+                      </Field>
+                    </>
+                  )}
 
                   {formState?.mode === "edit" &&
                     formState.webhook.publicKey && (

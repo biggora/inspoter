@@ -22,7 +22,11 @@ const TEST_KEY =
 let workspaceId: string;
 let otherWorkspaceId: string;
 
-function baseInput(overrides: Partial<service.OutgoingWebhookSummary> = {}) {
+// Typed against the create input rather than the summary: the two diverged
+// when TELEGRAM_BOT added a nullable targetChatId to the summary.
+function baseInput(
+  overrides: Partial<Parameters<typeof service.create>[1]> = {},
+) {
   return {
     name: `wh-${randomUUID()}`,
     url: "https://example.com/hook",

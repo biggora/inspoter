@@ -105,7 +105,10 @@
     "urlInvalid": "Enter a valid HTTPS address",
     "eventsRequired": "Select at least one event",
     "eventInvalid": "Invalid event",
-    "formatInvalid": "Invalid delivery format"
+    "formatInvalid": "Invalid delivery format",
+    "botTokenInvalid": "Enter a valid bot token",
+    "chatIdRequired": "Chat id is required",
+    "telegramFieldsRequired": "A Telegram webhook needs a bot token and a chat id"
   },
   "kanban": {
     "boardNameRequired": "Board name is required",
@@ -155,5 +158,33 @@
     "emptyContact": "Enter at least a name, an organization, or one contact detail",
     "labelNameRequired": "Label name is required",
     "labelColorInvalid": "Choose a preset color or enter a hex value like #4488CC"
+  },
+  "agent": {
+    "nameRequired": "Name is required",
+    "nameTooLong": "Name must not exceed 80 characters",
+    "descriptionTooLong": "Description must not exceed 280 characters",
+    "instructionsRequired": "Instructions are required",
+    "instructionsTooLong": "Instructions must not exceed 8000 characters",
+    "scopeInvalid": "Unknown access scope",
+    "scopeDuplicated": "The same access scope is listed twice",
+    "maxStepsRange": "Step limit must be between 1 and 24",
+    "maxTokensRange": "Token limit must be between 1000 and 200000",
+    "timeoutRange": "Time limit must be between 30 and 1800 seconds",
+    "updateFieldsRequired": "Provide at least one field to update",
+    "skillDescriptionRequired": "Description is required",
+    "skillDescriptionTooLong": "Description must not exceed 200 characters",
+    "skillInstructionsTooLong": "Instructions must not exceed 4000 characters",
+    "toolNameInvalid": "Invalid tool name",
+    "toolNameDuplicated": "The same tool is listed twice",
+    "toolNamesTooMany": "A skill may list at most 40 tools",
+    "skillIdInvalid": "Invalid skill",
+    "skillDuplicated": "The same skill is attached twice",
+    "skillsTooMany": "An agent may use at most 20 skills",
+    "taskTooLong": "Task must not exceed 2000 characters",
+    "timeZoneInvalid": "Unknown time zone",
+    "intervalTooShort": "Interval must be at least 5 minutes",
+    "minuteOfDayRange": "Time of day must be between 00:00 and 23:59",
+    "daysOfWeekInvalid": "The same weekday is listed twice",
+    "scheduleFieldsRequired": "Fill in the fields this schedule kind needs"
   }
 }

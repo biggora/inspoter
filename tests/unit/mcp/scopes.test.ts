@@ -64,6 +64,20 @@ describe("tool selection", () => {
     expect(names).toEqual(["logs_search"]);
   });
 
+  // Read-only sections: the absence of a write scope is the guarantee, so it
+  // is pinned rather than left to the reader of scopes.ts.
+  it.each([
+    ["activity", "activity:read", ["activity_search"]],
+    ["domains", "domains:read", ["domains_list", "dns_records_list"]],
+  ] as const)("gives %s exactly its read tools", (_domain, scope, expected) => {
+    expect(
+      selectTools([scope])
+        .map((tool) => tool.name)
+        .sort(),
+    ).toEqual([...expected].sort());
+    expect(MCP_SCOPES).not.toContain(`${_domain}:write`);
+  });
+
   // AC-MSG-018: an agent may build the Messages section but never demolish it —
   // deleting a category takes every channel and message inside it with it. The
   // guarantee is the absence of a tool, so it is pinned as an exact catalogue:
@@ -109,6 +123,8 @@ describe("tool selection", () => {
       ["mail:read", "mail:write"],
       ["mail_account_delete", "mail_account_create"],
     ],
+    // A note folder takes every note inside it, so only the leaf is deletable.
+    ["notes", ["notes:read", "notes:write"], ["note_folder_delete"]],
   ] as const)(
     "never gives a full-scope %s token a cascading delete",
     (_domain, scopes, forbidden) => {

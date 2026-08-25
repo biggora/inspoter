@@ -7,6 +7,7 @@ import contacts from "@/messages/ru/contacts.json";
 import dashboards from "@/messages/ru/dashboards.json";
 import kanban from "@/messages/ru/kanban.json";
 import notes from "@/messages/ru/notes.json";
+import agents from "@/messages/ru/agents.json";
 import servers from "@/messages/ru/servers.json";
 import hosting from "@/messages/ru/hosting.json";
 import services from "@/messages/ru/services.json";
@@ -32,6 +33,7 @@ import enContacts from "@/messages/en/contacts.json";
 import enDashboards from "@/messages/en/dashboards.json";
 import enKanban from "@/messages/en/kanban.json";
 import enNotes from "@/messages/en/notes.json";
+import enAgents from "@/messages/en/agents.json";
 import enServers from "@/messages/en/servers.json";
 import enHosting from "@/messages/en/hosting.json";
 import enServices from "@/messages/en/services.json";
@@ -58,6 +60,7 @@ export const ruMessages = {
   dashboards,
   kanban,
   notes,
+  agents,
   servers,
   hosting,
   services,
@@ -85,6 +88,7 @@ export const enMessages = {
   dashboards: enDashboards,
   kanban: enKanban,
   notes: enNotes,
+  agents: enAgents,
   servers: enServers,
   hosting: enHosting,
   services: enServices,

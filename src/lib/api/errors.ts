@@ -26,6 +26,24 @@ import {
   KanbanLabelNotFoundError,
 } from "@/lib/services/kanban-labels";
 import {
+  AgentLimitReachedError,
+  AgentNameConflictError,
+  AgentNotFoundError,
+  SkillNotInWorkspaceError,
+} from "@/lib/services/agents";
+import {
+  AgentInactiveError,
+  AgentRunNotCancellableError,
+  AgentRunNotFoundError,
+} from "@/lib/services/agent-runs";
+import { AgentScheduleNotFoundError } from "@/lib/services/agent-schedules";
+import {
+  SkillLimitReachedError,
+  SkillNameConflictError,
+  SkillNotFoundError,
+  SkillToolUnknownError,
+} from "@/lib/services/skills";
+import {
   NoteLimitReachedError,
   NoteNotFoundError,
   NoteTitleConflictError,
@@ -186,6 +204,47 @@ export function toErrorResponse(
     return jsonResponse(
       { error: error.code, currentVersion: error.currentVersion },
       { status: 409 },
+    );
+  }
+  if (
+    error instanceof AgentNotFoundError ||
+    error instanceof AgentRunNotFoundError ||
+    error instanceof AgentScheduleNotFoundError ||
+    error instanceof SkillNotFoundError ||
+    error instanceof SkillNotInWorkspaceError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (
+    error instanceof AgentInactiveError ||
+    error instanceof AgentRunNotCancellableError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 409 },
+    );
+  }
+  if (
+    error instanceof AgentNameConflictError ||
+    error instanceof SkillNameConflictError
+  ) {
+    return jsonResponse({ error: error.code }, { status: 409 });
+  }
+  if (
+    error instanceof AgentLimitReachedError ||
+    error instanceof SkillLimitReachedError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 409 },
+    );
+  }
+  // 400, not 404: the skill is fine, the tool list it was given is not — and
+  // naming the offending tools is what lets the operator fix the form.
+  if (error instanceof SkillToolUnknownError) {
+    return jsonResponse(
+      { error: error.code, unknownTools: error.unknownTools },
+      { status: 400 },
     );
   }
   if (error instanceof WorkspaceOwnerRequiredError) {

@@ -62,6 +62,79 @@ export interface LlmEmbedding {
   usage: LlmUsage;
 }
 
+// --- Tool-calling conversation ---
+//
+// `complete()` answers one prompt in one turn. An agent instead runs a
+// transcript: the model asks for a tool, the caller runs it, the result goes
+// back, and the loop repeats until the model answers in prose. That needs a
+// message list and a tool list, so it is a second operation rather than more
+// options on the first — a mail summary must not grow a `messages` field it
+// will never use.
+
+export interface LlmToolDefinition {
+  name: string;
+  description: string;
+  /**
+   * JSON Schema for the tool's arguments, produced by
+   * `z.toJSONSchema(schema, { io: "input" })`. Kept as plain JSON rather than a
+   * zod type so src/lib/llm stays free of the caller's validation library.
+   */
+  inputSchema: Record<string, unknown>;
+}
+
+export interface LlmToolCall {
+  /** Correlates the call with the `tool` message that answers it. */
+  id: string;
+  name: string;
+  /**
+   * Raw JSON text, deliberately not a parsed object: a model can emit invalid
+   * JSON, and the caller has to be able to hand that back as a tool error
+   * rather than have the driver throw mid-conversation.
+   */
+  arguments: string;
+}
+
+export type LlmMessage =
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; toolCalls?: LlmToolCall[] }
+  | {
+      role: "tool";
+      toolCallId: string;
+      toolName: string;
+      content: string;
+      isError?: boolean;
+    };
+
+export type LlmStopReason = "stop" | "tool_calls" | "max_tokens" | "other";
+
+/**
+ * One scripted answer for the MOCK driver. The domain builds the script from
+ * the same input it builds the prompt from, exactly as `mockAnswer` works for
+ * `complete()` — src/lib/llm must not know what a dashboard tool is.
+ */
+export interface LlmMockTurn {
+  text?: string;
+  toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+}
+
+export interface LlmChatRequest {
+  system?: string;
+  messages: LlmMessage[];
+  tools?: LlmToolDefinition[];
+  maxTokens?: number;
+  signal?: AbortSignal;
+  mockTurns?: readonly LlmMockTurn[];
+}
+
+export interface LlmChatCompletion {
+  /** Prose the model produced this turn; empty when it only asked for tools. */
+  text: string;
+  toolCalls: LlmToolCall[];
+  stopReason: LlmStopReason;
+  model: string;
+  usage: LlmUsage;
+}
+
 export interface LlmProvider {
   // The ProviderCredential id this driver was built from.
   readonly id: string;
@@ -70,4 +143,8 @@ export interface LlmProvider {
   readonly mode: "real" | "mock";
   complete(request: LlmCompletionRequest): Promise<LlmResult<LlmCompletion>>;
   embed(request: LlmEmbedRequest): Promise<LlmResult<LlmEmbedding>>;
+  // Required rather than optional: three drivers implement it against a
+  // handful of call sites, so making every caller null-check forever would buy
+  // nothing.
+  chat(request: LlmChatRequest): Promise<LlmResult<LlmChatCompletion>>;
 }

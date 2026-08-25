@@ -8,6 +8,7 @@ import {
 } from "@/lib/client/active-workspace";
 
 export type OutgoingWebhookEventValue =
+  | "AGENT_RUN_COMPLETED"
   | "ALERT_CREATED"
   | "SERVICE_STATUS"
   | "MESSAGE_CREATED"
@@ -18,7 +19,7 @@ export type OutgoingWebhookEventValue =
   | "KANBAN_CARD_COMPLETED";
 
 export type OutgoingWebhookFormatValue =
-  "INSPOT" | "DISCORD_EXECUTE" | "DISCORD_EVENTS";
+  "INSPOT" | "DISCORD_EXECUTE" | "DISCORD_EVENTS" | "TELEGRAM_BOT";
 
 export type WebhookDeliveryStatusValue =
   "PENDING" | "DELIVERING" | "DELIVERED" | "FAILED";
@@ -32,6 +33,9 @@ export interface OutgoingWebhookDto {
   secretPrefix: string;
   format: OutgoingWebhookFormatValue;
   publicKey: string | null;
+  // TELEGRAM_BOT only. Addressing, not a secret — the list shows it so a
+  // subscription's target is auditable.
+  targetChatId: string | null;
   consecutiveFailures: number;
   createdAt: string;
   updatedAt: string;
@@ -71,6 +75,10 @@ export interface OutgoingWebhookInput {
   events: OutgoingWebhookEventValue[];
   isActive: boolean;
   format: OutgoingWebhookFormatValue;
+  // TELEGRAM_BOT only. The token is write-only: it is never returned, so an
+  // edit that leaves the field blank keeps the stored one.
+  botToken?: string;
+  targetChatId?: string;
 }
 
 export class ApiError extends Error {

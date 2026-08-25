@@ -45,5 +45,13 @@ export async function register() {
     const { startProviderSnapshotScheduler } =
       await import("@/lib/services/provider-snapshot-scheduler");
     startProviderSnapshotScheduler();
+
+    const { startAgentScheduler } =
+      await import("@/lib/services/agent-scheduler");
+    startAgentScheduler();
+
+    const { startAgentRunRetentionScheduler } =
+      await import("@/lib/services/agent-run-retention-scheduler");
+    startAgentRunRetentionScheduler();
   }
 }

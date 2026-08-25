@@ -1,5 +1,7 @@
 import { env } from "@/lib/config/env";
 import type {
+  LlmChatCompletion,
+  LlmChatRequest,
   LlmCompletion,
   LlmCompletionRequest,
   LlmEmbedRequest,
@@ -16,8 +18,8 @@ import { BoundedFixedWindowLimiter } from "@/lib/rate-limit/fixed-window";
 // these functions, never a driver directly, so that the workspace rate limit
 // and the Activity audit entry cannot be bypassed by a new caller.
 //
-// When the workspace has no LLM credential the layer is off and both calls
-// return `unsupported` — the caller renders an empty state, nothing is
+// When the workspace has no LLM credential the layer is off and all three
+// calls return `unsupported` — the caller renders an empty state, nothing is
 // logged, and no request leaves the machine.
 
 export interface LlmCaller {
@@ -25,34 +27,65 @@ export interface LlmCaller {
   operatorName: string;
 }
 
-// In-process fixed-window limiter per workspace, copied from
-// checkSendRateLimit in src/lib/services/mail-actions.ts (same single-process
-// assumption). Limits are read at call time so tests can tighten them.
+type LlmOperation = "complete" | "embed" | "chat";
+
+// In-process fixed-window limiter, copied from checkSendRateLimit in
+// src/lib/services/mail-actions.ts (same single-process assumption). Limits are
+// read at call time so tests can tighten them.
+//
+// The key is not simply the workspace id: an agent run spends one call per
+// step, so it counts against its own window (see LLM_AGENT_CALL_RATE_LIMIT).
+// A shared counter would make each workload an outage of the other.
 const callLimiter = new BoundedFixedWindowLimiter();
 
-function withinRateLimit(workspaceId: string): boolean {
-  return callLimiter.consume(
-    workspaceId,
-    env.LLM_CALL_RATE_LIMIT,
-    env.LLM_CALL_RATE_WINDOW_MS,
-  ).allowed;
+function withinRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): boolean {
+  return callLimiter.consume(key, limit, windowMs).allowed;
+}
+
+interface RateLimitPolicy {
+  key: string;
+  limit: number;
+  windowMs: number;
+}
+
+function policyFor(
+  workspaceId: string,
+  operation: LlmOperation,
+): RateLimitPolicy {
+  return operation === "chat"
+    ? {
+        key: `agent:${workspaceId}`,
+        limit: env.LLM_AGENT_CALL_RATE_LIMIT,
+        windowMs: env.LLM_AGENT_CALL_RATE_WINDOW_MS,
+      }
+    : {
+        key: workspaceId,
+        limit: env.LLM_CALL_RATE_LIMIT,
+        windowMs: env.LLM_CALL_RATE_WINDOW_MS,
+      };
 }
 
 async function run<T extends { model: string; usage: LlmUsage }>(
   workspaceId: string,
   caller: LlmCaller,
-  operation: "complete" | "embed",
+  operation: LlmOperation,
   call: (provider: LlmProvider) => Promise<LlmResult<T>>,
+  extraDetails?: (data: T) => Record<string, unknown>,
 ): Promise<LlmResult<T>> {
   const provider = await getLlmProviderForWorkspace(workspaceId);
   if (!provider) return { ok: false, kind: "unsupported", operation };
 
-  if (!withinRateLimit(workspaceId)) {
+  const policy = policyFor(workspaceId, operation);
+  if (!withinRateLimit(policy.key, policy.limit, policy.windowMs)) {
     return {
       ok: false,
       kind: "error",
       category: "rate_limit",
-      message: `Model call rate limit reached (${env.LLM_CALL_RATE_LIMIT} per ${env.LLM_CALL_RATE_WINDOW_MS} ms)`,
+      message: `Model call rate limit reached (${policy.limit} per ${policy.windowMs} ms)`,
     };
   }
 
@@ -73,6 +106,7 @@ async function run<T extends { model: string; usage: LlmUsage }>(
       mode: provider.mode,
       model: result.ok ? result.data.model : provider.model,
       tokens: result.ok ? result.data.usage.totalTokens : 0,
+      ...(result.ok && extraDetails ? extraDetails(result.data) : {}),
       ...(result.ok
         ? {}
         : { error: result.kind === "error" ? result.category : result.kind }),
@@ -99,5 +133,24 @@ export function embed(
 ): Promise<LlmResult<LlmEmbedding>> {
   return run(workspaceId, caller, "embed", (provider) =>
     provider.embed(request),
+  );
+}
+
+export function chat(
+  workspaceId: string,
+  caller: LlmCaller,
+  request: LlmChatRequest,
+): Promise<LlmResult<LlmChatCompletion>> {
+  return run(
+    workspaceId,
+    caller,
+    "chat",
+    (provider) => provider.chat(request),
+    // A run's Activity trail is a sequence of llm_chat rows; the stop reason
+    // and the tool-call count are what make one row readable on its own.
+    (data) => ({
+      stopReason: data.stopReason,
+      toolCalls: data.toolCalls.length,
+    }),
   );
 }

@@ -242,5 +242,17 @@
   "retryDeliveryError": "Failed to retry delivery. Please try again.",
   "loadDeliveriesError": "Failed to load deliveries. Please try again.",
   "scopeGroupContacts": "Contacts",
-  "scopeAccessEdit": "Create, update and delete"
+  "scopeAccessEdit": "Create, update and delete",
+  "eventAgentRunCompleted": "Agent run finished",
+  "formatTelegramBot": "Telegram bot",
+  "formatTelegramBotHint": "Sends the event as a message to a Telegram chat through the Bot API.",
+  "botTokenLabel": "Bot token",
+  "botTokenHint": "Stored encrypted and never shown again. Leave empty when editing to keep the current one.",
+  "chatIdLabel": "Chat id",
+  "chatIdHint": "Numeric chat id or @channelusername. The bot must already be a member.",
+  "botTokenRequiredError": "Bot token is required",
+  "chatIdRequiredError": "Chat id is required",
+  "scopeGroupNotes": "Notes",
+  "scopeGroupActivity": "Activity",
+  "scopeGroupDomains": "Domains"
 }

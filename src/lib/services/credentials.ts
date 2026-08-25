@@ -90,10 +90,14 @@ function toSummary(credential: CredentialRecord): CredentialSummary {
 function computeMaskedHint(data: CredentialData): string {
   if (data.type === "GODADDY_DNS") return maskSecret(data.apiKey);
   if (data.type === "MAIL_PASSWORD") return maskSecret(data.imapPassword);
-  // WEBHOOK_SECRET / WEBHOOK_ED25519_KEY are stored on OutgoingWebhook, never
-  // as a ProviderCredential, so these branches are unreachable here — kept only
-  // to satisfy the union.
-  if (data.type === "WEBHOOK_SECRET" || data.type === "WEBHOOK_ED25519_KEY") {
+  // The WEBHOOK_* payloads are stored on OutgoingWebhook, never as a
+  // ProviderCredential, so these branches are unreachable here — kept only to
+  // satisfy the union.
+  if (
+    data.type === "WEBHOOK_SECRET" ||
+    data.type === "WEBHOOK_ED25519_KEY" ||
+    data.type === "WEBHOOK_TELEGRAM_BOT"
+  ) {
     return maskSecret(data.secret);
   }
   if (

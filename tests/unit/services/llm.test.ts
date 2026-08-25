@@ -14,7 +14,12 @@ vi.mock("@/lib/services/activity", () => ({
   recordActivity: vi.fn(async () => {}),
 }));
 vi.mock("@/lib/config/env", () => ({
-  env: { LLM_CALL_RATE_LIMIT: 2, LLM_CALL_RATE_WINDOW_MS: 60_000 },
+  env: {
+    LLM_CALL_RATE_LIMIT: 2,
+    LLM_CALL_RATE_WINDOW_MS: 60_000,
+    LLM_AGENT_CALL_RATE_LIMIT: 3,
+    LLM_AGENT_CALL_RATE_WINDOW_MS: 60_000,
+  },
 }));
 
 const getDecryptedCredentials = vi.mocked(
@@ -137,5 +142,63 @@ describe("llm service rate limit", () => {
     const other = await llmService.complete(second, CALLER, { prompt: "one" });
 
     expect(other.ok).toBe(true);
+  });
+
+  // An agent run spends one call per step. Sharing the interactive counter
+  // would let a few scheduled runs take the Mail AI features offline for the
+  // rest of the hour, so the two workloads count in separate windows.
+  it("counts agent chat calls in a window of their own", async () => {
+    useMockCredential();
+    const workspaceId = nextWorkspaceId();
+
+    await llmService.complete(workspaceId, CALLER, { prompt: "one" });
+    await llmService.complete(workspaceId, CALLER, { prompt: "two" });
+    const interactive = await llmService.complete(workspaceId, CALLER, {
+      prompt: "three",
+    });
+    expect(interactive).toMatchObject({ category: "rate_limit" });
+
+    const agent = await llmService.chat(workspaceId, CALLER, {
+      messages: [{ role: "user", content: "report" }],
+    });
+    expect(agent.ok).toBe(true);
+  });
+
+  it("exhausts the agent window without touching the interactive one", async () => {
+    useMockCredential();
+    const workspaceId = nextWorkspaceId();
+    const request = { messages: [{ role: "user" as const, content: "go" }] };
+
+    await llmService.chat(workspaceId, CALLER, request);
+    await llmService.chat(workspaceId, CALLER, request);
+    await llmService.chat(workspaceId, CALLER, request);
+    const fourth = await llmService.chat(workspaceId, CALLER, request);
+
+    expect(fourth).toMatchObject({ category: "rate_limit" });
+    expect(
+      (await llmService.complete(workspaceId, CALLER, { prompt: "still ok" }))
+        .ok,
+    ).toBe(true);
+  });
+});
+
+describe("llm service chat audit trail", () => {
+  it("journals the stop reason and the tool-call count", async () => {
+    useMockCredential();
+
+    await llmService.chat(nextWorkspaceId(), CALLER, {
+      messages: [{ role: "user", content: "report" }],
+      mockTurns: [
+        { toolCalls: [{ name: "logs_search", arguments: { limit: 1 } }] },
+      ],
+    });
+
+    const entry = recordActivity.mock.calls[0][1];
+    expect(entry.action).toBe("llm_chat");
+    expect(JSON.parse(entry.details as string)).toMatchObject({
+      mode: "mock",
+      stopReason: "tool_calls",
+      toolCalls: 1,
+    });
   });
 });

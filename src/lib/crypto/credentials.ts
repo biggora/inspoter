@@ -31,6 +31,12 @@ export type CredentialData =
   // operator can configure it on the receiving side
   // (specs/discord-webhook-compatibility.md §7).
   | { type: "WEBHOOK_ED25519_KEY"; privateKey: string; secret: string }
+  // Telegram Bot API token of a TELEGRAM_BOT outgoing webhook. Telegram puts
+  // the token in the request path, so it cannot live in OutgoingWebhook.url —
+  // that column is plaintext and rendered in the settings list. The HMAC
+  // secret rides along for the same reason it does above: switching formats
+  // must never orphan the other one's credential.
+  | { type: "WEBHOOK_TELEGRAM_BOT"; botToken: string; secret: string }
   // OpenAI-compatible LLM endpoint (src/lib/llm). `mode` selects the driver
   // the same way MailAccount.mode does: MOCK is the deterministic in-process
   // driver used by tests and e2e, REAL talks to baseUrl.

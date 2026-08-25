@@ -1,12 +1,12 @@
 ---
 name: inspoter
-description: Drive an Inspoter dashboard workspace from an agent — the MCP server at POST /api/mcp (109 tools) and the equivalent REST API at /api/v1/**, both authorized by one bearer API token with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
+description: Drive an Inspoter dashboard workspace from an agent — the MCP server at POST /api/mcp (118 tools) and the equivalent REST API at /api/v1/**, both authorized by one bearer API token with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, notes, activity, domains, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
 ---
 
 # Inspoter agent surface
 
 Inspoter is a self-hosted infrastructure dashboard. Everything an agent may touch is exposed
-twice, over the same authorization: **MCP** (`POST /api/mcp`, 109 tools) and **REST**
+twice, over the same authorization: **MCP** (`POST /api/mcp`, 118 tools) and **REST**
 (`/api/v1/**`, 71 paths). Both are session-cookie-free — the bearer token is the only
 authority and it carries the workspace, so `X-Inspoter-Workspace` plays no part.
 
@@ -30,10 +30,13 @@ token can search mail and never send it.
 mail:read      mail:write        alerts:read     alerts:write
 bookmarks:read bookmarks:write   messages:read   messages:write
 contacts:read  contacts:write    kanban:read     kanban:write
-servers:read   services:read     services:write  logs:read
+notes:read     notes:write       servers:read    services:read
+services:write logs:read         activity:read   domains:read
 ```
 
-There is no `servers:write` — VPS power actions stay with the operator.
+Four sections are read-only by design, and the missing write scope is the guarantee:
+`servers` (power actions stay with the operator), `domains` (a DNS change reaches the public
+internet), `activity` (the journal is written by the actions themselves), and `logs`.
 
 ## Connecting
 
@@ -167,7 +170,7 @@ to the workspace log instead of leaking a stack.
 
 ## Reference files
 
-- `references/mcp-tools.md` — all 109 tools grouped by scope, with arguments and gotchas.
+- `references/mcp-tools.md` — all 118 tools grouped by scope, with arguments and gotchas.
   Read the section for the domain you are working in.
 - `references/rest-api.md` — the 71 `/api/v1` paths with query/body shapes, plus the places
   REST and MCP differ.
