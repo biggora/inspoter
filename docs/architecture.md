@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.27 (2026-08-25):** the New/Edit agent and skill dialogs can draft their own **Description** and **Instructions** with the connected model. A sparkle button beside each of those two labels, in create and in edit mode: the description button briefs the model with the name and the current description, the instructions button adds the current instructions. Nothing else is drafted — scopes, `Limit to tools` and the step/token/time ceilings are the safety envelope of §7I.6 and stay the operator's. Four new modules and one route: `src/lib/agents/authoring-prompts.ts` (pure; prompts, brief hygiene and the four deterministic mock answers — named for authoring because `src/lib/agents/prompt.ts` next door builds what a *run* says to the model), `src/lib/validation/agents-ai.ts` (`.strict()` request, `.strip()` answer, an answer cap of 1.5× the target field's own limit), `src/lib/services/agents-ai.ts` (no Prisma import at all — nothing is read and nothing is written), `src/components/agents/use-ai-draft.ts` plus `ai-draft-button.tsx`, and `POST /api/agents/ai/draft` carrying `kind` and `field` as body enums rather than as four near-identical route files. The one property that is new against §7F.6: mail's model output was inert, while a drafted instruction becomes the **trusted** system text `prompt.ts` injects at run time — the boundary is the operator reading it before pressing Create, so the draft is form state until then. An answer inside the slack is trimmed on a word boundary and reported as `trimmed`; the trim is load-bearing because `agent-dialog.tsx` has no error slot for `description`. Drafting shares Mail's 60/hour `LLM_CALL_RATE_LIMIT` window, deliberately. 13 new keys in the `agents` namespace, one new step in the help article. No migration, no new env var, no schema change. New §7F.7; cross-reference in §7I.1.
 - **v1.26 (2026-08-25):** settles the AI Assistant route tree and the deployment contract behind it. The run and skill families move from `/api/agent-runs/**` and `/api/skills/**` to `/api/agents/runs/**` and `/api/agents/skills/**`, where §3.1 and the section they belong to already put them; the shadowing the flat paths avoided cannot happen, because Next.js resolves a static segment before its sibling `[id]` and `Agent.id` is a cuid. `src/lib/config/env.ts` drops blank values before parsing: Compose renders an unset `${VAR:-}` as an empty string, `z.coerce.number()` reads `""` as `0`, and every optional numeric knob in `docker-compose.prod.yml` — plus the four `AUTHENTIK_*` URLs — therefore stopped the container at boot. That compose file gains the `LLM_*` and `AGENT_*` passthrough it was missing. New §7I.9 states what an image update preserves and pins it with an integration test; §7I.9 Verification becomes §7I.10. Updates §3.2 (216 route files, 326 handlers, AI Assistant family) and the 118-tool/20-scope counts left stale in §6.6, README and `specs/ai-integration.md`. No migration.
 - **v1.25 (2026-08-25):** adds the **AI Assistant** section — the first AI layer that acts on its own, alongside §7F (app → model), §6.6 (external client → app) and §7H (browser agent → page). Six Prisma models over two migrations (`20260826120000_agents`, `20260827120000_agent_report_webhooks`): `Agent` (instructions + a subset of the §6.6 scopes + step/token/time ceilings), `Skill` (a reusable prompt fragment that narrows the toolset and never widens it), the `AgentSkill` join whose `position` is the injection order, `AgentSchedule` (`INTERVAL`/`DAILY`/`WEEKLY` with an IANA zone, no cron string), `AgentRun` — which **is** the work queue, `MailFilterRun`-shaped, carrying an immutable snapshot of the agent it executed — and `AgentRunStep` for the audited timeline. `LlmProvider` gains a required `chat()` with messages, tools and a stop reason, implemented in `openai.ts`, in `anthropic.ts` (whose tool results have to be regrouped into user turns) and deterministically in `mock.ts`, which picks its scripted turn by counting the assistant turns already in the transcript so a multi-step run is reproducible; `src/lib/services/llm.ts` gains `chat()` on a rate-limit window of its own (`LLM_AGENT_CALL_RATE_LIMIT`), because one run is one model call per step and a shared counter would take the Mail AI features offline. `defineTool` now publishes `title`/`description`/`inputSchema`/`invoke` instead of hiding them in the `register` closure, so `src/lib/agents/tools.ts` can advertise the same catalogue to a model — permission stays structural, an out-of-scope tool is simply absent. The catalogue grows to **118 tools over 12 domains** and `MCP_SCOPES` to **20**: notes read/write, activity read, domains read. Two new in-process schedulers (ninth and tenth) drain the run queue and prune its history. Reports reuse the outgoing-webhook machinery with one new event, `AGENT_RUN_COMPLETED`, and one new format, `TELEGRAM_BOT`, whose bot token rides in the encrypted payload (it is a path segment, so it cannot sit in the plaintext `url`) while its chat id gets a plain `targetChatId` column. Updates §3.1, §3.2, §4.1, §6.4, §7F.1; new section §7I.
 - **v1.24 (2026-08-24):** grows the browser WebMCP layer from six tools across four domains to **98 across twelve**, every one of them page-independent. Each domain keeps a `create<Domain>Tools(deps): WebMcpTool[]` factory in `src/components/<domain>/web-mcp-tools.ts` whose deps interface is that feature's injected client-api callables, so a factory builds and unit-tests without React: notes 6, mail 14, contacts 13, messages 12, logs 1, activity 1, services 13, servers 4, bookmarks 9, domains 5, kanban 16, alerts 4. `src/components/shell/web-mcp-global-tools.tsx` composes all twelve and registers them in one call to the new `useWebMcpTools(tools, enabled)` in `src/hooks/use-web-mcp-tool.ts` — an array hook because the rules of hooks forbid a call per tool once the count varies, with `useWebMcpTool` kept as a thin wrapper — mounted from `(dashboard)/layout.tsx` outside the `{children}` slot, so the catalog survives client-side navigation. The four page-scoped tools of v1.21 are deleted along with their registrations in `kanban-board-view.tsx`, `alerts-view.tsx` and `server-detail-view.tsx`; `kanban_card_move`, `kanban_card_create`, `alerts_set_category` and `server_power_action` cover the same capability from the global catalog by taking explicit ids instead of reading page state, and `data-alert-id` on the alert rows is kept. The design discipline is lifted from the server-side catalog in `src/lib/mcp/tools/`: no tool accepts free text where an id is required, every id parameter's `.describe()` names the tool the id comes from, every domain has one search/list entry point returning flat rows that pair each id with its human-readable name, and output is capped and projected to stay near ~1500 characters. Two route additions, both to make bookmarks reachable at all from a client (the list is server-rendered and no client read existed): `GET` handlers on `src/app/api/bookmarks/route.ts` and `src/app/api/categories/route.ts`, previously POST-only, over the same `bookmarksService.search()`/`list()` that `/api/v1/bookmarks` and the server-side MCP tool call, with `bookmarksApi.search` and `categoriesApi.list` added to `src/components/bookmarks/api.ts`. Kept deliberately off the surface: anything carrying a plaintext password or raw credential (mail-account create/update/test, workspace `addMember`, `credentialsApi.create`/`update`), webhook-token issue/rotate and channel-webhook creation (the create response carries the full ingest URL with its secret, so an agent would hold it in its transcript — `channel_webhooks_list`, returning only a prefix, is exposed), backup export/import (passphrase, and `mode: "replace"` wipes every section), `workspacesApi.switchTo` (it silently re-targets the workspace header every other tool depends on), anything taking a `File`/`Blob`, and the three mail AI endpoints. `tests/unit/web-mcp/global-tools.test.ts` builds the whole catalog from the twelve factories with stub deps and pins the count, the absence of a duplicate name across domains, a non-empty title everywhere, the 30-char name and 1–500-char description budgets, and a description of at most 150 chars on every advertised parameter. No migration, no new env var, no new auth path, no change to `src/lib/mcp/`. Rewrites §7H.
@@ -1365,6 +1366,57 @@ another message is selected. The point where the job pattern does become
 mandatory is a whole-folder summary, or a proposal built from many messages at
 once.
 
+### 7F.7 Authoring assistant for agents and skills (`src/lib/services/agents-ai.ts`)
+
+The New/Edit agent and skill dialogs draft their own **Description** and
+**Instructions**. A sparkle button sits beside each of those two labels; the
+description button sends the name and the current description, the instructions
+button sends those plus the current instructions. Nothing else is drafted:
+access scopes, `Limit to tools` and the step/token/time ceilings stay the
+operator's, because they are the safety envelope of §7I.6 and a model has no
+business proposing its own permissions.
+
+Structurally this is §7F.6 again — one `complete()` call, a pure prompt module,
+a zod-checked answer — with one thing that is genuinely new and is the reason
+this section exists. Mail's model output was **inert**: text in a composer,
+conditions re-checked by `mailFilterConditionSchema`. Here the output lands in
+`Agent.instructions`, which `src/lib/agents/prompt.ts` injects as **trusted**
+system text and which drives real tool calls at run time. The boundary is the
+operator reading the draft before pressing Create — the draft is form state
+until then, nothing is saved, and the toast says "Check it before saving"
+rather than "Done" for exactly that reason. In edit mode the button overwrites
+a populated field with no undo; the brief carries the current text, so the
+model rewrites rather than invents, and Cancel is the escape hatch.
+
+`src/lib/agents/authoring-prompts.ts` is the pure module holding the prompts,
+the brief hygiene and each combination's mock answer. It is named for authoring
+rather than called `ai-prompts.ts` because `src/lib/agents/prompt.ts` next door
+builds what a **run** says to the model, while this builds what the **dialog**
+says while an agent is still being written. `buildDraftContext()` is the only
+place the brief rule lives: drafting a description drops the instructions, so an
+over-sending client gains nothing. The system prompt states the character budget
+of the target field, not only `maxTokens`, because the two fail differently — a
+model that runs into `max_tokens` returns truncated JSON, which
+`parseJsonAnswer` turns into an `invalid_response` 502 rather than a shorter
+draft. An answer inside 1.5× the field's cap is trimmed on a word boundary and
+reported as `trimmed`; beyond that it is rejected. The trim is load-bearing, not
+cosmetic: `agent-dialog.tsx` has no error slot for `description`, so an
+over-long draft reaching the save call would fail with nothing visible.
+
+The service imports no Prisma client at all — a stronger statement than
+`mail-ai.ts`, which at least loads the message it summarizes. Nothing is read
+and nothing is written.
+
+One route, `POST /api/agents/ai/draft`, carries `kind` and `field` as body
+enums. Mail has three routes because it has three DTOs with three consumers; all
+four combinations here answer `{ text, model, trimmed }` and differ only in two
+values the request already sends, so four files would be four copies of one
+handler. POST, no `/api/v1` twin and no MCP tool, all for the reasons §7F.6
+gives. `complete()` keys the rate limit on the bare workspace id, so drafting
+shares the 60/hour `LLM_CALL_RATE_LIMIT` window with the Mail AI features —
+correct, since both are operator-initiated rather than a run, but heavy drafting
+will take Mail's AI offline for the hour.
+
 ## 7G. Contacts — CURRENT (2026-08-12)
 
 A workspace address book (PRD §3.5a, FR-CNT-001..006) at `/contacts`, `/contacts/[id]` and `/contacts/duplicates`, plus the agent-facing `/api/v1/contacts/**` and seven MCP tools. Migration `20260812120000_contacts`.
@@ -1510,6 +1562,11 @@ bodies enter the prompt.
 The name borrows the vocabulary of the repo-root `skills/inspoter/SKILL.md` and
 nothing else: that file is an external Claude skill describing Inspoter's API,
 this is a database row with no filesystem counterpart.
+
+Both dialogs can draft their Description and Instructions with the connected
+model (§7F.7). That is authoring help only — it never touches the scopes, the
+tool narrowing or the ceilings, and what it writes is trusted system text only
+once the operator has read it and pressed Create.
 
 ### 7I.2 Tool calling in the LLM contract (`src/lib/llm/`)
 

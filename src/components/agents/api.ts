@@ -190,6 +190,43 @@ export const agentRunsApi = {
     }),
 };
 
+// --- authoring assistant (architecture.md §7F.7) ---
+//
+// POST even though nothing is mutated, for the same reason the mail AI calls
+// are: not idempotent, costs tokens, and a GET is something the browser is
+// entitled to prefetch. The AbortSignal matters here too — the model deadline
+// is 60 s, so an operator who closes the dialog must be able to drop the
+// request. `request()` above already forwards `init.signal`.
+//
+// Failures arrive as a stable code in ApiError.code (AI_UNAVAILABLE,
+// AI_RATE_LIMIT, …), which use-ai-draft.ts maps to a message key.
+
+export interface AgentDraftRequest {
+  kind: "AGENT" | "SKILL";
+  field: "description" | "instructions";
+  language: string;
+  name: string;
+  description?: string;
+  instructions?: string;
+}
+
+export interface AgentDraftDto {
+  text: string;
+  model: string;
+  trimmed: boolean;
+}
+
+export function draftAgentText(
+  input: AgentDraftRequest,
+  signal?: AbortSignal,
+): Promise<AgentDraftDto> {
+  return request<AgentDraftDto>("/api/agents/ai/draft", {
+    method: "POST",
+    body: JSON.stringify(input),
+    signal,
+  });
+}
+
 export const skillsApi = {
   list: () => request<SkillSummary[]>("/api/agents/skills"),
   get: (id: string) => request<SkillDetail>(`/api/agents/skills/${id}`),

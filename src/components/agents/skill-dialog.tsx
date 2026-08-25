@@ -25,7 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { SkillDetail } from "@/lib/services/skills";
+import { AiDraftButton } from "./ai-draft-button";
 import { ApiError, skillsApi } from "./api";
+import { useAiDraft } from "./use-ai-draft";
 
 export type SkillDialogState =
   { mode: "create" } | { mode: "edit"; skill: SkillDetail };
@@ -76,6 +78,16 @@ export function SkillDialog({
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const ai = useAiDraft("SKILL", (field, text) => {
+    if (field === "description") setDescription(text);
+    else setInstructions(text);
+  });
+  const brief = { name, description, instructions };
+  // A draft is written from what the operator has typed, so the name is the
+  // floor: without it the first click would spend a model call on nothing.
+  const aiDisabled =
+    ai.busyField !== null || submitting || name.trim().length === 0;
 
   const isEdit = state?.mode === "edit";
 
@@ -156,8 +168,15 @@ export function SkillDialog({
     }
   }
 
+  // A draft in flight is dropped when the dialog closes. It cannot be aborted
+  // from the reset block above — that one runs during render.
+  function handleOpenChange(open: boolean) {
+    if (!open) ai.cancel();
+    onOpenChange(open);
+  }
+
   return (
-    <Dialog open={state !== null} onOpenChange={onOpenChange}>
+    <Dialog open={state !== null} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -185,9 +204,23 @@ export function SkillDialog({
             </Field>
 
             <Field data-invalid={!!errors.description || undefined}>
-              <FieldLabel htmlFor={descriptionId}>
-                {t("skillDescriptionLabel")}
-              </FieldLabel>
+              {/* The button is a sibling of the label, never a child: a
+                  <label> wrapping it would fold "Generate description" into
+                  the input's accessible name. */}
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={descriptionId}>
+                  {t("skillDescriptionLabel")}
+                </FieldLabel>
+                {ai.enabled && (
+                  <AiDraftButton
+                    field="description"
+                    busy={ai.busyField === "description"}
+                    disabled={aiDisabled}
+                    hint={t("aiNeedsNameHint")}
+                    onClick={() => ai.generate("description", brief)}
+                  />
+                )}
+              </div>
               <Input
                 id={descriptionId}
                 value={description}
@@ -205,9 +238,20 @@ export function SkillDialog({
             </Field>
 
             <Field data-invalid={!!errors.instructions || undefined}>
-              <FieldLabel htmlFor={instructionsId}>
-                {t("skillInstructionsLabel")}
-              </FieldLabel>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={instructionsId}>
+                  {t("skillInstructionsLabel")}
+                </FieldLabel>
+                {ai.enabled && (
+                  <AiDraftButton
+                    field="instructions"
+                    busy={ai.busyField === "instructions"}
+                    disabled={aiDisabled}
+                    hint={t("aiNeedsNameHint")}
+                    onClick={() => ai.generate("instructions", brief)}
+                  />
+                )}
+              </div>
               <Textarea
                 id={instructionsId}
                 value={instructions}

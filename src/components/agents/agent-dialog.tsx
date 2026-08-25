@@ -25,7 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { AgentDetail } from "@/lib/services/agents";
+import { AiDraftButton } from "./ai-draft-button";
 import { agentsApi, ApiError } from "./api";
+import { useAiDraft } from "./use-ai-draft";
 
 export type AgentDialogState =
   { mode: "create" } | { mode: "edit"; agent: AgentDetail };
@@ -74,6 +76,16 @@ export function AgentDialog({
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const ai = useAiDraft("AGENT", (field, text) => {
+    if (field === "description") setDescription(text);
+    else setInstructions(text);
+  });
+  const brief = { name, description, instructions };
+  // A draft is written from what the operator has typed, so the name is the
+  // floor: without it the first click would spend a model call on nothing.
+  const aiDisabled =
+    ai.busyField !== null || submitting || name.trim().length === 0;
 
   const isEdit = state?.mode === "edit";
 
@@ -157,8 +169,15 @@ export function AgentDialog({
     }
   }
 
+  // A draft in flight is dropped when the dialog closes. It cannot be aborted
+  // from the reset block above — that one runs during render.
+  function handleOpenChange(open: boolean) {
+    if (!open) ai.cancel();
+    onOpenChange(open);
+  }
+
   return (
-    <Dialog open={state !== null} onOpenChange={onOpenChange}>
+    <Dialog open={state !== null} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -186,9 +205,23 @@ export function AgentDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor={descriptionId}>
-                {t("descriptionLabel")}
-              </FieldLabel>
+              {/* The button is a sibling of the label, never a child: a
+                  <label> wrapping it would fold "Generate description" into
+                  the input's accessible name. */}
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={descriptionId}>
+                  {t("descriptionLabel")}
+                </FieldLabel>
+                {ai.enabled && (
+                  <AiDraftButton
+                    field="description"
+                    busy={ai.busyField === "description"}
+                    disabled={aiDisabled}
+                    hint={t("aiNeedsNameHint")}
+                    onClick={() => ai.generate("description", brief)}
+                  />
+                )}
+              </div>
               <Input
                 id={descriptionId}
                 value={description}
@@ -197,9 +230,20 @@ export function AgentDialog({
             </Field>
 
             <Field data-invalid={!!errors.instructions || undefined}>
-              <FieldLabel htmlFor={instructionsId}>
-                {t("instructionsLabel")}
-              </FieldLabel>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={instructionsId}>
+                  {t("instructionsLabel")}
+                </FieldLabel>
+                {ai.enabled && (
+                  <AiDraftButton
+                    field="instructions"
+                    busy={ai.busyField === "instructions"}
+                    disabled={aiDisabled}
+                    hint={t("aiNeedsNameHint")}
+                    onClick={() => ai.generate("instructions", brief)}
+                  />
+                )}
+              </div>
               <Textarea
                 id={instructionsId}
                 value={instructions}

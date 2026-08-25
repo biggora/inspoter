@@ -65,6 +65,7 @@
   "agentsSteps": [
     "Connect a model under Settings → Providers first; without one an agent can be created but a run will do nothing.",
     "Click \"New agent\", give it instructions, and adjust the step, token and time limits if the defaults do not fit.",
+    "Beside Description and Instructions there is a sparkle button: it drafts that field with the connected model from the name and whatever you have typed so far. The text lands in the form for you to edit, and nothing is saved until you press \"Create\".",
     "Open the agent and tick the sections it needs on the Access card. Ticking Write also ticks Read: a write tool always works on ids a read tool hands out.",
     "Write a skill under \"Skills\" and attach it on the agent's page. The attachment order is the order its instructions enter the prompt; drag with the arrows to change it.",
     "Add a schedule — every N minutes, daily, or on chosen weekdays — and state the time zone, because the dashboard itself shows times in UTC.",

@@ -268,6 +268,74 @@ test("runs an agent and shows the model and tool steps it took", async ({
   }
 });
 
+test("drafts a skill's description and instructions with the model", async ({
+  page,
+}) => {
+  const skillName = unique("e2e-ai-skill");
+  let credentialId: string | undefined;
+
+  try {
+    await page.goto("/agents/skills");
+    // createMockLlmCredential reads [data-workspace-id] out of the rendered
+    // shell, and at the mobile viewport that attribute only settles once the
+    // sidebar Sheet has closed — so wait for the page to be interactive before
+    // asking for it, rather than racing the hydration.
+    await expect(
+      page.getByRole("button", { name: "New skill", exact: true }),
+    ).toBeVisible();
+    credentialId = await createMockLlmCredential(page);
+
+    await page.getByRole("button", { name: "New skill", exact: true }).click();
+    await page.getByLabel("Name", { exact: true }).fill(skillName);
+
+    // The mock answer echoes the brief, so a draft carrying the name is proof
+    // the model was asked about THIS skill rather than returning a constant.
+    await page
+      .getByRole("button", { name: "Generate description", exact: true })
+      .click();
+    await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+      new RegExp(skillName),
+      { timeout: 15_000 },
+    );
+
+    await page
+      .getByRole("button", { name: "Generate instructions", exact: true })
+      .click();
+    await expect(page.getByLabel("Instructions", { exact: true })).toHaveValue(
+      new RegExp(skillName),
+      { timeout: 15_000 },
+    );
+
+    // Nothing is stored until the operator presses Create: the model proposes,
+    // the existing deterministic code saves.
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(row(page, skillName)).toBeVisible();
+    createdSkills.push(skillName);
+  } finally {
+    if (credentialId) await deleteCredential(page, credentialId);
+  }
+});
+
+test("offers the draft buttons when editing an existing skill", async ({
+  page,
+}) => {
+  const skillName = unique("e2e-ai-edit");
+  await createSkill(page, skillName);
+
+  await row(page, skillName)
+    .getByRole("button", { name: "Edit", exact: true })
+    .click();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(skillName);
+
+  // Both buttons are enabled here because the skill already has a name — the
+  // floor the dialog requires before it will spend a model call.
+  for (const label of ["Generate description", "Generate instructions"]) {
+    await expect(
+      page.getByRole("button", { name: label, exact: true }),
+    ).toBeEnabled();
+  }
+});
+
 test("refuses a skill that names a tool the catalogue does not have", async ({
   page,
 }) => {
