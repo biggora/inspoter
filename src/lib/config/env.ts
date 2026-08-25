@@ -148,6 +148,61 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000),
+    // Agent runs get their own window. One run is N model calls (one per step),
+    // so sharing the interactive counter would let a handful of scheduled runs
+    // silently take the Mail AI features offline for the rest of the hour.
+    LLM_AGENT_CALL_RATE_LIMIT: z.coerce.number().int().positive().default(600),
+    LLM_AGENT_CALL_RATE_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000),
+    // --- AI Assistant runs (src/lib/agents) ---
+    // Deployment-wide ceilings. Each agent carries its own limits; a run uses
+    // the smaller of the two, so one workspace cannot configure its way out of
+    // the envelope this deployment is willing to pay for.
+    AGENT_RUN_MAX_STEPS_CEILING: z.coerce.number().int().positive().default(24),
+    AGENT_RUN_MAX_TOKENS_CEILING: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
+    AGENT_RUN_MAX_TIMEOUT_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(1_800),
+    // What one tool may put into the model's context, and what a step row may
+    // keep for the timeline. The first is a token bill, the second is a table.
+    AGENT_TOOL_RESULT_MAX_CHARS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(6_000),
+    AGENT_STEP_PAYLOAD_MAX_CHARS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(4_000),
+    // A run holds its lease across N model round-trips, so the lease is
+    // minutes rather than the seconds a webhook delivery needs.
+    AGENT_RUN_LEASE_MS: z.coerce.number().int().positive().default(120_000),
+    AGENT_RUN_BATCH: z.coerce.number().int().positive().default(5),
+    AGENT_SCHEDULER_TICK_MS: z.coerce.number().int().positive().default(15_000),
+    AGENT_SCHEDULE_BATCH: z.coerce.number().int().positive().default(20),
+    // Terminal runs older than this are pruned; their steps go with them
+    // through the cascade. PENDING and RUNNING rows are never eligible.
+    AGENT_RUN_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+    AGENT_RUN_RETENTION_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000),
+    AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(2),
     // --- Backup import limits ---
     BACKUP_MAX_IMPORT_BYTES: z.coerce
       .number()

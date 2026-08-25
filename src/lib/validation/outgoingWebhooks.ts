@@ -9,6 +9,7 @@ import {
 // fieldErrors there. Mirrors src/lib/validation/webhookTokens.ts.
 
 export const OUTGOING_WEBHOOK_EVENTS = [
+  OutgoingWebhookEvent.AGENT_RUN_COMPLETED,
   OutgoingWebhookEvent.ALERT_CREATED,
   OutgoingWebhookEvent.SERVICE_STATUS,
   OutgoingWebhookEvent.MESSAGE_CREATED,
@@ -32,6 +33,8 @@ export const createOutgoingWebhookSchema = z
       .max(80, {
         error: () => VALIDATION_MESSAGES.outgoingWebhook.nameTooLong,
       }),
+    // Telegram derives its own target from this base plus the bot token, so
+    // the field is optional there and defaults to the public API host.
     url: z
       .string()
       .trim()
@@ -61,12 +64,44 @@ export const createOutgoingWebhookSchema = z
         error: () => VALIDATION_MESSAGES.outgoingWebhook.formatInvalid,
       })
       .optional(),
+    // TELEGRAM_BOT only. The token is write-only: it goes straight into the
+    // AES-256-GCM payload and is never read back, exactly like the HMAC
+    // secret.
+    botToken: z
+      .string()
+      .trim()
+      .min(10, {
+        error: () => VALIDATION_MESSAGES.outgoingWebhook.botTokenInvalid,
+      })
+      .max(200)
+      .optional(),
+    // Plain addressing: a numeric id or an @channelusername.
+    targetChatId: z
+      .string()
+      .trim()
+      .min(1, {
+        error: () => VALIDATION_MESSAGES.outgoingWebhook.chatIdRequired,
+      })
+      .max(120)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (input) =>
+      input.format !== "TELEGRAM_BOT" ||
+      (Boolean(input.botToken) && Boolean(input.targetChatId)),
+    { error: () => VALIDATION_MESSAGES.outgoingWebhook.telegramFieldsRequired },
+  );
 
 // Partial update: every field optional, but if events is present it must be
 // non-empty (superRefine mirrors the create constraint).
-export const updateOutgoingWebhookSchema = createOutgoingWebhookSchema
+// `.partial()` cannot be applied to a refined schema, so the update shape is
+// built from the same object and re-refined: on an update the operator may
+// leave the token alone, so only the chat id is required when switching in.
+export const updateOutgoingWebhookSchema = z
+  .object({
+    ...createOutgoingWebhookSchema.def.shape,
+  })
   .partial()
   .strict();
 

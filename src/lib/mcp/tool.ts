@@ -19,6 +19,10 @@ export interface McpToolContext {
    * Presenting token's id. Stands in for an operator id where a row records
    * its author — a kanban comment, for instance — so authorship survives a
    * rename and two tokens sharing a name stay distinct.
+   *
+   * An in-app agent run presents `agent:<agentId>` here; the columns this
+   * reaches (KanbanComment.authorOperatorId) are plain strings without a
+   * foreign key, so a non-operator author is representable.
    */
   tokenId: string;
   /** Presenting token's name — what a tool writes as the author of its work. */
@@ -28,6 +32,18 @@ export interface McpToolContext {
 export interface McpToolDefinition {
   name: string;
   scope: McpScope;
+  /**
+   * The metadata below is published on the definition, not hidden inside
+   * `register`, so a caller that is not an MCP server — the in-app agent
+   * runtime in `src/lib/agents/tools.ts` — can advertise the same catalogue to
+   * a model and invoke it directly. `register` passes exactly `invoke` to the
+   * SDK, so `/api/mcp` behaviour is unchanged by their presence.
+   */
+  title: string;
+  description: string;
+  readOnly: boolean;
+  inputSchema: z.ZodObject;
+  invoke: (args: unknown, ctx: McpToolContext) => Promise<CallToolResult>;
   register: (server: McpServer, ctx: McpToolContext) => void;
 }
 
@@ -45,22 +61,33 @@ interface ToolConfig<TSchema extends z.ZodObject> {
 export function defineTool<TSchema extends z.ZodObject>(
   config: ToolConfig<TSchema>,
 ): McpToolDefinition {
+  const invoke = async (
+    args: unknown,
+    ctx: McpToolContext,
+  ): Promise<CallToolResult> => {
+    try {
+      return jsonToolResult(
+        await config.handler(args as z.output<TSchema>, ctx),
+      );
+    } catch (error) {
+      return toToolError(error, {
+        workspaceId: ctx.workspaceId,
+        toolName: config.name,
+      });
+    }
+  };
+
   return {
     name: config.name,
     scope: config.scope,
+    title: config.title,
+    description: config.description,
+    readOnly: config.readOnly,
+    inputSchema: config.inputSchema,
+    invoke,
     register(server, ctx) {
-      const callback = async (args: unknown): Promise<CallToolResult> => {
-        try {
-          return jsonToolResult(
-            await config.handler(args as z.output<TSchema>, ctx),
-          );
-        } catch (error) {
-          return toToolError(error, {
-            workspaceId: ctx.workspaceId,
-            toolName: config.name,
-          });
-        }
-      };
+      const callback = (args: unknown): Promise<CallToolResult> =>
+        invoke(args, ctx);
 
       server.registerTool(
         config.name,

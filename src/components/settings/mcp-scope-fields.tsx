@@ -86,6 +86,24 @@ const SCOPE_GROUPS: ReadonlyArray<{
     labelKey: "scopeGroupLogs",
     scopes: [{ scope: "logs:read", accessKey: "scopeAccessRead" }],
   },
+  {
+    key: "notes",
+    labelKey: "scopeGroupNotes",
+    scopes: [
+      { scope: "notes:read", accessKey: "scopeAccessRead" },
+      { scope: "notes:write", accessKey: "scopeAccessEdit" },
+    ],
+  },
+  {
+    key: "activity",
+    labelKey: "scopeGroupActivity",
+    scopes: [{ scope: "activity:read", accessKey: "scopeAccessRead" }],
+  },
+  {
+    key: "domains",
+    labelKey: "scopeGroupDomains",
+    scopes: [{ scope: "domains:read", accessKey: "scopeAccessRead" }],
+  },
 ];
 
 interface McpScopeFieldsProps {

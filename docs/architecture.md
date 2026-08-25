@@ -19,6 +19,7 @@ The repository is authoritative for **CURRENT**. PRD v3.1, Design v2, accepted Q
 
 ### 0.1 Changelog
 
+- **v1.25 (2026-08-25):** adds the **AI Assistant** section — the first AI layer that acts on its own, alongside §7F (app → model), §6.6 (external client → app) and §7H (browser agent → page). Six Prisma models over two migrations (`20260826120000_agents`, `20260827120000_agent_report_webhooks`): `Agent` (instructions + a subset of the §6.6 scopes + step/token/time ceilings), `Skill` (a reusable prompt fragment that narrows the toolset and never widens it), the `AgentSkill` join whose `position` is the injection order, `AgentSchedule` (`INTERVAL`/`DAILY`/`WEEKLY` with an IANA zone, no cron string), `AgentRun` — which **is** the work queue, `MailFilterRun`-shaped, carrying an immutable snapshot of the agent it executed — and `AgentRunStep` for the audited timeline. `LlmProvider` gains a required `chat()` with messages, tools and a stop reason, implemented in `openai.ts`, in `anthropic.ts` (whose tool results have to be regrouped into user turns) and deterministically in `mock.ts`, which picks its scripted turn by counting the assistant turns already in the transcript so a multi-step run is reproducible; `src/lib/services/llm.ts` gains `chat()` on a rate-limit window of its own (`LLM_AGENT_CALL_RATE_LIMIT`), because one run is one model call per step and a shared counter would take the Mail AI features offline. `defineTool` now publishes `title`/`description`/`inputSchema`/`invoke` instead of hiding them in the `register` closure, so `src/lib/agents/tools.ts` can advertise the same catalogue to a model — permission stays structural, an out-of-scope tool is simply absent. The catalogue grows to **118 tools over 12 domains** and `MCP_SCOPES` to **20**: notes read/write, activity read, domains read. Two new in-process schedulers (ninth and tenth) drain the run queue and prune its history. Reports reuse the outgoing-webhook machinery with one new event, `AGENT_RUN_COMPLETED`, and one new format, `TELEGRAM_BOT`, whose bot token rides in the encrypted payload (it is a path segment, so it cannot sit in the plaintext `url`) while its chat id gets a plain `targetChatId` column. Updates §3.1, §3.2, §4.1, §6.4, §7F.1; new section §7I.
 - **v1.24 (2026-08-24):** grows the browser WebMCP layer from six tools across four domains to **98 across twelve**, every one of them page-independent. Each domain keeps a `create<Domain>Tools(deps): WebMcpTool[]` factory in `src/components/<domain>/web-mcp-tools.ts` whose deps interface is that feature's injected client-api callables, so a factory builds and unit-tests without React: notes 6, mail 14, contacts 13, messages 12, logs 1, activity 1, services 13, servers 4, bookmarks 9, domains 5, kanban 16, alerts 4. `src/components/shell/web-mcp-global-tools.tsx` composes all twelve and registers them in one call to the new `useWebMcpTools(tools, enabled)` in `src/hooks/use-web-mcp-tool.ts` — an array hook because the rules of hooks forbid a call per tool once the count varies, with `useWebMcpTool` kept as a thin wrapper — mounted from `(dashboard)/layout.tsx` outside the `{children}` slot, so the catalog survives client-side navigation. The four page-scoped tools of v1.21 are deleted along with their registrations in `kanban-board-view.tsx`, `alerts-view.tsx` and `server-detail-view.tsx`; `kanban_card_move`, `kanban_card_create`, `alerts_set_category` and `server_power_action` cover the same capability from the global catalog by taking explicit ids instead of reading page state, and `data-alert-id` on the alert rows is kept. The design discipline is lifted from the server-side catalog in `src/lib/mcp/tools/`: no tool accepts free text where an id is required, every id parameter's `.describe()` names the tool the id comes from, every domain has one search/list entry point returning flat rows that pair each id with its human-readable name, and output is capped and projected to stay near ~1500 characters. Two route additions, both to make bookmarks reachable at all from a client (the list is server-rendered and no client read existed): `GET` handlers on `src/app/api/bookmarks/route.ts` and `src/app/api/categories/route.ts`, previously POST-only, over the same `bookmarksService.search()`/`list()` that `/api/v1/bookmarks` and the server-side MCP tool call, with `bookmarksApi.search` and `categoriesApi.list` added to `src/components/bookmarks/api.ts`. Kept deliberately off the surface: anything carrying a plaintext password or raw credential (mail-account create/update/test, workspace `addMember`, `credentialsApi.create`/`update`), webhook-token issue/rotate and channel-webhook creation (the create response carries the full ingest URL with its secret, so an agent would hold it in its transcript — `channel_webhooks_list`, returning only a prefix, is exposed), backup export/import (passphrase, and `mode: "replace"` wipes every section), `workspacesApi.switchTo` (it silently re-targets the workspace header every other tool depends on), anything taking a `File`/`Blob`, and the three mail AI endpoints. `tests/unit/web-mcp/global-tools.test.ts` builds the whole catalog from the twelve factories with stub deps and pins the count, the absence of a duplicate name across domains, a non-empty title everywhere, the 30-char name and 1–500-char description budgets, and a description of at most 150 chars on every advertised parameter. No migration, no new env var, no new auth path, no change to `src/lib/mcp/`. Rewrites §7H.
 - **v1.23 (2026-08-24):** corrects the WebMCP layer against a real browser and widens it to always-on tools. v1.21 registered only against `document.modelContext` (the W3C draft surface) and assumed `registerTool()` returns a Promise unregistered through an `AbortSignal`; Chrome builds shipping the API today expose `navigator.modelContext` and return a handle carrying `unregister()`, so no tool ever registered — `getTools()` returned empty in the field. `src/lib/web-mcp/support.ts` now exports `getModelContexts()`, resolving every surface present and deduplicating by identity, and `src/hooks/use-web-mcp-tool.ts` registers on each and cleans up through both idioms. `defineWebMcpTool()` now resolves to the MCP result shape (`{ content: [{ type: "text", text }], isError? }`) instead of a bare value, and tool handlers signal failure by throwing rather than returning `{ error }` — the kanban and servers guards were converted accordingly, message text unchanged. Adds the first tools that are not page-scoped: `note_search` (read-only, `untrustedContentHint: true`) and `note_create` in `src/components/notes/web-mcp-tools.ts`, mounted through the new client component `src/components/shell/web-mcp-global-tools.tsx` rendered from `(dashboard)/layout.tsx` outside the `{children}` slot, so they survive client-side navigation and are available on every dashboard route. Six tools in total. Ambient types gain `Navigator.modelContext`, the registration-handle union, and `getTools`/`executeTool` declarations. Two further field corrections: `title` is required at the type level on `WebMcpToolConfig`/`WebMcpTool` and all six tools now carry one, because a client that captions a tool with its title rendered a blank; and `z.toJSONSchema()` is called with `io: "input"`, so a field carrying `.default()` — `note_search.limit`, `kanban_move_card.position` — is advertised as optional with its default as a hint rather than as required, which had obliged a strict client to send a value the schema itself supplies. No migration, no new env var, no new auth path. Updates §7H.
 - **v1.22 (2026-08-25):** turns the LLM scaffolding into a shipped feature and widens it to a second transport. `src/lib/llm/anthropic.ts` speaks `POST {baseUrl}/v1/messages` for z.ai/GLM and Anthropic (mandatory `max_tokens`, content blocks, the typed HTTP 400 bodies, 529 as `rate_limit`, `embed()` reporting `unsupported`); `LlmCompletionRequest` gains `responseFormat` and `mockAnswer`, and `src/lib/llm/json.ts` extracts and validates a JSON answer without ever putting model output into a failure message. Migration `20260825120000_llm_anthropic_default_credential` adds the `ANTHROPIC_COMPATIBLE` `ProviderType` value and `ProviderCredential.isDefault`, so the operator picks the active model at `/settings/providers` (`PATCH /api/credentials/[id]/default`) instead of the oldest credential winning by insert order. The Mail section gains three request-scoped features — summary, reply draft, filter-rule proposal — through `src/lib/services/mail-ai.ts`, `src/lib/mail/ai-prompts.ts`, `src/lib/validation/mail-ai.ts` and `POST /api/mail/[id]/ai/**`, none of which writes anything: the model proposes and the operator confirms. No `/api/v1/**` twins and no MCP tools, on purpose. Rewrites §7F; new §7F.6.
@@ -1480,6 +1481,231 @@ Tests: `tests/unit/contacts/` — 95 across the four formats, their round-trips,
 **Verification.** `tests/unit/web-mcp/global-tools.test.ts` builds the whole catalog from the twelve factories with stub deps and pins the contract that a single registry has to satisfy: the tool count (98, bumped deliberately so gaining or losing a tool is a reviewed change), no duplicate name across domains — `registerTool()` throws `InvalidStateError` for the second registration of a name, which would silently cost an agent a whole tool — a non-empty title on every tool, names within 30 characters, descriptions within 1–500, and a description of at most 150 characters on every advertised parameter. Beside it sit the surface and definition tests (`tests/unit/web-mcp/{support,define-tool}.test.ts`), the hook test (`tests/unit/hooks/use-web-mcp-tool.test.tsx`), a per-domain factory suite (`tests/unit/<domain>/web-mcp-tools.test.ts`, twelve of them), route tests for the two new `GET` handlers (`tests/unit/api/bookmarks-categories-get.test.ts`), and `e2e/web-mcp.spec.ts`, which fakes each surface through `page.addInitScript` rather than depending on a flag-gated browser build. Because no CI browser implements WebMCP natively, registration against a real agent remains a manual check.
 
 No Prisma migration, no new environment variable, no new authentication path, and no change to `src/lib/mcp/` or `POST /api/mcp`.
+
+## 7I. AI Assistant — agents, skills, scheduled runs — CURRENT (2026-08-25)
+
+The fourth AI layer, and the first one that acts on its own. §7F is the app
+calling a model, §6.6 is an external client calling the app, §7H is a browser
+agent calling the page. This is the app calling a model *and* its own tools, on
+a schedule, with the result stored as an ordinary reviewable row.
+
+### 7I.1 What an agent and a skill are
+
+An **Agent** is an operator-authored system prompt plus a subset of the MCP
+scopes of §6.6, plus three ceilings (steps, tokens, seconds). Nothing else: it
+holds no credential, no endpoint and no model name — the workspace's default
+`ProviderCredential` decides which model answers, exactly as it does for the
+Mail AI features.
+
+A **Skill** is a named, reusable prompt fragment with an optional narrowing of
+the toolset. It **never grants privilege**. The effective toolset is
+`selectTools(agent.scopes)` and then, only when at least one attached skill
+declares `toolNames`, the intersection with the union of those names. A skill
+that could widen the toolset would make the agent's Access tab a lie. Skills are
+many-to-many with agents through `AgentSkill`, whose `position` is the order the
+bodies enter the prompt.
+
+The name borrows the vocabulary of the repo-root `skills/inspoter/SKILL.md` and
+nothing else: that file is an external Claude skill describing Inspoter's API,
+this is a database row with no filesystem counterpart.
+
+### 7I.2 Tool calling in the LLM contract (`src/lib/llm/`)
+
+`LlmProvider` gains a required third method beside `complete()` and `embed()`:
+
+```ts
+chat(request: LlmChatRequest): Promise<LlmResult<LlmChatCompletion>>
+```
+
+with `messages: LlmMessage[]` (`user` | `assistant` + `toolCalls` | `tool`),
+`tools: LlmToolDefinition[]` (name, description, JSON Schema), and a
+`stopReason` of `stop | tool_calls | max_tokens | other`. `LlmToolCall.arguments`
+is deliberately the **raw JSON text**: a model can emit invalid JSON, and the
+runtime has to be able to hand that back as a tool error rather than have the
+driver throw mid-conversation.
+
+- `openai.ts` maps 1:1 onto the wire (`tool_calls`, `role: "tool"`,
+  `tool_choice: "auto"`). `finish_reason` decides the stop reason, except that
+  any tool call present wins — Ollama answers `stop` alongside `tool_calls`.
+- `anthropic.ts` regroups: the Messages API has no `tool` role, so a tool answer
+  is a `tool_result` block inside a **user** turn, and a run of them must arrive
+  as one turn. That regrouping is the only place the two wire formats genuinely
+  diverge. No JSON prefill in chat mode — prefill and tool use conflict.
+- `mock.ts` replays a script the domain supplies (`mockTurns`), choosing the turn
+  by counting the assistant turns already in the transcript. That makes it a
+  pure function of the input: no instance state, identical across processes and
+  reruns, which is what lets `e2e/agents.spec.ts` assert a real step timeline.
+  Past the end of the script it repeats the last turn without tool calls, so a
+  mock run always terminates.
+
+`src/lib/services/llm.ts` gains `chat()` with the `llm_chat` Activity action.
+Its rate limiter is now keyed rather than fixed: interactive calls count against
+`workspaceId` and `LLM_CALL_RATE_LIMIT` (60/hour), agent calls against
+`agent:${workspaceId}` and `LLM_AGENT_CALL_RATE_LIMIT` (600/hour). One run is
+one model call per step, so a shared counter would make a handful of scheduled
+runs an outage of the Mail AI features.
+
+### 7I.3 Exposing the tool catalogue (`src/lib/mcp/`, `src/lib/agents/tools.ts`)
+
+`defineTool` used to capture `title`, `description`, `inputSchema` and the
+handler inside the closure of `register`. They are now published on
+`McpToolDefinition` alongside a hoisted `invoke(args, ctx)`, and `register`
+passes exactly that callback with the same annotations — `/api/mcp` output is
+unchanged, which `tests/unit/mcp/server.test.ts` proves by still passing
+untouched. `server.ts` adds `findTool(name)`.
+
+`src/lib/agents/tools.ts` adapts that catalogue for a model: `buildAgentToolset`
+converts each zod schema with `z.toJSONSchema(schema, { io: "input" })` (memoised
+per name; `io: "input"` for the same reason as §7H — a `.default()` field must
+not be advertised as required) and returns the binding. The adapter lives in the
+agent domain so `src/lib/mcp/` stays free of LLM types.
+
+Permission is **structural**: a tool outside the agent's scopes is absent from
+the array, not refused at call time. There is no runtime scope check to forget —
+the same property `buildMcpServer` has.
+
+`McpToolContext` for a run is `{ workspaceId, scopes, tokenId: 'agent:<runId>',
+tokenName: <snapshot agent name> }`. The columns this reaches
+(`KanbanComment.authorOperatorId`) are plain strings without a foreign key, so an
+agent can sign its own work.
+
+### 7I.4 The run and its queue
+
+`AgentRun` **is** the work queue; there is no separate job table. One occurrence
+is one leased unit of work with no fan-out, which is the shape of
+`MailFilterRun` — `MailFilterActionJob` exists only because a filter run explodes
+into N per-message actions, and an agent run's tool calls happen inside its own
+lease.
+
+A run carries an immutable **snapshot** of the agent (name, instructions,
+scopes, skills, ceilings) and executes that, so editing an agent never changes a
+run already in flight and history stays readable after the agent is deleted —
+which is why the live foreign keys are `ON DELETE SET NULL` while
+`sourceAgentId` is a plain column.
+
+Queue mechanics mirror `mail-filter-runs.ts`: optimistic `updateMany` guarded on
+the row's current state, counted only when exactly one row changed; a lease
+renewed at every step boundary; expiry returning the run to `PENDING` until its
+attempts are spent. **Every timestamp comes from an injected `runtime.now()`**,
+never from the database default — the claim query filters on Node's clock, and
+mixing the two is what made a freshly enqueued job briefly invisible in
+`fc111d5`.
+
+`src/lib/agents/runtime.ts` is the loop: build prompt and toolset from the
+snapshot → until stop → renew lease, check cancellation, check the ceilings,
+`llmService.chat(...)`, persist a `MODEL_CALL` step; if the model asked for
+tools, run each one, persist a `TOOL_CALL` step and append a `tool` message.
+A malformed argument object or an unknown tool name comes back to the model as a
+tool error rather than killing the run — it can correct itself on the next step,
+and one bad call must not waste everything before it.
+
+### 7I.5 Schedules
+
+Three explicit kinds — `INTERVAL`, `DAILY`, `WEEKLY` — rather than a cron string.
+A hand-rolled cron parser is deceptively subtle (DST, the OR-rule between
+day-of-month and day-of-week) and nothing here needs that expressiveness. Time
+zones are resolved with `Intl.DateTimeFormat`, so no dependency is added; the
+offset is applied twice in `zonedWallTimeToUtc` because the offset itself depends
+on the instant, which is what keeps a 09:00 local report at 09:00 local across a
+DST boundary.
+
+**No catch-up.** After downtime an hourly report goes out once, now, not six
+times with stale contents — the same policy `Service.nextCheckAt` follows.
+
+Materialisation is race-safe without a lock: the run's idempotency key is
+`sched:<scheduleId>:<occurrenceMs>`, so two ticks reading the same `nextRunAt`
+build the same key and only one INSERT survives; the advance is guarded on the
+value that was read, so only the writer whose update changed a row moves the
+schedule on. A workspace with no LLM credential advances but creates nothing —
+otherwise it would accrue a failed run every tick forever.
+
+`src/lib/services/agent-scheduler.ts` is the ninth in-process scheduler and
+`agent-run-retention-scheduler.ts` the tenth, both registered in
+`src/instrumentation.ts`. The run chunk size is **2**, not the webhook
+scheduler's 10: a run holds its lease for minutes across N model round-trips.
+
+### 7I.6 Safety envelope
+
+| Control | Mechanism |
+| --- | --- |
+| Privilege | Per-agent scope subset; an out-of-scope tool is structurally absent |
+| Steps | `min(agent.maxSteps, AGENT_RUN_MAX_STEPS_CEILING)`; exceeding it fails the run visibly |
+| Tokens | Running total against `min(agent.maxTokens, AGENT_RUN_MAX_TOKENS_CEILING)` |
+| Wall clock | `deadlineAt`; the composed `AbortSignal` cuts the in-flight model call |
+| Concurrency | `AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE`, enforced while claiming |
+| Kill switch | No LLM credential ⇒ `chat()` is `unsupported` and schedules create nothing |
+| Injection | Tool output is capped, delimited `<<<TOOL_RESULT … TOOL_RESULT>>>` and placed only in `tool`-role messages, never in the system prompt |
+| Redaction | `sanitizeStepPayload()` truncates and strips credential-shaped matches before a step row is stored — step rows are rendered in the timeline |
+| Cancellation | A `PENDING` run is cancelled outright; a `RUNNING` one is flagged and stops at its next step boundary, so no half-finished tool call is abandoned |
+
+Unreachable by construction, because no such tool exists in `ALL_TOOLS`: mail
+account credentials, provider credentials, outgoing-webhook secrets, backup
+export/import, workspace membership, server power actions, and the cascading
+deletes of §6.6. `tests/unit/mcp/catalog.test.ts` pins those absences by name.
+
+### 7I.7 Reports
+
+One new `OutgoingWebhookEvent` member, `AGENT_RUN_COMPLETED`; a failure is a
+completion with `status: "FAILED"`, because a second member would double the
+subscription matrix for no extra information. Emitted through the existing
+`emitWebhookEvent` seam when the agent has `reportOnCompletion`.
+
+One new `OutgoingWebhookFormat` member, `TELEGRAM_BOT`. Telegram puts the bot
+token in the **request path**, so it cannot live in the plaintext `url` column:
+it rides in the AES-256-GCM payload as a `WEBHOOK_TELEGRAM_BOT` member, exactly
+the precedent `WEBHOOK_ED25519_KEY` set, while the chat id gets its own plaintext
+column (`targetChatId`) because addressing is not a secret and a subscription
+nobody can see the target of cannot be audited. `url` holds the API base, so a
+self-hosted Bot API server is a URL change rather than a schema one.
+
+Three consequences worth stating:
+
+1. `buildDeliveryRequest()` now returns an optional `url`, and `deliverClaimed`
+   fetches `request.url ?? webhook.url`. Telegram is the only format that builds
+   its own target.
+2. Telegram answers some failures as **HTTP 200 with `{"ok": false}`**, so the
+   body is parsed on every response; trusting the status would record a delivery
+   that never arrived.
+3. `redactTelegramToken()` runs over every error before it is stored — the token
+   is in the path, proxies echo paths into error bodies, and
+   `WebhookDelivery.lastError` is rendered on the deliveries screen.
+
+Telegram retries on its own ladder (5 s → 1 h): a blocked or throttled bot stays
+that way for a while, and retrying hard is the fastest route to a longer block.
+`src/lib/telegram/message.ts` deliberately repeats the per-event switch of
+`src/lib/discord/embeds.ts` rather than sharing it — Telegram clamps 4096
+characters for the whole message where Discord clamps 256/4096/1024 per part, so
+a shared spec would be trimmed twice and fight both.
+
+### 7I.8 Catalogue coverage
+
+The server-side tool catalogue grows from 109 tools over 9 domains to **118 over
+12**, and `MCP_SCOPES` from 16 to 20: `notes:read`/`notes:write` (6 tools),
+`activity:read` (1) and `domains:read` (2). Notes are read-write because "write
+what you found into the vault" is what turns a run into something an operator
+reads later; folder deletion stays absent for the same reason a board delete is.
+Activity and domains are read-only, and the missing write scope is the guarantee
+— a DNS change reaches the public internet through a provider credential, the
+same class of blast radius as a server power action.
+
+Adding a tool widens `POST /api/mcp` only. The `/api/v1/**` routes are written by
+hand per path, so none is created implicitly.
+
+### 7I.9 Verification
+
+`tests/unit/agents/` covers prompt assembly (skill order, the budget, the
+framing), the toolset (scope filtering, the allowlist intersection, truncation),
+the loop against a fake provider (tool calls, ceilings, bad JSON, unknown tool,
+cancellation, lease loss), and recurrence including both DST boundaries.
+`tests/unit/llm/chat-*.test.ts` covers the three drivers, including Anthropic's
+tool-result batching and the mock's reproducibility.
+`tests/integration/services/agent-{runs,schedules}.test.ts` covers the queue:
+claim exclusivity between concurrent claimers, lease expiry and its attempt
+budget, the concurrency cap, cancellation, retention, and that two sweeps of one
+occurrence create exactly one run. `tests/unit/telegram/` covers escaping, the
+4096 clamp, the `ok:false`-on-200 case and the token redaction.
+`e2e/agents.spec.ts` drives the section end to end against a MOCK credential,
+including a real run whose step timeline it asserts.
 
 ## 8. Request sequences
 

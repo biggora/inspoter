@@ -1,6 +1,6 @@
 # MCP tool catalogue
 
-All 109 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
+All 118 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
 presenting token's scopes cover, so a tool you cannot see is a scope you were not granted.
 
 Conventions used below: `arg` required, `arg?` optional, `arg[]` an array, `arg|null` accepts
@@ -94,6 +94,45 @@ category. This pair of scopes exists so an assistant can file the backlog.
 
 Unexpected MCP tool failures are themselves written here with source `mcp` — useful when a
 tool answered "failed unexpectedly, recorded in the workspace logs".
+
+---
+
+## Notes
+
+An Obsidian-style vault. A note title is unique per workspace — it is how a `[[wiki link]]`
+resolves — so `notes_create` fails on a collision rather than silently making a second one.
+
+| Scope | Tool                 | Arguments                                                   | Notes                                                        |
+| ----- | -------------------- | ----------------------------------------------------------- | ------------------------------------------------------------ |
+| read  | `notes_search`       | `query?`, `folderId?`, `includeSubfolders?`, `sort?`, `limit?`, `cursor?` | `query` matches the title and the body                       |
+| read  | `notes_get`          | `id`                                                         | returns the full markdown body and the `version` to write back |
+| read  | `note_folders_list`  | —                                                            | the folder tree, for `folderId`                              |
+| write | `notes_create`       | `title`, `content?`, `folderId?`                             | CommonMark, never HTML                                        |
+| write | `notes_update`       | `id`, `title?`, `content?`, `version`                        | `version` from `notes_get`; a mismatch means someone else edited first |
+| write | `notes_delete`       | `id`                                                         | leaf only — there is no folder delete                        |
+
+---
+
+## Activity
+
+| Scope | Tool              | Arguments                                                                    |
+| ----- | ----------------- | ---------------------------------------------------------------------------- |
+| read  | `activity_search` | `query?`, `action?`, `entityType?`, `operatorId?`, `sort?`, `pageSize?`, `cursor?` |
+
+The journal is written by the services that perform the actions, so there is no write scope.
+"What changed since yesterday" is what this answers.
+
+---
+
+## Domains
+
+Read-only by design: a DNS change goes out through a provider credential and reaches the
+public internet, which is the same class of blast radius as a server power action.
+
+| Tool                | Arguments                | Notes                                    |
+| ------------------- | ------------------------ | ---------------------------------------- |
+| `domains_list`      | —                        | grouped by the provider credential serving them |
+| `dns_records_list`  | `providerId`, `domainId` | both ids come from `domains_list`        |
 
 ---
 

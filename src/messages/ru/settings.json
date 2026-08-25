@@ -241,5 +241,17 @@
   "retryDeliveryError": "Не удалось повторить доставку. Попробуйте снова.",
   "loadDeliveriesError": "Не удалось загрузить доставки. Попробуйте снова.",
   "scopeGroupContacts": "Контакты",
-  "scopeAccessEdit": "Создание, изменение и удаление"
+  "scopeAccessEdit": "Создание, изменение и удаление",
+  "eventAgentRunCompleted": "Запуск агента завершён",
+  "formatTelegramBot": "Telegram-бот",
+  "formatTelegramBotHint": "Отправляет событие сообщением в чат Telegram через Bot API.",
+  "botTokenLabel": "Токен бота",
+  "botTokenHint": "Хранится зашифрованным и больше не показывается. При изменении оставьте пустым, чтобы сохранить текущий.",
+  "chatIdLabel": "Chat id",
+  "chatIdHint": "Числовой chat id или @channelusername. Бот уже должен быть участником.",
+  "botTokenRequiredError": "Укажите токен бота",
+  "chatIdRequiredError": "Укажите chat id",
+  "scopeGroupNotes": "Заметки",
+  "scopeGroupActivity": "Активность",
+  "scopeGroupDomains": "Домены"
 }

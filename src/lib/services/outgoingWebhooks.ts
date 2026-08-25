@@ -20,6 +20,13 @@ import {
   parseRetryAfterMs,
   DISCORD_EVENTS_BACKOFF_MS,
 } from "@/lib/discord/delivery";
+import {
+  buildTelegramRequest,
+  classifyTelegramResponse,
+  redactTelegramToken,
+  TELEGRAM_API_BASE,
+  TELEGRAM_BACKOFF_MS,
+} from "@/lib/telegram/delivery";
 import type {
   CreateOutgoingWebhookInput,
   UpdateOutgoingWebhookInput,
@@ -65,6 +72,8 @@ export interface OutgoingWebhookSummary {
   secretPrefix: string;
   format: OutgoingWebhookFormat;
   publicKey: string | null;
+  /** TELEGRAM_BOT only: the chat a report goes to. Never a secret. */
+  targetChatId: string | null;
   consecutiveFailures: number;
   createdAt: Date;
   updatedAt: Date;
@@ -102,6 +111,7 @@ function toSummary(webhook: OutgoingWebhook): OutgoingWebhookSummary {
     secretPrefix: webhook.secretPrefix,
     format: webhook.format,
     publicKey: webhook.publicKey,
+    targetChatId: webhook.targetChatId,
     consecutiveFailures: webhook.consecutiveFailures,
     createdAt: webhook.createdAt,
     updatedAt: webhook.updatedAt,
@@ -137,6 +147,7 @@ export function signPayload(secret: string, rawBody: string): string {
 interface KeyMaterial {
   secret: string;
   privateKey: string | null;
+  botToken: string | null;
 }
 
 // A webhook stores either a plain HMAC secret (INSPOT/DISCORD_EXECUTE) or that
@@ -153,10 +164,17 @@ function decryptKeyMaterial(webhook: {
     authTag: webhook.authTag,
   });
   if (data.type === "WEBHOOK_SECRET") {
-    return { secret: data.secret, privateKey: null };
+    return { secret: data.secret, privateKey: null, botToken: null };
   }
   if (data.type === "WEBHOOK_ED25519_KEY") {
-    return { secret: data.secret, privateKey: data.privateKey };
+    return {
+      secret: data.secret,
+      privateKey: data.privateKey,
+      botToken: null,
+    };
+  }
+  if (data.type === "WEBHOOK_TELEGRAM_BOT") {
+    return { secret: data.secret, privateKey: null, botToken: data.botToken };
   }
   throw new Error("Decrypted payload is not a webhook secret");
 }
@@ -166,7 +184,21 @@ function decryptKeyMaterial(webhook: {
 // DISCORD_EVENTS signs with Ed25519, every other format with the HMAC secret.
 // The key pair is minted alongside the secret so a later format switch never
 // has to re-key a live subscription.
-function buildCredential(format: OutgoingWebhookFormat, secret: string) {
+function buildCredential(
+  format: OutgoingWebhookFormat,
+  secret: string,
+  botToken?: string | null,
+) {
+  if (format === "TELEGRAM_BOT") {
+    return {
+      payload: encrypt({
+        type: "WEBHOOK_TELEGRAM_BOT",
+        botToken: botToken ?? "",
+        secret,
+      }),
+      publicKey: null,
+    };
+  }
   if (format !== "DISCORD_EVENTS") {
     return {
       payload: encrypt({ type: "WEBHOOK_SECRET", secret }),
@@ -193,13 +225,20 @@ export async function create(
 
   const { secret, secretPrefix } = generateSecret();
   const format = input.format ?? "INSPOT";
-  const { payload, publicKey } = buildCredential(format, secret);
+  const { payload, publicKey } = buildCredential(
+    format,
+    secret,
+    input.botToken,
+  );
 
   const created = await db.outgoingWebhook.create({
     data: {
       workspaceId,
       name: input.name,
-      url: input.url,
+      // Telegram builds its own target from the API base plus the bot token,
+      // so an operator who left the base empty gets the public one.
+      url:
+        format === "TELEGRAM_BOT" ? input.url || TELEGRAM_API_BASE : input.url,
       events: input.events,
       isActive: input.isActive ?? true,
       encryptedData: payload.encryptedData,
@@ -208,6 +247,8 @@ export async function create(
       secretPrefix,
       format,
       publicKey,
+      targetChatId:
+        format === "TELEGRAM_BOT" ? (input.targetChatId ?? null) : null,
     },
   });
 
@@ -274,6 +315,22 @@ export async function update(
     );
   }
 
+  // A new bot token, or a switch into TELEGRAM_BOT, re-encrypts the payload
+  // around the existing HMAC secret — the same carry-over the branch above
+  // does, so no subscription ever has to be re-issued.
+  const format = input.format ?? existing.format;
+  const switchingToTelegram =
+    format === "TELEGRAM_BOT" && existing.format !== "TELEGRAM_BOT";
+  if (format === "TELEGRAM_BOT" && (input.botToken || switchingToTelegram)) {
+    if (!isEncryptionConfigured()) throw new EncryptionNotConfiguredError();
+    const material = decryptKeyMaterial(existing);
+    credential = buildCredential(
+      "TELEGRAM_BOT",
+      material.secret,
+      input.botToken ?? material.botToken,
+    );
+  }
+
   const updated = await db.outgoingWebhook.update({
     where: { id },
     data: {
@@ -282,6 +339,9 @@ export async function update(
       ...(input.events !== undefined ? { events: input.events } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       ...(input.format !== undefined ? { format: input.format } : {}),
+      ...(input.targetChatId !== undefined
+        ? { targetChatId: input.targetChatId }
+        : {}),
       // Re-enabling by hand clears the auto-disable counter, otherwise the
       // very next failure would trip the threshold again.
       ...(input.isActive === true ? { consecutiveFailures: 0 } : {}),
@@ -513,9 +573,27 @@ export function buildDeliveryRequest(claimed: ClaimedDelivery): {
   body: string;
   headers: Record<string, string>;
   timeoutMs: number;
+  /**
+   * Overrides `webhook.url` for a format that has to build its own target.
+   * Telegram is the only one: its bot token is a path segment, so the address
+   * cannot be stored whole in the plaintext `url` column.
+   */
+  url?: string;
 } {
   const { delivery, webhook } = claimed;
   const data = (delivery.payload ?? {}) as Record<string, unknown>;
+
+  if (webhook.format === "TELEGRAM_BOT") {
+    const { botToken } = decryptKeyMaterial(webhook);
+    if (!botToken) throw new Error("TELEGRAM_BOT webhook has no bot token");
+    return buildTelegramRequest({
+      apiBase: webhook.url || TELEGRAM_API_BASE,
+      botToken,
+      chatId: webhook.targetChatId ?? "",
+      event: delivery.event,
+      data,
+    });
+  }
 
   if (webhook.format === "DISCORD_EXECUTE") {
     const request = buildExecuteRequest({
@@ -574,9 +652,41 @@ export function buildDeliveryRequest(claimed: ClaimedDelivery): {
 function backoffMs(format: OutgoingWebhookFormat, attempt: number): number {
   // Discord gives an events receiver ~10 minutes of retries, far tighter than
   // the generic 30s→6h ladder.
+  // Telegram is slower still: a blocked or throttled bot stays that way for a
+  // while, and retrying hard is the fastest route to a longer block.
   const ladder =
-    format === "DISCORD_EVENTS" ? DISCORD_EVENTS_BACKOFF_MS : BACKOFF_MS;
+    format === "DISCORD_EVENTS"
+      ? DISCORD_EVENTS_BACKOFF_MS
+      : format === "TELEGRAM_BOT"
+        ? TELEGRAM_BACKOFF_MS
+        : BACKOFF_MS;
   return ladder[Math.min(attempt - 1, ladder.length - 1)];
+}
+
+// Shared success path: both the status-based branch and the Telegram
+// body-based one end here, so a delivered row always looks the same.
+async function markDelivered(
+  deliveryId: string,
+  webhookId: string,
+  attempt: number,
+  now: Date,
+  statusCode: number | null,
+): Promise<void> {
+  await db.webhookDelivery.update({
+    where: { id: deliveryId },
+    data: {
+      status: "DELIVERED",
+      attempts: attempt,
+      lastAttemptAt: now,
+      lastStatusCode: statusCode,
+      lastError: null,
+      leaseExpiresAt: null,
+      deliveredAt: now,
+    },
+  });
+  await db.outgoingWebhook
+    .update({ where: { id: webhookId }, data: { consecutiveFailures: 0 } })
+    .catch(() => {});
 }
 
 // Send one claimed delivery, then record the outcome. Never throws — a single
@@ -591,16 +701,43 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
   let permanent = false;
   let retryAfterMs: number | null = null;
 
+  const isTelegram = webhook.format === "TELEGRAM_BOT";
+  // Read once, so an error message can be scrubbed of it before it is stored.
+  const botToken = isTelegram
+    ? (() => {
+        try {
+          return decryptKeyMaterial(webhook).botToken;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
   try {
     const request = buildDeliveryRequest(claimed);
-    const response = await fetch(webhook.url, {
+    const response = await fetch(request.url ?? webhook.url, {
       method: "POST",
       headers: request.headers,
       body: request.body,
       signal: AbortSignal.timeout(request.timeoutMs),
     });
     statusCode = response.status;
-    if (response.ok) {
+
+    // Telegram reports some failures as HTTP 200 with {"ok": false}, so the
+    // body decides rather than the status.
+    if (isTelegram) {
+      const outcome = classifyTelegramResponse(
+        response.status,
+        await response.text().catch(() => ""),
+      );
+      if (outcome.ok) {
+        await markDelivered(delivery.id, webhook.id, attempt, now, statusCode);
+        return;
+      }
+      errorMessage = outcome.message;
+      permanent = outcome.permanent;
+      retryAfterMs = outcome.retryAfterMs;
+    } else if (response.ok) {
       await db.webhookDelivery.update({
         where: { id: delivery.id },
         data: {
@@ -617,20 +754,27 @@ export async function deliverClaimed(claimed: ClaimedDelivery): Promise<void> {
         .update({ where: { id: webhook.id }, data: { consecutiveFailures: 0 } })
         .catch(() => {});
       return;
+    } else {
+      errorMessage = `HTTP ${statusCode}`;
+      if (statusCode === 429) {
+        // Discord answers 429 with the exact wait; honour it over the ladder.
+        retryAfterMs = parseRetryAfterMs(
+          await response.text().catch(() => ""),
+          response.headers.get("retry-after"),
+        );
+      }
+      // 4xx (except 429) is the receiver rejecting us — retrying won't help.
+      permanent = statusCode >= 400 && statusCode < 500 && statusCode !== 429;
     }
-    errorMessage = `HTTP ${statusCode}`;
-    if (statusCode === 429) {
-      // Discord answers 429 with the exact wait; honour it over the ladder.
-      retryAfterMs = parseRetryAfterMs(
-        await response.text().catch(() => ""),
-        response.headers.get("retry-after"),
-      );
-    }
-    // 4xx (except 429) is the receiver rejecting us — retrying won't help.
-    permanent = statusCode >= 400 && statusCode < 500 && statusCode !== 429;
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Delivery request failed";
+  }
+
+  // The Telegram bot token is a path segment, and a proxy that echoes the path
+  // into its error body would otherwise put it in a stored, rendered string.
+  if (errorMessage !== null) {
+    errorMessage = redactTelegramToken(errorMessage, botToken);
   }
 
   const exhausted = permanent || attempt >= delivery.maxAttempts;

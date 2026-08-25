@@ -32,6 +32,9 @@ describe("McpScopeFields", () => {
       "Servers",
       "Services",
       "Logs",
+      "Notes",
+      "Activity",
+      "Domains",
     ];
     for (const label of groups) {
       expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
@@ -51,9 +54,12 @@ describe("McpScopeFields", () => {
     expect(
       screen.getByRole("checkbox", { name: "Create and move" }),
     ).toBeInTheDocument();
+    // Contacts and Notes share this access label: both write scopes cover
+    // creating, editing and deleting one row, and neither can delete the
+    // container it lives in.
     expect(
-      screen.getByRole("checkbox", { name: "Create, update and delete" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("checkbox", { name: "Create, update and delete" }),
+    ).toHaveLength(2);
   });
 
   it("reflects the granted scopes as checked boxes", () => {

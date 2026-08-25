@@ -6,6 +6,7 @@ import type {
 // Maps enum values to next-intl keys in the "settings" namespace. Shared by
 // the webhooks view and the deliveries dialog.
 export const EVENT_LABEL_KEY: Record<OutgoingWebhookEventValue, string> = {
+  AGENT_RUN_COMPLETED: "eventAgentRunCompleted",
   ALERT_CREATED: "eventAlertCreated",
   SERVICE_STATUS: "eventServiceStatus",
   MESSAGE_CREATED: "eventMessageCreated",
@@ -17,6 +18,7 @@ export const EVENT_LABEL_KEY: Record<OutgoingWebhookEventValue, string> = {
 };
 
 export const ALL_EVENTS: OutgoingWebhookEventValue[] = [
+  "AGENT_RUN_COMPLETED",
   "ALERT_CREATED",
   "SERVICE_STATUS",
   "MESSAGE_CREATED",
@@ -32,16 +34,19 @@ export const FORMAT_LABEL_KEY: Record<OutgoingWebhookFormatValue, string> = {
   INSPOT: "formatInspot",
   DISCORD_EXECUTE: "formatDiscordExecute",
   DISCORD_EVENTS: "formatDiscordEvents",
+  TELEGRAM_BOT: "formatTelegramBot",
 };
 
 export const FORMAT_HINT_KEY: Record<OutgoingWebhookFormatValue, string> = {
   INSPOT: "formatInspotHint",
   DISCORD_EXECUTE: "formatDiscordExecuteHint",
   DISCORD_EVENTS: "formatDiscordEventsHint",
+  TELEGRAM_BOT: "formatTelegramBotHint",
 };
 
 export const ALL_FORMATS: OutgoingWebhookFormatValue[] = [
   "INSPOT",
   "DISCORD_EXECUTE",
   "DISCORD_EVENTS",
+  "TELEGRAM_BOT",
 ];

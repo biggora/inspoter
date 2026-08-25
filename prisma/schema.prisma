@@ -134,6 +134,12 @@ model Workspace {
   noteTags                NoteTag[]
   noteTagLinks            NoteTagLink[]
   noteAssets              NoteAsset[]
+  agents                  Agent[]
+  skills                  Skill[]
+  agentSkills             AgentSkill[]
+  agentSchedules          AgentSchedule[]
+  agentRuns               AgentRun[]
+  agentRunSteps           AgentRunStep[]
 }
 
 model WorkspaceMember {
@@ -1246,6 +1252,7 @@ model IdempotencyKey {
 // Mirrors the four inbound webhook types (log|alert|mail|message from
 // src/lib/webhooks/dispatch.ts) plus SERVICE_STATUS for monitor flips.
 enum OutgoingWebhookEvent {
+  AGENT_RUN_COMPLETED
   ALERT_CREATED
   SERVICE_STATUS
   MESSAGE_CREATED
@@ -1270,6 +1277,7 @@ enum OutgoingWebhookFormat {
   INSPOT
   DISCORD_EXECUTE
   DISCORD_EVENTS
+  TELEGRAM_BOT
 }
 
 // A subscription/endpoint an operator configures. Signing secret is stored
@@ -1293,6 +1301,11 @@ model OutgoingWebhook {
   // WEBHOOK_ED25519_KEY member; the public half is shown to the operator so the
   // receiver can verify signatures.
   publicKey           String?
+  // TELEGRAM_BOT only: the chat the report goes to. Plaintext on purpose —
+  // addressing, not a secret, and the settings list has to show where a
+  // subscription points. The bot token rides in the encrypted payload above
+  // as a WEBHOOK_TELEGRAM_BOT member.
+  targetChatId        String?
   // Consecutive terminal failures; reset on every delivered attempt. Reaching
   // WEBHOOK_AUTO_DISABLE_AFTER flips isActive to false (Discord parity).
   consecutiveFailures Int                    @default(0)
@@ -1742,4 +1755,247 @@ model NoteAsset {
 
   @@unique([id, workspaceId])
   @@index([workspaceId, noteId, createdAt])
+}
+
+// --- AI Assistant (agents, skills, scheduled runs) ---
+//
+// An Agent is an operator-authored system prompt plus a subset of the MCP
+// scopes (src/lib/mcp/scopes.ts). The runtime hands the model exactly the
+// tools those scopes select, so an out-of-scope tool is structurally absent
+// rather than blocked at call time.
+//
+// A Skill is a reusable prompt fragment with an optional tool narrowing. It
+// never grants privilege: the effective toolset is the agent's scopes, then
+// intersected with the union of the attached skills' toolNames when any of
+// them declares one.
+
+enum AgentRunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum AgentRunTrigger {
+  MANUAL
+  SCHEDULE
+}
+
+enum AgentRunStepKind {
+  MODEL_CALL
+  TOOL_CALL
+}
+
+enum AgentScheduleKind {
+  INTERVAL
+  DAILY
+  WEEKLY
+}
+
+model Agent {
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name               String
+  normalizedName     String
+  description        String?
+  // The operator-authored half of the system prompt. Trusted input: it comes
+  // from a workspace member, unlike anything a tool returns.
+  instructions       String
+  // Subset of MCP_SCOPES, stored as plain strings like WebhookToken.scopes so
+  // an unknown value from another deployment is dropped rather than trusted.
+  scopes             String[]  @default([])
+  // Per-agent ceilings, each clamped again by an AGENT_* env ceiling at run
+  // time so one workspace cannot configure its way out of the envelope.
+  maxSteps           Int       @default(8)
+  maxTokens          Int       @default(20000)
+  timeoutSeconds     Int       @default(300)
+  // Emit AGENT_RUN_COMPLETED to the outgoing webhooks when a run finishes.
+  reportOnCompletion Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  lastRunAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  skills    AgentSkill[]
+  schedules AgentSchedule[]
+  runs      AgentRun[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model Skill {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  // One line, always injected as the skill index even when the body is cut by
+  // the prompt budget — the model still needs to know the skill exists.
+  description    String
+  // Markdown body appended to the system prompt in AgentSkill.position order.
+  instructions   String
+  // Optional narrowing of the agent's toolset. Empty means "no opinion".
+  toolNames      String[]  @default([])
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  agents AgentSkill[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model AgentSkill {
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agentId          String
+  agentWorkspaceId String
+  agent            Agent     @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  skillId          String
+  skillWorkspaceId String
+  skill            Skill     @relation(fields: [skillId, skillWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  // Injection order of the skill bodies; ties broken by skillId.
+  position         Int
+  attachedAt       DateTime  @default(now())
+
+  @@unique([agentId, skillId])
+  @@index([workspaceId, agentId, position, skillId])
+}
+
+model AgentSchedule {
+  id               String            @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agentId          String
+  agentWorkspaceId String
+  agent            Agent             @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  name             String
+  kind             AgentScheduleKind
+  // INTERVAL only.
+  intervalSeconds  Int?
+  // DAILY and WEEKLY: minutes since midnight in `timeZone`.
+  minuteOfDay      Int?
+  // WEEKLY only: 0 = Sunday, matching Date.getUTCDay().
+  daysOfWeek       Int[]             @default([])
+  // IANA zone. The dashboard renders in UTC (src/i18n/request.ts), so the UI
+  // has to name this zone rather than imply the reader's local time.
+  timeZone         String            @default("UTC")
+  // The task text handed to the agent on each occurrence.
+  input            String?
+  isActive         Boolean           @default(true)
+  // Always stamped from the scheduler's injected runtime.now(), never from the
+  // database default — see the AgentRun comment below.
+  nextRunAt        DateTime
+  lastRunAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  runs AgentRun[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, agentId, nextRunAt])
+  // Scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant
+  // sweep), exactly like Service.nextCheckAt.
+  @@index([isActive, nextRunAt])
+}
+
+model AgentRun {
+  id                  String         @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // Live pointers go null when the agent or schedule is deleted; the source
+  // ids and the snapshot below keep the history readable regardless.
+  agentId             String?
+  agentWorkspaceId    String?
+  agent               Agent?         @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceAgentId       String
+  scheduleId          String?
+  scheduleWorkspaceId String?
+  schedule            AgentSchedule? @relation(fields: [scheduleId, scheduleWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceScheduleId    String?
+
+  // Immutable snapshot of the configuration this run executed under, so a run
+  // stays reproducible and explainable after the agent is edited.
+  snapshotAgentName      String
+  snapshotInstructions   String
+  snapshotScopes         String[] @default([])
+  snapshotSkills         Json     @default("[]")
+  snapshotMaxSteps       Int
+  snapshotMaxTokens      Int
+  snapshotTimeoutSeconds Int
+  input                  String?
+
+  // Claim queue, mirroring MailFilterRun. The idempotency key is what makes
+  // schedule materialisation safe against two ticks racing.
+  status            AgentRunStatus  @default(PENDING)
+  trigger           AgentRunTrigger
+  idempotencyKey    String          @unique
+  attempts          Int             @default(0)
+  maxAttempts       Int             @default(2)
+  // The default exists only so a hand-written INSERT is valid; every code path
+  // stamps this from the scheduler's runtime.now(). Claim queries filter on a
+  // Node-supplied clock, and mixing the two produced a real bug once (fc111d5).
+  nextAttemptAt     DateTime        @default(now())
+  leaseToken        String?
+  leaseExpiresAt    DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  deadlineAt        DateTime?
+  cancelRequestedAt DateTime?
+
+  // Outcome.
+  stepCount        Int      @default(0)
+  toolCallCount    Int      @default(0)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  stopReason       String?
+  summary          String?
+  lastError        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  steps AgentRunStep[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, sourceAgentId, createdAt, id])
+  @@index([workspaceId, status, createdAt, id])
+  // Cross-tenant sweeps: claim, lease reclaim, retention prune.
+  @@index([status, nextAttemptAt, createdAt, id])
+  @@index([status, leaseExpiresAt, id])
+  @@index([status, createdAt])
+}
+
+model AgentRunStep {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runId          String
+  runWorkspaceId String
+  run            AgentRun         @relation(fields: [runId, runWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  index          Int
+  kind           AgentRunStepKind
+  // TOOL_CALL only.
+  toolName       String?
+  toolScope      String?
+  argsJson       Json?
+  resultText     String?
+  isError        Boolean          @default(false)
+  // MODEL_CALL only.
+  modelText      String?
+  stopReason     String?
+
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  durationMs       Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([runId, index])
+  @@index([workspaceId, runId, index])
 }

@@ -1,11 +1,16 @@
 import { env } from "@/lib/config/env";
 import type {
+  LlmChatCompletion,
+  LlmChatRequest,
   LlmCompletion,
   LlmCompletionRequest,
   LlmEmbedding,
   LlmErrorCategory,
+  LlmMessage,
   LlmProvider,
   LlmResult,
+  LlmStopReason,
+  LlmToolCall,
   LlmUsage,
 } from "@/lib/llm/contract";
 
@@ -39,7 +44,14 @@ const JSON_PREFILL = "{";
 
 interface MessagesResponse {
   model?: string;
-  content?: Array<{ type?: string; text?: string }>;
+  content?: Array<{
+    type?: string;
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: unknown;
+  }>;
+  stop_reason?: string;
   usage?: { input_tokens?: number; output_tokens?: number };
 }
 
@@ -101,6 +113,83 @@ function describeError(err: unknown): string {
     if (typeof message === "string" && message) return message;
   }
   return String(err);
+}
+
+// The one place the two wire formats genuinely diverge. Anthropic has no
+// `tool` role: a tool's answer is a `tool_result` block inside a *user* turn,
+// and a run of results has to arrive as ONE turn — sending them as consecutive
+// user messages is rejected. So the flat contract transcript is regrouped here.
+function toWireMessages(
+  messages: readonly LlmMessage[],
+): Array<Record<string, unknown>> {
+  const wire: Array<Record<string, unknown>> = [];
+  let pendingResults: Array<Record<string, unknown>> = [];
+
+  const flushResults = (): void => {
+    if (pendingResults.length === 0) return;
+    wire.push({ role: "user", content: pendingResults });
+    pendingResults = [];
+  };
+
+  for (const message of messages) {
+    if (message.role === "tool") {
+      pendingResults.push({
+        type: "tool_result",
+        tool_use_id: message.toolCallId,
+        content: message.content,
+        ...(message.isError ? { is_error: true } : {}),
+      });
+      continue;
+    }
+
+    flushResults();
+
+    if (message.role === "assistant") {
+      const blocks: Array<Record<string, unknown>> = [];
+      if (message.content) blocks.push({ type: "text", text: message.content });
+      for (const call of message.toolCalls ?? []) {
+        blocks.push({
+          type: "tool_use",
+          id: call.id,
+          name: call.name,
+          // The transcript carries arguments as text (see LlmToolCall); the
+          // API wants the object back. This text came from this driver's own
+          // JSON.stringify of the model's input, so a parse failure means the
+          // caller rewrote it — an empty object is closer to the truth than a
+          // throw.
+          input: parseArguments(call.arguments),
+        });
+      }
+      wire.push({ role: "assistant", content: blocks });
+      continue;
+    }
+
+    wire.push({ role: "user", content: message.content });
+  }
+
+  flushResults();
+  return wire;
+}
+
+function parseArguments(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function stopReasonFor(
+  raw: string | undefined,
+  toolCalls: readonly LlmToolCall[],
+): LlmStopReason {
+  if (toolCalls.length > 0) return "tool_calls";
+  if (raw === "max_tokens") return "max_tokens";
+  if (raw === "end_turn" || raw === "stop_sequence") return "stop";
+  return "other";
 }
 
 function toUsage(
@@ -261,6 +350,65 @@ export class AnthropicCompatibleLlmProvider implements LlmProvider {
         // (the next token has to be a key or the closing brace), so the
         // check cannot misfire on a prefill that was honoured.
         text: wantsJson ? withPrefill(joined) : joined,
+        model: result.data.model ?? this.model,
+        usage: toUsage(result.data.usage),
+      },
+    };
+  }
+
+  async chat(request: LlmChatRequest): Promise<LlmResult<LlmChatCompletion>> {
+    // No JSON prefill here: an assistant prefill and tool use cannot coexist —
+    // the model has to be free to open its turn with a tool_use block.
+    const result = await this.post<MessagesResponse>(
+      "/v1/messages",
+      {
+        model: this.model,
+        max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
+        ...(request.system ? { system: request.system } : {}),
+        messages: toWireMessages(request.messages),
+        ...(request.tools?.length
+          ? {
+              tools: request.tools.map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                input_schema: tool.inputSchema,
+              })),
+            }
+          : {}),
+        stream: false,
+      },
+      request.signal,
+    );
+    if (!result.ok) return result;
+
+    const texts: string[] = [];
+    const toolCalls: LlmToolCall[] = [];
+    for (const block of result.data.content ?? []) {
+      if (block.type === "text" && typeof block.text === "string") {
+        texts.push(block.text);
+        continue;
+      }
+      if (block.type === "tool_use") {
+        if (!block.id || !block.name) {
+          return this.error(
+            "invalid_response",
+            "Model requested a tool without an id or a name",
+          );
+        }
+        toolCalls.push({
+          id: block.id,
+          name: block.name,
+          arguments: JSON.stringify(block.input ?? {}),
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        text: texts.join(""),
+        toolCalls,
+        stopReason: stopReasonFor(result.data.stop_reason, toolCalls),
         model: result.data.model ?? this.model,
         usage: toUsage(result.data.usage),
       },

@@ -1,12 +1,17 @@
 import { env } from "@/lib/config/env";
 import type {
+  LlmChatCompletion,
+  LlmChatRequest,
   LlmCompletion,
   LlmCompletionRequest,
   LlmEmbedRequest,
   LlmEmbedding,
   LlmErrorCategory,
+  LlmMessage,
   LlmProvider,
   LlmResult,
+  LlmStopReason,
+  LlmToolCall,
   LlmUsage,
 } from "@/lib/llm/contract";
 
@@ -26,14 +31,66 @@ import type {
 
 const SNIPPET_MAX = 200;
 
+interface ResponseToolCall {
+  id?: string;
+  type?: string;
+  function?: { name?: string; arguments?: string };
+}
+
 interface ChatCompletionResponse {
   model?: string;
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{
+    message?: { content?: string | null; tool_calls?: ResponseToolCall[] };
+    finish_reason?: string;
+  }>;
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
   };
+}
+
+// OpenAI's wire shape maps 1:1 onto the contract's message union, so this is a
+// rename rather than a translation — unlike the Anthropic driver, which has to
+// regroup tool results into user turns.
+function toWireMessage(message: LlmMessage): Record<string, unknown> {
+  if (message.role === "tool") {
+    return {
+      role: "tool",
+      tool_call_id: message.toolCallId,
+      content: message.content,
+    };
+  }
+  if (message.role === "assistant") {
+    return {
+      role: "assistant",
+      // A turn that only asked for tools has no prose; the field still has to
+      // be present, and null is what the API documents for that case.
+      content: message.content || null,
+      ...(message.toolCalls?.length
+        ? {
+            tool_calls: message.toolCalls.map((call) => ({
+              id: call.id,
+              type: "function",
+              function: { name: call.name, arguments: call.arguments },
+            })),
+          }
+        : {}),
+    };
+  }
+  return { role: "user", content: message.content };
+}
+
+function stopReasonFor(
+  finishReason: string | undefined,
+  toolCalls: readonly LlmToolCall[],
+): LlmStopReason {
+  // Some OpenAI-compatible endpoints (Ollama among them) report "stop" even
+  // when they emitted tool calls, so the calls themselves decide.
+  if (toolCalls.length > 0) return "tool_calls";
+  if (finishReason === "length") return "max_tokens";
+  if (finishReason === "stop") return "stop";
+  return "other";
 }
 
 interface EmbeddingsResponse {
@@ -217,6 +274,78 @@ export class OpenAiCompatibleLlmProvider implements LlmProvider {
       ok: true,
       data: {
         text,
+        model: result.data.model ?? this.model,
+        usage: toUsage(result.data.usage),
+      },
+    };
+  }
+
+  async chat(request: LlmChatRequest): Promise<LlmResult<LlmChatCompletion>> {
+    const result = await this.post<ChatCompletionResponse>(
+      "/chat/completions",
+      {
+        model: this.model,
+        messages: [
+          ...(request.system
+            ? [{ role: "system", content: request.system }]
+            : []),
+          ...request.messages.map(toWireMessage),
+        ],
+        ...(request.maxTokens !== undefined
+          ? { max_tokens: request.maxTokens }
+          : {}),
+        ...(request.tools?.length
+          ? {
+              tools: request.tools.map((tool) => ({
+                type: "function",
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: tool.inputSchema,
+                },
+              })),
+              tool_choice: "auto",
+            }
+          : {}),
+        stream: false,
+      },
+      request.signal,
+    );
+    if (!result.ok) return result;
+
+    const choice = result.data.choices?.[0];
+    if (!choice?.message) {
+      return this.error(
+        "invalid_response",
+        "Model response contains no message",
+      );
+    }
+
+    const toolCalls: LlmToolCall[] = [];
+    for (const call of choice.message.tool_calls ?? []) {
+      // A call without a name is unusable — there is nothing to route it to,
+      // and inventing a name would run the wrong tool.
+      if (!call.function?.name) {
+        return this.error(
+          "invalid_response",
+          "Model requested a tool without naming it",
+        );
+      }
+      toolCalls.push({
+        id: call.id ?? `call_${toolCalls.length}`,
+        name: call.function.name,
+        // Absent arguments mean "no arguments", which is a valid call for a
+        // tool whose fields are all optional.
+        arguments: call.function.arguments ?? "{}",
+      });
+    }
+
+    return {
+      ok: true,
+      data: {
+        text: choice.message.content ?? "",
+        toolCalls,
+        stopReason: stopReasonFor(choice.finish_reason, toolCalls),
         model: result.data.model ?? this.model,
         usage: toUsage(result.data.usage),
       },

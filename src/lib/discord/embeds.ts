@@ -59,6 +59,14 @@ function levelColor(value: unknown): number {
   return COLOR.grey;
 }
 
+function runStatusColor(value: unknown): number {
+  const status = text(value)?.toUpperCase();
+  if (status === "SUCCEEDED") return COLOR.green;
+  if (status === "FAILED") return COLOR.red;
+  if (status === "CANCELLED") return COLOR.grey;
+  return COLOR.blurple;
+}
+
 function priorityColor(value: unknown): number {
   const priority = text(value)?.toLowerCase();
   if (priority === "urgent") return COLOR.red;
@@ -139,6 +147,19 @@ function specFor(
           field("priority", data.priority),
           field("assignee", data.assignee),
           field("due", data.dueDate),
+        ].filter((entry) => entry !== null),
+      };
+    case "AGENT_RUN_COMPLETED":
+      return {
+        title: text(data.agentName) ?? "Agent run",
+        // The report is the point of the card; the error only appears when
+        // there was no report to send.
+        description: text(data.summary) ?? text(data.error),
+        color: runStatusColor(data.status),
+        fields: [
+          field("status", data.status),
+          field("steps", data.steps),
+          field("tokens", data.totalTokens),
         ].filter((entry) => entry !== null),
       };
     default:

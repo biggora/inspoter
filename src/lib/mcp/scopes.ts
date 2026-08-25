@@ -29,6 +29,18 @@ export const MCP_SCOPES = [
   // write scope.
   "services:write",
   "logs:read",
+  // Read-only journal: it is written by the services that perform the actions,
+  // never by a caller, so there is no write half to grant.
+  "activity:read",
+  "notes:read",
+  // Covers creating, editing and deleting a single note. Deleting a folder is
+  // absent for the same reason a board delete is: it takes content the caller
+  // never saw.
+  "notes:write",
+  // Read-only on purpose. A DNS change reaches the public internet through a
+  // provider credential — the same class of blast radius as a server power
+  // action, which likewise has no write counterpart.
+  "domains:read",
   "kanban:read",
   // Covers creating and moving cards. Moving a card into a terminal column
   // emits the completed webhook, so an agent with this scope can trigger

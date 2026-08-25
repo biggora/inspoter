@@ -105,7 +105,10 @@
     "urlInvalid": "Укажите корректный HTTPS-адрес",
     "eventsRequired": "Выберите хотя бы одно событие",
     "eventInvalid": "Недопустимое событие",
-    "formatInvalid": "Недопустимый формат доставки"
+    "formatInvalid": "Недопустимый формат доставки",
+    "botTokenInvalid": "Укажите корректный токен бота",
+    "chatIdRequired": "Укажите chat id",
+    "telegramFieldsRequired": "Для Telegram-вебхука нужны токен бота и chat id"
   },
   "kanban": {
     "boardNameRequired": "Название доски обязательно",
@@ -155,5 +158,33 @@
     "emptyContact": "Укажите хотя бы имя, организацию или один контактный реквизит",
     "labelNameRequired": "Укажите название метки",
     "labelColorInvalid": "Выберите готовый цвет или введите HEX-значение вида #4488CC"
+  },
+  "agent": {
+    "nameRequired": "Укажите название",
+    "nameTooLong": "Название не должно превышать 80 символов",
+    "descriptionTooLong": "Описание не должно превышать 280 символов",
+    "instructionsRequired": "Укажите инструкции",
+    "instructionsTooLong": "Инструкции не должны превышать 8000 символов",
+    "scopeInvalid": "Неизвестная область доступа",
+    "scopeDuplicated": "Область доступа указана дважды",
+    "maxStepsRange": "Лимит шагов должен быть от 1 до 24",
+    "maxTokensRange": "Лимит токенов должен быть от 1000 до 200000",
+    "timeoutRange": "Лимит времени должен быть от 30 до 1800 секунд",
+    "updateFieldsRequired": "Укажите хотя бы одно поле для изменения",
+    "skillDescriptionRequired": "Укажите описание",
+    "skillDescriptionTooLong": "Описание не должно превышать 200 символов",
+    "skillInstructionsTooLong": "Инструкции не должны превышать 4000 символов",
+    "toolNameInvalid": "Некорректное имя инструмента",
+    "toolNameDuplicated": "Инструмент указан дважды",
+    "toolNamesTooMany": "Навык может перечислять не более 40 инструментов",
+    "skillIdInvalid": "Некорректный навык",
+    "skillDuplicated": "Навык привязан дважды",
+    "skillsTooMany": "У агента может быть не более 20 навыков",
+    "taskTooLong": "Задача не должна превышать 2000 символов",
+    "timeZoneInvalid": "Неизвестная временная зона",
+    "intervalTooShort": "Интервал должен быть не меньше 5 минут",
+    "minuteOfDayRange": "Время дня должно быть от 00:00 до 23:59",
+    "daysOfWeekInvalid": "День недели указан дважды",
+    "scheduleFieldsRequired": "Заполните поля, которые нужны выбранному виду расписания"
   }
 }

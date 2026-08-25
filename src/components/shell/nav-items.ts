@@ -43,6 +43,12 @@ export const SECTION_NAV_ITEMS: NavItem[] = [
     icon: "ri-booklet-line",
   },
   {
+    key: "agents",
+    href: "/agents",
+    labelKey: "navAgents",
+    icon: "ri-robot-2-line",
+  },
+  {
     key: "domains",
     href: "/domains",
     labelKey: "navDomains",
