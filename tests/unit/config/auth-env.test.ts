@@ -24,6 +24,25 @@ describe("AC-AUTH-005: operator env bootstrap contract", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
+  // docker-compose.prod.yml writes every optional knob as `${VAR:-}`, which
+  // Compose renders as an empty string rather than omitting the variable.
+  // Without the blank filter, "" coerces to 0 and fails .positive(), so the
+  // container refused to boot on a deployment that had simply not overridden
+  // the defaults.
+  it("treats a blank optional var as unset rather than as an invalid value", async () => {
+    const { env } = await loadEnvWith({
+      OPERATOR_USERNAME: "operator",
+      OPERATOR_PASSWORD_HASH: "salt:hash",
+      OPERATOR_PASSWORD: undefined,
+      AGENT_RUN_RETENTION_DAYS: "",
+      WEBHOOK_SCHEDULER_TICK_MS: "",
+      AUTHENTIK_ISSUER: "",
+    });
+    expect(env.AGENT_RUN_RETENTION_DAYS).toBe(30);
+    expect(env.WEBHOOK_SCHEDULER_TICK_MS).toBeGreaterThan(0);
+    expect(env.AUTHENTIK_ISSUER).toBeUndefined();
+  });
+
   it("fails fast when OPERATOR_USERNAME and both password vars are absent", async () => {
     await expect(
       loadEnvWith({

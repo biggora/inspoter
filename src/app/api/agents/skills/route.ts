@@ -6,8 +6,12 @@ import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { recordActivity } from "@/lib/services/activity";
 
-// Skills live at /api/skills rather than under /api/agents so a skill id and
-// the literal segment "skills" can never shadow each other in the router.
+// Skills sit under /api/agents beside the agents that use them, for the reason
+// runs/route.ts spells out: a static segment wins over the sibling [id], and a
+// cuid can never spell "skills".
+//
+// Note the neighbour one level down: /api/agents/[id]/skills is the join —
+// which skills a given agent has — while this family is the skills themselves.
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(

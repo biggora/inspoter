@@ -43,9 +43,36 @@ services:
       MAIL_MAX_ATTACHMENT_BYTES: ${MAIL_MAX_ATTACHMENT_BYTES:-}
       MAIL_SEND_RATE_LIMIT: ${MAIL_SEND_RATE_LIMIT:-}
       MAIL_SEND_RATE_WINDOW_MS: ${MAIL_SEND_RATE_WINDOW_MS:-}
+      LLM_REQUEST_TIMEOUT_MS: ${LLM_REQUEST_TIMEOUT_MS:-}
+      LLM_CALL_RATE_LIMIT: ${LLM_CALL_RATE_LIMIT:-}
+      LLM_CALL_RATE_WINDOW_MS: ${LLM_CALL_RATE_WINDOW_MS:-}
+      LLM_AGENT_CALL_RATE_LIMIT: ${LLM_AGENT_CALL_RATE_LIMIT:-}
+      LLM_AGENT_CALL_RATE_WINDOW_MS: ${LLM_AGENT_CALL_RATE_WINDOW_MS:-}
+      AGENT_SCHEDULER_TICK_MS: ${AGENT_SCHEDULER_TICK_MS:-}
+      AGENT_SCHEDULE_BATCH: ${AGENT_SCHEDULE_BATCH:-}
+      AGENT_RUN_BATCH: ${AGENT_RUN_BATCH:-}
+      AGENT_RUN_LEASE_MS: ${AGENT_RUN_LEASE_MS:-}
+      AGENT_RUN_MAX_STEPS_CEILING: ${AGENT_RUN_MAX_STEPS_CEILING:-}
+      AGENT_RUN_MAX_TOKENS_CEILING: ${AGENT_RUN_MAX_TOKENS_CEILING:-}
+      AGENT_RUN_MAX_TIMEOUT_SECONDS: ${AGENT_RUN_MAX_TIMEOUT_SECONDS:-}
+      AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE: ${AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE:-}
+      AGENT_TOOL_RESULT_MAX_CHARS: ${AGENT_TOOL_RESULT_MAX_CHARS:-}
+      AGENT_STEP_PAYLOAD_MAX_CHARS: ${AGENT_STEP_PAYLOAD_MAX_CHARS:-}
+      # Retention for the run history only. Agents, skills and schedules have
+      # no retention window and are never pruned — see §7I.9.
+      AGENT_RUN_RETENTION_DAYS: ${AGENT_RUN_RETENTION_DAYS:-}
+      AGENT_RUN_RETENTION_TICK_MS: ${AGENT_RUN_RETENTION_TICK_MS:-}
+      # Must stay byte-identical across image updates: it decrypts the stored
+      # provider credentials and the Telegram bot tokens. A new key leaves the
+      # rows in place and unreadable.
       CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
     ports:
       - "${APP_PORT:-3800}:3000"
 
 volumes:
+  # Everything an operator authors — agents, skills, schedules, boards, notes,
+  # contacts — lives here and nowhere in the image. `docker compose pull &&
+  # up -d` replaces the app container only; the entrypoint then runs
+  # `prisma migrate deploy`, which applies pending migrations and never resets.
+  # Removing this volume (`down -v`) is the one action that loses the data.
   db-data:

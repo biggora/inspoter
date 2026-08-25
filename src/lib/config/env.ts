@@ -289,8 +289,22 @@ const envSchema = z
     },
   );
 
+// Compose renders an unset `${VAR:-}` as an empty string instead of leaving
+// the variable out, and `z.coerce.number()` turns "" into 0 — so every
+// optional numeric knob listed in docker-compose.prod.yml failed .positive()
+// and stopped the container from booting, and the four AUTHENTIK_* vars failed
+// .url(). An empty value means "not set" for the whole contract, which is what
+// OPERATOR_PASSWORD_HASH's preprocess above already assumed for itself.
+function withoutBlanks(
+  source: NodeJS.ProcessEnv,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== ""),
+  );
+}
+
 function loadEnv() {
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse(withoutBlanks(process.env));
   if (!parsed.success) {
     throw new Error(
       `Invalid environment configuration:\n${parsed.error.issues
