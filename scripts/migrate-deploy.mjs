@@ -3,7 +3,8 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { preserveLegacyAgentTokens } from "./legacy-agent-token-preflight.mjs";
-import REPOSITORY_ROOT from "./repository-root.cjs";
+
+const REPOSITORY_ROOT = resolve(import.meta.dirname, "..");
 
 const require = createRequire(resolve(REPOSITORY_ROOT, "package.json"));
 const prismaCli = require.resolve("prisma/build/index.js");

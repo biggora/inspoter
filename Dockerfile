@@ -41,6 +41,8 @@ COPY --from=builder --chown=node:node /app/package.json ./package.json
 COPY --from=builder --chown=node:node /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder --chown=node:node /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/scripts/migrate-deploy.mjs ./scripts/migrate-deploy.mjs
+COPY --from=builder --chown=node:node /app/scripts/legacy-agent-token-preflight.mjs ./scripts/legacy-agent-token-preflight.mjs
 COPY --from=builder --chown=node:node /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
 RUN chown node:node /app
