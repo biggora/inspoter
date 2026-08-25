@@ -83,7 +83,7 @@ export default defineConfig({
         viewport: { width: 375, height: 800 },
       },
       testMatch:
-        /(?:shell-responsive|ui-visual|messages-channel-webhooks|mail-label-filtering)\.spec\.ts/,
+        /(?:shell-responsive|ui-visual|messages-channel-webhooks|mail-label-filtering|agents)\.spec\.ts/,
     },
     {
       name: "mobile-420",

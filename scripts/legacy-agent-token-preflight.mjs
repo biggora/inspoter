@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { Client } from "pg";
 
 const LOCK_KEY = 1_937_104_711;
@@ -48,7 +47,13 @@ export async function preserveLegacyAgentTokens(databaseUrl) {
   }
 }
 
+// Loaded here, not at module scope: vitest.config.ts reaches this file
+// through scripts/test-db.mjs, and an import-time dotenv put the developer
+// .env into process.env before loadTestEnvironment ran — which made the
+// test-database guard refuse every run on a machine that has one. Callers
+// that need .env load it themselves (scripts/migrate-deploy.mjs does).
 async function main() {
+  await import("dotenv/config");
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
   const copied = await preserveLegacyAgentTokens(databaseUrl);

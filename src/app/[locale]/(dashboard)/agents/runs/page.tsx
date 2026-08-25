@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AgentRunsPage() {
   const { workspace } = await requireAuth();
-  const { items } = await agentRunsService.listRuns(workspace.id);
+  const { items, nextCursor } = await agentRunsService.listRuns(workspace.id);
 
-  return <RunsView runs={items} />;
+  return <RunsView runs={items} nextCursor={nextCursor} />;
 }

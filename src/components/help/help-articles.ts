@@ -81,6 +81,17 @@ export const HELP_ARTICLES: HelpArticle[] = [
     outgoing: true,
   },
   {
+    slug: "agents",
+    href: "/help/agents",
+    icon: iconFor("agents"),
+    titleKey: "agentsTitle",
+    cardDescriptionKey: "agentsCardDescription",
+    // No incoming webhook and no management API: a run is started from the
+    // interface or by its own schedule, and there is no /api/v1 twin — an
+    // external client already drives the dashboard through POST /api/mcp.
+    outgoing: true,
+  },
+  {
     slug: "domains",
     href: "/help/domains",
     icon: iconFor("domains"),
