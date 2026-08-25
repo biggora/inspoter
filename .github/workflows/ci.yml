@@ -21,6 +21,13 @@ jobs:
       TEST_DATABASE_MARKER: inspoter-e2e
       OPERATOR_USERNAME: test-operator
       OPERATOR_PASSWORD: local-test-only-password
+      # The e2e suite logs in fresh in most tests and shares one IP bucket
+      # (LOGIN_TRUST_PROXY is unset) and one username bucket (test-operator),
+      # so the framework defaults (30 / 10 per 15 minutes) get exhausted
+      # partway through the run and every later login hits "Too many login
+      # attempts", cascading failures until the job hits its 30m timeout.
+      LOGIN_RATE_LIMIT_IP: "5000"
+      LOGIN_RATE_LIMIT_USERNAME: "5000"
 
     steps:
       - name: Check out repository
