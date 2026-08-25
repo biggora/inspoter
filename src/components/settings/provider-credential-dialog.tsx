@@ -99,6 +99,12 @@ const PROVIDER_OPTIONS = (Object.keys(PROVIDER_REGISTRY) as ProviderType[]).map(
   (provider) => ({ provider, ...PROVIDER_REGISTRY[provider] }),
 );
 
+const PROVIDER_CATEGORIES = Object.keys(CATEGORY_LABELS) as ProviderCategory[];
+
+function isProviderCategory(value: string): value is ProviderCategory {
+  return PROVIDER_CATEGORIES.some((category) => category === value);
+}
+
 interface ProviderCredentialDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -126,6 +132,7 @@ export function ProviderCredentialDialog({
   const [provider, setProvider] = useState<ProviderType | "">(
     mode === "edit" ? existing!.provider : "",
   );
+  const [category, setCategory] = useState<ProviderCategory | "ALL">("ALL");
   const [label, setLabel] = useState(existing?.label ?? "");
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>(
@@ -144,6 +151,7 @@ export function ProviderCredentialDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const labelId = useId();
+  const categoryId = useId();
   const providerId = useId();
   const fieldBaseId = useId();
   const globalErrorId = useId();
@@ -153,13 +161,42 @@ export function ProviderCredentialDialog({
     ? (PROVIDER_REGISTRY[provider].booleanFields ?? [])
     : [];
 
+  const visibleProviderOptions = PROVIDER_OPTIONS.filter(
+    (option) => category === "ALL" || option.category === category,
+  );
+
+  const categorySelectItems = [
+    { label: t("allCategoriesOption"), value: "ALL" },
+    ...PROVIDER_CATEGORIES.map((value) => ({
+      label: categoryLabel(value, t),
+      value,
+    })),
+  ];
+
   const providerSelectItems = [
     { label: t("selectProviderPlaceholder"), value: null },
-    ...PROVIDER_OPTIONS.map((option) => ({
+    ...visibleProviderOptions.map((option) => ({
       label: `${option.label} (${categoryLabel(option.category, t)})`,
       value: option.provider,
     })),
   ];
+
+  function handleCategoryChange(value: string | null) {
+    if (value === null || (value !== "ALL" && !isProviderCategory(value))) {
+      return;
+    }
+    setCategory(value);
+    if (
+      value !== "ALL" &&
+      provider &&
+      PROVIDER_REGISTRY[provider].category !== value
+    ) {
+      setProvider("");
+      setSecrets({});
+      setFlags({});
+      setErrors({});
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -237,6 +274,35 @@ export function ProviderCredentialDialog({
           className="flex flex-col gap-4"
         >
           <FieldGroup>
+            {mode === "create" && (
+              <Field>
+                <FieldLabel htmlFor={categoryId}>
+                  {t("categoryHeader")}
+                </FieldLabel>
+                <Select
+                  value={category}
+                  onValueChange={handleCategoryChange}
+                  items={categorySelectItems}
+                >
+                  <SelectTrigger id={categoryId} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="ALL">
+                        {t("allCategoriesOption")}
+                      </SelectItem>
+                      {PROVIDER_CATEGORIES.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {categoryLabel(value, t)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+
             <Field
               data-disabled={mode === "edit" || undefined}
               data-invalid={!!errors.provider || undefined}
@@ -262,7 +328,7 @@ export function ProviderCredentialDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {PROVIDER_OPTIONS.map((option) => (
+                    {visibleProviderOptions.map((option) => (
                       <SelectItem key={option.provider} value={option.provider}>
                         {option.label} ({categoryLabel(option.category, t)})
                       </SelectItem>

@@ -48,6 +48,7 @@
   "deleteAccountConfirmTitle": "Delete account \"{name}\"?",
   "deleteAccountConfirmDescription": "All synced folders and messages for this account will be removed from the dashboard. This action cannot be undone.",
   "categoryHosting": "Hosting",
+  "allCategoriesOption": "All categories",
   "loadCredentialsError": "Failed to load credentials. Please try again.",
   "providerDeletedToast": "Provider deleted.",
   "deleteProviderError": "Failed to delete provider. Please try again.",

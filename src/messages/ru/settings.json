@@ -48,6 +48,7 @@
   "deleteAccountConfirmTitle": "Удалить аккаунт «{name}»?",
   "deleteAccountConfirmDescription": "Все синхронизированные папки и письма этого аккаунта будут удалены из панели. Это действие нельзя отменить.",
   "categoryHosting": "Хостинг",
+  "allCategoriesOption": "Все категории",
   "loadCredentialsError": "Не удалось загрузить учётные данные. Попробуйте снова.",
   "providerDeletedToast": "Провайдер удалён.",
   "deleteProviderError": "Не удалось удалить провайдера. Попробуйте снова.",

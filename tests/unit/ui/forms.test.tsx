@@ -382,6 +382,58 @@ describe("standardized form contracts", () => {
     expect(label).not.toHaveAttribute("aria-invalid", "true");
   });
 
+  it("filters providers by category and clears an incompatible selection", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <ProviderCredentialDialog
+        open
+        mode="create"
+        existing={null}
+        onOpenChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const category = screen.getByRole("combobox", { name: "Category" });
+    const provider = screen.getByRole("combobox", { name: "Provider" });
+
+    await user.click(category);
+    await user.click(await screen.findByRole("option", { name: "LLM" }));
+    await user.click(provider);
+
+    expect(
+      await screen.findByRole("option", {
+        name: "OpenAI-compatible (LLM)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Anthropic-compatible (LLM)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Cloudflare (DNS)" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("option", { name: "OpenAI-compatible (LLM)" }),
+    );
+    expect(screen.getByLabelText("API base URL")).toBeInTheDocument();
+
+    await user.click(category);
+    await user.click(await screen.findByRole("option", { name: "Hosting" }));
+
+    expect(provider).toHaveTextContent("Select a provider");
+    expect(screen.queryByLabelText("API base URL")).not.toBeInTheDocument();
+
+    await user.click(provider);
+    expect(
+      await screen.findByRole("option", { name: "Hetzner Cloud (Hosting)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "OpenAI-compatible (LLM)" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits an OpenAI-compatible credential with its base URL, model and key", async () => {
     const user = userEvent.setup();
 
