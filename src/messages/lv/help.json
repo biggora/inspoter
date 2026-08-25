@@ -1,0 +1,257 @@
+{
+  "pageTitle": "Palīdzība",
+  "pageDescription": "Kā darbojas katra paneļa daļa.",
+  "backToHelp": "Atpakaļ uz palīdzību",
+  "howToUseHeading": "Kā to izmantot",
+  "webhookHeading": "Datu saņemšana pa webhook",
+  "webhookExampleLabel": "Webhook pieprasījuma piemērs",
+  "outgoingWebhookHeading": "Izejošie webhook",
+  "discordWebhookHeading": "Saderība ar Discord",
+  "managementApiHeading": "Sadaļas pārvaldība caur API",
+  "outgoingFormatsNote": "Katram izejošajam webhook ir piegādes formāts, kas izvēlēts sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>. “Inspoter” ir mūsu pašu ietvars, kas parakstīts ar HMAC-SHA256. “Discord” publicē notikumu kā iegultu kartīti tieši Discord kanālā: norādiet Discord webhook URL, un nekas cits nav vajadzīgs. “Discord Webhook Events” piemērots saņēmējiem, kas rakstīti pret Discord: ietvars parakstīts ar Ed25519, un blakus tiek parādīta pārbaudes publiskā atslēga. “Telegram bot” nosūta notikumu kā ziņu uz tērzēšanu caur Bot API: tam nepieciešams bota tokens, kas tiek glabāts šifrēts, un tērzēšanas id, kurā bots jau ir dalībnieks.",
+  "dashboardsTitle": "Paneļi",
+  "dashboardsCardDescription": "Izveidojiet savu pārskatu no logrīkiem — pulkstenis, laikapstākļi, kalendārs un dati no jebkuras sadaļas.",
+  "dashboardsIntroP1": "Paneļi ir nosaukti pārskata lapas darbvietā. Katrā ir logrīki: globālie (pulkstenis un datums, laikapstākļi, kalendārs, piezīme) un tādi, kas nolasa datus no sadaļas — grāmatzīmes, pakalpojumu statuss, servera metrikas, pasts, ziņojumi, brīdinājumi un žurnāli.",
+  "dashboardsIntroP2": "Logrīki atrodas 12 kolonnu režģī, un tos var vilkt un mainīt to izmēru, taču tikai rediģēšanas režīmā — parastajā režīmā kartītes paliek interaktīvas un nekad nepārvietojas nejaušas nospiešanas dēļ. Logrīka dati atsvaidzinās paši reizi minūtē, kamēr lapa ir atvērta. Paneļi tiek koplietoti visā darbvietā, un vienu no tiem var iestatīt kā sākuma lapu, kas atveras uzreiz pēc pieteikšanās.",
+  "dashboardsSteps": [
+    "Darbību izvēlnē izvēlieties “Jauns panelis” un piešķiriet tam nosaukumu — piemēram, “Produkcija” vai “Dežūra”.",
+    "Noklikšķiniet “Rediģēt”, tad “Pievienot logrīku” un izvēlieties tipu no kataloga.",
+    "Logrīka iestatījumi atveras uzreiz pēc tā pievienošanas: tur iestata laikapstākļu koordinātas, grāmatzīmju kategoriju, konkrētu serveri vai pasta kastīti, cik ierakstus rādīt, un pielāgotu virsrakstu.",
+    "Rediģēšanas režīmā velciet logrīku aiz roktura tā galvenes kreisajā pusē un mainiet izmēru, izmantojot satveršanas punktu apakšējā labajā stūrī — kad satveršanas punkts ir fokusēts, bultiņu taustiņi maina izmēru pa vienai šūnai.",
+    "Noklikšķiniet “Gatavs”, lai izietu no rediģēšanas režīma: tad logrīki rāda saiti uz savu sadaļu darbību izvēlnes vietā.",
+    "Paneļa izvēlne to pārdēvē, iestata kā sākuma lapu vai dzēš — paneļa dzēšana nekad neietekmē sadaļas datus."
+  ],
+  "bookmarksTitle": "Grāmatzīmes",
+  "bookmarksCardDescription": "Organizējiet saglabātās saites kategorijās un apakškategorijās.",
+  "bookmarksIntroP1": "Grāmatzīmes glabā saites uz vietnēm un rīkiem, ko izmantojat bieži, sagrupētas kategorijās ar vienu apakškategoriju līmeni. Katrai grāmatzīmei var būt nosaukums, URL, apraksts un ikona.",
+  "bookmarksIntroP2": "Kategorijas un grāmatzīmes var pārkārtot, velkot ar peli, un visu bibliotēku var meklēt vai filtrēt pēc kategorijas.",
+  "bookmarksSteps": [
+    "Noklikšķiniet “Jauna kategorija”, lai izveidotu augstākā līmeņa kategoriju, vai pievienojiet apakškategoriju no esošas kategorijas izvēlnes.",
+    "Kategorijā noklikšķiniet “Pievienot”, lai izveidotu grāmatzīmi ar nosaukumu, URL, aprakstu un ikonu.",
+    "Velciet kategorijas galveni vai grāmatzīmes kartīti, lai mainītu secību; velciet grāmatzīmi uz citu kategoriju, lai to tur pārvietotu.",
+    "Izmantojiet meklēšanas lauku, lai filtrētu pēc nosaukuma, apraksta vai URL, un kategoriju sarakstu, lai rādītu tikai vienu kategoriju.",
+    "Izmantojiet kategorijas vai grāmatzīmes izvēlni, lai to pārdēvētu vai dzēstu — kategorijas dzēšana dzēš arī tās grāmatzīmes."
+  ],
+  "bookmarksManagementApiIntro": "Grāmatzīmes var meklēt un pārvaldīt arī ārēja sistēma vai AI asistents. Piešķiriet tokenam grāmatzīmju atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>: viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "bookmarksManagementApiFields": [
+    "bookmarks:read — meklēt grāmatzīmes un uzskaitīt kategorijas.",
+    "bookmarks:write — izveidot, atjaunināt, dzēst un pārkārtot grāmatzīmes un kategorijas.",
+    "Kategorijas dzēšana apzināti nav pieejama caur API: tā aizvāc arī visas tajā esošās grāmatzīmes, tāpēc tā paliek operatora veicama darbība saskarnē."
+  ],
+  "kanbanTitle": "Kanban",
+  "kanbanCardDescription": "Sekojiet darba gaitai vilkšanas un nomešanas dēļos ar kolonnām, sarakstiem un komentāriem.",
+  "kanbanIntroP1": "Kanban satur jebkādu skaitu dēļu, katram ar jūsu definētām kolonnām — piemēram, Jādara, Notiek, Gatavs — un kartītēm, kas pārvietojas starp tām. Kartītei ir virsraksts, apraksts, prioritāte, izpildes termiņš, atbildīgais no darbvietas un krāsainas etiķetes.",
+  "kanbanIntroP2": "Kartīti var arī sasaistīt ar serveri, domēnu, pakalpojumu, brīdinājumu vai hostinga kontu, tāpēc dēlis vienlaikus kalpo kā uzdevumu saraksts, kas saistīts ar infrastruktūru, uz kuru tas attiecas. Atzīmējot vienu kolonnu kā gala kolonnu, kartītes nomešana tajā atzīmē kartīti kā pabeigtu.",
+  "kanbanSteps": [
+    "Noklikšķiniet “Jauns dēlis”, lai izveidotu dēli, tad “Pievienot kolonnu”, lai izveidotu tā posmus.",
+    "Noklikšķiniet “Pievienot kartīti” kolonnā, lai izveidotu kartīti ar virsrakstu, prioritāti un izpildes termiņu.",
+    "Velciet kartīti starp kolonnām, lai to pārvietotu, vai kolonnas ietvaros, lai mainītu secību; nometot to gala kolonnā (atzīmēta kā Gatavs), kartīte tiek pabeigta.",
+    "Atveriet kartīti, lai pievienotu sarakstu, atstātu komentārus, piešķirtu to darbvietas dalībniekam, pievienotu etiķetes vai sasaistītu to ar serveri, domēnu, pakalpojumu, brīdinājumu vai hostinga kontu.",
+    "Izmantojiet “Pārvaldīt etiķetes”, lai izveidotu krāsainas etiķetes, kas kopīgas visām dēļa kartītēm.",
+    "Izmantojiet dēļa, kolonnas vai kartītes izvēlni, lai to pārdēvētu vai dzēstu — dēļa vai kolonnas dzēšana dzēš arī tajā esošās kartītes."
+  ],
+  "kanbanManagementApiIntro": "Dēļus var lasīt un pārvaldīt arī ārēja sistēma vai AI asistents. Piešķiriet tokenam Kanban atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>: viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "kanbanManagementApiFields": [
+    "kanban:read — uzskaitīt dēļus, meklēt kartītes un lasīt sarakstus, komentārus un etiķetes.",
+    "kanban:write — izveidot un atjaunināt dēļus, kolonnas, kartītes, sarakstus, komentārus un etiķetes, kā arī pārvietot kartītes starp kolonnām.",
+    "Dēļa vai kolonnas dzēšana apzināti nav pieejama caur API: jebkurš no tiem aizvāc arī visas tajā esošās kartītes, tāpēc tas paliek operatora veicama darbība saskarnē.",
+    "Komentāru, ko publicējis tokens, paraksta ar tā paša tokena nosaukumu, un tikai tas pats tokens to var atkal dzēst."
+  ],
+  "kanbanOutgoingWebhook": "Kanban nav ienākošā webhook — kartītes tiek izveidotas no saskarnes vai caur iepriekš minēto API. Taču kartītes pārvietošana izraisa izejošus notikumus: KANBAN_CARD_CREATED, KANBAN_CARD_MOVED un, kad kartīte nonāk gala kolonnā, KANBAN_CARD_COMPLETED. Abonējiet ārēju URL jebkuram no tiem sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>, lai tos pārsūtītu uz tērzēšanu, peidžeri vai automatizāciju.",
+  "agentsTitle": "AI asistents",
+  "agentsCardDescription": "Palaidiet aģentus, kas darbojas ar paneli pēc grafika, ar jūsu pievienotajām prasmēm un tikai to piekļuvi, kuru piešķirat.",
+  "agentsIntroP1": "Aģents ir instrukciju kopums plus sadaļas, ko tas drīkst lasīt vai mainīt, plus trīs griesti: soļi, tokeni un sekundes. Tam nav sava API atslēga un sava modeļa adreses — atbild nodrošinātājs, kas atzīmēts kā noklusējuma sadaļā Iestatījumi → Nodrošinātāji, tāpēc sadaļa paliek tukša, kamēr tāds nav konfigurēts.",
+  "agentsIntroP2": "Prasme ir atkārtoti izmantojamas instrukcijas, ko uzrakstāt vienreiz un pievienojat tik daudz aģentu, cik vēlaties. Prasme nepiešķir nekādu piekļuvi: tā var tikai sašaurināt to, ko jau atļauj aģenta paša darbības jomas. Viss, ko atgriež rīks, tiek uzskatīts par neuzticamiem datiem — reālā robeža ir darbības jomu saraksts, kurā rīka, uz kuru aģentam nav tiesību, vienkārši nav.",
+  "agentsSteps": [
+    "Vispirms pievienojiet modeli sadaļā Iestatījumi → Nodrošinātāji; bez tā aģentu var izveidot, taču palaišana neko nedarīs.",
+    "Noklikšķiniet “Jauns aģents”, ierakstiet instrukcijas un pielāgojiet soļu, tokenu un laika limitus, ja noklusējuma vērtības neatbilst.",
+    "Blakus Aprakstam un Instrukcijām ir pogа ar dzirksteli: tā uzmet melnrakstu šim laukam, izmantojot pievienoto modeli, pamatojoties uz nosaukumu un jau ierakstīto tekstu. Teksts nonāk formā, ko varat rediģēt, un nekas netiek saglabāts, kamēr nenospiežat “Izveidot”.",
+    "Atveriet aģentu un atzīmējiet Piekļuves kartītē vajadzīgās sadaļas. Atzīmējot Rakstīt, tiek atzīmēts arī Lasīt: rakstīšanas rīks vienmēr darbojas ar id, ko iedod lasīšanas rīks.",
+    "Uzrakstiet prasmi sadaļā “Prasmes” un pievienojiet to aģenta lapā. Pievienošanas secība nosaka, kādā secībā tā instrukcijas nonāk uzvednē; velciet ar bultiņām, lai to mainītu.",
+    "Pievienojiet grafiku — ik pēc N minūtēm, katru dienu vai izvēlētās nedēļas dienās — un norādiet laika joslu, jo pats panelis rāda laikus UTC formātā.",
+    "Nospiediet “Palaist tagad”, lai to izmēģinātu uzreiz. Palaišanas lapa seko aģentam soli pa solim un rāda katru rīka izsaukumu ar tā atbildi.",
+    "Izlaists notikuma gadījums netiek panākts pēc kavējuma: pēc dīkstāves stundas pārskats tiek nosūtīts vienu reizi ar pašreizējo saturu, nevis vairākas reizes ar novecojušu saturu."
+  ],
+  "agentsOutgoingWebhook": "Ieslēdziet aģentam “Nosūtīt pārskatu, kad palaišana pabeigta”, un katra pabeigta palaišana izraisa AGENT_RUN_COMPLETED — arī neveiksmīga palaišana, ar savu statusu. Abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>, lai piegādātu pārskatu uz Discord kanālu, Telegram tērzēšanu vai savu galapunktu.",
+  "domainsTitle": "Domēni",
+  "domainsCardDescription": "Skatiet un pārvaldiet DNS ierakstus visos pievienotajos nodrošinātājos.",
+  "domainsIntroP1": "Domēni vienā tabulā uzskaita katru domēnu no jūsu pievienotajiem DNS nodrošinātājiem (Cloudflare, Hetzner DNS, GoDaddy), norādot DNS ierakstu skaitu un to, kurš nodrošinātājs to pārvalda.",
+  "domainsIntroP2": "No domēna var pāriet uz tā DNS ierakstiem vai sasaistīt to ar esošu grāmatzīmi vai pakalpojumu — vai izveidot jaunu, iepriekš aizpildītu ar domēna nosaukumu.",
+  "domainsSteps": [
+    "Noklikšķiniet “Pievienot nodrošinātāju”, lai pievienotu Cloudflare, Hetzner DNS vai GoDaddy API akreditācijas datus.",
+    "Tabulā uzskaitīts katrs domēns pie visiem nodrošinātājiem, norādot DNS ierakstu skaitu un nodrošinātāja nozīmīti.",
+    "Noklikšķiniet “Skatīt DNS ierakstus” pie domēna, lai skatītu un rediģētu tā DNS ierakstus.",
+    "Izmantojiet rindas saites izvēlni, lai izveidotu vai atvērtu ar šo domēnu saistītu grāmatzīmi vai pakalpojumu.",
+    "Ja nodrošinātājs rāda kļūdas joslu, noklikšķiniet “Mēģināt vēlreiz”, lai to atkārtoti ielādētu tiešraidē."
+  ],
+  "serversTitle": "Serveri",
+  "serversCardDescription": "Pārraugiet un vadiet serverus no mākoņa nodrošinātājiem un metriku aģenta.",
+  "serversIntroP1": "Serveri rāda katru serveri no jūsu pievienotajiem mākoņa nodrošinātājiem kopā ar jebkuru resursdatoru, kurā darbojas InSpoter metriku aģents, apvienotus vienā kartītē katram serverim.",
+  "serversIntroP2": "Katra kartīte rāda tiešraides statusu, CPU/RAM/diska izmantojumu, OS, atrašanās vietu un darbības laiku, un — kur nodrošinātājs to atbalsta — Sākt/Apturēt/Restartēt vadīklas.",
+  "serversSteps": [
+    "Noklikšķiniet “Pievienot nodrošinātāju”, lai pievienotu servera hostinga nodrošinātāja akreditācijas datus.",
+    "Katra kartīte rāda statusu, CPU/RAM/diska izmantojumu (no metriku aģenta, ja tas instalēts, citādi nodrošinātāja plāna jaudu), OS, atrašanās vietu un darbības laiku.",
+    "Izmantojiet pogas Sākt, Apturēt vai Restartēt (ar apstiprinājuma dialogu), lai vadītu nodrošinātāja pārvaldītos serverus.",
+    "Noklikšķiniet “Atsvaidzināt”, lai piespiestu tiešraides atkārtotu ielādi no visiem nodrošinātājiem, nevis izmantotu kešoto momentuzņēmumu.",
+    "Serverim bez tiešraides metrikām noklikšķiniet “Iestatīt pārraudzību”, lai to pievienotu metriku aģentam."
+  ],
+  "serversWebhookIntro": "Tiešraides metrikas ienāk arī caur HTTP, taču pieprasījuma pamattekstu veido InSpoter metriku aģents, nevis manuāli: instalējiet to ar “Iestatīt pārraudzību” servera kartītē, piešķiriet tam API tokenu no <tokens>Iestatījumi → Webhook</tokens>, un tas pats pēc sava grafika publicē CPU, atmiņas, diska un darbības laika datus. Katrs iesniegums tiek saskaņots ar serveri pēc IP adresēm, ko aģents paziņo. Galapunkts ir aprakstīts sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "hostingTitle": "Hostings",
+  "hostingCardDescription": "Sekojiet koplietotā hostinga kontiem visos pievienotajos nodrošinātājos.",
+  "hostingIntroP1": "Hostings apkopo koplietotā hostinga/vadības paneļa kontus no jūsu pievienotajiem nodrošinātājiem vienā kartīšu režģī, rādot domēnu, plānu un statusu.",
+  "hostingIntroP2": "Katra kartīte ziņo par diska un joslas platuma izmantojumu, datubāzu un e-pasta kontu skaitu, un — atbalstītajiem nodrošinātājiem — ļauj apturēt vai atjaunot kontu.",
+  "hostingSteps": [
+    "Noklikšķiniet “Pievienot nodrošinātāju”, lai pievienotu hostinga paneļa API akreditācijas datus.",
+    "Katra kartīte rāda konta domēnu, statusu, diska un joslas platuma izmantojumu ar mērītājiem, datubāzu un e-pasta skaitu, un plānu.",
+    "Kur tas atbalstīts, izmantojiet Apturēt/Atjaunot (ar apstiprinājuma dialogu), lai mainītu konta stāvokli.",
+    "Noklikšķiniet “Atsvaidzināt”, lai piespiestu tiešraides atkārtotu ielādi; nodrošinātājs ar kļūdu rāda atkārtota mēģinājuma joslu."
+  ],
+  "servicesTitle": "Pakalpojumi",
+  "servicesCardDescription": "Darbspējas pārraudzība HTTP, TCP un PING mērķiem.",
+  "servicesIntroP1": "Pakalpojumi veic darbspējas pārbaudes jūsu definētajiem HTTP, TCP vai PING mērķiem, aptaujājot ar jūsu iestatīto intervālu un ierakstot katra statusa vēsturi.",
+  "servicesIntroP2": "Katra kartīte automātiski atsvaidzinās aptuveni ik pēc 10 sekundēm un rāda pašreizējo statusu, pēdējās pārbaudes laiku, atbildes laiku un nesenu pārbaužu pulsa joslu.",
+  "servicesSteps": [
+    "Noklikšķiniet “Jauns pakalpojums”, lai pievienotu HTTP, TCP vai PING pārraugu ar tā mērķa adresi un pārbaudes intervālu.",
+    "Katra kartīte automātiski atsvaidzinās un rāda statusa nozīmīti, pēdējās pārbaudes laiku, atbildes laiku un nesenu pārbaužu pulsa joslu.",
+    "Noklikšķiniet “Pārbaudīt tagad”, lai piespiestu tūlītēju pārbaudi ārpus regulārā intervāla.",
+    "Izmantojiet Pauzēt/Atsākt, lai apturētu vai atsāktu pārraudzību, nedzēšot pakalpojumu.",
+    "Izmantojiet “Pārvaldīt etiķetes”, lai izveidotu etiķetes, tad meklēšanas lauku un etiķešu filtru, lai sašaurinātu sarakstu.",
+    "Noklikšķiniet kartītes virsrakstu, lai atvērtu tās detaļu lapu, vai izmantojiet kartītes izvēlni, lai to rediģētu vai dzēstu."
+  ],
+  "servicesManagementApiIntro": "Pakalpojumus var izveidot un pārvaldīt arī ārēja sistēma vai AI asistents — definēt pārraugu, to pauzēt vai pēc pieprasījuma izraisīt pārbaudi. Piešķiriet tokenam Pakalpojumu atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>: viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "servicesManagementApiFields": [
+    "services:read — uzskaitīt un lasīt pārraudzītos pakalpojumus, to pārbaužu vēsturi un etiķetes.",
+    "services:write — izveidot, atjaunināt, dzēst, pauzēt vai atsākt pakalpojumu, pārbaudīt to pēc pieprasījuma un pārvaldīt etiķetes."
+  ],
+  "servicesOutgoingWebhook": "Pakalpojumiem nav ienākošā webhook — panelis pārbaudes veic pats. Taču statusa izmaiņas izraisa izejošu SERVICE_STATUS notikumu: abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>, lai tos pārsūtītu uz tērzēšanu, peidžeri vai automatizāciju.",
+  "mailTitle": "Pasts",
+  "mailCardDescription": "Trīspaneļu tīmekļpasta klients pievienotajiem IMAP kontiem.",
+  "mailIntroP1": "Pasts ir trīspaneļu tīmekļpasta klients — konti un mapes kreisajā pusē, ziņojumu saraksts vidū un lasīšanas panelis labajā pusē — jūsu pievienotajām IMAP/SMTP pasta kastītēm, plus iebūvēta webhook pasta kastīte pastam, kas saņemts caur API.",
+  "mailIntroP2": "Varat meklēt, filtrēt tikai nelasītos, kārtot, atbildēt/pārsūtīt/arhivēt/dzēst, piemērot etiķetes un iestatīt filtru noteikumus, kas automātiski marķē turpmāko ienākošo pastu.",
+  "mailSteps": [
+    "Noklikšķiniet “Pievienot kontu”, lai pievienotu IMAP/SMTP pasta kastīti.",
+    "Sānjoslā izvēlieties kontu un mapi, tad izmantojiet meklēšanu, “Tikai nelasītie” un kārtošanu, lai sašaurinātu ziņojumu sarakstu.",
+    "Noklikšķiniet ziņojumu, lai to lasītu, un izmantojiet Atbildēt, Pārsūtīt, Arhivēt, Dzēst vai atzīmēt kā lasītu/nelasītu no lasīšanas paneļa.",
+    "Noklikšķiniet “Sinhronizēt”, lai pēc pieprasījuma ielādētu jaunu pastu no servera.",
+    "Izmantojiet “Pārvaldīt etiķetes”, lai izveidotu krāsainas etiķetes un piemērotu tās ziņojumiem, un “Filtru noteikumi”, lai automātiski marķētu turpmāku pastu, kas atbilst sūtītājam vai tēmai.",
+    "Noklikšķiniet “Sastādīt”, lai rakstītu jaunu vēstuli; nenosūtītie melnraksti tiek saglabāti un atkārtoti atvērti no mapes Melnraksti."
+  ],
+  "mailWebhookIntro": "Papildus IMAP kontiem pastu var ievadīt arī caur HTTP: ziņojums nonāk iebūvētās webhook pasta kastītes Iesūtnē, neiesaistot nevienu pasta serveri. Autentificējieties ar API tokenu no <tokens>Iestatījumi → Webhook</tokens> un nosūtiet JSON pieprasījuma pamattekstu; pilns līgums ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "mailWebhookFields": [
+    "sender — obligāts: adrese laukā No.",
+    "subject — obligāts: tēmas rinda.",
+    "body — obligāts: ziņojuma teksts.",
+    "receivedAt — nav obligāts: ISO 8601 datums-laiks; pēc noklusējuma pieprasījuma saņemšanas brīdis."
+  ],
+  "mailManagementApiIntro": "Iepriekš minētais webhook piegādā tikai vienu ziņojumu iebūvētajā webhook pasta kastītē. Kad ārējai sistēmai vai AI asistentam jāstrādā ar IMAP pasta kastīti — jāmeklē un jālasa pasts, jāsūta un jāsaglabā melnraksti, jāpiemēro etiķetes, jāpārvalda filtru noteikumi un jāizraisa sinhronizācija — piešķiriet tokenam Pasta atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>. Viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "mailManagementApiFields": [
+    "mail:read — meklēt un lasīt pastu, mapes, etiķetes, filtru noteikumus un pielikumus.",
+    "mail:write — atzīmēt kā lasītu, pārvietot, dzēst, marķēt, sūtīt, saglabāt melnrakstus, pārvaldīt filtru noteikumus un etiķetes, un izraisīt sinhronizāciju.",
+    "Pasta konta izveide, rediģēšana, dzēšana vai testēšana apzināti nav pieejama caur API — tas nozīmētu paroles nodošanu caur tokena kontekstu, tāpēc konti paliek operatora veicama darbība sadaļā Iestatījumi → Pasts."
+  ],
+  "mailOutgoingWebhook": "Pasta ienākšana pasta kastītē izraisa arī izejošu MAIL_RECEIVED notikumu — abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>.",
+  "messagesTitle": "Ziņojumi",
+  "messagesCardDescription": "Slack tipa kanāli iekšējai tērzēšanai un ienākošajiem webhook.",
+  "messagesIntroP1": "Ziņojumi organizē kanālus kategorijās, līdzīgi kā Slack, gan manuālai komandas tērzēšanai, gan ziņojumiem, ko caur kanāla webhook publicē ārējas sistēmas.",
+  "messagesIntroP2": "Izvēlieties kanālu, lai redzētu tā laika skalu, ritiniet augšup, lai ielādētu vecāku vēsturi, un sūtiet ziņojumus no sastādītāja apakšā.",
+  "messagesSteps": [
+    "Izmantojiet sānjoslas “+” vadīklas, lai izveidotu kategoriju, tad kanālu tajā.",
+    "Izvēlieties kanālu, lai skatītu tā ziņojumu laika skalu; ritiniet augšup vai noklikšķiniet “Ielādēt iepriekšējos” vecākiem ziņojumiem.",
+    "Rakstiet sastādītājā un nosūtiet, lai publicētu ziņojumu izvēlētajā kanālā.",
+    "Atveriet kanāla iestatījumus (zobrata ikona), lai to pārdēvētu vai pārvaldītu tā ienākošo webhook, ko izmanto ārējas sistēmas, lai publicētu tajā.",
+    "Izmantojiet kategorijas vai kanāla konteksta izvēlni, lai to pārdēvētu vai dzēstu."
+  ],
+  "messagesWebhookIntro": "Ārējas sistēmas var publicēt kanālā divos veidos. Kanāla webhook, kas izveidots kanāla iestatījumos (zobrata ikona), iegūst savu URL ar iebūvētu akreditāciju un neprasa ne tokena galveni, ne channelId — izturieties pret šo URL kā pret paroli un neļaujiet tam nonākt žurnālos un ekrānuzņēmumos. Darbvietas API tokens no <tokens>Iestatījumi → Webhook</tokens> tā vietā publicē uz kopīgo galapunktu zemāk un norāda mērķa kanālu pieprasījuma pamattekstā. Abi ir aprakstīti sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "messagesWebhookFields": [
+    "channelId — obligāts: mērķa kanāla iekšējais id; tas nav redzams saskarnē, tāpēc kanāla webhook parasti ir vienkāršākais ceļš.",
+    "content — obligāts: ziņojuma teksts, līdz 4000 rakstzīmēm.",
+    "author — nav obligāts: sūtītāja vārds, kas redzams laika skalā; pēc noklusējuma webhook nosaukums."
+  ],
+  "messagesDiscordIntro": "Kanāla webhook saprot arī Discord formātu. Ja integrācija jau publicē Discord kanālā — CI, Grafana, Sentry, Uptime Kuma, GitHub Actions — vienkārši norādiet to uz Discord saderīgo URL discord.com saites vietā: pieprasījuma pamatteksts nav jāpārraksta. Adrese tiek atklāta vienu reizi kanāla iestatījumu dialogā blakus dabiskajai, un tai ir tas pats noslēpums, tāpēc apejieties ar to tikpat rūpīgi. Pilna specifikācija ar limitiem un kļūdu kodiem ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "messagesDiscordFields": [
+    "content — ziņojuma teksts, līdz 2000 rakstzīmēm.",
+    "embeds — līdz 10 kartītēm ar krāsu joslu, virsrakstu, aprakstu un laukiem. Ne vairāk kā 6000 rakstzīmes kopā visām.",
+    "username — sūtītāja vārds; ja tas nav norādīts, tiek izmantots paša webhook nosaukums.",
+    "avatar_url — sūtītāja avatars, kas redzams blakus ziņojumam.",
+    "Noklusējuma atbilde ir 204 bez pamatteksta, tāpat kā Discord. Pievienojiet ?wait=true, lai saņemtu 200 un izveidotā ziņojuma objektu.",
+    "Kļūdas seko Discord formātam: 50006 tukšam ziņojumam, 50035 pārkāptam limitam, 401 nezināmam vai atsauktam webhook un 429 ar retry_after, kad sasniegts pieprasījumu limits.",
+    "Sufikss /slack pieņem Slack formātu: text un attachments kļūst par ziņojuma tekstu un kartītēm.",
+    "Failu pielikumi tiek pieņemti, bet netiek saglabāti; pavedieni, komponenti un aptaujas tiek ignorēti."
+  ],
+  "messagesManagementApiIntro": "Iepriekš minētie webhook raksta tikai jau esošā kanālā. Kad ārējai sistēmai vai AI asistentam pašam jāizveido sadaļas struktūra — jāizveido kategorijas un kanāli, jāsavieno webhook un jāpublicē tajos — piešķiriet tokenam Ziņojumu atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>. Viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP: tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "messagesManagementApiFields": [
+    "Atļaujas dalās divās daļās: “Meklēt un lasīt” piešķir tikai lasīšanu, bet “Pārvaldīt un publicēt” ir nepieciešama katrai izmaiņai un kanāla webhook izsniegšanai.",
+    "Kategorijas vai kanāla izveide ir idempotenta: atkārtojot pieprasījumu ar to pašu nosaukumu (reģistrjutība netiek ņemta vērā), tiek atgriezts esošais ieraksts, nevis izveidots dublikāts.",
+    "Ar tokenu publicētie ziņojumi laika skalā ir apzīmēti ar “Aģents” un autors ir tokena nosaukums, tāpēc ir skaidrs, ka tos nav rakstījis cilvēks.",
+    "Kategoriju un kanālu dzēšana apzināti nav pieejama caur API: kategorija aizvāc arī visu tās ziņojumu vēsturi, tāpēc tā paliek operatora veicama darbība saskarnē.",
+    "Kļūdas atgriežas kā {\"error\":{\"code\",\"message\"}}: 401, kad tokens trūkst vai ir atsaukts, 403, kad trūkst atļaujas, 404, kad objekta nav jūsu darbvietā, un 429, kad sasniegts pieprasījumu limits."
+  ],
+  "messagesOutgoingWebhook": "Katrs publicētais ziņojums izraisa arī izejošu MESSAGE_CREATED notikumu — abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>.",
+  "activityTitle": "Aktivitāte",
+  "activityCardDescription": "Katras darbvietā veiktās darbības audita žurnāls.",
+  "activityIntroP1": "Aktivitāte ir tikai lasāms audita ieraksts par katru izveides, atjaunināšanas, dzēšanas un citu darbību, ko operatori veic visā darbvietā — grāmatzīmēs, domēnos, serveros, pastā, tokenos un citur.",
+  "activityIntroP2": "Ierakstus var meklēt un filtrēt, un katru rindu var izvērst, lai redzētu pilnas izmaiņu detaļas.",
+  "activitySteps": [
+    "Izmantojiet meklēšanas lauku un Darbības, Objekta tipa un Operatora filtrus, lai sašaurinātu tabulu.",
+    "Izmantojiet kārtošanas vadīklu, lai pārslēgtos starp jaunāko-vispirms un vecāko-vispirms.",
+    "Noklikšķiniet bultiņas ikonu pie rindas ar detaļām, lai izvērstu tās pilno izmaiņu saturu.",
+    "Izmantojiet Iepriekšējais/Nākamais, lai pāršķirtu vēsturi pa lappusēm."
+  ],
+  "logsTitle": "Žurnāli",
+  "logsCardDescription": "Centrālais žurnālu savācējs, ko baro ienākošais webhook API.",
+  "logsIntroP1": "Žurnāli glabā žurnāla rindas, ko caur žurnāla webhook galapunktu ievada ārējas sistēmas, tāpēc skriptiem, cron uzdevumiem un pakalpojumiem ārpus InSpoter ir viena vieta, kur ziņot par savu darbību.",
+  "logsIntroP2": "Ierakstus var meklēt un filtrēt pēc līmeņa un avota, un katru rindu var izvērst, lai redzētu tās pilno ziņojumu un detaļas.",
+  "logsSteps": [
+    "Novirziet ārēju sistēmu uz žurnāla webhook galapunktu ar nesēja tokenu, lai sāktu sūtīt ierakstus (skatiet piemēra pieprasījumu, kas parādīts, kad saraksts ir tukšs).",
+    "Izmantojiet meklēšanas lauku, Līmeņa filtru un Avota filtru, lai sašaurinātu sarakstu.",
+    "Izmantojiet kārtošanas vadīklu, lai pārslēgtos starp jaunāko-vispirms un vecāko-vispirms.",
+    "Noklikšķiniet bultiņas ikonu pie rindas, lai izvērstu tās pilno ziņojumu un detaļas.",
+    "Izmantojiet Iepriekšējais/Nākamais, lai pāršķirtu rezultātus pa lappusēm."
+  ],
+  "logsWebhookIntro": "Jebkurš skripts, cron uzdevums vai pakalpojums var ievadīt ierakstus caur HTTP. Izveidojiet API tokenu sadaļā <tokens>Iestatījumi → Webhook</tokens>, nosūtiet to Authorization galvenē un publicējiet JSON pieprasījuma pamattekstu žurnāla galapunktā. Pilns līgums ir pieejams arī sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "logsWebhookFields": [
+    "level — obligāts: ieraksta smaguma pakāpe, piemēram, info, warn vai error.",
+    "source — obligāts: kas radīja ierakstu, piemēram, backup.sh vai api-gateway.",
+    "message — obligāts: pati žurnāla rinda.",
+    "timestamp — nav obligāts: ISO 8601 datums-laiks; pēc noklusējuma pieprasījuma saņemšanas brīdis."
+  ],
+  "logsOutgoingWebhook": "Katrs jauns ieraksts izraisa arī izejošu LOG_CREATED notikumu — abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>.",
+  "alertsTitle": "Brīdinājumi",
+  "alertsCardDescription": "Kategorizēta brīdinājumu iesūtne, ko baro ienākošais webhook API.",
+  "alertsIntroP1": "Brīdinājumi glabā brīdinājumu notikumus, ko caur brīdinājumu webhook galapunktu ievada ārējas sistēmas, sakārtotus jūsu definētās kategorijās (piemēram, “Izvietošana”, “Drošība”) ar info/warning/error/critical smaguma pakāpi.",
+  "alertsIntroP2": "Ierakstus var meklēt un filtrēt pēc kategorijas un smaguma pakāpes, tāpēc varat noteikt prioritātes, kam nepieciešama uzmanība.",
+  "alertsSteps": [
+    "Noklikšķiniet “Jauna kategorija”, lai definētu brīdinājumu kategorijas ienākošo brīdinājumu klasificēšanai.",
+    "Novirziet ārēju sistēmu uz brīdinājumu webhook galapunktu ar nesēja tokenu, iekļaujot kategoriju, smaguma pakāpi, avotu un ziņojumu (skatiet piemēra pieprasījumu, kas parādīts, kad saraksts ir tukšs).",
+    "Izmantojiet meklēšanas lauku, Kategorijas filtru un Smaguma pakāpes filtru, lai sašaurinātu tabulu.",
+    "Izmantojiet kārtošanas vadīklu un Iepriekšējais/Nākamais, lai pāršķirtu rezultātus pa lappusēm.",
+    "Izmantojiet “Pārvaldīt kategorijas”, lai pārdēvētu vai dzēstu brīdinājumu kategorijas."
+  ],
+  "alertsWebhookIntro": "Brīdinājumi ienāk tāpat kā žurnāla ieraksti: API tokens no <tokens>Iestatījumi → Webhook</tokens> Authorization galvenē plus JSON POST. Kategorija tiek saskaņota pēc nosaukuma un izveidota automātiski, ja tāda vēl nepastāv, tāpēc pārraudzības sistēma var sūtīt savas etiķetes, tās iepriekš neiestatot. Pilns līgums ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "alertsWebhookFields": [
+    "category — obligāts: kategorijas nosaukums; izveidots automātiski, ja tādas kategorijas vēl nav.",
+    "severity — obligāts: info, warning, error vai critical.",
+    "source — obligāts: kas izraisīja brīdinājumu.",
+    "message — obligāts: brīdinājuma teksts.",
+    "timestamp — nav obligāts: ISO 8601 datums-laiks; pēc noklusējuma pieprasījuma saņemšanas brīdis."
+  ],
+  "alertsOutgoingWebhook": "Katrs brīdinājums izraisa arī izejošu ALERT_CREATED notikumu — abonējiet ārēju URL sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>.",
+  "contactsTitle": "Kontakti",
+  "contactsCardDescription": "Koplietota adrešu grāmata ar etiķetēm, importēšanu, eksportēšanu un dublikātu apvienošanu.",
+  "contactsIntroP1": "Kontakti ir darbvietas adrešu grāmata: viena rinda katrai personai vai organizācijai, katra satur tik daudz e-pastu, tālruņu numuru, adrešu, tērzēšanas kontu, datumu un saistīto personu, cik nepieciešams.",
+  "contactsIntroP2": "Tā lasa un raksta formātus, ko izmanto ikviena cita adrešu grāmata — vCard 2.1/3.0/4.0, Google CSV, Outlook CSV un Thunderbird LDIF — tāpēc grāmatas pārvietošana iekšā vai ārā ir viens fails, un tā atrod kontaktus, kas apraksta vienu un to pašu personu, lai tos varētu apvienot.",
+  "contactsSteps": [
+    "Noklikšķiniet “Jauns kontakts”, lai manuāli pievienotu personu; katrai informācijas rindai var būt sava etiķete.",
+    "Izmantojiet “Importēt”, lai ielādētu vCard, CSV vai LDIF failu, un izvēlieties, kas jādara, ja kontakts jau pastāv.",
+    "Meklējiet pēc vārda, e-pasta, tālruņa vai organizācijas; meklēšanas lauks atbilst arī tālruņa numuram, kas ierakstīts bez atstarpēm.",
+    "Izmantojiet “Pārvaldīt etiķetes”, lai izveidotu krāsainas etiķetes, tad piemērojiet tās no kontakta vai no saraksta atlases.",
+    "Atzīmējiet ar zvaigznīti tos, ar kuriem sazināties bieži, lai tie būtu redzami sadaļā “Atzīmētie”.",
+    "Atveriet “Apvienot dublikātus”, lai pārskatītu kontaktus, kuriem sakrīt adrese, numurs vai vārds, un apvienotu tos vienā.",
+    "Izmantojiet “Eksportēt”, lai izrakstītu pašreizējo filtru, pašreizējo atlasi vai visu grāmatu jebkurā atbalstītajā formātā."
+  ],
+  "contactsManagementApiIntro": "Kontaktus var lasīt un rakstīt arī ārēja sistēma vai AI asistents. Piešķiriet tokenam Kontaktu atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>: viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "contactsManagementApiFields": [
+    "contacts:read — uzskaitīt un lasīt kontaktus un etiķetes.",
+    "contacts:write — izveidot, atjaunināt un dzēst kontaktus, un importēt vCard."
+  ]
+}

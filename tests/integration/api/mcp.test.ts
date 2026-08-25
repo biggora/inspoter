@@ -154,7 +154,11 @@ beforeAll(async () => {
   revokedToken = revoked.token;
 
   const messageCategory = await db.messageCategory.create({
-    data: { workspaceId, name: `mcp-cat-${randomUUID()}`, normalizedName: randomUUID() },
+    data: {
+      workspaceId,
+      name: `mcp-cat-${randomUUID()}`,
+      normalizedName: randomUUID(),
+    },
   });
   messageCategoryId = messageCategory.id;
   const channel = await db.channel.create({

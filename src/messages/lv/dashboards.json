@@ -1,0 +1,259 @@
+{
+  "pageTitle": "Paneļi",
+  "count": "{count, plural, one {# panelis} other {# paneļi}}",
+  "newDashboardButton": "Jauns panelis",
+  "emptyTitle": "Vēl nav paneļu",
+  "emptyDescription": "Izveidojiet savu darbvietas pārskatu: pulkstenis, laikapstākļi, kalendārs un dati no jebkuras sadaļas — serveri, pasts, pakalpojumi.",
+  "createFirstButton": "Izveidot paneli",
+
+  "tabsLabel": "Paneļu saraksts",
+  "defaultBadge": "Sākuma lapa",
+  "editButton": "Rediģēt",
+  "editDoneButton": "Gatavs",
+  "addWidgetButton": "Pievienot logrīku",
+  "dashboardMenuLabel": "Paneļa darbības",
+  "renameAction": "Pārdēvēt",
+  "setDefaultAction": "Iestatīt kā sākuma lapu",
+  "deleteAction": "Dzēst",
+  "editHintDesktop": "Velciet logrīkus aiz to galvenes un mainiet izmēru, izmantojot rokturi apakšējā labajā stūrī.",
+  "editHintMobile": "Šaurā ekrānā logrīki tiek sakārtoti vienā kolonnā. Izkārtojumu var mainīt ekrānos, kas platāki par 640 pikseļiem.",
+  "emptyBoardTitle": "Šim panelim vēl nav logrīku",
+  "emptyBoardDescription": "Pievienojiet pirmo logrīku — pulksteni, laikapstākļus vai kopsavilkumu no jebkuras sadaļas.",
+  "addFirstWidgetButton": "Pievienot pirmo logrīku",
+  "updatedAt": "Atjaunināts {time}",
+
+  "createDialogTitle": "Jauns panelis",
+  "renameDialogTitle": "Pārdēvēt paneli",
+  "nameLabel": "Nosaukums",
+  "namePlaceholder": "Piemēram, Produkcija",
+  "nameRequiredError": "Ievadiet paneļa nosaukumu",
+  "saveButton": "Saglabāt",
+  "cancelButton": "Atcelt",
+  "deleteDialogTitle": "Dzēst paneli?",
+  "deleteDialogDescription": "Panelis “{name}” un visi tā logrīki tiks dzēsti. Sadaļu dati netiek ietekmēti.",
+  "deleteConfirmButton": "Dzēst",
+
+  "widgetPickerTitle": "Pievienot logrīku",
+  "widgetPickerDescription": "Izvēlieties, kas jārāda panelī.",
+  "widgetConfigTitle": "Iestatījumi: {widget}",
+  "widgetMenuLabel": "Logrīka darbības",
+  "configureAction": "Konfigurēt",
+  "removeWidgetAction": "Noņemt logrīku",
+  "dragHandleLabel": "Pārvietot logrīku “{widget}”",
+  "resizeHandleLabel": "Mainīt logrīka “{widget}” izmēru",
+  "widgetErrorTitle": "Dati nav pieejami",
+  "widgetLoadingLabel": "Notiek logrīka datu ielāde",
+  "viewSectionLink": "Atvērt sadaļu",
+
+  "titleLabel": "Pielāgots virsraksts",
+  "titlePlaceholder": "Atstājiet tukšu, lai izmantotu noklusējuma virsrakstu",
+  "limitLabel": "Cik ierakstus rādīt",
+
+  "justNow": "Tikko",
+  "minutesAgo": "pirms {count} min",
+  "hoursAgo": "pirms {count} h",
+  "daysAgo": "pirms {count} d",
+
+  "kinds": {
+    "CLOCK": {
+      "title": "Pulkstenis un datums",
+      "description": "Pašreizējais laiks un datums, pēc izvēles citā laika joslā."
+    },
+    "WEATHER": {
+      "title": "Laikapstākļi",
+      "description": "Pašreizējie laikapstākļi konkrētām koordinātām — dati no Open-Meteo."
+    },
+    "CALENDAR": {
+      "title": "Kalendārs",
+      "description": "Mēneša režģis, kas atzīmē dienas ar brīdinājumiem, incidentiem, pastu vai operatora darbībām."
+    },
+    "NOTE": {
+      "title": "Piezīme",
+      "description": "Brīvas formas teksts: kurš ir dežūrā, kontakti, atgādinājumi."
+    },
+    "BOOKMARKS": {
+      "title": "Grāmatzīmes",
+      "description": "Saišu kārtis no izvēlētas grāmatzīmju kategorijas."
+    },
+    "KANBAN": {
+      "title": "Kanban",
+      "description": "Kartītes no izvēlēta kanban dēļa vai kādas no tā kolonnām."
+    },
+    "SERVICE_STATUS": {
+      "title": "Pakalpojumu statuss",
+      "description": "Pārraudzības kopsavilkums: kas darbojas un kas nedarbojas."
+    },
+    "SERVER_METRICS": {
+      "title": "Servera metrikas",
+      "description": "CPU, atmiņas un diska izmantojums, ko ziņo metriku aģents."
+    },
+    "MAIL": {
+      "title": "Pasts",
+      "description": "Jaunākie ziņojumi, pēc izvēles tikai nelasītie."
+    },
+    "MESSAGES": {
+      "title": "Ziņojumi",
+      "description": "Jaunākie ziņojumi no visas kategorijas vai no izvēlētiem kanāliem."
+    },
+    "ALERTS": {
+      "title": "Brīdinājumi",
+      "description": "Jaunākie brīdinājumi, filtrēti pēc smaguma pakāpes."
+    },
+    "LOGS": {
+      "title": "Žurnāli",
+      "description": "Jaunākie žurnāla ieraksti, filtrēti pēc līmeņa."
+    }
+  },
+
+  "clock": {
+    "formatLabel": "Laika formāts",
+    "format24h": "24 stundu",
+    "format12h": "12 stundu",
+    "showSecondsLabel": "Rādīt sekundes",
+    "showDateLabel": "Rādīt datumu",
+    "timeZoneLabel": "Laika josla",
+    "timeZonePlaceholder": "Piemēram, Europe/Riga",
+    "timeZoneHint": "Atstājiet tukšu, lai izmantotu pārlūkprogrammas laika joslu."
+  },
+
+  "weather": {
+    "locationLabel": "Vietas nosaukums",
+    "locationPlaceholder": "Piemēram, Rīga",
+    "latitudeLabel": "Platums",
+    "longitudeLabel": "Garums",
+    "unitLabel": "Mērvienības",
+    "unitCelsius": "Celsijs",
+    "unitFahrenheit": "Fārenheits",
+    "feelsLike": "Sajūtu temperatūra {value}",
+    "wind": "Vējš {value} km/h",
+    "notConfigured": "Iestatiet koordinātas logrīka iestatījumos.",
+    "conditions": {
+      "clear": "Skaidrs",
+      "mainlyClear": "Pārsvarā skaidrs",
+      "partlyCloudy": "Daļēji apmācies",
+      "overcast": "Apmācies",
+      "fog": "Migla",
+      "drizzle": "Smidzina",
+      "freezingDrizzle": "Sasalstošs smidzinošs lietus",
+      "rain": "Lietus",
+      "freezingRain": "Sasalstošs lietus",
+      "snow": "Sniegs",
+      "snowGrains": "Sniega graudi",
+      "showers": "Lietusgāzes",
+      "snowShowers": "Sniega gāzes",
+      "thunderstorm": "Pērkona negaiss",
+      "thunderstormHail": "Pērkona negaiss ar krusu",
+      "unknown": "Nav datu"
+    }
+  },
+
+  "calendar": {
+    "sourcesLabel": "Notikumu avoti",
+    "sources": {
+      "alerts": "Brīdinājumi",
+      "serviceIncidents": "Pakalpojumu incidenti",
+      "mail": "Pasts",
+      "activity": "Aktivitāte"
+    },
+    "previousMonth": "Iepriekšējais mēnesis",
+    "nextMonth": "Nākamais mēnesis",
+    "today": "Šodien",
+    "dayEventsTitle": "Notikumi {date}",
+    "noEvents": "Šajā dienā nekas nenotika.",
+    "eventCount": "{count, plural, one {# notikums} other {# notikumi}}",
+    "openAlertsForDay": "Atvērt {count, plural, one {# brīdinājumu} other {# brīdinājumus}} no {date}",
+    "markedDayHint": "Iezīmētajās dienās ir darbvietas aktivitāte. Novietojiet kursoru vai fokusu uz dienu, lai redzētu detaļas.",
+    "truncatedNote": "Šajā mēnesī ir pārāk daudz notikumu — tiek rādīta daļa no tiem.",
+    "monthNavigationHint": "Kalendārs rāda pašreizējo mēnesi."
+  },
+
+  "note": {
+    "textLabel": "Piezīmes teksts",
+    "textPlaceholder": "Kurš šonedēļ ir dežūrā, kontakti, lietas, kas jāatceras…",
+    "empty": "Šī piezīme ir tukša — atveriet logrīka iestatījumus un pievienojiet tekstu."
+  },
+
+  "bookmarks": {
+    "categoryLabel": "Kategorija",
+    "allCategoriesOption": "Visas kategorijas",
+    "empty": "Izvēlētajā kategorijā nav grāmatzīmju.",
+    "moreCount": "un vēl {count}"
+  },
+
+  "kanban": {
+    "boardLabel": "Dēlis",
+    "noBoardOption": "Dēlis nav izvēlēts",
+    "columnLabel": "Kolonna",
+    "allColumnsOption": "Visas kolonnas",
+    "noBoard": "Atveriet logrīka iestatījumus un izvēlieties dēli.",
+    "empty": "Izvēlētajā dēlī nav kartīšu.",
+    "moreCount": "un vēl {count}"
+  },
+
+  "serviceStatus": {
+    "servicesLabel": "Pakalpojumi",
+    "allServicesOption": "Visi pakalpojumi",
+    "summaryUp": "Darbojas: {count}",
+    "summaryDown": "Nedarbojas: {count}",
+    "summaryPending": "Gaida: {count}",
+    "empty": "Vēl neviens pakalpojums netiek pārraudzīts.",
+    "responseTime": "{value} ms",
+    "moreCount": "un vēl {count}"
+  },
+
+  "serverMetrics": {
+    "serversLabel": "Serveri",
+    "allServersHint": "Nekas nav izvēlēts — tiek rādīti visi serveri.",
+    "cpuLabel": "CPU",
+    "memoryLabel": "Atmiņa",
+    "diskLabel": "Disks",
+    "loadLabel": "Slodze",
+    "empty": "Vēl nav pievienots neviens serveris.",
+    "noMetrics": "Metriku aģents nav pievienots.",
+    "staleMetrics": "Šie dati ir novecojuši.",
+    "moreCount": "un vēl {count}"
+  },
+
+  "mail": {
+    "accountLabel": "Pasta kastīte",
+    "allAccountsOption": "Visas pasta kastītes",
+    "unreadOnlyLabel": "Tikai nelasītie",
+    "noSubject": "Bez tēmas",
+    "accountAriaLabel": "Pasta kastīte: {account}",
+    "empty": "Vēl nav pasta."
+  },
+
+  "messages": {
+    "categoryLabel": "Kategorija",
+    "allCategoriesOption": "Visas kategorijas",
+    "channelsLabel": "Kanāli",
+    "allChannelsHint": "Nekas nav izvēlēts — tiek rādīti visi kategorijas kanāli.",
+    "unreadOnlyLabel": "Tikai nelasītie",
+    "unknownAuthor": "Nezināms autors",
+    "noContent": "Bez teksta",
+    "empty": "Izvēlētajos kanālos vēl nav ziņojumu."
+  },
+
+  "alerts": {
+    "severitiesLabel": "Smaguma pakāpes",
+    "allSeveritiesHint": "Nekas nav izvēlēts — tiek rādītas visas smaguma pakāpes.",
+    "empty": "Vēl nav brīdinājumu."
+  },
+
+  "logs": {
+    "levelsLabel": "Līmeņi",
+    "allLevelsHint": "Nekas nav izvēlēts — tiek rādīti visi līmeņi.",
+    "empty": "Vēl nav žurnāla ierakstu."
+  },
+
+  "createError": "Neizdevās izveidot paneli.",
+  "renameError": "Neizdevās pārdēvēt paneli.",
+  "setDefaultError": "Neizdevās iestatīt šo paneli kā sākuma lapu.",
+  "deleteError": "Neizdevās dzēst paneli.",
+  "layoutError": "Neizdevās saglabāt izkārtojumu.",
+  "widgetAddError": "Neizdevās pievienot logrīku.",
+  "widgetSaveError": "Neizdevās saglabāt logrīka iestatījumus.",
+  "widgetRemoveError": "Neizdevās noņemt logrīku.",
+  "dataRefreshError": "Neizdevās atjaunināt logrīka datus.",
+  "setDefaultSuccess": "Šis panelis tagad ir sākuma lapa."
+}

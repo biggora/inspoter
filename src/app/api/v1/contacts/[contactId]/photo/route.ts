@@ -9,10 +9,7 @@ import {
 } from "@/lib/api/token-auth";
 import { env } from "@/lib/config/env";
 import { mapContactApiError } from "@/app/api/v1/contacts/errors";
-import {
-  MultipartTooLargeError,
-  readMultipart,
-} from "@/lib/http/multipart";
+import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
 
 // Photos are stored as bytes on the contact row, so they are served from here
 // rather than from /public. Only these types are accepted or returned: an SVG

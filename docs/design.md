@@ -1,9 +1,9 @@
 # Design Specification — inspoter
 
-**Version:** v2.23
-**Status:** Dashboard messages widget specified and implemented
+**Version:** v2.24
+**Status:** Latvian added as a third operator-selectable UI locale
 **Owner:** UI/UX Designer
-**Date:** 2026-08-06
+**Date:** 2026-08-25
 **Source of truth for:** frontend implementor and test engineer
 **Consumes:** docs/prd.md v3.18, docs/architecture.md v1.19, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
@@ -25,7 +25,7 @@ Unexplained divergence is not allowed. If an implementation constraint prevents 
 
 ### 0.1 Binding exceptions to the Q-3 inputs
 
-- Q-1 (superseded by v2.10): Russian remains fully supported, but English is now the default UI locale, and both are operator-selectable via a top-bar language switcher (§4.2), next to the theme switcher and operator menu. The finite non-translatable allowlist in §3 still applies to both supported languages. See the Changelog for the activation decision.
+- Q-1 (superseded by v2.10, further superseded by v2.24): English is the default UI locale; Russian and Latvian remain fully supported, and all three are operator-selectable via a top-bar language switcher (§4.2), next to the theme switcher and operator menu. The finite non-translatable allowlist in §3 still applies to all three supported languages. See the Changelog for the activation decisions.
 - Q-2 (superseded by v2.2): light theme remains the default experience, but dark theme and a manual theme switcher are now in scope. The switcher lives in the shared shell top bar (§4.2), next to the operator menu; theme selection is class-based (`.dark` on `<html>`) and persists per browser. See Appendix A for the token source and the Changelog for the activation decision.
 - Q-4: Messages includes a real authenticated-operator compose flow; the read-only legacy statement is superseded.
 - Q-5 (superseded by Q-14, 2026-07-18): Mail is a full multi-account IMAP/SMTP client — three-pane layout, folders, read/unread, delete/archive, attachments, and plain-text compose/reply/forward (§5.4). Rich-text compose, attachment forwarding, and OAuth remain excluded.
@@ -171,7 +171,7 @@ Binding acceptance follows NFR-A11Y-001: Login, Shell, and Bookmarks meet WCAG 2
 
 ## 3. Russian visible-copy contract
 
-The complete allowlist of operator-visible non-translated terms — unchanged regardless of the active English or Russian locale (§0.1 Q-1) — is exactly: inspoter, Cloudflare, Hetzner Cloud, Hetzner DNS, GoDaddy, DNS, VPS, IP, URL, TTL, HTTP, HTTPS, API, JSON.
+The complete allowlist of operator-visible non-translated terms — unchanged regardless of the active English, Russian, or Latvian locale (§0.1 Q-1) — is exactly: inspoter, Cloudflare, Hetzner Cloud, Hetzner DNS, GoDaddy, DNS, VPS, IP, URL, TTL, HTTP, HTTPS, API, JSON.
 
 Technical identifiers, environment-variable names, and API snippets are exempt only when presented as code or monospace. Every other visible navigation label, heading, button, field label, placeholder, validation message, loading state, empty state, error, toast, tooltip, dialog, status, date label, and pagination label is Russian.
 
@@ -445,9 +445,10 @@ Colour never carries a series alone: each is named in a legend with «мин · 
 All label/rule names supplied by operators remain verbatim content. Every UI
 label, description, validation message, empty/loading state, conflict/error code
 message, success announcement, `+N` accessible expansion, and picker/dialog
-instruction is localized in both `src/messages/en/mail.json` and
-`src/messages/ru/mail.json`. English remains default; changing locale does not
-change matching semantics or stored operator content.
+instruction is localized in `src/messages/en/mail.json`,
+`src/messages/ru/mail.json`, and `src/messages/lv/mail.json`. English remains
+default; changing locale does not change matching semantics or stored operator
+content.
 
 At 375px, 420px, and 1440px, sidebar/sheet, list, reading pane, picker, and rule
 dialog remain reachable without horizontal body scrolling. Tab order follows
@@ -574,6 +575,16 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.24 — 2026-08-25 (Latvian added as a third UI locale)
+
+- Added Latvian (`lv`) as a third operator-selectable UI locale via the
+  existing language switcher; all 25 message namespaces translated. Updates
+  §0.1 Q-1, §3's allowlist scope, and §5.4.3's mail localization contract to
+  cover all three locales.
+- No layout, flow, or component changes: the switcher (§4.2) and its
+  no-full-page-reload behavior are unchanged, and English remains the default
+  locale.
 
 ### v2.23 — 2026-08-06 (messages widget on dashboards)
 

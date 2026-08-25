@@ -57,7 +57,7 @@ export const alertTools: McpToolDefinition[] = [
     scope: "alerts:write",
     title: "Set an alert's category",
     description:
-      "Assign an alert to a category, or pass a null categoryId to clear it. Use alert_categories_list for valid ids; alerts_search with categoryId \"none\" finds the uncategorized ones. Recorded as a model-made assignment.",
+      'Assign an alert to a category, or pass a null categoryId to clear it. Use alert_categories_list for valid ids; alerts_search with categoryId "none" finds the uncategorized ones. Recorded as a model-made assignment.',
     inputSchema: z.object({
       id: z.string(),
       categoryId: z

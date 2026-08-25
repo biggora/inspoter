@@ -20,7 +20,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    return jsonResponse(await messagesService.markChannelRead(workspace.id, id));
+    return jsonResponse(
+      await messagesService.markChannelRead(workspace.id, id),
+    );
   } catch (error) {
     return toErrorResponse(error, workspace.id);
   }

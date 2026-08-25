@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Request } from "@playwright/test";
 
 import { expect, test } from "./fixtures/test";
@@ -10,14 +9,11 @@ import { login } from "./utils/auth";
 // reference documents, and scripts/check-public-openapi.mjs is the one place
 // that pins which paths and methods may appear in it. Reading the spec here
 // keeps this assertion honest without making every new route a three-file edit.
+// Resolved from the working directory (the repository root, where
+// playwright.config.ts lives) because specs are transpiled to CommonJS here,
+// which makes `import.meta.url` a load-time SyntaxError.
 const spec = JSON.parse(
-  fs.readFileSync(
-    path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "../specs/openapi.json",
-    ),
-    "utf8",
-  ),
+  fs.readFileSync(path.resolve(process.cwd(), "specs/openapi.json"), "utf8"),
 ) as { paths: Record<string, Record<string, unknown>> };
 const expectedOperations: Record<string, string[]> = Object.fromEntries(
   Object.entries(spec.paths).map(([name, item]) => [
@@ -132,6 +128,23 @@ test("authenticated operator opens the documented Swagger reference without exte
 
   page.off("request", recordExternalRequest);
   expect(externalRequests).toEqual([]);
+});
+
+test("Swagger reference does not nest a second main landmark", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto(API_DOCS_PATH);
+
+  await expect(page.locator(".swagger-ui")).toBeVisible();
+  // The vendored bundle emits <main id="operations">; the component swaps it
+  // for a div with the same id so deep links keep working. Waiting on the
+  // #operations element itself (any tag) first keeps this stable while the
+  // asynchronous initial render — and the swap that follows it — settle.
+  await expect(page.locator(".swagger-ui #operations")).toBeVisible();
+  await expect(page.locator("main#operations")).toHaveCount(0);
+  await expect(page.locator(".swagger-ui div#operations")).toHaveCount(1);
+  await expect(page.getByRole("main")).toHaveCount(1);
 });
 
 test("Try It Out sends only synthetic explicit auth and does not persist it", async ({

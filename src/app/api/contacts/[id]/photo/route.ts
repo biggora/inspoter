@@ -6,10 +6,7 @@ import { mapContactError } from "@/app/api/contacts/errors";
 import { env } from "@/lib/config/env";
 import * as contactsService from "@/lib/services/contacts";
 import { recordActivity } from "@/lib/services/activity";
-import {
-  MultipartTooLargeError,
-  readMultipart,
-} from "@/lib/http/multipart";
+import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -73,7 +70,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
   } catch (error) {
     if (error instanceof MultipartTooLargeError) {
-      return jsonResponse({ error: "CONTACT_PHOTO_TOO_LARGE" }, { status: 413 });
+      return jsonResponse(
+        { error: "CONTACT_PHOTO_TOO_LARGE" },
+        { status: 413 },
+      );
     }
     return jsonResponse({ error: "CONTACT_PHOTO_INVALID" }, { status: 400 });
   }

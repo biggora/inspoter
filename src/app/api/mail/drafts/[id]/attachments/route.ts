@@ -9,10 +9,7 @@ import {
   MailDraftAttachmentTooLargeError,
   uploadMailDraftAttachment,
 } from "@/lib/services/mail-drafts";
-import {
-  MultipartTooLargeError,
-  readMultipart,
-} from "@/lib/http/multipart";
+import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
 
 interface RouteContext {
   params: Promise<{ id: string }>;

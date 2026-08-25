@@ -10,6 +10,7 @@
   "noCategoriesDescription": "Создайте категорию и канал, чтобы начать общение.",
   "openChannelsButton": "Открыть каналы",
   "channelsSheetTitle": "Категории и каналы",
+  "timelineRegion": "Лента сообщений",
   "composerLabel": "Сообщение в канале #{channelName}",
   "composerPlaceholder": "Написать в #{channelName}...",
   "sendButtonLabel": "Отправить сообщение",

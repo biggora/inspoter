@@ -36,7 +36,12 @@ export function createSnapshotsMemoryMock(
     readSnapshots: vi.fn(async (_workspaceId: string, kind: string) =>
       [...store.entries()]
         .filter(([entryKey]) => entryKey.endsWith(`:${kind}`))
-        .map(([, row]) => ({ ...row, kind, error: null, fetchedAt: new Date() })),
+        .map(([, row]) => ({
+          ...row,
+          kind,
+          error: null,
+          fetchedAt: new Date(),
+        })),
     ),
     readCachedListing: vi.fn(
       async (

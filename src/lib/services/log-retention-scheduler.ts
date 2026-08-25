@@ -40,9 +40,7 @@ async function tick(): Promise<void> {
 }
 
 export function startLogRetentionScheduler(): void {
-  if (
-    globalForLogRetentionScheduler.__inspoterLogRetentionSchedulerStarted
-  )
+  if (globalForLogRetentionScheduler.__inspoterLogRetentionSchedulerStarted)
     return;
   globalForLogRetentionScheduler.__inspoterLogRetentionSchedulerStarted = true;
 

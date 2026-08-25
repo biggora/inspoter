@@ -12,10 +12,7 @@ import {
 } from "vitest";
 
 import { useWebMcpTool } from "@/hooks/use-web-mcp-tool";
-import type {
-  WebMcpTool,
-  WebMcpToolResult,
-} from "@/lib/web-mcp/define-tool";
+import type { WebMcpTool, WebMcpToolResult } from "@/lib/web-mcp/define-tool";
 import {
   expectToolJson,
   installMockModelContext,
@@ -204,9 +201,7 @@ describe("useWebMcpTool", () => {
           Promise.reject(new Error("registration refused")),
         );
 
-        expect(() =>
-          renderHook(() => useWebMcpTool(makeTool())),
-        ).not.toThrow();
+        expect(() => renderHook(() => useWebMcpTool(makeTool()))).not.toThrow();
 
         // Two turns of the event loop: enough for an uncaught rejection to
         // have been reported by now.

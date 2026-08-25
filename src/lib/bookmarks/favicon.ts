@@ -23,9 +23,7 @@ export async function suggestFavicon(url: string): Promise<string | null> {
       signal: AbortSignal.timeout(3000),
     });
     const contentType = response.headers.get("content-type");
-    return response.ok && contentType?.startsWith("image/")
-      ? suggestUrl
-      : null;
+    return response.ok && contentType?.startsWith("image/") ? suggestUrl : null;
   } catch {
     return null;
   }

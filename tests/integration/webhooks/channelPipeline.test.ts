@@ -37,7 +37,11 @@ beforeAll(async () => {
   });
   workspaceId = workspace.id;
   const category = await db.messageCategory.create({
-    data: { workspaceId, name: `${PREFIX}-category`, normalizedName: randomUUID() },
+    data: {
+      workspaceId,
+      name: `${PREFIX}-category`,
+      normalizedName: randomUUID(),
+    },
   });
   const channel = await db.channel.create({
     data: {

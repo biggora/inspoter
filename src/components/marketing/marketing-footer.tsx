@@ -1,8 +1,11 @@
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Icon } from "@/components/ui/icon";
 import { InspoterIcon } from "@/components/ui/inspoter-logo";
 
-export function MarketingFooter() {
+export async function MarketingFooter() {
+  const t = await getTranslations("marketing");
+
   return (
     <footer className="border-t border-foreground-800/20 px-6 py-8">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
@@ -13,7 +16,7 @@ export function MarketingFooter() {
             <span className="text-[#e60000]">Spoter</span>
           </span>
           <span className="text-xs text-foreground-500">
-            Infrastructure Dashboard
+            {t("footer.tagline")}
           </span>
         </div>
 
@@ -31,7 +34,7 @@ export function MarketingFooter() {
             href="/login"
             className="transition-colors hover:text-foreground-200"
           >
-            Log In
+            {t("footer.logIn")}
           </Link>
         </div>
       </div>

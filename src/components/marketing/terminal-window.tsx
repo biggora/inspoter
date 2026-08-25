@@ -1,7 +1,8 @@
+import { getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
 
-export function TerminalWindow({
-  title = "Terminal",
+export async function TerminalWindow({
+  title,
   children,
   className,
 }: {
@@ -9,6 +10,9 @@ export function TerminalWindow({
   children: React.ReactNode;
   className?: string;
 }) {
+  const t = await getTranslations("marketing");
+  const resolvedTitle = title ?? t("terminal.defaultTitle");
+
   return (
     <div
       className={cn(
@@ -21,7 +25,7 @@ export function TerminalWindow({
         <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
         <span className="h-3 w-3 rounded-full bg-[#28c840]" />
         <span className="flex-1 text-center font-mono text-xs text-foreground-500">
-          {title}
+          {resolvedTitle}
         </span>
       </div>
       <div className="p-4 font-mono text-sm text-foreground-300">

@@ -205,13 +205,11 @@ describe("DISCORD_EXECUTE delivery", () => {
     const { claimed } = await makeClaimable("DISCORD_EXECUTE");
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ retry_after: 42, global: false }), {
-            status: 429,
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ retry_after: 42, global: false }), {
+          status: 429,
+        }),
+      ),
     );
 
     const before = Date.now();

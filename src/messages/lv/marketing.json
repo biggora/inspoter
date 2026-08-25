@@ -1,0 +1,165 @@
+{
+  "hero": {
+    "badge": "Atvērtā koda infrastruktūras pārvaldības panelis",
+    "headlineStart": "Jūsu infrastruktūra.",
+    "headlineHighlight": "Viens panelis.",
+    "subtitle": "Pašizvietots komandcentrs domēniem, serveriem, hostingam, pieejamības uzraudzībai, e-pastam un daudz kam citam. Atvērtais kods un bez maksas uz visiem laikiem.",
+    "getStarted": "Sākt",
+    "viewOnGithub": "Apskatīt GitHub",
+    "terminalReady": "✓ Inspoter darbojas adresnē http://localhost:3000"
+  },
+  "features": {
+    "title": "Viss, kas nepieciešams",
+    "subtitle": "Deviņi moduļi. Viens panelis. Nekādas konteksta pārslēgšanas.",
+    "items": {
+      "bookmarks": {
+        "title": "Grāmatzīmes",
+        "description": "Grāmatzīmju dēlis ar vilkšanu un nolikšanu, sakārtots kategorijās. Ātra piekļuve visiem jūsu resursiem."
+      },
+      "domains": {
+        "title": "Domēni un DNS",
+        "description": "Pārvaldiet DNS ierakstus Cloudflare, Hetzner un GoDaddy no viena interfeisa."
+      },
+      "servers": {
+        "title": "Serveri",
+        "description": "Uzraugiet VPS parku ar CPU, RAM un diska metrikiem reāllaikā. Startēšana, apturēšana un restartēšana ar vienu klikšķi. Viegls Python aģents detalizētai uzraudzībai."
+      },
+      "hosting": {
+        "title": "Hostings",
+        "description": "Vienots skats uz cPanel un Hostinger kontiem. Disks, josla, datubāzes un konta statuss."
+      },
+      "uptime": {
+        "title": "Pieejamības uzraudzība",
+        "description": "HTTP, TCP un Ping monitori ar pulsa vizualizāciju. Tūlītēji brīdinājumi, kad pakalpojumi nedarbojas. Konfigurējami intervāli un atkārtoti mēģinājumi."
+      },
+      "mail": {
+        "title": "E-pasts",
+        "description": "Pilnvērtīgs trīspanelu IMAP pasta klients, iebūvēts tieši panelī. Rakstīšana, atbildēšana, pārsūtīšana, mapju pārvaldība — ne tikai paziņojumi, bet īsts pasta klients."
+      },
+      "messages": {
+        "title": "Ziņojumi",
+        "description": "Slack stilā kanāli, sakārtoti kategorijās. Saņemiet webhook ziņojumus līdzās komandas saziņai."
+      },
+      "logs": {
+        "title": "Žurnāli",
+        "description": "Centralizēts žurnālu skatītājs ar filtrēšanu pēc smaguma. Meklējiet, kārtojiet un lapojiet savas infrastruktūras žurnālus."
+      },
+      "alerts": {
+        "title": "Brīdinājumi",
+        "description": "Brīdinājumu pārvaldība ar smaguma pakāpēm un kategorijām. Nepalaidiet garām nevienu kritisku infrastruktūras notikumu."
+      }
+    }
+  },
+  "deepDive": {
+    "providers": {
+      "title": "Vairāki pakalpojumu sniedzēji",
+      "headline": "Visi jūsu pakalpojumu sniedzēji vienā interfeisā",
+      "description": "Vairs nav jālēkā starp Cloudflare, Hetzner, GoDaddy, cPanel un Hostinger paneļiem. Inspoter apvieno tos vienotā skatā.",
+      "bullets": [
+        "DNS pārvaldība Cloudflare, Hetzner DNS un GoDaddy",
+        "Hetzner Cloud serveru vadība, tostarp barošanas darbības",
+        "Hostinga konti no cPanel WHM un Hostinger",
+        "Šifrēta akreditācijas datu glabāšana ar AES-256-GCM"
+      ],
+      "moreSoon": "Drīz vairāk"
+    },
+    "mail": {
+      "title": "Iebūvēts e-pasts",
+      "headline": "Īsts pasta klients, ne tikai paziņojumi",
+      "description": "Inspoter ietver pilnvērtīgu trīspanelu IMAP pasta klientu. Lasiet, rakstiet, atbildiet, pārsūtiet un pārvaldiet mapes, nepametot paneli.",
+      "bullets": [
+        "Vairāku kontu IMAP atbalsts ar pārvietošanos starp mapēm",
+        "Rakstīšana, atbildēšana un pārsūtīšana, sūtot caur SMTP",
+        "Pielikumu atbalsts ar atliktu iegūšanu no IMAP",
+        "Webhook pastkaste automatizētiem ienākošajiem ziņojumiem"
+      ],
+      "folders": ["Iesūtne", "Nosūtītie", "Melnraksti", "Miskaste"],
+      "demo": {
+        "build": {
+          "subject": "Būvējums #847 sekmīgs",
+          "time": "pirms 2 min"
+        },
+        "recovered": {
+          "subject": "Serveris us-east-1 atjaunots",
+          "time": "pirms 1 st"
+        },
+        "review": {
+          "subject": "Nedēļas infrastruktūras pārskats",
+          "time": "pirms 3 st"
+        }
+      }
+    },
+    "monitoring": {
+      "title": "Serveru uzraudzība",
+      "headline": "Metrikas reāllaikā no katra servera",
+      "description": "Izvietojiet vieglu Python aģentu ar Docker un saņemiet tūlītējas CPU, atmiņas, diska un slodzes metrikas, kas tiek straumētas uz jūsu paneli.",
+      "bullets": [
+        "CPU, RAM, swap, diska un vidējās slodzes uzraudzība",
+        "Viegls Docker aģents — izvietošana ar vienu komandu",
+        "Reģistrācija ar pilnvarām un dzīves cikla pārvaldība",
+        "Darbojas līdzās pakalpojumu sniedzēju serveru datiem"
+      ],
+      "metrics": {
+        "cpu": "CPU",
+        "memory": "Atmiņa",
+        "disk": "Disks",
+        "load": "Slodze"
+      },
+      "terminalTitle": "Aģenta izvietošana"
+    }
+  },
+  "deploy": {
+    "title": "Izvietošana dažās minūtēs",
+    "subtitle": "Trīs komandas. Tas arī viss.",
+    "comments": {
+      "clone": "# Klonējam repozitoriju",
+      "configure": "# Konfigurējam vidi",
+      "start": "# Startējam visu"
+    },
+    "steps": {
+      "clone": {
+        "title": "Klonēšana",
+        "description": "Novietojiet repozitoriju savā serverī"
+      },
+      "configure": {
+        "title": "Konfigurēšana",
+        "description": "Iestatiet datubāzes URL un noslēpumus .env failā"
+      },
+      "run": {
+        "title": "Palaišana",
+        "description": "Docker Compose palaiž visu"
+      }
+    }
+  },
+  "highlights": {
+    "workspaces": {
+      "title": "Darbtelpas",
+      "description": "Vairāku nomnieku izolācija. Katrai komandai sava darbtelpa ar pielāgojamu sadaļu redzamību."
+    },
+    "encryption": {
+      "title": "Šifrēti akreditācijas dati",
+      "description": "AES-256-GCM šifrēšana visām pakalpojumu sniedzēju API atslēgām un parolēm miera stāvoklī."
+    },
+    "webhooks": {
+      "title": "Ienākošie un izejošie webhook",
+      "description": "Uzņemiet notikumus no jebkura pakalpojuma. Sūtiet brīdinājumus un statusa izmaiņas uz ārējiem galapunktiem."
+    },
+    "sso": {
+      "title": "Gatavs SSO",
+      "description": "Authentik OIDC integrācija līdzās parastai autentifikācijai ar paroli."
+    }
+  },
+  "community": {
+    "tag": "Atvērtais kods",
+    "title": "Jūsu dati paliek jūsu",
+    "description": "Inspoter ir atvērtā koda risinājums pašizvietošanai. Nekādas atkarības no piegādātāja, dati nepamet jūsu infrastruktūru un negaidītu rēķinu nav.",
+    "starOnGithub": "Atzīmēt ar zvaigzni GitHub"
+  },
+  "footer": {
+    "tagline": "Infrastruktūras pārvaldības panelis",
+    "logIn": "Pierakstīties"
+  },
+  "terminal": {
+    "defaultTitle": "Terminālis"
+  }
+}

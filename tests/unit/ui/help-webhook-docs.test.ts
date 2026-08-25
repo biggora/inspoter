@@ -4,6 +4,7 @@ import { HELP_ARTICLES } from "@/components/help/help-articles";
 import { SUPPORTED_TYPES } from "@/lib/validation/webhooks";
 import enHelp from "@/messages/en/help.json";
 import ruHelp from "@/messages/ru/help.json";
+import lvHelp from "@/messages/lv/help.json";
 
 // The webhook block of a Help article is half data (endpoint + sample, in
 // help-articles.ts) and half prose (intro + field list, in help.json). Nothing
@@ -13,6 +14,7 @@ import ruHelp from "@/messages/ru/help.json";
 const locales = [
   ["en", enHelp as Record<string, unknown>],
   ["ru", ruHelp as Record<string, unknown>],
+  ["lv", lvHelp as Record<string, unknown>],
 ] as const;
 
 const withWebhook = HELP_ARTICLES.filter((article) => article.webhook);

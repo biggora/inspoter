@@ -103,7 +103,9 @@ function PaginationNext({
       className={cn("pr-1.5!", className)}
       {...props}
     >
-      <span className="block max-sm:hidden">{text ?? t("paginationNextText")}</span>
+      <span className="block max-sm:hidden">
+        {text ?? t("paginationNextText")}
+      </span>
       <Icon name="ri-arrow-right-s-line" data-icon="inline-end" />
     </PaginationLink>
   );

@@ -22,6 +22,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 const LOCALE_LABELS: Record<string, string> = {
   en: "English",
   ru: "Русский",
+  lv: "Latviešu",
 };
 
 // Top-bar language switcher (sibling of ThemeToggle/OperatorMenu in

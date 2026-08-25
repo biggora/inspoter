@@ -1,0 +1,165 @@
+{
+  "hero": {
+    "badge": "Open Source Infrastructure Dashboard",
+    "headlineStart": "Your Infrastructure.",
+    "headlineHighlight": "One Dashboard.",
+    "subtitle": "Self-hosted command center for domains, servers, hosting, uptime monitoring, email, and more. Open source and free forever.",
+    "getStarted": "Get Started",
+    "viewOnGithub": "View on GitHub",
+    "terminalReady": "✓ Inspoter is running at http://localhost:3000"
+  },
+  "features": {
+    "title": "Everything You Need",
+    "subtitle": "Nine modules. One dashboard. Zero context-switching.",
+    "items": {
+      "bookmarks": {
+        "title": "Bookmarks",
+        "description": "Drag-and-drop bookmark board organized into categories. Quick access to all your resources."
+      },
+      "domains": {
+        "title": "Domains & DNS",
+        "description": "Manage DNS records across Cloudflare, Hetzner, and GoDaddy from a single interface."
+      },
+      "servers": {
+        "title": "Servers",
+        "description": "Monitor your VPS fleet with real-time CPU, RAM, and disk metrics. Start, stop, and restart with one click. Lightweight Python agent for detailed monitoring."
+      },
+      "hosting": {
+        "title": "Hosting",
+        "description": "Unified view of cPanel and Hostinger accounts. Track disk usage, bandwidth, databases, and account status."
+      },
+      "uptime": {
+        "title": "Uptime Monitoring",
+        "description": "HTTP, TCP, and Ping monitors with heartbeat visualization. Instant alerts when services go down. Configurable intervals and retries."
+      },
+      "mail": {
+        "title": "Mail",
+        "description": "Full three-pane IMAP mail client built right in. Compose, reply, forward, manage folders — not just notifications, a real mail client."
+      },
+      "messages": {
+        "title": "Messages",
+        "description": "Slack-like channels organized by categories. Receive webhook messages alongside team communication."
+      },
+      "logs": {
+        "title": "Logs",
+        "description": "Centralized log viewer with severity filtering. Search, sort, and paginate through your infrastructure logs."
+      },
+      "alerts": {
+        "title": "Alerts",
+        "description": "Alert management with severity levels and categories. Never miss a critical infrastructure event."
+      }
+    }
+  },
+  "deepDive": {
+    "providers": {
+      "title": "Multi-Provider",
+      "headline": "All Your Providers, One Interface",
+      "description": "Stop juggling Cloudflare, Hetzner, GoDaddy, cPanel, and Hostinger dashboards. Inspoter aggregates them into a single, unified view.",
+      "bullets": [
+        "DNS management across Cloudflare, Hetzner DNS, and GoDaddy",
+        "Server control for Hetzner Cloud with power actions",
+        "Hosting accounts from cPanel WHM and Hostinger",
+        "Encrypted credential storage with AES-256-GCM"
+      ],
+      "moreSoon": "More soon"
+    },
+    "mail": {
+      "title": "Built-in Mail",
+      "headline": "A Real Mail Client, Not Just Notifications",
+      "description": "Inspoter includes a full three-pane IMAP mail client. Read, compose, reply, forward, manage folders — all without leaving the dashboard.",
+      "bullets": [
+        "Multi-account IMAP support with folder navigation",
+        "Compose, reply, and forward with SMTP sending",
+        "Attachment support with lazy IMAP fetch",
+        "Webhook mailbox for automated inbound messages"
+      ],
+      "folders": ["Inbox", "Sent", "Drafts", "Trash"],
+      "demo": {
+        "build": {
+          "subject": "Build #847 passed",
+          "time": "2m ago"
+        },
+        "recovered": {
+          "subject": "Server us-east-1 recovered",
+          "time": "1h ago"
+        },
+        "review": {
+          "subject": "Weekly infrastructure review",
+          "time": "3h ago"
+        }
+      }
+    },
+    "monitoring": {
+      "title": "Server Monitoring",
+      "headline": "Real-Time Metrics from Every Server",
+      "description": "Deploy a lightweight Python agent via Docker and get instant CPU, memory, disk, and load metrics streamed to your dashboard.",
+      "bullets": [
+        "CPU, RAM, swap, disk, and load average monitoring",
+        "Lightweight Docker agent — one command to deploy",
+        "Token-based enrollment with lifecycle management",
+        "Works alongside provider-reported server data"
+      ],
+      "metrics": {
+        "cpu": "CPU",
+        "memory": "Memory",
+        "disk": "Disk",
+        "load": "Load"
+      },
+      "terminalTitle": "Deploy Agent"
+    }
+  },
+  "deploy": {
+    "title": "Deploy in Minutes",
+    "subtitle": "Three commands. That's it.",
+    "comments": {
+      "clone": "# Clone the repository",
+      "configure": "# Configure environment",
+      "start": "# Start everything"
+    },
+    "steps": {
+      "clone": {
+        "title": "Clone",
+        "description": "Pull the repository to your server"
+      },
+      "configure": {
+        "title": "Configure",
+        "description": "Set your database URL and secrets in .env"
+      },
+      "run": {
+        "title": "Deploy",
+        "description": "Docker Compose brings everything up"
+      }
+    }
+  },
+  "highlights": {
+    "workspaces": {
+      "title": "Workspaces",
+      "description": "Multi-tenant isolation. Each team gets their own workspace with custom section visibility."
+    },
+    "encryption": {
+      "title": "Encrypted Credentials",
+      "description": "AES-256-GCM encryption for all provider API keys and passwords at rest."
+    },
+    "webhooks": {
+      "title": "Webhooks In & Out",
+      "description": "Ingest events from any service. Push alerts and status changes to external endpoints."
+    },
+    "sso": {
+      "title": "SSO Ready",
+      "description": "Authentik OIDC integration alongside traditional password authentication."
+    }
+  },
+  "community": {
+    "tag": "Open Source",
+    "title": "Your Data Stays Yours",
+    "description": "Inspoter is open source and self-hosted. No vendor lock-in, no data leaving your infrastructure, no surprise bills.",
+    "starOnGithub": "Star on GitHub"
+  },
+  "footer": {
+    "tagline": "Infrastructure Dashboard",
+    "logIn": "Log In"
+  },
+  "terminal": {
+    "defaultTitle": "Terminal"
+  }
+}

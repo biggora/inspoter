@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Inspoter is a Next.js 16, React 19, TypeScript app for self-hosted infrastructure management. Main code lives in `src/`: routes in `src/app`, feature UI in `src/components`, shared logic in `src/lib`, hooks in `src/hooks`, i18n helpers in `src/i18n`, and messages in `src/messages/en` and `src/messages/ru`. Prisma schema, migrations, and seeds live in `prisma/`; generated Prisma client code under `src/generated` is not edited manually. Unit tests live in `tests/unit` (no external dependencies), DB-backed integration tests live in `tests/integration` (require the test Postgres on port 3833), Playwright tests in `e2e`, and static assets in `public`.
+Inspoter is a Next.js 16, React 19, TypeScript app for self-hosted infrastructure management. Main code lives in `src/`: routes in `src/app`, feature UI in `src/components`, shared logic in `src/lib`, hooks in `src/hooks`, i18n helpers in `src/i18n`, and messages in `src/messages/en`, `src/messages/ru`, and `src/messages/lv`. Prisma schema, migrations, and seeds live in `prisma/`; generated Prisma client code under `src/generated` is not edited manually. Unit tests live in `tests/unit` (no external dependencies), DB-backed integration tests live in `tests/integration` (require the test Postgres on port 3833), Playwright tests in `e2e`, and static assets in `public`.
 
 ## Build, Test, and Development Commands
 

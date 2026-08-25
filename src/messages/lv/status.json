@@ -1,0 +1,21 @@
+{
+  "up": "Aktīvs",
+  "down": "Nesasniedzams",
+  "stopped": "Apturēts",
+  "suspended": "Aizturēts",
+  "disabled": "Atspējots",
+  "revoked": "Atsaukts",
+  "pending": "Gaida",
+  "starting": "Startē…",
+  "stopping": "Aptur…",
+  "restarting": "Pārstartē…",
+  "syncing": "Sinhronizē…",
+  "inProgress": "Notiek",
+  "completed": "Pabeigts",
+  "error": "Kļūda",
+  "stale": "Novecojis",
+  "notConfigured": "Nav konfigurēts",
+  "notChecked": "Nav pārbaudīts",
+  "unknown": "Nezināms",
+  "system": "Sistēma"
+}

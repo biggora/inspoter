@@ -10,6 +10,7 @@
   "noCategoriesDescription": "Create a category and channel to start messaging.",
   "openChannelsButton": "Open channels",
   "channelsSheetTitle": "Categories and channels",
+  "timelineRegion": "Message timeline",
   "composerLabel": "Message in channel #{channelName}",
   "composerPlaceholder": "Message #{channelName}...",
   "sendButtonLabel": "Send message",

@@ -1,5 +1,5 @@
 
-x Добавить новый раздел хостинги, для мониторинга и управления хостингами с поддержкой API  
+[x] Добавить новый раздел хостинги, для мониторинга и управления хостингами с поддержкой API  
  * cPanel https://documentation.cpanel.net/display/DD/Guide+to+cPanel+API+2
  * Hostinger https://developers.hostinger.com/#description/introduction
 
@@ -55,7 +55,6 @@ curl -X POST http://your-host/api/webhooks/mail \
 
 
 http://atzinums.blogspot.com/
-
 
 Два замечания по решениям, которые стоит знать:
 

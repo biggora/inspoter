@@ -14,7 +14,11 @@ import type { WebMcpTool } from "@/lib/web-mcp/define-tool";
 import { expectToolError, expectToolJson } from "../web-mcp/test-utils";
 
 function makeCard(
-  overrides: Partial<KanbanCardDetail> & { id: string; title: string; columnId: string },
+  overrides: Partial<KanbanCardDetail> & {
+    id: string;
+    title: string;
+    columnId: string;
+  },
 ): KanbanCardDetail {
   return {
     boardId: "board-1",
@@ -147,15 +151,29 @@ describe("createKanbanTools", () => {
         .mockImplementation(async (id: string) =>
           id === "board-1" ? boardOne : boardTwo,
         ),
-      getCard: vi.fn().mockResolvedValue(
-        makeCard({ id: "card-1", title: "Fix login bug", columnId: "col-backlog" }),
-      ),
-      createCard: vi.fn().mockResolvedValue(
-        makeCard({ id: "card-new", title: "New card", columnId: "col-backlog" }),
-      ),
-      updateCard: vi.fn().mockResolvedValue(
-        makeCard({ id: "card-1", title: "Renamed", columnId: "col-backlog" }),
-      ),
+      getCard: vi
+        .fn()
+        .mockResolvedValue(
+          makeCard({
+            id: "card-1",
+            title: "Fix login bug",
+            columnId: "col-backlog",
+          }),
+        ),
+      createCard: vi
+        .fn()
+        .mockResolvedValue(
+          makeCard({
+            id: "card-new",
+            title: "New card",
+            columnId: "col-backlog",
+          }),
+        ),
+      updateCard: vi
+        .fn()
+        .mockResolvedValue(
+          makeCard({ id: "card-1", title: "Renamed", columnId: "col-backlog" }),
+        ),
       deleteCard: vi.fn().mockResolvedValue(undefined),
       moveCards: vi.fn().mockResolvedValue(undefined),
       setCardLabels: vi.fn().mockResolvedValue(
@@ -174,14 +192,29 @@ describe("createKanbanTools", () => {
       listChecklist: vi
         .fn()
         .mockResolvedValue([
-          { id: "item-1", text: "Write the migration", isDone: false, position: 0 },
+          {
+            id: "item-1",
+            text: "Write the migration",
+            isDone: false,
+            position: 0,
+          },
         ]),
       addChecklistItem: vi
         .fn()
-        .mockResolvedValue({ id: "item-2", text: "Ship it", isDone: false, position: 1 }),
+        .mockResolvedValue({
+          id: "item-2",
+          text: "Ship it",
+          isDone: false,
+          position: 1,
+        }),
       updateChecklistItem: vi
         .fn()
-        .mockResolvedValue({ id: "item-1", text: "Write the migration", isDone: true, position: 0 }),
+        .mockResolvedValue({
+          id: "item-1",
+          text: "Write the migration",
+          isDone: true,
+          position: 0,
+        }),
       listComments: vi.fn().mockResolvedValue([
         {
           id: "comment-1",
@@ -424,7 +457,9 @@ describe("createKanbanTools", () => {
       const tool = toolNamed(createKanbanTools(deps), "kanban_cards_search");
 
       const result = await tool.execute({ limit: 1 });
-      const payload = expectToolJson<{ total: number; cards: unknown[] }>(result);
+      const payload = expectToolJson<{ total: number; cards: unknown[] }>(
+        result,
+      );
 
       expect(payload.total).toBe(4);
       expect(payload.cards).toHaveLength(1);

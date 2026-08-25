@@ -32,11 +32,43 @@ interface SwaggerDocumentationProps {
   };
 }
 
+// The vendored bundle renders its operations list as <main id="operations">,
+// nesting a second main landmark inside the dashboard layout's own <main>.
+// No bundle option suppresses it, so the element is swapped for a plain div
+// that keeps the id (deep links target it) and every other attribute. The
+// initial render may complete after createSwaggerUI returns, hence the
+// observer; the swap itself is idempotent, and the caller disconnects the
+// observer on re-render and unmount.
+function normalizeOperationsLandmark(
+  container: HTMLElement,
+): MutationObserver | null {
+  const replaceMain = (): boolean => {
+    const main = container.querySelector("main#operations");
+    if (!main) return false;
+    const replacement = document.createElement("div");
+    for (const attribute of Array.from(main.attributes)) {
+      replacement.setAttribute(attribute.name, attribute.value);
+    }
+    replacement.append(...main.childNodes);
+    main.replaceWith(replacement);
+    return true;
+  };
+
+  if (replaceMain()) return null;
+
+  const observer = new MutationObserver(() => {
+    if (replaceMain()) observer.disconnect();
+  });
+  observer.observe(container, { childList: true, subtree: true });
+  return observer;
+}
+
 export function SwaggerDocumentation({
   spec,
   runtimeErrors,
 }: SwaggerDocumentationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const operationsObserver = useRef<MutationObserver | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -52,6 +84,8 @@ export function SwaggerDocumentation({
       return;
     }
 
+    operationsObserver.current?.disconnect();
+    operationsObserver.current = null;
     container.replaceChildren();
 
     try {
@@ -64,6 +98,7 @@ export function SwaggerDocumentation({
         validatorUrl: null,
         displayRequestDuration: true,
       });
+      operationsObserver.current = normalizeOperationsLandmark(container);
       setRuntimeStatus("ready");
       setErrorMessage(null);
     } catch {
@@ -81,6 +116,8 @@ export function SwaggerDocumentation({
     const container = containerRef.current;
 
     return () => {
+      operationsObserver.current?.disconnect();
+      operationsObserver.current = null;
       container?.replaceChildren();
     };
   }, []);

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { Icon } from "@/components/ui/icon";
 import { HeroSection } from "./hero-section";
 import { FeaturesGrid } from "./features-grid";
@@ -8,22 +9,20 @@ import { CommunitySection } from "./community-section";
 import { MarketingFooter } from "./marketing-footer";
 import { TerminalWindow } from "./terminal-window";
 
-export function MarketingHomePage() {
+export async function MarketingHomePage() {
+  const t = await getTranslations("marketing");
+  const mailFolders = t.raw("deepDive.mail.folders") as string[];
+
   return (
     <main className="marketing-force-dark min-h-screen bg-background-950 text-foreground-200">
       <HeroSection />
       <FeaturesGrid />
 
       <FeatureDeepDive
-        title="Multi-Provider"
-        headline="All Your Providers, One Interface"
-        description="Stop juggling Cloudflare, Hetzner, GoDaddy, cPanel, and Hostinger dashboards. Inspoter aggregates them into a single, unified view."
-        bullets={[
-          "DNS management across Cloudflare, Hetzner DNS, and GoDaddy",
-          "Server control for Hetzner Cloud with power actions",
-          "Hosting accounts from cPanel WHM and Hostinger",
-          "Encrypted credential storage with AES-256-GCM",
-        ]}
+        title={t("deepDive.providers.title")}
+        headline={t("deepDive.providers.headline")}
+        description={t("deepDive.providers.description")}
+        bullets={t.raw("deepDive.providers.bullets") as string[]}
         visual={
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
@@ -32,7 +31,10 @@ export function MarketingHomePage() {
               { icon: "ri-global-line", name: "GoDaddy" },
               { icon: "ri-terminal-box-line", name: "cPanel" },
               { icon: "ri-cloud-line", name: "Hostinger" },
-              { icon: "ri-add-circle-line", name: "More soon" },
+              {
+                icon: "ri-add-circle-line",
+                name: t("deepDive.providers.moreSoon"),
+              },
             ].map((p) => (
               <div
                 key={p.name}
@@ -47,26 +49,21 @@ export function MarketingHomePage() {
       />
 
       <FeatureDeepDive
-        title="Built-in Mail"
-        headline="A Real Mail Client, Not Just Notifications"
-        description="Inspoter includes a full three-pane IMAP mail client. Read, compose, reply, forward, manage folders — all without leaving the dashboard."
-        bullets={[
-          "Multi-account IMAP support with folder navigation",
-          "Compose, reply, and forward with SMTP sending",
-          "Attachment support with lazy IMAP fetch",
-          "Webhook mailbox for automated inbound messages",
-        ]}
+        title={t("deepDive.mail.title")}
+        headline={t("deepDive.mail.headline")}
+        description={t("deepDive.mail.description")}
+        bullets={t.raw("deepDive.mail.bullets") as string[]}
         reverse
         visual={
           <div className="rounded-xl border border-foreground-800/20 bg-background-900/60 p-4">
             <div className="flex gap-3">
               <div className="w-1/4 space-y-2 border-r border-foreground-800/20 pr-3">
-                {["Inbox", "Sent", "Drafts", "Trash"].map((f) => (
+                {mailFolders.map((folder, index) => (
                   <div
-                    key={f}
-                    className={`rounded-md px-2 py-1 text-xs ${f === "Inbox" ? "bg-primary-500/10 text-primary-400" : "text-foreground-500"}`}
+                    key={folder}
+                    className={`rounded-md px-2 py-1 text-xs ${index === 0 ? "bg-primary-500/10 text-primary-400" : "text-foreground-500"}`}
                   >
-                    {f}
+                    {folder}
                   </div>
                 ))}
               </div>
@@ -74,18 +71,18 @@ export function MarketingHomePage() {
                 {[
                   {
                     from: "deploy@ci.internal",
-                    subject: "Build #847 passed",
-                    time: "2m ago",
+                    subject: t("deepDive.mail.demo.build.subject"),
+                    time: t("deepDive.mail.demo.build.time"),
                   },
                   {
                     from: "alerts@monitoring",
-                    subject: "Server us-east-1 recovered",
-                    time: "1h ago",
+                    subject: t("deepDive.mail.demo.recovered.subject"),
+                    time: t("deepDive.mail.demo.recovered.time"),
                   },
                   {
                     from: "team@company.com",
-                    subject: "Weekly infrastructure review",
-                    time: "3h ago",
+                    subject: t("deepDive.mail.demo.review.subject"),
+                    time: t("deepDive.mail.demo.review.time"),
                   },
                 ].map((m) => (
                   <div
@@ -112,27 +109,34 @@ export function MarketingHomePage() {
       />
 
       <FeatureDeepDive
-        title="Server Monitoring"
-        headline="Real-Time Metrics from Every Server"
-        description="Deploy a lightweight Python agent via Docker and get instant CPU, memory, disk, and load metrics streamed to your dashboard."
-        bullets={[
-          "CPU, RAM, swap, disk, and load average monitoring",
-          "Lightweight Docker agent — one command to deploy",
-          "Token-based enrollment with lifecycle management",
-          "Works alongside provider-reported server data",
-        ]}
+        title={t("deepDive.monitoring.title")}
+        headline={t("deepDive.monitoring.headline")}
+        description={t("deepDive.monitoring.description")}
+        bullets={t.raw("deepDive.monitoring.bullets") as string[]}
         visual={
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "CPU", value: "23%", icon: "ri-cpu-line" },
-                { label: "Memory", value: "4.2 / 8 GB", icon: "ri-ram-line" },
                 {
-                  label: "Disk",
+                  label: t("deepDive.monitoring.metrics.cpu"),
+                  value: "23%",
+                  icon: "ri-cpu-line",
+                },
+                {
+                  label: t("deepDive.monitoring.metrics.memory"),
+                  value: "4.2 / 8 GB",
+                  icon: "ri-ram-line",
+                },
+                {
+                  label: t("deepDive.monitoring.metrics.disk"),
                   value: "67%",
                   icon: "ri-hard-drive-3-line",
                 },
-                { label: "Load", value: "0.45", icon: "ri-speed-line" },
+                {
+                  label: t("deepDive.monitoring.metrics.load"),
+                  value: "0.45",
+                  icon: "ri-speed-line",
+                },
               ].map((m) => (
                 <div
                   key={m.label}
@@ -153,7 +157,7 @@ export function MarketingHomePage() {
                 </div>
               ))}
             </div>
-            <TerminalWindow title="Deploy Agent">
+            <TerminalWindow title={t("deepDive.monitoring.terminalTitle")}>
               <p>
                 <span className="text-accent-400">$</span> docker run -d
                 inspoter/metrics-agent

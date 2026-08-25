@@ -52,6 +52,53 @@ test("Shell + Bookmarks screen has one main landmark, one named primary navigati
   await expectNoBlockingAxeViolations(page);
 });
 
+test("Messages screen has one main landmark and zero serious or critical accessibility violations", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/message-categories", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "a11y-category",
+          name: "A11y category",
+          channels: [
+            {
+              id: "a11y-channel",
+              messageCategoryId: "a11y-category",
+              name: "a11y-channel",
+            },
+          ],
+        },
+      ]),
+    });
+  });
+  await page.route("**/api/channels/a11y-channel/messages?*", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], nextCursor: null }),
+    });
+  });
+  await page.goto("/messages");
+
+  const composer = page.getByPlaceholder("Message #a11y-channel...");
+  await expect(composer).toBeVisible();
+
+  const main = page.getByRole("main");
+  await expect(main).toHaveCount(1);
+  await expect(main).toBeVisible();
+
+  const timeline = page.getByRole("region", {
+    name: "Message timeline",
+    exact: true,
+  });
+  await expect(timeline).toHaveCount(1);
+  await expect(timeline).toBeVisible();
+
+  await expectNoBlockingAxeViolations(page);
+});
+
 test("Bookmark dialog with the color picker open has zero serious or critical accessibility violations", async ({
   page,
   testData,

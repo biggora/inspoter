@@ -23,6 +23,7 @@ import ui from "@/messages/ru/ui.json";
 import metadata from "@/messages/ru/metadata.json";
 import status from "@/messages/ru/status.json";
 import validation from "@/messages/ru/validation.json";
+import marketing from "@/messages/ru/marketing.json";
 
 import enShell from "@/messages/en/shell.json";
 import enActivity from "@/messages/en/activity.json";
@@ -49,6 +50,34 @@ import enUi from "@/messages/en/ui.json";
 import enMetadata from "@/messages/en/metadata.json";
 import enStatus from "@/messages/en/status.json";
 import enValidation from "@/messages/en/validation.json";
+import enMarketing from "@/messages/en/marketing.json";
+
+import lvShell from "@/messages/lv/shell.json";
+import lvActivity from "@/messages/lv/activity.json";
+import lvAuth from "@/messages/lv/auth.json";
+import lvBackup from "@/messages/lv/backup.json";
+import lvBookmarks from "@/messages/lv/bookmarks.json";
+import lvContacts from "@/messages/lv/contacts.json";
+import lvDashboards from "@/messages/lv/dashboards.json";
+import lvKanban from "@/messages/lv/kanban.json";
+import lvNotes from "@/messages/lv/notes.json";
+import lvAgents from "@/messages/lv/agents.json";
+import lvServers from "@/messages/lv/servers.json";
+import lvHosting from "@/messages/lv/hosting.json";
+import lvServices from "@/messages/lv/services.json";
+import lvLogs from "@/messages/lv/logs.json";
+import lvDomains from "@/messages/lv/domains.json";
+import lvAlerts from "@/messages/lv/alerts.json";
+import lvMail from "@/messages/lv/mail.json";
+import lvMessagesArea from "@/messages/lv/messages.json";
+import lvSettings from "@/messages/lv/settings.json";
+import lvHelp from "@/messages/lv/help.json";
+import lvWorkspace from "@/messages/lv/workspace.json";
+import lvUi from "@/messages/lv/ui.json";
+import lvMetadata from "@/messages/lv/metadata.json";
+import lvStatus from "@/messages/lv/status.json";
+import lvValidation from "@/messages/lv/validation.json";
+import lvMarketing from "@/messages/lv/marketing.json";
 
 export const ruMessages = {
   shell,
@@ -76,6 +105,7 @@ export const ruMessages = {
   metadata,
   status,
   validation,
+  marketing,
 };
 
 export const enMessages = {
@@ -104,4 +134,34 @@ export const enMessages = {
   metadata: enMetadata,
   status: enStatus,
   validation: enValidation,
+  marketing: enMarketing,
+};
+
+export const lvMessages = {
+  shell: lvShell,
+  activity: lvActivity,
+  auth: lvAuth,
+  backup: lvBackup,
+  bookmarks: lvBookmarks,
+  contacts: lvContacts,
+  dashboards: lvDashboards,
+  kanban: lvKanban,
+  notes: lvNotes,
+  agents: lvAgents,
+  servers: lvServers,
+  hosting: lvHosting,
+  services: lvServices,
+  logs: lvLogs,
+  domains: lvDomains,
+  alerts: lvAlerts,
+  mail: lvMail,
+  messages: lvMessagesArea,
+  settings: lvSettings,
+  help: lvHelp,
+  workspace: lvWorkspace,
+  ui: lvUi,
+  metadata: lvMetadata,
+  status: lvStatus,
+  validation: lvValidation,
+  marketing: lvMarketing,
 };

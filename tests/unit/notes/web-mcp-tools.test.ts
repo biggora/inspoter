@@ -339,7 +339,11 @@ describe("createCreateNoteTool", () => {
 // ---------------------------------------------------------------------------
 
 function makeDetail(overrides: Partial<NoteDetail> = {}): NoteDetail {
-  return { ...makeNote(), content: "# Runbook\nRestart the edge nodes.", ...overrides };
+  return {
+    ...makeNote(),
+    content: "# Runbook\nRestart the edge nodes.",
+    ...overrides,
+  };
 }
 
 /** The ApiError shape notes/api.ts throws on an optimistic-concurrency clash. */
@@ -362,9 +366,7 @@ describe("createNotesTools", () => {
 
   beforeEach(() => {
     deps = {
-      search: vi
-        .fn()
-        .mockResolvedValue({ items: [makeNote()], total: 1 }),
+      search: vi.fn().mockResolvedValue({ items: [makeNote()], total: 1 }),
       listFolders: vi.fn().mockResolvedValue({
         folders: [
           makeFolder(),

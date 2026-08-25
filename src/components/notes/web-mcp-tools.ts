@@ -83,9 +83,7 @@ function trimExcerpt(excerpt: string): string {
     : excerpt;
 }
 
-export function createSearchNotesTool(
-  ctx: SearchNotesToolContext,
-): WebMcpTool {
+export function createSearchNotesTool(ctx: SearchNotesToolContext): WebMcpTool {
   return defineWebMcpTool({
     name: "note_search",
     title: "Search notes",
@@ -180,8 +178,7 @@ export function createCreateNoteTool(ctx: CreateNoteToolContext): WebMcpTool {
  * signature of the same-named method in `src/components/notes/api.ts`.
  */
 export interface NotesToolDeps
-  extends SearchNotesToolContext,
-    CreateNoteToolContext {
+  extends SearchNotesToolContext, CreateNoteToolContext {
   /** notesApi.get */
   get: (id: string) => Promise<NoteDetail>;
   /**
@@ -201,10 +198,7 @@ export interface NotesToolDeps
 const MAX_CONTENT_LENGTH = 1200;
 const MAX_FOLDER_ROWS = 50;
 
-const noteIdField = z
-  .string()
-  .min(1)
-  .describe("Note id from note_search");
+const noteIdField = z.string().min(1).describe("Note id from note_search");
 
 /** The API's optimistic-concurrency code, set on ApiError by notes/api.ts. */
 const VERSION_CONFLICT_CODE = "NOTE_VERSION_CONFLICT";

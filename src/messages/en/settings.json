@@ -130,7 +130,7 @@
   "lastUsedHeader": "Last used",
   "mcpTitle": "MCP endpoint",
   "mcpDescription": "AI assistants can read and act on this workspace over the Model Context Protocol. Point your MCP client at this URL using the Streamable HTTP transport.",
-  "mcpAuthHint": "Authenticate with \"Authorization: Bearer <token>\". A token only reaches MCP once it has at least one permission below — tokens without any stay webhook-only.",
+  "mcpAuthHint": "Authenticate with \"Authorization: Bearer <token>token</token>\". A token only reaches MCP once it has at least one permission below — tokens without any stay webhook-only.",
   "mcpScopesLabel": "MCP permissions",
   "mcpScopesDescription": "Pick what this token may do over MCP. Leave everything unchecked for a webhook-ingest-only token.",
   "scopeGroupMail": "Mail",

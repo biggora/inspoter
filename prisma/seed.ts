@@ -34,7 +34,9 @@ const COMMON_PASSWORDS = new Set([
 
 function validateNewPassword(password: string): void {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    throw new Error(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    );
   }
   if (COMMON_PASSWORDS.has(password.toLocaleLowerCase("en-US"))) {
     throw new Error("Choose a less common password");

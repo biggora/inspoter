@@ -1,0 +1,57 @@
+{
+  "pageTitle": "Darbvieta",
+
+  "renameCardTitle": "Darbvietas nosaukums",
+  "renameCardDescription": "Pārdēvēt pašreizējo darbvietu.",
+  "sectionsCardTitle": "Sadaļu redzamība",
+  "sectionsCardDescription": "Paslēpiet sadaļas, ko šajā darbvietā neizmantojat. Paslēptās sadaļas pazūd no navigācijas.",
+  "sectionsSavedToast": "Sadaļu redzamība atjaunināta.",
+  "sectionsSaveError": "Neizdevās saglabāt sadaļu redzamību.",
+
+  "autoRefreshCardTitle": "Nodrošinātāju automātiskā atsvaidzināšana",
+  "autoRefreshCardDescription": "Domēni, Hostings un Serveri tiek attēloti no kešotā saraksta, kas atsvaidzinās fonā. Notīriet izvēles rūtiņu, lai apturētu šo sadaļu; tās Atsvaidzināt poga un pirmā ielāde turpinās darboties.",
+  "autoRefreshSavedToast": "Automātiskās atsvaidzināšanas iestatījumi saglabāti.",
+  "autoRefreshSaveError": "Neizdevās saglabāt automātiskās atsvaidzināšanas iestatījumus.",
+
+  "membersCardTitle": "Dalībnieki",
+  "membersCardDescription": "Operatori ar piekļuvi šai darbvietai.",
+  "createCardTitle": "Izveidot jaunu darbvietu",
+  "createCardDescription": "Sāciet jaunu tukšu darbvietu un pārslēdzieties uz to.",
+
+  "nameLabel": "Darbvietas nosaukums",
+  "nameRequiredError": "Jānorāda darbvietas nosaukums.",
+  "savingButton": "Saglabā…",
+  "saveChangesButton": "Saglabāt izmaiņas",
+  "renamedToast": "Darbvieta pārdēvēta.",
+  "renameError": "Neizdevās pārdēvēt darbvietu.",
+
+  "newWorkspaceNameLabel": "Jaunās darbvietas nosaukums",
+  "creatingButton": "Izveido…",
+  "createWorkspaceButton": "Izveidot darbvietu",
+  "createdToast": "Darbvieta izveidota.",
+  "createError": "Neizdevās izveidot darbvietu.",
+
+  "usernameLabel": "Lietotājvārds",
+  "usernameRequiredError": "Jānorāda lietotājvārds.",
+  "passwordLabel": "Parole (tikai jaunam lietotājam)",
+  "addingButton": "Pievieno…",
+  "addMemberButton": "Pievienot dalībnieku",
+  "memberAddedToast": "Dalībnieks pievienots.",
+  "addMemberError": "Neizdevās pievienot dalībnieku.",
+
+  "searchOperatorLabel": "Meklēt esošos operatorus",
+  "searchOperatorPlaceholder": "Rakstiet, lai meklētu…",
+  "noOperatorsFound": "Operatori nav atrasti",
+  "allOperatorsAdded": "Visi operatori jau ir dalībnieki",
+  "orCreateNew": "vai izveidot jaunu",
+  "createNewOperatorTitle": "Izveidot jaunu operatoru",
+
+  "removeMemberLabel": "Noņemt {name}",
+  "confirmRemoveTitle": "Noņemt \"{name}\"?",
+  "confirmRemoveDescription": "Šis dalībnieks zaudēs piekļuvi darbvietai.",
+  "cancelButton": "Atcelt",
+  "removeButton": "Noņemt",
+  "removingButton": "Noņem…",
+  "memberRemovedToast": "Dalībnieks noņemts.",
+  "removeMemberError": "Neizdevās noņemt dalībnieku. Lūdzu, mēģiniet vēlreiz."
+}

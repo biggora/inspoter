@@ -309,7 +309,15 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
             {t("copyButton")}
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">{t("mcpAuthHint")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t.rich("mcpAuthHint", {
+            token: (chunks) => (
+              <code className="rounded-sm bg-background-100 px-1.5 py-0.5 font-mono text-xs text-foreground">
+                {chunks}
+              </code>
+            ),
+          })}
+        </p>
       </section>
 
       {loading ? (

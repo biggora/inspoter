@@ -1,0 +1,14 @@
+{
+  "close": "Aizvērt",
+  "loading": "Ielādē…",
+  "loadingPage": "Ielādē lapu…",
+  "paginationNavLabel": "Lapošana",
+  "paginationPreviousLabel": "Doties uz iepriekšējo lapu",
+  "paginationNextLabel": "Doties uz nākamo lapu",
+  "paginationPreviousText": "Iepriekšējā",
+  "paginationNextText": "Nākamā",
+  "paginationMorePages": "Vairāk lapu",
+  "sidebarToggle": "Pārslēgt sānjoslu",
+  "sidebarTitle": "Sānjosla",
+  "sidebarDescription": "Rāda mobilo sānjoslu."
+}

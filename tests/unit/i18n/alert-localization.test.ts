@@ -41,7 +41,9 @@ describe("alertMessage()", () => {
       messageParams: { error: "Socket timeout" },
     };
 
-    expect(alertMessage(alert, ru)).toBe("Ошибка синхронизации: Socket timeout");
+    expect(alertMessage(alert, ru)).toBe(
+      "Ошибка синхронизации: Socket timeout",
+    );
   });
 
   it("keeps the stored text for a webhook alert that has no key", () => {

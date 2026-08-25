@@ -116,7 +116,11 @@ describe("AC-WH-001: authentication", () => {
 
   it("rejects a channel-scoped token on the legacy typed endpoint", async () => {
     const category = await db.messageCategory.create({
-      data: { workspaceId, name: `legacy-isolation-${randomUUID()}`, normalizedName: randomUUID() },
+      data: {
+        workspaceId,
+        name: `legacy-isolation-${randomUUID()}`,
+        normalizedName: randomUUID(),
+      },
     });
     const channel = await db.channel.create({
       data: {

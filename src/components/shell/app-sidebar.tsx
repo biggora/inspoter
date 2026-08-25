@@ -19,7 +19,11 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { InspoterIcon } from "@/components/ui/inspoter-logo";
 import { NavPending } from "./route-progress";
-import { HELP_NAV_ITEM, SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
+import {
+  HELP_NAV_ITEM,
+  SECTION_NAV_ITEMS,
+  SETTINGS_NAV_ITEM,
+} from "./nav-items";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 // Additive nav items rendered below the main sections, in a separate group —

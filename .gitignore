@@ -65,3 +65,4 @@ next-env.d.ts
 __pycache__/
 *.py[cod]
 /.playwright-cli/
+/.playwright-mcp/

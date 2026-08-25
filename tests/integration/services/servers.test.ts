@@ -344,8 +344,7 @@ describe("listLocalServerMetrics()", () => {
       });
       expect(rows).toHaveLength(2);
 
-      const metrics =
-        await serversService.listLocalServerMetrics(workspaceId);
+      const metrics = await serversService.listLocalServerMetrics(workspaceId);
       const matches = metrics.filter((m) =>
         rows.some((r) => r.id === m.localServerId),
       );

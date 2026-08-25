@@ -56,7 +56,11 @@ const MAX_NAME_LENGTH = 30;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_PROPERTY_DESCRIPTION_LENGTH = 150;
 
-function warnBudgets(name: string, description: string, inputSchema: object): void {
+function warnBudgets(
+  name: string,
+  description: string,
+  inputSchema: object,
+): void {
   if (process.env.NODE_ENV === "production") return;
 
   if (name.length > MAX_NAME_LENGTH) {
@@ -70,8 +74,9 @@ function warnBudgets(name: string, description: string, inputSchema: object): vo
     );
   }
 
-  const properties = (inputSchema as { properties?: Record<string, { description?: string }> })
-    .properties;
+  const properties = (
+    inputSchema as { properties?: Record<string, { description?: string }> }
+  ).properties;
   if (!properties) return;
 
   for (const [propertyName, propertySchema] of Object.entries(properties)) {

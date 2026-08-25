@@ -364,7 +364,10 @@ function MessagesCoordinator({
           <ChannelSidebar {...sidebarProps} />
         </div>
 
-        <main className="flex min-w-0 flex-1 flex-col bg-background-50">
+        <section
+          aria-label={t("timelineRegion")}
+          className="flex min-w-0 flex-1 flex-col bg-background-50"
+        >
           {!selectedChannel ? (
             <div className="flex h-full items-center justify-center p-6">
               <EmptyState
@@ -414,7 +417,7 @@ function MessagesCoordinator({
               />
             </>
           )}
-        </main>
+        </section>
       </div>
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
