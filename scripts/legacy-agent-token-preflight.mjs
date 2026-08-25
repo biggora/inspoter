@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Client } from "pg";
 
 const LOCK_KEY = 1_937_104_711;
