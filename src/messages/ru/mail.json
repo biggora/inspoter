@@ -92,6 +92,8 @@
   "subjectLabel": "Тема",
   "noSubjectLabel": "(Без темы)",
   "bodyLabel": "Текст письма",
+  "messageBodyTruncated": "Письмо слишком большое для отображения. Метаданные и вложения остаются доступными.",
+  "loadExternalContent": "Загрузить внешнее содержимое",
   "emptyBodyLabel": "В этом письме нет текстового содержимого.",
   "sendingLabel": "Отправка…",
   "sendButton": "Отправить",

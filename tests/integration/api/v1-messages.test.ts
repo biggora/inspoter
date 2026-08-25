@@ -102,7 +102,11 @@ beforeAll(async () => {
   revokedToken = revoked.token;
 
   const category = await db.messageCategory.create({
-    data: { workspaceId, name: `${PREFIX}-category` },
+    data: {
+      workspaceId,
+      name: `${PREFIX}-category`,
+      normalizedName: randomUUID(),
+    },
   });
   categoryId = category.id;
   const channel = await db.channel.create({
@@ -110,6 +114,7 @@ beforeAll(async () => {
       workspaceId,
       messageCategoryId: category.id,
       messageCategoryWorkspaceId: workspaceId,
+      normalizedName: randomUUID(),
       name: `${PREFIX}-channel`,
     },
   });
@@ -125,13 +130,18 @@ beforeAll(async () => {
     .pop() as string;
 
   const otherCategory = await db.messageCategory.create({
-    data: { workspaceId: otherWorkspaceId, name: `${PREFIX}-other-category` },
+    data: {
+      workspaceId: otherWorkspaceId,
+      name: `${PREFIX}-other-category`,
+      normalizedName: randomUUID(),
+    },
   });
   const otherChannel = await db.channel.create({
     data: {
       workspaceId: otherWorkspaceId,
       messageCategoryId: otherCategory.id,
       messageCategoryWorkspaceId: otherWorkspaceId,
+      normalizedName: randomUUID(),
       name: `${PREFIX}-other-channel`,
     },
   });
@@ -280,6 +290,70 @@ describe("categories and channels", () => {
     expect((await body<{ name: string }>(channel)).name).toBe(
       `${PREFIX}-channel-renamed`,
     );
+  });
+
+  it("returns 409 when a rename collides after normalization", async () => {
+    const firstCategoryResponse = await createCategory(
+      request("/api/v1/messages/categories", {
+        method: "POST",
+        token: writeToken,
+        body: { name: "Release notes" },
+      }),
+    );
+    const secondCategoryResponse = await createCategory(
+      request("/api/v1/messages/categories", {
+        method: "POST",
+        token: writeToken,
+        body: { name: "Incidents archive" },
+      }),
+    );
+    const firstCategory = await body<{ id: string }>(firstCategoryResponse);
+    const secondCategory = await body<{ id: string }>(secondCategoryResponse);
+
+    const categoryConflict = await renameCategory(
+      request(`/api/v1/messages/categories/${secondCategory.id}`, {
+        method: "PATCH",
+        token: writeToken,
+        body: { name: "  RELEASE   NOTES  " },
+      }),
+      params({ categoryId: secondCategory.id }),
+    );
+    expect(categoryConflict.status).toBe(409);
+    expect(
+      (await body<{ error: { code: string } }>(categoryConflict)).error.code,
+    ).toBe("MESSAGE_NAME_CONFLICT");
+
+    const firstChannelResponse = await createChannel(
+      request("/api/v1/messages/channels", {
+        method: "POST",
+        token: writeToken,
+        body: { categoryId: firstCategory.id, name: "Production" },
+      }),
+    );
+    const secondChannelResponse = await createChannel(
+      request("/api/v1/messages/channels", {
+        method: "POST",
+        token: writeToken,
+        body: { categoryId: firstCategory.id, name: "Staging" },
+      }),
+    );
+    const firstChannel = await body<{ id: string }>(firstChannelResponse);
+    const secondChannel = await body<{ id: string }>(secondChannelResponse);
+
+    const channelConflict = await renameChannel(
+      request(`/api/v1/messages/channels/${secondChannel.id}`, {
+        method: "PATCH",
+        token: writeToken,
+        body: { name: " production " },
+      }),
+      params({ channelId: secondChannel.id }),
+    );
+    expect(channelConflict.status).toBe(409);
+    expect(
+      (await body<{ error: { code: string } }>(channelConflict)).error.code,
+    ).toBe("MESSAGE_NAME_CONFLICT");
+
+    expect(firstChannel.id).not.toBe(secondChannel.id);
   });
 
   it("creates a channel in a category and repeats idempotently", async () => {

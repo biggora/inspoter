@@ -116,7 +116,8 @@ async function insertNewMessages(
   let created = 0;
   for (const message of messages) {
     if (existingUids.has(message.uid)) continue;
-    if (message.messageId && existingMessageIds.has(message.messageId)) continue;
+    if (message.messageId && existingMessageIds.has(message.messageId))
+      continue;
     await persistIncomingMail({
       workspaceId: account.workspaceId,
       accountId: account.id,
@@ -131,6 +132,8 @@ async function insertNewMessages(
       subject: message.subject,
       bodyText: message.bodyText,
       bodyHtml: message.bodyHtml,
+      bodyTruncated: message.bodyTruncated,
+      sourceSizeBytes: message.sourceSizeBytes,
       snippet: message.snippet,
       isRead: message.isRead,
       isAnswered: message.isAnswered,
@@ -161,25 +164,33 @@ async function reconcileFlags(
   folderPath: string,
   driver: MailDriver,
 ): Promise<void> {
-  const stored = await db.mailItem.findMany({
-    where: { workspaceId: account.workspaceId, folderId, uid: { not: null } },
-    select: {
-      id: true,
-      uid: true,
-      isRead: true,
-      isAnswered: true,
-      isFlagged: true,
-      hasAttachments: true,
-    },
-  });
-
-  const deletedIds: string[] = [];
-  for (let i = 0; i < stored.length; i += FLAG_CHUNK_SIZE) {
-    const chunk = stored.slice(i, i + FLAG_CHUNK_SIZE);
+  let afterId: string | undefined;
+  for (;;) {
+    const chunk = await db.mailItem.findMany({
+      where: {
+        workspaceId: account.workspaceId,
+        folderId,
+        uid: { not: null },
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      select: {
+        id: true,
+        uid: true,
+        isRead: true,
+        isAnswered: true,
+        isFlagged: true,
+        hasAttachments: true,
+      },
+      orderBy: { id: "asc" },
+      take: FLAG_CHUNK_SIZE,
+    });
+    if (chunk.length === 0) break;
+    afterId = chunk.at(-1)?.id;
     const remoteFlags = await driver.listUidsWithFlags(
       folderPath,
       chunk.map((item) => item.uid!),
     );
+    const deletedIds: string[] = [];
     for (const item of chunk) {
       const flags = remoteFlags.get(item.uid!);
       if (!flags) {
@@ -224,11 +235,14 @@ async function reconcileFlags(
         });
       }
     }
-  }
-  if (deletedIds.length > 0) {
-    await db.mailItem.deleteMany({
-      where: { id: { in: deletedIds }, workspaceId: account.workspaceId },
-    });
+    if (deletedIds.length > 0) {
+      await db.mailItem.deleteMany({
+        where: {
+          id: { in: deletedIds },
+          workspaceId: account.workspaceId,
+        },
+      });
+    }
   }
 }
 
@@ -271,27 +285,41 @@ async function syncFolder(
     lastSeenUid = null;
   }
 
-  const messages =
-    lastSeenUid === null
-      ? await driver.fetchMessages(remote.path, {
-          initialLimit: env.MAIL_INITIAL_SYNC_LIMIT,
-        })
-      : await driver.fetchMessages(remote.path, { afterUid: lastSeenUid });
+  let created = 0;
+  let cursor = lastSeenUid;
+  let firstPage = true;
+  for (;;) {
+    const messages = await driver.fetchMessages(remote.path, {
+      ...(cursor === null ? {} : { afterUid: cursor }),
+      ...(firstPage && cursor === null
+        ? { initialLimit: env.MAIL_INITIAL_SYNC_LIMIT }
+        : {}),
+      limit: env.MAIL_SYNC_BATCH_SIZE,
+    });
+    if (messages.length === 0) break;
+    created += await insertNewMessages(account, folder, messages);
+    cursor = messages.reduce(
+      (max, message) => (message.uid > max ? message.uid : max),
+      cursor ?? 0n,
+    );
+    await db.mailFolder.updateMany({
+      where: { id: folder.id, workspaceId: account.workspaceId },
+      data: {
+        uidValidity: remote.uidValidity,
+        lastSeenUid: cursor,
+        lastSyncAt: new Date(),
+      },
+    });
+    firstPage = false;
+    if (messages.length < env.MAIL_SYNC_BATCH_SIZE) break;
+  }
 
-  const created = await insertNewMessages(account, folder, messages);
-
-  const maxUid = messages.reduce(
-    (max, m) => (m.uid > max ? m.uid : max),
-    lastSeenUid ?? 0n,
-  );
-  await db.mailFolder.updateMany({
-    where: { id: folder.id, workspaceId: account.workspaceId },
-    data: {
-      uidValidity: remote.uidValidity,
-      lastSeenUid: maxUid > 0n ? maxUid : null,
-      lastSyncAt: new Date(),
-    },
-  });
+  if (firstPage) {
+    await db.mailFolder.updateMany({
+      where: { id: folder.id, workspaceId: account.workspaceId },
+      data: { uidValidity: remote.uidValidity, lastSyncAt: new Date() },
+    });
+  }
 
   await reconcileFlags(account, folder.id, remote.path, driver);
   return created;

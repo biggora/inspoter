@@ -36,6 +36,8 @@ export interface PersistIncomingMailInput {
   subject: string;
   bodyText: string;
   bodyHtml?: string | null;
+  bodyTruncated?: boolean;
+  sourceSizeBytes?: bigint | null;
   snippet?: string | null;
   isRead?: boolean;
   isAnswered?: boolean;
@@ -98,6 +100,8 @@ export async function persistIncomingMail(
         subject: input.subject,
         bodyText: input.bodyText,
         bodyHtml: input.bodyHtml,
+        bodyTruncated: input.bodyTruncated ?? false,
+        sourceSizeBytes: input.sourceSizeBytes,
         snippet: input.snippet,
         isRead: input.isRead ?? false,
         isAnswered: input.isAnswered ?? false,

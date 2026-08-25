@@ -8,8 +8,27 @@ import {
   type MessageOrigin,
 } from "@/generated/prisma/client";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
+import {
+  normalizeLabelDisplayName,
+  normalizeLabelName,
+} from "@/lib/label-normalization";
 
 export type CategoryWithChannels = MessageCategory & { channels: Channel[] };
+
+export class MessageNameConflictError extends Error {
+  code = "MESSAGE_NAME_CONFLICT" as const;
+  constructor() {
+    super("A message category or channel with this name already exists");
+    this.name = "MessageNameConflictError";
+  }
+}
+
+function isUniqueNameConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
 
 export type ChannelWithUnread = Channel & { unreadCount: number };
 export type CategoryWithUnread = MessageCategory & {
@@ -138,7 +157,19 @@ export async function createCategory(
   workspaceId: string,
   name: string,
 ): Promise<MessageCategory> {
-  return db.messageCategory.create({ data: { name, workspaceId } });
+  const displayName = normalizeLabelDisplayName(name);
+  try {
+    return await db.messageCategory.create({
+      data: {
+        name: displayName,
+        normalizedName: normalizeLabelName(displayName),
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (isUniqueNameConflict(error)) throw new MessageNameConflictError();
+    throw error;
+  }
 }
 
 // Idempotent variant for API callers (MCP tools and /api/v1/messages/**): an
@@ -151,12 +182,28 @@ export async function findOrCreateCategoryByName(
   workspaceId: string,
   name: string,
 ): Promise<{ category: MessageCategory; created: boolean }> {
-  const existing = await db.messageCategory.findFirst({
-    where: { workspaceId, name: { equals: name, mode: "insensitive" } },
-    orderBy: { createdAt: "asc" },
+  const displayName = normalizeLabelDisplayName(name);
+  const normalizedName = normalizeLabelName(displayName);
+  const existing = await db.messageCategory.findUnique({
+    where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
   });
   if (existing) return { category: existing, created: false };
-  return { category: await createCategory(workspaceId, name), created: true };
+  try {
+    return {
+      category: await db.messageCategory.create({
+        data: { workspaceId, name: displayName, normalizedName },
+      }),
+      created: true,
+    };
+  } catch (error) {
+    if (!isUniqueNameConflict(error)) throw error;
+    return {
+      category: await db.messageCategory.findUniqueOrThrow({
+        where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
+      }),
+      created: false,
+    };
+  }
 }
 
 export async function renameCategory(
@@ -164,10 +211,19 @@ export async function renameCategory(
   workspaceId: string,
   name: string,
 ): Promise<MessageCategory> {
-  return db.messageCategory.update({
-    where: { id, workspaceId },
-    data: { name },
-  });
+  const displayName = normalizeLabelDisplayName(name);
+  try {
+    return await db.messageCategory.update({
+      where: { id, workspaceId },
+      data: {
+        name: displayName,
+        normalizedName: normalizeLabelName(displayName),
+      },
+    });
+  } catch (error) {
+    if (isUniqueNameConflict(error)) throw new MessageNameConflictError();
+    throw error;
+  }
 }
 
 export async function deleteCategory(
@@ -182,14 +238,21 @@ export async function createChannel(
   categoryId: string,
   name: string,
 ): Promise<Channel> {
-  return db.channel.create({
-    data: {
-      name,
-      workspaceId,
-      messageCategoryId: categoryId,
-      messageCategoryWorkspaceId: workspaceId,
-    },
-  });
+  const displayName = normalizeLabelDisplayName(name);
+  try {
+    return await db.channel.create({
+      data: {
+        name: displayName,
+        normalizedName: normalizeLabelName(displayName),
+        workspaceId,
+        messageCategoryId: categoryId,
+        messageCategoryWorkspaceId: workspaceId,
+      },
+    });
+  } catch (error) {
+    if (isUniqueNameConflict(error)) throw new MessageNameConflictError();
+    throw error;
+  }
 }
 
 // Idempotent channel creation within one category — the get-or-create half of
@@ -199,19 +262,44 @@ export async function findOrCreateChannelByName(
   categoryId: string,
   name: string,
 ): Promise<{ channel: Channel; created: boolean }> {
-  const existing = await db.channel.findFirst({
+  const displayName = normalizeLabelDisplayName(name);
+  const normalizedName = normalizeLabelName(displayName);
+  const existing = await db.channel.findUnique({
     where: {
-      workspaceId,
-      messageCategoryId: categoryId,
-      name: { equals: name, mode: "insensitive" },
+      messageCategoryId_normalizedName: {
+        messageCategoryId: categoryId,
+        normalizedName,
+      },
     },
-    orderBy: { createdAt: "asc" },
   });
   if (existing) return { channel: existing, created: false };
-  return {
-    channel: await createChannel(workspaceId, categoryId, name),
-    created: true,
-  };
+  try {
+    return {
+      channel: await db.channel.create({
+        data: {
+          workspaceId,
+          messageCategoryId: categoryId,
+          messageCategoryWorkspaceId: workspaceId,
+          name: displayName,
+          normalizedName,
+        },
+      }),
+      created: true,
+    };
+  } catch (error) {
+    if (!isUniqueNameConflict(error)) throw error;
+    return {
+      channel: await db.channel.findUniqueOrThrow({
+        where: {
+          messageCategoryId_normalizedName: {
+            messageCategoryId: categoryId,
+            normalizedName,
+          },
+        },
+      }),
+      created: false,
+    };
+  }
 }
 
 export async function renameChannel(
@@ -219,7 +307,19 @@ export async function renameChannel(
   workspaceId: string,
   name: string,
 ): Promise<Channel> {
-  return db.channel.update({ where: { id, workspaceId }, data: { name } });
+  const displayName = normalizeLabelDisplayName(name);
+  try {
+    return await db.channel.update({
+      where: { id, workspaceId },
+      data: {
+        name: displayName,
+        normalizedName: normalizeLabelName(displayName),
+      },
+    });
+  } catch (error) {
+    if (isUniqueNameConflict(error)) throw new MessageNameConflictError();
+    throw error;
+  }
 }
 
 export async function deleteChannel(

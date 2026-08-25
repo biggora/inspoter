@@ -8,6 +8,7 @@ import {
   loadTestEnvironment,
 } from "./test-env.mjs";
 import REPOSITORY_ROOT from "./repository-root.cjs";
+import { preserveLegacyAgentTokens } from "./legacy-agent-token-preflight.mjs";
 
 const require = createRequire(resolve(REPOSITORY_ROOT, "package.json"));
 const PRISMA_CLI = require.resolve("prisma/build/index.js");
@@ -242,6 +243,12 @@ async function runPrisma(environment, args, action) {
   );
 }
 
+async function runMigrations(environment) {
+  const target = validateTestDatabaseGuard(environment);
+  await preserveLegacyAgentTokens(target.connectionString);
+  await runPrisma(environment, ["migrate", "deploy"], "migrate");
+}
+
 function printGuard(environment) {
   const target = validateTestDatabaseGuard(environment);
   console.log("[test-db] guard ok: " + target.sanitizedTarget + ".");
@@ -267,7 +274,7 @@ async function main() {
       await resetDatabase(environment);
       return;
     case "migrate":
-      await runPrisma(environment, ["migrate", "deploy"], "migrate");
+      await runMigrations(environment);
       return;
     case "seed":
       await runPrisma(environment, ["db", "seed"], "seed");
@@ -275,7 +282,7 @@ async function main() {
     case "prepare":
       printGuard(environment);
       await resetDatabase(environment);
-      await runPrisma(environment, ["migrate", "deploy"], "migrate");
+      await runMigrations(environment);
       await runPrisma(environment, ["db", "seed"], "seed");
       return;
     case "down":

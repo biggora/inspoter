@@ -71,6 +71,15 @@ model Session {
   @@index([expiresAt])
 }
 
+model LoginRateLimitBucket {
+  key             String   @id
+  count           Int
+  windowStartedAt DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@index([windowStartedAt])
+}
+
 // --- Workspaces ---
 model Workspace {
   id                       String                 @id @default(cuid())
@@ -427,15 +436,17 @@ model KanbanComment {
 
 // --- Messages (FR-MSG-001..002) ---
 model MessageCategory {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name        String
-  channels    Channel[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  channels       Channel[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
   @@index([workspaceId, createdAt, id])
 }
 
@@ -447,12 +458,14 @@ model Channel {
   messageCategoryWorkspaceId String
   messageCategory            MessageCategory @relation(fields: [messageCategoryId, messageCategoryWorkspaceId], references: [id, workspaceId], onDelete: Cascade) // AC-MSG-003
   name                       String
+  normalizedName             String
   messages                   Message[]
   webhookTokens              WebhookToken[]
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt
 
   @@unique([id, workspaceId])
+  @@unique([messageCategoryId, normalizedName])
   @@index([workspaceId, messageCategoryId, createdAt, id])
 }
 
@@ -652,6 +665,8 @@ model MailItem {
   subject            String
   bodyText           String
   bodyHtml           String?
+  bodyTruncated      Boolean               @default(false)
+  sourceSizeBytes    BigInt?
   draftReplyToId     String?
   draftForwardOfId   String?
   snippet            String?

@@ -30,8 +30,9 @@ function isMissingRequestScopeError(error: unknown): boolean {
 export async function createSession(operatorId: string): Promise<Session> {
   const id = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  const session = await db.session.create({
-    data: { id, operatorId, expiresAt },
+  const session = await db.$transaction(async (tx) => {
+    await tx.session.deleteMany({ where: { expiresAt: { lte: new Date() } } });
+    return tx.session.create({ data: { id, operatorId, expiresAt } });
   });
 
   try {
@@ -65,7 +66,11 @@ export async function getValidSession(
   sessionId: string,
 ): Promise<Session | null> {
   const session = await db.session.findUnique({ where: { id: sessionId } });
-  if (!session || session.expiresAt.getTime() <= Date.now()) return null;
+  if (!session) return null;
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await db.session.deleteMany({ where: { id: sessionId } });
+    return null;
+  }
   return session;
 }
 

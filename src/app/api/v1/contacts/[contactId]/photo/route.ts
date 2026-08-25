@@ -9,6 +9,10 @@ import {
 } from "@/lib/api/token-auth";
 import { env } from "@/lib/config/env";
 import { mapContactApiError } from "@/app/api/v1/contacts/errors";
+import {
+  MultipartTooLargeError,
+  readMultipart,
+} from "@/lib/http/multipart";
 
 // Photos are stored as bytes on the contact row, so they are served from here
 // rather than from /public. Only these types are accepted or returned: an SVG
@@ -49,28 +53,38 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   if (auth instanceof NextResponse) return auth;
   const { contactId } = await params;
 
-  const contentLength = request.headers.get("content-length");
-  if (
-    contentLength &&
-    Number(contentLength) > env.CONTACTS_MAX_PHOTO_BYTES * 2
-  ) {
-    return apiErrorResponse(
-      413,
-      "PAYLOAD_TOO_LARGE",
-      "The uploaded photo is larger than this workspace allows.",
-    );
-  }
-
-  const form = await request.formData().catch(() => null);
-  const file = form?.get("photo");
-  if (!(file instanceof File)) {
+  let form;
+  try {
+    form = await readMultipart(request, {
+      maxBodyBytes: env.CONTACTS_MAX_PHOTO_BYTES + 65_536,
+      maxFileBytes: env.CONTACTS_MAX_PHOTO_BYTES,
+      maxFiles: 1,
+      maxFields: 0,
+      maxParts: 1,
+    });
+  } catch (error) {
+    if (error instanceof MultipartTooLargeError) {
+      return apiErrorResponse(
+        413,
+        "PAYLOAD_TOO_LARGE",
+        "The uploaded photo is larger than this workspace allows.",
+      );
+    }
     return apiErrorResponse(
       400,
       "VALIDATION_FAILED",
       "A multipart body with a `photo` part is required.",
     );
   }
-  if (!ALLOWED_TYPES.has(file.type)) {
+  const file = form.files.find((entry) => entry.fieldName === "photo");
+  if (!file) {
+    return apiErrorResponse(
+      400,
+      "VALIDATION_FAILED",
+      "A multipart body with a `photo` part is required.",
+    );
+  }
+  if (!ALLOWED_TYPES.has(file.contentType)) {
     return apiErrorResponse(
       415,
       "UNSUPPORTED_MEDIA_TYPE",
@@ -84,8 +98,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       null,
       contactId,
       {
-        contentType: file.type,
-        data: new Uint8Array(await file.arrayBuffer()),
+        contentType: file.contentType,
+        data: new Uint8Array(file.data),
       },
       env.CONTACTS_MAX_PHOTO_BYTES,
     );

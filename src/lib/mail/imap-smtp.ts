@@ -1,6 +1,7 @@
 import { ImapFlow } from "imapflow";
 import type { FetchMessageObject, MessageAddressObject } from "imapflow";
 import { simpleParser } from "mailparser";
+import { env } from "@/lib/config/env";
 import { createTransport, type Transporter } from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import type { MailSpecialUse } from "@/generated/prisma/client";
@@ -346,7 +347,7 @@ export class ImapSmtpMailDriver implements MailDriver {
 
   async fetchMessages(
     folderPath: string,
-    opts: { afterUid?: bigint; initialLimit?: number },
+    opts: { afterUid?: bigint; initialLimit?: number; limit?: number },
   ): Promise<RemoteMessage[]> {
     return this.withImap("fetchMessages", async (client) => {
       const mailbox = await client.mailboxOpen(folderPath, { readOnly: true });
@@ -355,38 +356,71 @@ export class ImapSmtpMailDriver implements MailDriver {
         flags: true,
         envelope: true,
         bodyStructure: true,
-        source: true,
+        size: true,
       };
       const messages: RemoteMessage[] = [];
-      if (opts.afterUid !== undefined) {
-        // Incremental: UID range. Guard — the server returns the last message
-        // even when the range is empty, so re-filter by uid afterwards.
-        const afterUid = opts.afterUid;
-        const range = `${afterUid + 1n}:*`;
-        for await (const msg of client.fetch(range, query, { uid: true })) {
-          if (BigInt(msg.uid) <= afterUid) continue;
-          messages.push(await this.toRemoteMessage(msg));
-        }
+      if (mailbox.exists === 0) return [];
+      const limit = opts.limit ?? opts.initialLimit ?? 100;
+      let start: number;
+      if (opts.afterUid === undefined) {
+        start = Math.max(1, mailbox.exists - (opts.initialLimit ?? limit) + 1);
       } else {
-        // Initial: last initialLimit messages by sequence number.
-        const limit = opts.initialLimit ?? 100;
-        if (mailbox.exists === 0) return [];
-        const start = Math.max(1, mailbox.exists - limit + 1);
-        for await (const msg of client.fetch(`${start}:*`, query)) {
-          messages.push(await this.toRemoteMessage(msg));
+        let low = 1;
+        let high = mailbox.exists + 1;
+        while (low < high) {
+          const middle = Math.floor((low + high) / 2);
+          if (middle > mailbox.exists) {
+            high = middle;
+            continue;
+          }
+          const probe = await client.fetchOne(String(middle), { uid: true });
+          if (probe && BigInt(probe.uid) <= opts.afterUid) low = middle + 1;
+          else high = middle;
         }
+        start = low;
+      }
+      if (start > mailbox.exists) return [];
+      const end = Math.min(mailbox.exists, start + limit - 1);
+      for await (const msg of client.fetch(`${start}:${end}`, query)) {
+        messages.push(await this.toRemoteMessage(client, msg));
       }
       return messages;
     });
   }
 
   private async toRemoteMessage(
+    client: ImapFlow,
     msg: FetchMessageObject,
   ): Promise<RemoteMessage> {
-    const parsed = msg.source ? await simpleParser(msg.source) : null;
-    const bodyText = parsed?.text ?? "";
-    const bodyHtml =
+    const sourceSizeBytes = msg.size === undefined ? null : BigInt(msg.size);
+    let bodyTruncated =
+      msg.size !== undefined && msg.size > env.MAIL_MAX_MESSAGE_BYTES;
+    let source: Buffer | undefined;
+    if (!bodyTruncated) {
+      const sourceMessage = await client.fetchOne(
+        String(msg.uid),
+        { source: { maxLength: env.MAIL_MAX_MESSAGE_BYTES + 1 } },
+        { uid: true },
+      );
+      source = sourceMessage ? sourceMessage.source : undefined;
+      if (source && source.byteLength > env.MAIL_MAX_MESSAGE_BYTES) {
+        bodyTruncated = true;
+        source = undefined;
+      }
+    }
+    const parsed = source ? await simpleParser(source) : null;
+    let bodyText = parsed?.text ?? "";
+    let bodyHtml =
       parsed && typeof parsed.html === "string" ? parsed.html : null;
+    if (
+      Buffer.byteLength(bodyText, "utf8") +
+        Buffer.byteLength(bodyHtml ?? "", "utf8") >
+      env.MAIL_MAX_BODY_BYTES
+    ) {
+      bodyText = "";
+      bodyHtml = null;
+      bodyTruncated = true;
+    }
     const flags = msg.flags ?? new Set<string>();
     const envelope = msg.envelope;
     return {
@@ -402,6 +436,8 @@ export class ImapSmtpMailDriver implements MailDriver {
       isFlagged: flags.has("\\Flagged"),
       bodyText,
       bodyHtml,
+      bodyTruncated,
+      sourceSizeBytes,
       snippet: makeSnippet(bodyText),
       attachments: collectAttachments(msg.bodyStructure),
     };

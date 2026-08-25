@@ -372,6 +372,8 @@ export interface MailDetailDto {
   snippet: string | null;
   bodyText: string;
   bodyHtml: string | null;
+  bodyTruncated: boolean;
+  sourceSizeBytes: string | null;
   draftReplyToId: string | null;
   draftForwardOfId: string | null;
   isRead: boolean;
@@ -418,6 +420,9 @@ export function toMailDetailDto(item: MailDetailItem): MailDetailDto {
     snippet: item.snippet,
     bodyText: item.bodyText,
     bodyHtml: item.bodyHtml,
+    bodyTruncated: item.bodyTruncated,
+    sourceSizeBytes:
+      item.sourceSizeBytes === null ? null : item.sourceSizeBytes.toString(),
     draftReplyToId: item.draftReplyToId,
     draftForwardOfId: item.draftForwardOfId,
     isRead: item.isRead,

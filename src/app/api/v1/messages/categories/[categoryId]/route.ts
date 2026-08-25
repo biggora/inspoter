@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import * as messagesService from "@/lib/services/messages";
 import {
+  apiErrorResponse,
   apiJsonResponse,
   apiNotFound,
   apiValidationError,
@@ -8,6 +9,7 @@ import {
   requireApiToken,
 } from "@/lib/api/token-auth";
 import { categoryNameSchema } from "@/lib/validation/messagesApi";
+import { MessageNameConflictError } from "@/lib/services/messages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,11 +36,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   );
   if (!existing) return apiNotFound("Message category");
 
-  const category = await messagesService.renameCategory(
-    categoryId,
-    auth.workspaceId,
-    parsed.data.name,
-  );
+  let category;
+  try {
+    category = await messagesService.renameCategory(
+      categoryId,
+      auth.workspaceId,
+      parsed.data.name,
+    );
+  } catch (error) {
+    if (error instanceof MessageNameConflictError) {
+      return apiErrorResponse(409, error.code, error.message);
+    }
+    throw error;
+  }
   recordTokenActivity(auth, {
     action: "update",
     entityType: "message_category",

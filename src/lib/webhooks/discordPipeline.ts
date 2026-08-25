@@ -28,6 +28,7 @@ import {
   type ChannelWebhookToken,
 } from "@/lib/webhooks/channelMessage";
 import { checkRateLimit, type RateLimitResult } from "@/lib/webhooks/ratelimit";
+import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
 
 // Discord Execute Webhook ingress (specs/discord-webhook-compatibility.md §2).
 // Same fail-closed order as the other ingest pipelines (architecture.md §3.2):
@@ -84,22 +85,23 @@ async function parseBody(
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.toLowerCase().includes("multipart/form-data")) {
-    const declared = request.headers.get("content-length");
-    if (declared && Number(declared) > env.WEBHOOK_MAX_BODY_BYTES) {
-      return { error: "too_large" };
-    }
-    let form: FormData;
+    let form;
     try {
-      form = await request.formData();
-    } catch {
+      form = await readMultipart(request, {
+        maxBodyBytes: env.WEBHOOK_MAX_BODY_BYTES,
+        maxFileBytes: env.WEBHOOK_MAX_BODY_BYTES,
+        maxFiles: 10,
+        maxFields: 1,
+        maxParts: 11,
+      });
+    } catch (error) {
+      if (error instanceof MultipartTooLargeError)
+        return { error: "too_large" };
       return { error: "unparseable" };
     }
-    let hasFiles = false;
-    for (const [key, value] of form.entries()) {
-      if (key !== "payload_json" && typeof value !== "string") hasFiles = true;
-    }
-    const raw = form.get("payload_json");
-    if (typeof raw !== "string") {
+    const hasFiles = form.files.length > 0;
+    const raw = form.fields.get("payload_json");
+    if (raw === undefined) {
       return { payload: {}, hasFiles };
     }
     try {
@@ -202,17 +204,6 @@ async function process(
   secret: string,
   options: { defaultWait: boolean; translate?: BodyTranslator },
 ): Promise<NextResponse> {
-  const parsed = await parseBody(request);
-  if ("error" in parsed) {
-    return parsed.error === "too_large"
-      ? discordError(
-          413,
-          DISCORD_ERROR.REQUEST_ENTITY_TOO_LARGE,
-          "Request entity too large",
-        )
-      : discordError(400, DISCORD_ERROR.GENERAL, "400: Bad Request");
-  }
-
   const webhook = await authenticate(webhookId, secret);
   if (!webhook) return unauthorized();
 
@@ -235,6 +226,25 @@ async function process(
         "X-RateLimit-Global": "false",
       },
     );
+  }
+
+  const parsed = await parseBody(request);
+  if ("error" in parsed) {
+    return parsed.error === "too_large"
+      ? discordError(
+          413,
+          DISCORD_ERROR.REQUEST_ENTITY_TOO_LARGE,
+          "Request entity too large",
+          undefined,
+          headers,
+        )
+      : discordError(
+          400,
+          DISCORD_ERROR.GENERAL,
+          "400: Bad Request",
+          undefined,
+          headers,
+        );
   }
 
   let raw: unknown = parsed.payload;

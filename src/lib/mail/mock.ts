@@ -113,6 +113,8 @@ function makeMessage(index: number): MockMessage {
     bodyHtml: withHtml
       ? `<p><strong>${subject}</strong></p><p>${bodyText}</p>`
       : null,
+    bodyTruncated: false,
+    sourceSizeBytes: BigInt(Buffer.byteLength(bodyText, "utf8")),
     snippet: makeSnippet(bodyText),
     attachments,
     attachmentContents,
@@ -210,15 +212,18 @@ export class MockMailDriver implements MailDriver {
 
   async fetchMessages(
     folderPath: string,
-    opts: { afterUid?: bigint; initialLimit?: number },
+    opts: { afterUid?: bigint; initialLimit?: number; limit?: number },
   ): Promise<RemoteMessage[]> {
     const messages = this.folder(folderPath).messages;
     if (opts.afterUid !== undefined) {
       const afterUid = opts.afterUid;
-      return messages.filter((m) => m.uid > afterUid).map(toRemote);
+      return messages
+        .filter((m) => m.uid > afterUid)
+        .slice(0, opts.limit)
+        .map(toRemote);
     }
     const limit = opts.initialLimit ?? messages.length;
-    return messages.slice(-limit).map(toRemote);
+    return messages.slice(-limit).slice(0, opts.limit).map(toRemote);
   }
 
   async listUidsWithFlags(
@@ -327,6 +332,8 @@ export class MockMailDriver implements MailDriver {
       isFlagged: false,
       bodyText: text.split("\r\n\r\n").slice(1).join("\r\n\r\n"),
       bodyHtml: null,
+      bodyTruncated: false,
+      sourceSizeBytes: BigInt(raw.byteLength),
       snippet: makeSnippet(text.split("\r\n\r\n").slice(1).join(" ")),
       attachments: [],
       attachmentContents: new Map(),
@@ -353,6 +360,8 @@ function toRemote(message: MockMessage): RemoteMessage {
     isFlagged: message.isFlagged,
     bodyText: message.bodyText,
     bodyHtml: message.bodyHtml,
+    bodyTruncated: message.bodyTruncated,
+    sourceSizeBytes: message.sourceSizeBytes,
     snippet: message.snippet,
     attachments: [...message.attachments],
   };

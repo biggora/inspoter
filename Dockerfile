@@ -46,4 +46,4 @@ COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
 RUN chown node:node /app
 USER node
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && exec pnpm run start"]
+CMD ["sh", "-c", "pnpm run db:migrate && exec pnpm run start"]

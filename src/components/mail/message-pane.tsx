@@ -572,7 +572,16 @@ export function MessagePane({
       )}
 
       <div className="px-6 py-5">
-        <MailBody bodyText={detail.bodyText} bodyHtml={detail.bodyHtml} />
+        {detail.bodyTruncated ? (
+          <Alert className="mb-4">
+            <AlertDescription>{t("messageBodyTruncated")}</AlertDescription>
+          </Alert>
+        ) : null}
+        <MailBody
+          key={detail.id}
+          bodyText={detail.bodyText}
+          bodyHtml={detail.bodyHtml}
+        />
       </div>
       {replyComposer && (
         <div className="border-t border-background-100 px-4 py-4 sm:px-6">

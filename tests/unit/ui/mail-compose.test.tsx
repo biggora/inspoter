@@ -50,6 +50,8 @@ const ORIGINAL: MailDetailDto = {
   snippet: "Original body",
   bodyText: "Original body",
   bodyHtml: "<p>Original body</p>",
+  bodyTruncated: false,
+  sourceSizeBytes: null,
   draftReplyToId: null,
   draftForwardOfId: null,
   isRead: true,

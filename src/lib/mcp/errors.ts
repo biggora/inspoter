@@ -73,7 +73,10 @@ import {
   KanbanLabelNameConflictError,
   KanbanLabelNotFoundError,
 } from "@/lib/services/kanban-labels";
-import { ChannelNotFoundError } from "@/lib/services/messages";
+import {
+  ChannelNotFoundError,
+  MessageNameConflictError,
+} from "@/lib/services/messages";
 import { ChannelWebhookNotFoundError } from "@/lib/services/webhookTokens";
 import { logError } from "@/lib/services/logs";
 
@@ -142,6 +145,7 @@ const EXPECTED_ERRORS = [
   AlertNotFoundError,
   AlertCategoryNotFoundError,
   ChannelNotFoundError,
+  MessageNameConflictError,
   ChannelWebhookNotFoundError,
 ] as const;
 

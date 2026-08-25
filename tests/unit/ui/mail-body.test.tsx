@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { MailBody } from "@/components/mail/mail-body";
@@ -51,5 +52,30 @@ describe("MailBody", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "This message has no text content.",
     );
+  });
+
+  it("blocks external resources until the operator opts in", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithIntl(
+      <MailBody
+        bodyText="Fallback"
+        bodyHtml='<img src="https://tracker.example/pixel" srcset="https://tracker.example/2x 2x"><video autoplay preload="auto" poster="https://tracker.example/poster"></video>'
+      />,
+    );
+    const image = container.querySelector("img");
+    const video = container.querySelector("video");
+    expect(image).not.toHaveAttribute("src");
+    expect(image).not.toHaveAttribute("srcset");
+    expect(video).not.toHaveAttribute("poster");
+
+    await user.click(
+      screen.getByRole("button", { name: "Load external content" }),
+    );
+    const loadedImage = container.querySelector("img");
+    const loadedVideo = container.querySelector("video");
+    expect(loadedImage).toHaveAttribute("src", "https://tracker.example/pixel");
+    expect(loadedImage).toHaveAttribute("referrerpolicy", "no-referrer");
+    expect(loadedVideo).not.toHaveAttribute("autoplay");
+    expect(loadedVideo).toHaveAttribute("preload", "metadata");
   });
 });

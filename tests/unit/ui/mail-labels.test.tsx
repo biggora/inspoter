@@ -100,6 +100,8 @@ const DETAIL: MailDetailDto = {
   bcc: [],
   bodyText: "Body",
   bodyHtml: null,
+  bodyTruncated: false,
+  sourceSizeBytes: null,
   draftReplyToId: null,
   draftForwardOfId: null,
   attachments: [],

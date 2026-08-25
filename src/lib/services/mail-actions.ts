@@ -12,6 +12,7 @@ import { MailAccountNotFoundError } from "@/lib/services/mail-accounts";
 import { AttachmentUnavailableError } from "@/lib/services/mail-attachments";
 import { MailDraftNotFoundError } from "@/lib/services/mail-drafts";
 import mailMessages from "@/messages/ru/mail.json";
+import { BoundedFixedWindowLimiter } from "@/lib/rate-limit/fixed-window";
 
 // Mail item actions + send (plan §4/§5, Phase 6). Server-first ordering: the
 // IMAP mutation runs before the local DB write, so a transport failure never
@@ -51,25 +52,15 @@ export class MailSendRateLimitError extends Error {
 // In-process fixed-window send limiter per workspace (adapted from
 // src/lib/webhooks/ratelimit.ts; same single-instance assumption). Limits are
 // read at call time so tests can tighten env.MAIL_SEND_RATE_LIMIT.
-interface SendWindowState {
-  count: number;
-  windowStart: number;
-}
-
-const sendWindows = new Map<string, SendWindowState>();
+const sendLimiter = new BoundedFixedWindowLimiter();
 
 function checkSendRateLimit(workspaceId: string): void {
-  const now = Date.now();
-  const state = sendWindows.get(workspaceId);
-  if (!state || now - state.windowStart >= env.MAIL_SEND_RATE_WINDOW_MS) {
-    sendWindows.set(workspaceId, { count: 1, windowStart: now });
-    return;
-  }
-  if (state.count < env.MAIL_SEND_RATE_LIMIT) {
-    state.count += 1;
-    return;
-  }
-  throw new MailSendRateLimitError();
+  const result = sendLimiter.consume(
+    workspaceId,
+    env.MAIL_SEND_RATE_LIMIT,
+    env.MAIL_SEND_RATE_WINDOW_MS,
+  );
+  if (!result.allowed) throw new MailSendRateLimitError();
 }
 
 const ITEM_INCLUDE = {

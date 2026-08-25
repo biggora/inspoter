@@ -7,6 +7,10 @@ import { env } from "@/lib/config/env";
 import { mapBackupError } from "@/app/api/backup/errors";
 import { jsonResponse } from "@/lib/api/response";
 import { recordActivity } from "@/lib/services/activity";
+import {
+  MultipartTooLargeError,
+  readMultipart,
+} from "@/lib/http/multipart";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(
@@ -21,39 +25,39 @@ export async function POST(request: NextRequest) {
     return mapBackupError(error, workspace.id);
   }
 
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > env.BACKUP_MAX_IMPORT_BYTES) {
-    return jsonResponse({ error: "BACKUP_TOO_LARGE" }, { status: 413 });
-  }
-
-  const form = await request.formData().catch(() => null);
-  if (!form) {
+  let form;
+  try {
+    form = await readMultipart(request, {
+      maxBodyBytes: env.BACKUP_MAX_IMPORT_BYTES + 65_536,
+      maxFileBytes: env.BACKUP_MAX_IMPORT_BYTES,
+      maxFiles: 1,
+      maxFields: 2,
+      maxParts: 3,
+    });
+  } catch (error) {
+    if (error instanceof MultipartTooLargeError) {
+      return jsonResponse({ error: "BACKUP_TOO_LARGE" }, { status: 413 });
+    }
     return jsonResponse({ error: "BACKUP_INVALID_FILE" }, { status: 400 });
   }
-
-  const file = form.get("file");
-  if (!(file instanceof File)) {
+  const file = form.files.find((entry) => entry.fieldName === "file");
+  if (!file) {
     return jsonResponse({ error: "BACKUP_INVALID_FILE" }, { status: 400 });
   }
 
   const parsed = importBackupFieldsSchema.safeParse({
-    passphrase: form.get("passphrase"),
-    mode: form.get("mode"),
+    passphrase: form.fields.get("passphrase"),
+    mode: form.fields.get("mode"),
   });
   if (!parsed.success) {
     return jsonResponse({ error: parsed.error.issues }, { status: 400 });
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  if (buffer.length > env.BACKUP_MAX_IMPORT_BYTES) {
-    return jsonResponse({ error: "BACKUP_TOO_LARGE" }, { status: 413 });
   }
 
   try {
     const summary = await importWorkspace(workspace.id, {
       mode: parsed.data.mode,
       passphrase: parsed.data.passphrase,
-      file: buffer,
+      file: file.data,
     });
     recordActivity(workspace.id, {
       operatorId: operator.id,

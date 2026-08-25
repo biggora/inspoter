@@ -11,6 +11,7 @@ overrides:
   "brace-expansion@<2.0.0": "^1.1.18"
   "js-yaml@>=4.0.0 <4.3.1": "^4.3.1"
   "nanoid@<3.3.17": "^3.3.17"
+  "@prisma/config>deepmerge-ts": "8.0.2"
 allowBuilds:
   "@parcel/watcher": false
   "@prisma/engines": true
@@ -37,6 +38,7 @@ minimumReleaseAgeExclude:
   - eslint-config-next@16.2.11
   - next@16.2.11
   - swagger-client@3.37.7
-  - swagger-ui-react@5.32.10
+  - swagger-ui-react@5.32.14
   - '@modelcontextprotocol/core@2.0.0'
   - '@modelcontextprotocol/server@2.0.0'
+  - mailparser@3.9.16

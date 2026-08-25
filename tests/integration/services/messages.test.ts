@@ -51,6 +51,16 @@ describe("AC-MSG-001: createCategory + listCategories", () => {
     const categories = await messagesService.listCategories(workspaceId);
     expect(categories.some((c) => c.id === category.id)).toBe(true);
   });
+
+  it("returns one canonical category under concurrent get-or-create", async () => {
+    const name = `  ${NAME_PREFIX}  Atomic   Category `;
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        messagesService.findOrCreateCategoryByName(workspaceId, name),
+      ),
+    );
+    expect(new Set(results.map((result) => result.category.id)).size).toBe(1);
+  });
 });
 
 describe("AC-MSG-002: createChannel nested under category", () => {
@@ -69,6 +79,23 @@ describe("AC-MSG-002: createChannel nested under category", () => {
     const categories = await messagesService.listCategories(workspaceId);
     const found = categories.find((c) => c.id === category.id);
     expect(found?.channels.some((ch) => ch.id === channel.id)).toBe(true);
+  });
+
+  it("returns one canonical channel under concurrent get-or-create", async () => {
+    const category = await messagesService.createCategory(
+      workspaceId,
+      `${NAME_PREFIX}-atomic-channel-category`,
+    );
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        messagesService.findOrCreateChannelByName(
+          workspaceId,
+          category.id,
+          "  Incident   Feed ",
+        ),
+      ),
+    );
+    expect(new Set(results.map((result) => result.channel.id)).size).toBe(1);
   });
 });
 

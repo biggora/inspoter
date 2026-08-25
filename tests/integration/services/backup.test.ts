@@ -12,12 +12,14 @@ process.env.CREDENTIAL_ENCRYPTION_KEY ??=
 import * as backupService from "@/lib/services/backup";
 import {
   openArchive,
+  sealArchive,
   BackupInvalidFileError,
   BackupPassphraseInvalidError,
   BackupUnsupportedVersionError,
 } from "@/lib/backup/format";
 import {
   BACKUP_SECTIONS,
+  type BackupPayloadV1,
   type BackupSection,
 } from "@/lib/backup/serialization";
 import * as workspacesService from "@/lib/services/workspaces";
@@ -518,6 +520,60 @@ describe("backup service", () => {
         expect(updated.hiddenSections.sort()).toEqual(["logs", "mail"]);
       });
     });
+  });
+
+  it("remaps normalized message duplicates from a legacy archive", async () => {
+    const target = await createWorkspaceFor("legacy-message-duplicates");
+    const { buffer } = await backupService.exportWorkspace(workspaceA.id, {
+      passphrase: PASSPHRASE,
+      sections: ["messages"],
+    });
+    const payload = openArchive(buffer, PASSPHRASE) as BackupPayloadV1;
+    const category = payload.data.messageCategories?.[0];
+    const channel = payload.data.channels?.[0];
+    const message = payload.data.messages?.[0];
+    if (!category || !channel || !message) {
+      throw new Error("Expected the messages fixture in the exported archive");
+    }
+
+    const duplicateCategoryId = randomUUID();
+    const duplicateChannelId = randomUUID();
+    payload.data.messageCategories?.push({
+      ...category,
+      id: duplicateCategoryId,
+      name: `  ${category.name.toUpperCase()}  `,
+    });
+    payload.data.channels?.push({
+      ...channel,
+      id: duplicateChannelId,
+      messageCategoryId: duplicateCategoryId,
+      name: `  ${channel.name.toUpperCase()}  `,
+    });
+    payload.data.messages?.push({
+      ...message,
+      id: randomUUID(),
+      channelId: duplicateChannelId,
+      content: "Legacy duplicate-path message",
+    });
+    payload.manifest.counts.messageCategories = 2;
+    payload.manifest.counts.channels = 2;
+    payload.manifest.counts.messages = 2;
+
+    await backupService.importWorkspace(target.id, {
+      mode: "replace",
+      passphrase: PASSPHRASE,
+      file: sealArchive(payload, PASSPHRASE),
+    });
+
+    await expect(
+      db.messageCategory.count({ where: { workspaceId: target.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      db.channel.count({ where: { workspaceId: target.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      db.message.count({ where: { workspaceId: target.id } }),
+    ).resolves.toBe(2);
   });
 
   describe("AC-BCK-003/005 merge into the same workspace: doubling, category reuse, secret-collision skips", () => {

@@ -104,13 +104,14 @@ describe("authenticateMetricsToken()", () => {
 
   it("rejects a channel-bound token", async () => {
     const category = await db.messageCategory.create({
-      data: { workspaceId, name: `${NAME_PREFIX}-category` },
+      data: { workspaceId, name: `${NAME_PREFIX}-category`, normalizedName: randomUUID() },
     });
     const channel = await db.channel.create({
       data: {
         workspaceId,
         messageCategoryId: category.id,
         messageCategoryWorkspaceId: workspaceId,
+        normalizedName: randomUUID(),
         name: `${NAME_PREFIX}-channel`,
       },
     });

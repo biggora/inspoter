@@ -63,13 +63,14 @@ beforeAll(async () => {
   });
   workspaceId = workspace.id;
   const category = await db.messageCategory.create({
-    data: { workspaceId, name: `${PREFIX}-category` },
+    data: { workspaceId, name: `${PREFIX}-category`, normalizedName: randomUUID() },
   });
   const channel = await db.channel.create({
     data: {
       workspaceId,
       messageCategoryId: category.id,
       messageCategoryWorkspaceId: workspaceId,
+      normalizedName: randomUUID(),
       name: `${PREFIX}-channel`,
     },
   });
@@ -379,6 +380,23 @@ describe("Discord webhook idempotency", () => {
 });
 
 describe("multipart bodies", () => {
+  it("rejects an invalid token before parsing a malformed multipart body", async () => {
+    const malformed = new NextRequest(
+      `http://localhost/api/discord/webhooks/${webhookId}/invalid`,
+      {
+        method: "POST",
+        headers: { "content-type": "multipart/form-data; boundary=broken" },
+        body: "this is not a multipart body",
+      },
+    );
+    const response = await executeDiscordWebhook(
+      malformed,
+      webhookId,
+      "invalid",
+    );
+    expect(response.status).toBe(401);
+  });
+
   it("reads the message from payload_json", async () => {
     const content = `${PREFIX}-multipart-${randomUUID()}`;
     const form = new FormData();

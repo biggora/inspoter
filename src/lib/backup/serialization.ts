@@ -368,6 +368,8 @@ const mailItemSchema = z.object({
   subject: z.string(),
   bodyText: z.string(),
   bodyHtml: z.string().nullable(),
+  bodyTruncated: z.boolean().optional(),
+  sourceSizeBytes: bigintString.nullable().optional(),
   snippet: z.string().nullable(),
   isRead: z.boolean(),
   isAnswered: z.boolean(),

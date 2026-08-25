@@ -27,6 +27,7 @@ import { login } from "./actions";
 const LOGIN_ERROR_KEYS: Record<string, string> = {
   "Username and password are required.": "errorUsernamePasswordRequired",
   "Invalid username or password.": "errorInvalidCredentials",
+  LOGIN_RATE_LIMITED: "errorRateLimited",
 };
 
 const AUTHENTIK_ERROR_KEYS: Record<string, string> = {

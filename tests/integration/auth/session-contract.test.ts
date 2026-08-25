@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import { getValidSession } from "@/lib/auth/session";
 
 // Frozen contract (plan.md §5.1): cookie name "session", value = opaque
 // Session.id; requireOperator() in src/lib/auth/dal.ts validates it against
@@ -50,5 +51,25 @@ describe("AC-AUTH-002 (backend layer): requireOperator() session contract", () =
 
     expect(resolved.id).toBe(operator.id);
     expect(resolved.username).toBe(operator.username);
+  });
+
+  it("deletes an expired session when validation encounters it", async () => {
+    const operator = await db.operator.create({
+      data: {
+        username: `expired-${randomUUID()}`,
+        passwordHash: "unused-in-this-test",
+      },
+    });
+    createdOperatorIds.push(operator.id);
+    const id = randomUUID();
+    await db.session.create({
+      data: {
+        id,
+        operatorId: operator.id,
+        expiresAt: new Date(Date.now() - 1),
+      },
+    });
+    expect(await getValidSession(id)).toBeNull();
+    expect(await db.session.findUnique({ where: { id } })).toBeNull();
   });
 });

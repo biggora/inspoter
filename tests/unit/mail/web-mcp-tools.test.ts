@@ -103,6 +103,8 @@ function makeDetail(overrides: Partial<MailDetailDto> = {}): MailDetailDto {
     snippet: "The edge node is at 94%.",
     bodyText: "The edge node is at 94%.",
     bodyHtml: null,
+    bodyTruncated: false,
+    sourceSizeBytes: null,
     draftReplyToId: null,
     draftForwardOfId: null,
     isRead: false,

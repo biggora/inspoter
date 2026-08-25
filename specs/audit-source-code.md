@@ -394,3 +394,24 @@ exposure**, а не подтверждённый эксплойт приложе
 После исправлений обязательны повторные `typecheck`, `lint`, unit, integration,
 production build, dependency audit и полный E2E прогон в изолированном тестовом
 окружении.
+
+## 8. Remediation appendix (2026-08-25)
+
+| ID         | Статус        | Исправление |
+| ---------- | ------------- | ----------- |
+| `AUD-001`  | REMEDIATED    | Перед `migrate deploy` выполняется транзакционный idempotent preflight, переносящий legacy agent tokens без изменения опубликованной migration history. |
+| `AUD-002`  | REMEDIATED    | Discord multipart читается потоково с фактическим byte/part/file limit; token и rate limit проверяются до чтения тела. |
+| `AUD-003`  | REJECTED      | Private/LAN integrations и управление operational integrations участниками являются зафиксированными возможностями self-hosted продукта; trust boundary, RBAC и egress намеренно не изменены. |
+| `AUD-004`  | REMEDIATED    | Local login использует атомарные PostgreSQL buckets по SHA-256 IP/username keys, trusted-proxy opt-in и политику новых паролей. |
+| `AUD-005`  | REMEDIATED    | IMAP sync получает сообщения страницами, ограничивает raw/decoded body и сохраняет oversized mail как metadata-only. |
+| `AUD-006`  | REMEDIATED    | Backup, contacts/photo и draft attachment uploads переведены с `request.formData()` на общий streaming multipart reader. |
+| `AUD-007`  | REMEDIATED    | Внешние passive resources писем блокируются до явного действия пользователя и загружаются без referrer/autoplay. |
+| `AUD-008`  | REMEDIATED    | Workspace create/delete сериализованы advisory lock по operator ID; delete-предикаты проверяются внутри транзакции. |
+| `AUD-009`  | REMEDIATED    | Categories/channels получили normalized unique keys, canonical merge migration и race-safe get-or-create. |
+| `AUD-010`  | REMEDIATED    | Slug создаётся bounded retry loop; повторяется только подтверждённый `Workspace.slug` conflict. |
+| `AUD-011`  | REMEDIATED    | Expired session удаляется при чтении; создание новой session очищает истёкшие строки по индексированному полю. |
+| `AUD-012`  | REMEDIATED    | Webhook/mail/LLM используют общий fixed-window limiter с sweep и hard cap 10 000 keys в независимых pools. |
+| `RISK-001` | REMEDIATED    | Swagger UI, mailparser и Prisma обновлены; Prisma-only `deepmerge-ts` override ограничен версией 8.0.2. `pnpm audit --prod` возвращает 0 high/critical. |
+
+Опубликованная `20260724100000_universal_api_tokens` не редактировалась. Новые
+изменения схемы оформлены отдельной additive remediation migration.

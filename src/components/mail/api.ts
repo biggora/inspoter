@@ -90,6 +90,8 @@ export interface MailDetailDto {
   snippet: string | null;
   bodyText: string;
   bodyHtml: string | null;
+  bodyTruncated: boolean;
+  sourceSizeBytes: string | null;
   draftReplyToId: string | null;
   draftForwardOfId: string | null;
   isRead: boolean;

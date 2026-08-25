@@ -621,6 +621,8 @@ function toMailItemRecord(row: MailItem): BackupMailItemRecord {
     subject: row.subject,
     bodyText: row.bodyText,
     bodyHtml: row.bodyHtml,
+    bodyTruncated: row.bodyTruncated,
+    sourceSizeBytes: bigintOrNull(row.sourceSizeBytes),
     snippet: row.snippet,
     isRead: row.isRead,
     isAnswered: row.isAnswered,
@@ -1510,23 +1512,42 @@ export async function importWorkspace(
       }
 
       if (payload.data.messageCategories) {
-        const inserts = payload.data.messageCategories.map((row) => {
+        const canonicalCategoryIds = new Map<string, string>();
+        for (const row of payload.data.messageCategories) {
+          const normalizedName = normalizeLabelName(row.name);
+          const canonicalId = canonicalCategoryIds.get(normalizedName);
+          if (canonicalId) {
+            messageCategoryIdMap.set(row.id, canonicalId);
+            continue;
+          }
+          const existing =
+            mode === "merge"
+              ? await tx.messageCategory.findUnique({
+                  where: {
+                    workspaceId_normalizedName: { workspaceId, normalizedName },
+                  },
+                })
+              : null;
+          if (existing) {
+            messageCategoryIdMap.set(row.id, existing.id);
+            canonicalCategoryIds.set(normalizedName, existing.id);
+            continue;
+          }
           const newId = crypto.randomUUID();
           messageCategoryIdMap.set(row.id, newId);
-          return {
-            id: newId,
-            workspaceId,
-            name: row.name,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          };
-        });
-        await createManyChunked(
-          (chunk) => tx.messageCategory.createMany({ data: chunk }),
-          inserts,
-          500,
-        );
-        imported.messageCategories = inserts.length;
+          canonicalCategoryIds.set(normalizedName, newId);
+          await tx.messageCategory.create({
+            data: {
+              id: newId,
+              workspaceId,
+              name: row.name,
+              normalizedName,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            },
+          });
+        }
+        imported.messageCategories = payload.data.messageCategories.length;
       }
 
       if (payload.data.alertCategories) {
@@ -2144,29 +2165,52 @@ export async function importWorkspace(
       }
 
       if (payload.data.channels) {
-        const inserts = payload.data.channels.map((row) => {
-          const newId = crypto.randomUUID();
-          channelIdMap.set(row.id, newId);
+        const canonicalChannelIds = new Map<string, string>();
+        for (const row of payload.data.channels) {
           const messageCategoryId = mustRemap(
             messageCategoryIdMap,
             row.messageCategoryId,
           );
-          return {
-            id: newId,
-            workspaceId,
-            messageCategoryId,
-            messageCategoryWorkspaceId: workspaceId,
-            name: row.name,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          };
-        });
-        await createManyChunked(
-          (chunk) => tx.channel.createMany({ data: chunk }),
-          inserts,
-          500,
-        );
-        imported.channels = inserts.length;
+          const normalizedName = normalizeLabelName(row.name);
+          const canonicalKey = `${messageCategoryId}\0${normalizedName}`;
+          const canonicalId = canonicalChannelIds.get(canonicalKey);
+          if (canonicalId) {
+            channelIdMap.set(row.id, canonicalId);
+            continue;
+          }
+          const existing =
+            mode === "merge"
+              ? await tx.channel.findUnique({
+                  where: {
+                    messageCategoryId_normalizedName: {
+                      messageCategoryId,
+                      normalizedName,
+                    },
+                  },
+                })
+              : null;
+          if (existing) {
+            channelIdMap.set(row.id, existing.id);
+            canonicalChannelIds.set(canonicalKey, existing.id);
+            continue;
+          }
+          const newId = crypto.randomUUID();
+          channelIdMap.set(row.id, newId);
+          canonicalChannelIds.set(canonicalKey, newId);
+          await tx.channel.create({
+            data: {
+              id: newId,
+              workspaceId,
+              messageCategoryId,
+              messageCategoryWorkspaceId: workspaceId,
+              name: row.name,
+              normalizedName,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            },
+          });
+        }
+        imported.channels = payload.data.channels.length;
       }
 
       if (payload.data.mailFolders) {
@@ -2364,6 +2408,11 @@ export async function importWorkspace(
             subject: row.subject,
             bodyText: row.bodyText,
             bodyHtml: row.bodyHtml,
+            bodyTruncated: row.bodyTruncated ?? false,
+            sourceSizeBytes:
+              row.sourceSizeBytes !== null && row.sourceSizeBytes !== undefined
+                ? BigInt(row.sourceSizeBytes)
+                : null,
             snippet: row.snippet,
             isRead: row.isRead,
             isAnswered: row.isAnswered,

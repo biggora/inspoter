@@ -21,6 +21,13 @@ const envSchema = z
     WEBHOOK_RATE_LIMIT: z.coerce.number().int().positive().default(120),
     WEBHOOK_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().positive().default(65_536),
+    LOGIN_RATE_LIMIT_IP: z.coerce.number().int().positive().default(30),
+    LOGIN_RATE_LIMIT_USERNAME: z.coerce.number().int().positive().default(10),
+    LOGIN_RATE_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
+    LOGIN_TRUST_PROXY: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     SERVICE_SCHEDULER_TICK_MS: z.coerce
       .number()
       .int()
@@ -76,6 +83,13 @@ const envSchema = z
     // --- Mail client (plan «mail», §2/§3: sync + send limits) ---
     MAIL_SYNC_TICK_MS: z.coerce.number().int().positive().default(30_000),
     MAIL_INITIAL_SYNC_LIMIT: z.coerce.number().int().positive().default(200),
+    MAIL_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(10),
+    MAIL_MAX_MESSAGE_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5_242_880),
+    MAIL_MAX_BODY_BYTES: z.coerce.number().int().positive().default(5_242_880),
     // Consecutive failed syncs before an account is marked ERROR and alerted
     // on. Each sync already retries the transport once, so the default means
     // six failed IMAP sessions in a row.

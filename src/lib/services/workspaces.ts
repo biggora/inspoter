@@ -92,17 +92,23 @@ function slugify(name: string): string {
   return slug || `workspace-${randomUUID().slice(0, 8)}`;
 }
 
-async function uniqueSlug(base: string): Promise<string> {
-  const baseSlug = slugify(base);
-  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
-    const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
-    const existing = await db.workspace.findUnique({
-      where: { slug: candidate },
-    });
-    if (!existing) return candidate;
+function slugCandidate(name: string, attempt: number): string {
+  const baseSlug = slugify(name);
+  return attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
+}
+
+function isWorkspaceSlugConflict(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
   }
-  throw new WorkspaceValidationError(
-    "Could not generate a unique workspace slug, please try a different name",
+  const target = error.meta?.target;
+  return (
+    target === "Workspace_slug_key" ||
+    (Array.isArray(target) && target.length === 1 && target[0] === "slug") ||
+    (error.meta?.modelName === "Workspace" && error.message.includes("`slug`"))
   );
 }
 
@@ -151,61 +157,61 @@ export async function createWorkspace(
   input: CreateWorkspaceInput,
 ): Promise<Workspace> {
   const name = validateName(input.name);
-  const slug = await uniqueSlug(name);
-  return db.workspace.create({
-    data: {
-      name,
-      slug,
-      members: {
-        create: { operatorId, role: "OWNER" },
-      },
-    },
-  });
+  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+    try {
+      return await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${operatorId}))`;
+        return tx.workspace.create({
+          data: {
+            name,
+            slug: slugCandidate(name, attempt),
+            members: { create: { operatorId, role: "OWNER" } },
+          },
+        });
+      });
+    } catch (error) {
+      if (!isWorkspaceSlugConflict(error)) throw error;
+    }
+  }
+  throw new WorkspaceValidationError(
+    "Could not generate a unique workspace slug, please try a different name",
+  );
 }
 
 export async function ensureDefaultWorkspace(
   operatorId: string,
   defaultName: string,
 ): Promise<Workspace> {
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${operatorId}))`;
+  const name = validateName(defaultName);
+  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+    try {
+      return await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${operatorId}))`;
 
-    const membership = await tx.workspaceMember.findFirst({
-      where: { operatorId },
-    });
-    if (membership) {
-      return tx.workspace.findUniqueOrThrow({
-        where: { id: membership.workspaceId },
+        const membership = await tx.workspaceMember.findFirst({
+          where: { operatorId },
+        });
+        if (membership) {
+          return tx.workspace.findUniqueOrThrow({
+            where: { id: membership.workspaceId },
+          });
+        }
+
+        return tx.workspace.create({
+          data: {
+            name,
+            slug: slugCandidate(name, attempt),
+            members: { create: { operatorId, role: "OWNER" } },
+          },
+        });
       });
+    } catch (error) {
+      if (!isWorkspaceSlugConflict(error)) throw error;
     }
-
-    const name = validateName(defaultName);
-    const baseSlug = slugify(name);
-    let slug: string | undefined;
-    for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
-      const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
-      const taken = await tx.workspace.findUnique({
-        where: { slug: candidate },
-      });
-      if (!taken) {
-        slug = candidate;
-        break;
-      }
-    }
-    if (!slug) {
-      throw new WorkspaceValidationError(
-        "Could not generate a unique workspace slug, please try a different name",
-      );
-    }
-
-    return tx.workspace.create({
-      data: {
-        name,
-        slug,
-        members: { create: { operatorId, role: "OWNER" } },
-      },
-    });
-  });
+  }
+  throw new WorkspaceValidationError(
+    "Could not generate a unique workspace slug, please try a different name",
+  );
 }
 
 export async function listForOperator(
@@ -268,17 +274,22 @@ export async function deleteWorkspace(
   id: string,
   operatorId: string,
 ): Promise<Workspace> {
-  await findWorkspaceOrThrow(id);
-  await requireOwner(id, operatorId);
-
-  const otherMemberships = await db.workspaceMember.count({
-    where: { operatorId, workspaceId: { not: id } },
-  });
-  if (otherMemberships === 0) {
-    throw new LastWorkspaceError();
-  }
-
   return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${operatorId}))`;
+    const workspace = await tx.workspace.findUnique({ where: { id } });
+    if (!workspace) throw new WorkspaceNotFoundError(id);
+    const membership = await tx.workspaceMember.findUnique({
+      where: { workspaceId_operatorId: { workspaceId: id, operatorId } },
+    });
+    if (!membership || membership.role !== "OWNER") {
+      throw new WorkspaceAuthorizationError(
+        "Only the workspace owner can perform this action",
+      );
+    }
+    const otherMemberships = await tx.workspaceMember.count({
+      where: { operatorId, workspaceId: { not: id } },
+    });
+    if (otherMemberships === 0) throw new LastWorkspaceError();
     await tx.localServer.deleteMany({ where: { workspaceId: id } });
     return tx.workspace.delete({ where: { id } });
   });
@@ -343,7 +354,15 @@ export async function addMember(
   });
 
   if (!operator && input.password) {
-    const passwordHash = await hashPassword(input.password);
+    let passwordHash: string;
+    try {
+      passwordHash = await hashPassword(input.password);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new WorkspaceValidationError(error.message);
+      }
+      throw error;
+    }
     operator = await db.operator.create({
       data: { username: input.username, passwordHash },
     });

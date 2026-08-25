@@ -82,3 +82,39 @@ describe("updateSectionVisibilitySchema", () => {
     expect(parsed.hiddenSections).toEqual([]);
   });
 });
+
+describe("workspace mutation serialization", () => {
+  it("creates unique slugs for concurrent identical names", async () => {
+    const [first, second] = await Promise.all([
+      workspacesService.createWorkspace(ownerOp.id, { name: "Concurrent" }),
+      workspacesService.createWorkspace(ownerOp.id, { name: "Concurrent" }),
+    ]);
+    expect(first.slug).not.toBe(second.slug);
+    await db.workspace.deleteMany({
+      where: { id: { in: [first.id, second.id] } },
+    });
+  });
+
+  it("does not let parallel deletes remove an operator's last workspace", async () => {
+    const operator = await db.operator.create({
+      data: { username: `delete-race-${randomUUID()}`, passwordHash: "x" },
+    });
+    const first = await workspacesService.createWorkspace(operator.id, {
+      name: "Delete race one",
+    });
+    const second = await workspacesService.createWorkspace(operator.id, {
+      name: "Delete race two",
+    });
+    const results = await Promise.allSettled([
+      workspacesService.deleteWorkspace(first.id, operator.id),
+      workspacesService.deleteWorkspace(second.id, operator.id),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      await db.workspaceMember.count({ where: { operatorId: operator.id } }),
+    ).toBe(1);
+    await db.operator.delete({ where: { id: operator.id } });
+  });
+});

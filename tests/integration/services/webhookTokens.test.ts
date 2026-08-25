@@ -31,13 +31,14 @@ beforeAll(async () => {
   otherWorkspaceId = otherWorkspace.id;
 
   const category = await db.messageCategory.create({
-    data: { workspaceId, name: `${NAME_PREFIX}-category` },
+    data: { workspaceId, name: `${NAME_PREFIX}-category`, normalizedName: randomUUID() },
   });
   const channel = await db.channel.create({
     data: {
       workspaceId,
       messageCategoryId: category.id,
       messageCategoryWorkspaceId: workspaceId,
+      normalizedName: randomUUID(),
       name: `${NAME_PREFIX}-channel`,
     },
   });
@@ -528,13 +529,14 @@ describe("channel-scoped webhooks", () => {
 
   it("cascades a channel delete through its webhook and idempotency records", async () => {
     const category = await db.messageCategory.create({
-      data: { workspaceId, name: `${NAME_PREFIX}-cascade-category` },
+      data: { workspaceId, name: `${NAME_PREFIX}-cascade-category`, normalizedName: randomUUID() },
     });
     const channel = await db.channel.create({
       data: {
         workspaceId,
         messageCategoryId: category.id,
         messageCategoryWorkspaceId: workspaceId,
+        normalizedName: randomUUID(),
         name: `${NAME_PREFIX}-cascade-channel`,
       },
     });

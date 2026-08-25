@@ -10,6 +10,7 @@ import type {
 } from "@/lib/llm/contract";
 import { getLlmProviderForWorkspace } from "@/lib/llm/registry";
 import { recordActivity } from "@/lib/services/activity";
+import { BoundedFixedWindowLimiter } from "@/lib/rate-limit/fixed-window";
 
 // The single sanctioned entry point for every model call. Feature code calls
 // these functions, never a driver directly, so that the workspace rate limit
@@ -27,25 +28,14 @@ export interface LlmCaller {
 // In-process fixed-window limiter per workspace, copied from
 // checkSendRateLimit in src/lib/services/mail-actions.ts (same single-process
 // assumption). Limits are read at call time so tests can tighten them.
-interface CallWindowState {
-  count: number;
-  windowStart: number;
-}
-
-const callWindows = new Map<string, CallWindowState>();
+const callLimiter = new BoundedFixedWindowLimiter();
 
 function withinRateLimit(workspaceId: string): boolean {
-  const now = Date.now();
-  const state = callWindows.get(workspaceId);
-  if (!state || now - state.windowStart >= env.LLM_CALL_RATE_WINDOW_MS) {
-    callWindows.set(workspaceId, { count: 1, windowStart: now });
-    return true;
-  }
-  if (state.count < env.LLM_CALL_RATE_LIMIT) {
-    state.count += 1;
-    return true;
-  }
-  return false;
+  return callLimiter.consume(
+    workspaceId,
+    env.LLM_CALL_RATE_LIMIT,
+    env.LLM_CALL_RATE_WINDOW_MS,
+  ).allowed;
 }
 
 async function run<T extends { model: string; usage: LlmUsage }>(

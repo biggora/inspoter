@@ -6,6 +6,10 @@ import { mapContactError } from "@/app/api/contacts/errors";
 import { env } from "@/lib/config/env";
 import * as contactsService from "@/lib/services/contacts";
 import { recordActivity } from "@/lib/services/activity";
+import {
+  MultipartTooLargeError,
+  readMultipart,
+} from "@/lib/http/multipart";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -58,20 +62,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const { operator, workspace } = authResult;
   const { id } = await params;
 
-  const contentLength = request.headers.get("content-length");
-  if (
-    contentLength &&
-    Number(contentLength) > env.CONTACTS_MAX_PHOTO_BYTES * 2
-  ) {
-    return jsonResponse({ error: "CONTACT_PHOTO_TOO_LARGE" }, { status: 413 });
-  }
-
-  const form = await request.formData().catch(() => null);
-  const file = form?.get("photo");
-  if (!(file instanceof File)) {
+  let form;
+  try {
+    form = await readMultipart(request, {
+      maxBodyBytes: env.CONTACTS_MAX_PHOTO_BYTES + 65_536,
+      maxFileBytes: env.CONTACTS_MAX_PHOTO_BYTES,
+      maxFiles: 1,
+      maxFields: 0,
+      maxParts: 1,
+    });
+  } catch (error) {
+    if (error instanceof MultipartTooLargeError) {
+      return jsonResponse({ error: "CONTACT_PHOTO_TOO_LARGE" }, { status: 413 });
+    }
     return jsonResponse({ error: "CONTACT_PHOTO_INVALID" }, { status: 400 });
   }
-  if (!ALLOWED_TYPES.has(file.type)) {
+  const file = form.files.find((entry) => entry.fieldName === "photo");
+  if (!file) {
+    return jsonResponse({ error: "CONTACT_PHOTO_INVALID" }, { status: 400 });
+  }
+  if (!ALLOWED_TYPES.has(file.contentType)) {
     return jsonResponse(
       { error: "CONTACT_PHOTO_UNSUPPORTED_TYPE" },
       { status: 415 },
@@ -84,8 +94,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       operator.id,
       id,
       {
-        contentType: file.type,
-        data: new Uint8Array(await file.arrayBuffer()),
+        contentType: file.contentType,
+        data: new Uint8Array(file.data),
       },
       env.CONTACTS_MAX_PHOTO_BYTES,
     );

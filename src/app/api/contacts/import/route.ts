@@ -7,6 +7,10 @@ import { env } from "@/lib/config/env";
 import * as contactsService from "@/lib/services/contacts";
 import { recordActivity } from "@/lib/services/activity";
 import { contactImportFieldsSchema } from "@/lib/validation/contacts";
+import {
+  MultipartTooLargeError,
+  readMultipart,
+} from "@/lib/http/multipart";
 
 // Multipart, like /api/backup/import: the file is bytes, and the duplicate
 // strategy rides alongside it as a form field rather than in the query string.
@@ -17,16 +21,26 @@ export async function POST(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const { operator, workspace } = authResult;
 
-  // Rejected on the declared length first so an oversized upload is refused
-  // before it is buffered.
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > env.CONTACTS_MAX_IMPORT_BYTES) {
-    return jsonResponse({ error: "CONTACT_IMPORT_TOO_LARGE" }, { status: 413 });
+  let form;
+  try {
+    form = await readMultipart(request, {
+      maxBodyBytes: env.CONTACTS_MAX_IMPORT_BYTES + 65_536,
+      maxFileBytes: env.CONTACTS_MAX_IMPORT_BYTES,
+      maxFiles: 1,
+      maxFields: 2,
+      maxParts: 3,
+    });
+  } catch (error) {
+    if (error instanceof MultipartTooLargeError) {
+      return jsonResponse({ error: "CONTACT_IMPORT_TOO_LARGE" }, { status: 413 });
+    }
+    return jsonResponse(
+      { error: "CONTACT_IMPORT_INVALID_FILE" },
+      { status: 400 },
+    );
   }
-
-  const form = await request.formData().catch(() => null);
-  const file = form?.get("file");
-  if (!(file instanceof File)) {
+  const file = form.files.find((entry) => entry.fieldName === "file");
+  if (!file) {
     return jsonResponse(
       { error: "CONTACT_IMPORT_INVALID_FILE" },
       { status: 400 },
@@ -34,17 +48,14 @@ export async function POST(request: NextRequest) {
   }
 
   const parsed = contactImportFieldsSchema.safeParse({
-    format: form?.get("format") ?? undefined,
-    duplicateStrategy: form?.get("duplicateStrategy") ?? undefined,
+    format: form.fields.get("format"),
+    duplicateStrategy: form.fields.get("duplicateStrategy"),
   });
   if (!parsed.success) {
     return jsonResponse({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes.byteLength > env.CONTACTS_MAX_IMPORT_BYTES) {
-    return jsonResponse({ error: "CONTACT_IMPORT_TOO_LARGE" }, { status: 413 });
-  }
+  const bytes = new Uint8Array(file.data);
 
   try {
     const summary = await contactsService.importContacts(

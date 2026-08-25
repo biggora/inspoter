@@ -22,8 +22,27 @@ import { Client } from "pg";
 
 const KEY_LENGTH = 64;
 const scryptAsync = promisify(scryptCallback);
+const MIN_PASSWORD_LENGTH = 12;
+const COMMON_PASSWORDS = new Set([
+  "123456789012",
+  "adminadmin",
+  "administrator",
+  "letmeinletmein",
+  "password1234",
+  "qwertyqwerty",
+]);
+
+function validateNewPassword(password: string): void {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+  if (COMMON_PASSWORDS.has(password.toLocaleLowerCase("en-US"))) {
+    throw new Error("Choose a less common password");
+  }
+}
 
 async function hashPassword(password: string): Promise<string> {
+  validateNewPassword(password);
   const salt = randomBytes(16).toString("hex");
   const derivedKey = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
   return `${salt}:${derivedKey.toString("hex")}`;

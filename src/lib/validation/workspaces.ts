@@ -37,5 +37,5 @@ export const updateAutoRefreshSchema = z.object({
 
 export const addMemberSchema = z.object({
   username: z.string().min(1),
-  password: z.string().min(6).optional(),
+  password: z.string().min(12).optional(),
 });

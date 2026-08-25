@@ -92,6 +92,8 @@
   "subjectLabel": "Subject",
   "noSubjectLabel": "(No subject)",
   "bodyLabel": "Message body",
+  "messageBodyTruncated": "This message is too large to display. Its metadata and attachments remain available.",
+  "loadExternalContent": "Load external content",
   "emptyBodyLabel": "This message has no text content.",
   "sendingLabel": "Sending…",
   "sendButton": "Send",

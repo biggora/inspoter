@@ -224,15 +224,19 @@ describe("bookmarks", () => {
     expect(await body(removed)).toEqual({ deleted: id });
     expect(await db.bookmark.findUnique({ where: { id } })).toBeNull();
 
+    await expect
+      .poll(async () => {
+        const entries = await db.activity.findMany({
+          where: { workspaceId, entityType: "bookmark", entityId: id },
+          select: { action: true },
+        });
+        return entries.map((entry) => entry.action).sort();
+      })
+      .toEqual(["create", "delete", "update"]);
     const activity = await db.activity.findMany({
       where: { workspaceId, entityType: "bookmark", entityId: id },
-      select: { action: true, operatorName: true },
+      select: { operatorName: true },
     });
-    expect(activity.map((entry) => entry.action).sort()).toEqual([
-      "create",
-      "delete",
-      "update",
-    ]);
     expect(new Set(activity.map((entry) => entry.operatorName))).toEqual(
       new Set(["agent"]),
     );

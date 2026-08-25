@@ -12,7 +12,7 @@ import { hashPassword } from "@/lib/auth/password";
 // honestly, per the same contract the real login flow uses.
 
 const username = `tester-${randomUUID()}`;
-const password = "Test1234!";
+const password = "Test1234!safe";
 const createdOperatorIds: string[] = [];
 
 afterAll(async () => {
@@ -55,5 +55,20 @@ describe("AC-AUTH-002/003: login Server Action contract", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toBeTruthy();
     expect(await db.session.count()).toBe(before);
+  });
+
+  it("throttles a normalized username without revealing whether it exists", async () => {
+    await db.loginRateLimitBucket.deleteMany();
+    const { login } = await import("@/app/[locale]/login/actions");
+    let result = await login(
+      formDataFor({ username: "  Missing User  ", password: "wrong" }),
+    );
+    for (let attempt = 1; attempt <= 10; attempt += 1) {
+      result = await login(
+        formDataFor({ username: "MISSING USER", password: "wrong" }),
+      );
+    }
+    expect(result).toEqual({ ok: false, error: "LOGIN_RATE_LIMITED" });
+    await db.loginRateLimitBucket.deleteMany();
   });
 });

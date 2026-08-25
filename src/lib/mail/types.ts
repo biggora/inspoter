@@ -39,6 +39,8 @@ export interface RemoteMessage {
   isFlagged: boolean;
   bodyText: string;
   bodyHtml: string | null;
+  bodyTruncated: boolean;
+  sourceSizeBytes: bigint | null;
   snippet: string;
   attachments: RemoteAttachment[];
 }
@@ -136,7 +138,7 @@ export interface MailDriver {
   listFolders(): Promise<RemoteFolder[]>;
   fetchMessages(
     folderPath: string,
-    opts: { afterUid?: bigint; initialLimit?: number },
+    opts: { afterUid?: bigint; initialLimit?: number; limit?: number },
   ): Promise<RemoteMessage[]>;
   listUidsWithFlags(
     folderPath: string,

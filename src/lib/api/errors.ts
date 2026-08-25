@@ -55,6 +55,7 @@ import {
 } from "@/lib/services/webhookTokens";
 import { jsonResponse } from "@/lib/api/response";
 import { logError } from "@/lib/services/logs";
+import { MessageNameConflictError } from "@/lib/services/messages";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
 // minor #4). Without this, a nonexistent categoryId on bookmark create
@@ -105,6 +106,9 @@ export function toErrorResponse(
       { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
       { status: 409 },
     );
+  }
+  if (error instanceof MessageNameConflictError) {
+    return jsonResponse({ error: error.code }, { status: 409 });
   }
   if (error instanceof CategoryHierarchyValidationError) {
     return jsonResponse({ error: error.message }, { status: 400 });

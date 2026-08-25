@@ -137,6 +137,50 @@ describe("syncAccount — initial sync", () => {
     expect(synced?.syncLeaseExpiresAt).toBeNull();
   });
 
+  it("fetches in configured pages and persists oversized metadata-only rows", async () => {
+    const account = await createMockAccount("oversized");
+    const original = MockMailDriver.prototype.fetchMessages;
+    const limits: number[] = [];
+    let marked = false;
+    const spy = vi
+      .spyOn(MockMailDriver.prototype, "fetchMessages")
+      .mockImplementation(async function (
+        this: MockMailDriver,
+        folderPath,
+        options,
+      ) {
+        limits.push(options.limit ?? 0);
+        const messages = await original.call(this, folderPath, options);
+        if (folderPath === "INBOX" && !marked && messages[0]) {
+          marked = true;
+          messages[0] = {
+            ...messages[0],
+            bodyText: "",
+            bodyHtml: null,
+            bodyTruncated: true,
+            sourceSizeBytes: BigInt(env.MAIL_MAX_MESSAGE_BYTES + 1),
+          };
+        }
+        return messages;
+      });
+    try {
+      await syncAccount(account.id, workspaceId);
+      expect(limits.every((limit) => limit === env.MAIL_SYNC_BATCH_SIZE)).toBe(
+        true,
+      );
+      const oversized = await db.mailItem.findFirstOrThrow({
+        where: { accountId: account.id, bodyTruncated: true },
+      });
+      expect(oversized.bodyText).toBe("");
+      expect(oversized.sourceSizeBytes).toBe(
+        BigInt(env.MAIL_MAX_MESSAGE_BYTES + 1),
+      );
+      expect(oversized.hasAttachments).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("is idempotent — a second sync creates nothing new", async () => {
     const account = await createMockAccount("idempotent");
     await syncAccount(account.id, workspaceId);

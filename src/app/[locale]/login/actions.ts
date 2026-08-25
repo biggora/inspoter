@@ -5,6 +5,10 @@ import { redirect } from "@/i18n/navigation";
 import { findOperatorByUsername } from "@/lib/auth/dal";
 import { verifyPassword } from "@/lib/auth/password";
 import {
+  clearLoginUsernameBucket,
+  consumeLoginAttempt,
+} from "@/lib/auth/login-rate-limit";
+import {
   clearSessionCookie,
   createSession,
   deleteSession,
@@ -42,6 +46,11 @@ export async function login(formData: FormData): Promise<LoginResult> {
     return { ok: false, error: "Username and password are required." };
   }
 
+  const attempt = await consumeLoginAttempt(username);
+  if (!attempt.allowed) {
+    return { ok: false, error: "LOGIN_RATE_LIMITED" };
+  }
+
   const operator = await findOperatorByUsername(username);
   if (!operator) {
     await verifyPassword(password, DUMMY_PASSWORD_HASH);
@@ -64,6 +73,7 @@ export async function login(formData: FormData): Promise<LoginResult> {
   }
 
   const session = await createSession(operator.id);
+  await clearLoginUsernameBucket(attempt.usernameKey);
   await establishInitialWorkspace(session.id, operator.id);
 
   return { ok: true };
