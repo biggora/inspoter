@@ -1,4 +1,4 @@
-// Thin fetch wrapper for the /api/agents/** and /api/skills/** routes,
+// Thin fetch wrapper for the /api/agents/** routes,
 // mirroring src/components/notes/api.ts. Mutations re-fetch the page's server
 // component tree via `router.refresh()` from the calling component — this
 // module keeps no client-side copy of anything.
@@ -181,28 +181,28 @@ export const agentRunsApi = {
     if (params.agentId) search.set("agentId", params.agentId);
     if (params.cursor) search.set("cursor", params.cursor);
     const qs = search.toString();
-    return request<AgentRunListResult>(`/api/agent-runs${qs ? `?${qs}` : ""}`);
+    return request<AgentRunListResult>(`/api/agents/runs${qs ? `?${qs}` : ""}`);
   },
-  get: (id: string) => request<AgentRunDetail>(`/api/agent-runs/${id}`),
+  get: (id: string) => request<AgentRunDetail>(`/api/agents/runs/${id}`),
   cancel: (id: string) =>
-    request<AgentRunDetail>(`/api/agent-runs/${id}/cancel`, {
+    request<AgentRunDetail>(`/api/agents/runs/${id}/cancel`, {
       method: "POST",
     }),
 };
 
 export const skillsApi = {
-  list: () => request<SkillSummary[]>("/api/skills"),
-  get: (id: string) => request<SkillDetail>(`/api/skills/${id}`),
+  list: () => request<SkillSummary[]>("/api/agents/skills"),
+  get: (id: string) => request<SkillDetail>(`/api/agents/skills/${id}`),
   create: (input: SkillInput) =>
-    request<SkillDetail>("/api/skills", {
+    request<SkillDetail>("/api/agents/skills", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   update: (id: string, input: Partial<SkillInput>) =>
-    request<SkillDetail>(`/api/skills/${id}`, {
+    request<SkillDetail>(`/api/agents/skills/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
   remove: (id: string) =>
-    request<void>(`/api/skills/${id}`, { method: "DELETE" }),
+    request<void>(`/api/agents/skills/${id}`, { method: "DELETE" }),
 };

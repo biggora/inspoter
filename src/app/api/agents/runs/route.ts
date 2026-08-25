@@ -5,9 +5,10 @@ import * as agentRunsService from "@/lib/services/agent-runs";
 import { toErrorResponse } from "@/lib/api/errors";
 import { jsonResponse } from "@/lib/api/response";
 
-// Runs live at /api/agent-runs rather than under /api/agents so an agent id and
-// the literal segment "runs" can never shadow each other in the router — the
-// same reason skills are at /api/skills.
+// Runs sit under /api/agents beside the agents that produce them. The literal
+// segment cannot be shadowed by an agent id: Next.js resolves a static segment
+// before its sibling [id], and Agent.id is a cuid — twenty-five characters
+// starting with "c", never the four letters of "runs".
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(

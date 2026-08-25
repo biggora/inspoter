@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import * as agentsService from "@/lib/services/agents";
+import * as skillsService from "@/lib/services/skills";
+import * as schedulesService from "@/lib/services/agent-schedules";
 import * as runsService from "@/lib/services/agent-runs";
 
 // The claim queue. Everything here turns on the optimistic update counting
@@ -372,7 +374,10 @@ describe("history", () => {
     );
 
     const cutoff = new Date(Date.now() + 60 * 1000);
-    expect(await runsService.pruneOldRuns(cutoff)).toBe(1);
+    // pruneOldRuns takes no workspace: it sweeps the whole database, and the
+    // integration database is shared between worktrees, so the count is a
+    // floor. The identities below are the actual assertion.
+    expect(await runsService.pruneOldRuns(cutoff)).toBeGreaterThanOrEqual(1);
 
     await expect(
       runsService.getRunDetail(workspaceId, finished!.id),
@@ -380,5 +385,55 @@ describe("history", () => {
     await expect(
       runsService.getRunDetail(workspaceId, pending!.id),
     ).resolves.toMatchObject({ status: "PENDING" });
+  });
+
+  // pruneOldRuns is the only deletion the product performs without an operator
+  // asking for it, and it runs on a timer inside every container. What the
+  // operator authored — the agent, its skills, the join and the schedule — has
+  // to outlive it, or a restarted image would quietly empty the section.
+  it("leaves the agent, its skills and its schedules standing", async () => {
+    const skill = await skillsService.createSkill(workspaceId, {
+      name: `Retention probe ${randomUUID()}`,
+      description: "Survives the pruner.",
+      instructions: "Report only what the logs say.",
+    });
+    await agentsService.setAgentSkills(workspaceId, agentId, [skill.id]);
+    const schedule = await schedulesService.createSchedule(
+      workspaceId,
+      agentId,
+      {
+        name: "Hourly",
+        kind: "INTERVAL",
+        intervalSeconds: 3_600,
+        timeZone: "UTC",
+      },
+    );
+
+    const finished = await runsService.createManualRun(
+      workspaceId,
+      agentId,
+      null,
+    );
+    const [claim] = await runsService.claimDueAgentRuns(1);
+    await runsService.completeRun(claim, {
+      summary: "pruned",
+      stopReason: "stop",
+    });
+
+    expect(
+      await runsService.pruneOldRuns(new Date(Date.now() + 60 * 1000)),
+    ).toBeGreaterThanOrEqual(1);
+    await expect(
+      runsService.getRunDetail(workspaceId, finished!.id),
+    ).rejects.toBeInstanceOf(runsService.AgentRunNotFoundError);
+
+    const agent = await agentsService.getAgent(workspaceId, agentId);
+    expect(agent.skills.map((attached) => attached.id)).toEqual([skill.id]);
+    await expect(
+      skillsService.getSkill(workspaceId, skill.id),
+    ).resolves.toMatchObject({ id: skill.id });
+    await expect(
+      db.agentSchedule.findUnique({ where: { id: schedule.id } }),
+    ).resolves.toMatchObject({ id: schedule.id });
   });
 });
