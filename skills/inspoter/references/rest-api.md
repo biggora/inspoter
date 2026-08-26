@@ -4,6 +4,17 @@ Same capabilities as the MCP tools, over plain HTTP, for clients and scripts tha
 speak MCP. Same bearer token, same scopes, workspace taken from the token. Session cookies
 and `X-Inspoter-Workspace` play no part.
 
+This catalogue contains **65 paths and 102 operations**. It intentionally covers only the
+public bearer API. The dashboard's session-only APIs are separate:
+
+- `/api/agents/**` — Agents, Skills, schedules, runs and conversations;
+- `/api/calendar/**` — calendar events, reminders and occurrences;
+- `/api/management/**` — executive snapshots, briefs and human decisions.
+
+Those routes require an authenticated application session and `X-Inspoter-Workspace`; an
+`INSPOTER_TOKEN` cannot call them. Management's `management_snapshot_get` and
+`management_brief_publish` are private Agent Runtime tools, not MCP tools.
+
 The full OpenAPI 3.1 contract ships with the app: **Settings → API documentation**
 (`/settings/api-docs`), sourced from `specs/openapi.json` in the repo. Consult it when you
 need an exact response schema; the tables here are the working index.

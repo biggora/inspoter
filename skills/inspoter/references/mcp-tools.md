@@ -18,6 +18,9 @@ id. Read tools are annotated `readOnlyHint: true` to the client; the mutating on
 - [Contacts](#contacts) — `contacts:read` (6), `contacts:write` (9)
 - [Messages](#messages) — `messages:read` (4), `messages:write` (8)
 - [Bookmarks](#bookmarks) — `bookmarks:read` (4), `bookmarks:write` (7)
+- [Notes](#notes) — `notes:read` (3), `notes:write` (3)
+- [Activity](#activity) — `activity:read` (1)
+- [Domains](#domains) — `domains:read` (2)
 - [Shared value types](#shared-value-types)
 
 ---

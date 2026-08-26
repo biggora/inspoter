@@ -1,17 +1,26 @@
 ---
 name: inspoter
-description: Drive an Inspoter dashboard workspace from an agent — the MCP server at POST /api/mcp (118 tools) and the equivalent REST API at /api/v1/**, both authorized by one bearer API token with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, notes, activity, domains, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
+description: Drive an Inspoter dashboard workspace from an agent — the public MCP server at POST /api/mcp (118 tools) and the equivalent bearer REST API at /api/v1/** (65 paths, 102 operations), with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, notes, activity, domains, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
 ---
 
 # Inspoter agent surface
 
-Inspoter is a self-hosted infrastructure dashboard. Everything an agent may touch is exposed
-twice, over the same authorization: **MCP** (`POST /api/mcp`, 118 tools) and **REST**
-(`/api/v1/**`, 71 paths). Both are session-cookie-free — the bearer token is the only
-authority and it carries the workspace, so `X-Inspoter-Workspace` plays no part.
+Inspoter is a self-hosted infrastructure dashboard. The public agent surface is exposed twice,
+over the same authorization: **MCP** (`POST /api/mcp`, 118 tools) and **REST**
+(`/api/v1/**`, 65 paths and 102 operations). Both are session-cookie-free — the bearer token
+is the only authority and it carries the workspace, so `X-Inspoter-Workspace` plays no part.
 
 Read `references/mcp-tools.md` for the tool catalogue with arguments, `references/rest-api.md`
 for the HTTP routes, and `references/recipes.md` for worked multi-step workflows.
+
+The dashboard also has session-only APIs for the product UI. They are deliberately outside the
+bearer agent surface: `/api/agents/**` (Agents, Skills, schedules, runs and conversations),
+`/api/calendar/**`, and `/api/management/**`. They require an authenticated application
+session plus `X-Inspoter-Workspace`; an `INSPOTER_TOKEN` does not authorize them. The two
+Management runtime tools (`management_snapshot_get` and `management_brief_publish`) are
+agent-only runtime tools, not public MCP tools. Use the session APIs through the dashboard or
+an explicitly authenticated first-party client; do not claim these capabilities are available
+through `/api/mcp` or `/api/v1`.
 
 ## Getting a token
 
@@ -80,8 +89,9 @@ They answer the same questions with the same payloads, so pick by what is alread
 - **REST** for scripts, cron jobs, curl, or any client that cannot speak MCP. Also the only
   option for a few things MCP does not model: uploading a contact photo (multipart), batch
   card reordering, and importing contacts from a file upload rather than from text.
-- **MCP only**: alerts, servers and logs have no `/api/v1` family at all. If a task needs
-  `alerts_*`, `servers_*` or `logs_search` over plain HTTP, say so — it is not there.
+- **MCP only**: alerts, servers, logs, notes, activity and domains have no `/api/v1` family at
+  all. If a task needs `alerts_*`, `servers_*`, `logs_search`, `notes_*`, `activity_search`,
+  `domains_list` or `dns_records_list` over plain HTTP, say so — it is not there.
 
 One behavioural difference worth knowing: writes through `/api/v1` are journalled to the
 workspace Activity feed under the token's name; MCP tool calls are not.
@@ -99,6 +109,9 @@ workspace Activity feed under the token's name; MCP tool calls are not.
 | Alerts    | `alerts:read` / `alerts:write`       | 5         | —                      | search, read, categories, model-attributed categorization                             |
 | Servers   | `servers:read`                       | 2         | —                      | inventory with latest CPU/load/memory/swap/disk/uptime                                |
 | Logs      | `logs:read`                          | 1         | —                      | workspace log search                                                                  |
+| Notes     | `notes:read` / `notes:write`         | 6         | —                      | folder tree, search, CRUD with optimistic versioning                                  |
+| Activity  | `activity:read`                      | 1         | —                      | read-only workspace journal                                                           |
+| Domains   | `domains:read`                       | 2         | —                      | domains and DNS records; read-only by design                                           |
 
 ## How to work against it
 
@@ -172,7 +185,7 @@ to the workspace log instead of leaking a stack.
 
 - `references/mcp-tools.md` — all 118 tools grouped by scope, with arguments and gotchas.
   Read the section for the domain you are working in.
-- `references/rest-api.md` — the 71 `/api/v1` paths with query/body shapes, plus the places
+- `references/rest-api.md` — the 65 `/api/v1` paths (102 operations) with query/body shapes, plus the places
   REST and MCP differ.
 - `references/recipes.md` — multi-step workflows (morning triage, alert categorization,
   mail → kanban, wiring an external system into a channel, monitor rollout).
