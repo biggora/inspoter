@@ -626,11 +626,20 @@ export async function createReminder(
   workspaceId: string,
   rawInput: ReminderInput,
 ) {
+  return db.$transaction((tx) => createReminderTx(tx, workspaceId, rawInput));
+}
+
+export async function createReminderTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  rawInput: ReminderInput,
+  preferredId?: string,
+) {
   const input = reminderSchema.parse(rawInput);
-  await assertCalendarLinkTargets(workspaceId, input.links);
+  await assertCalendarLinkTargets(workspaceId, input.links, tx);
   let event: { id: string; startAt: Date; timeZone: string } | null = null;
   if (input.calendarEventId) {
-    event = await db.calendarEvent.findFirst({
+    event = await tx.calendarEvent.findFirst({
       where: { id: input.calendarEventId, workspaceId },
       select: { id: true, startAt: true, timeZone: true },
     });
@@ -640,12 +649,14 @@ export async function createReminder(
   const nextTriggerAt = event
     ? new Date(event.startAt.getTime() - (input.offsetMinutes ?? 0) * 60_000)
     : dueAt;
-  return db.reminder.create({
+  return tx.reminder.create({
     data: {
+      ...(preferredId ? { id: preferredId } : {}),
       workspaceId,
       calendarEventId: event?.id ?? null,
       calendarEventWorkspaceId: event ? workspaceId : null,
-      kind: input.kind as ReminderKind,
+      kind:
+        input.kind === "PAYMENT" ? ReminderKind.PAYMENT : ReminderKind.STANDARD,
       title: input.title,
       description: input.description ?? null,
       dueAt,

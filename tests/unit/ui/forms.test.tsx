@@ -193,7 +193,7 @@ describe("standardized form contracts", () => {
 
     // An unsafe `next` falls back to the post-login landing path, not to the
     // attacker's target.
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/dashboards"));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/management"));
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 

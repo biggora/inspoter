@@ -9,11 +9,19 @@ import { ThemeToggle } from "./theme-toggle";
 import { NotificationIndicators } from "./notification-indicators";
 import { OperatorMenu } from "./operator-menu";
 import { RouteProgressBar } from "./route-progress";
-import { SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM } from "./nav-items";
+import {
+  MANAGEMENT_NAV_ITEM,
+  SECTION_NAV_ITEMS,
+  SETTINGS_NAV_ITEM,
+} from "./nav-items";
 import type { UnreadCountsDto } from "./notifications-api";
 
 // Module-scope so it isn't recomputed on every render.
-const ALL_NAV_ITEMS = [...SECTION_NAV_ITEMS, SETTINGS_NAV_ITEM];
+const ALL_NAV_ITEMS = [
+  MANAGEMENT_NAV_ITEM,
+  ...SECTION_NAV_ITEMS,
+  SETTINGS_NAV_ITEM,
+];
 
 // Shared topbar (design.md §3.2.1/§3.2.2, §4.2). One trigger button doubles
 // as the desktop icon-rail collapse toggle and the mobile hamburger — the

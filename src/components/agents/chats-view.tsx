@@ -44,7 +44,7 @@ import type {
   AgentConversationDetail,
   AgentConversationSummary,
 } from "@/lib/services/agent-conversations";
-import type { McpScope } from "@/lib/mcp/scopes";
+import type { AgentScope } from "@/lib/agents/scopes";
 import {
   agentConversationsApi,
   agentRunsApi,
@@ -115,7 +115,7 @@ export function ChatsView({
   const [reassignAgentId, setReassignAgentId] = useState(
     initialSelected?.agentId ?? "",
   );
-  const [pendingDowngrade, setPendingDowngrade] = useState<McpScope[] | null>(
+  const [pendingDowngrade, setPendingDowngrade] = useState<AgentScope[] | null>(
     null,
   );
 

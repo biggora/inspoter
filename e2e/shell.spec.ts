@@ -6,6 +6,7 @@ import { login } from "./utils/auth";
 // the base locale (playwright.config.ts sets `locale: "en-US"`), so the labels
 // below are the English catalog's.
 const SECTIONS = [
+  "Management",
   "Bookmarks",
   "Domains",
   "Servers",
@@ -20,9 +21,10 @@ const SECTIONS = [
 // once a workspace has more than one dashboard.
 const MAIN_NAV = { name: "Main navigation" } as const;
 
-test("AC-SHELL-001: navigation lists all seven sections", async ({ page }) => {
+test("AC-SHELL-001: navigation starts with Management and lists core sections", async ({ page }) => {
   await login(page);
   const nav = page.getByRole("navigation", MAIN_NAV);
+  await expect(nav.getByRole("link").first()).toHaveAccessibleName("Management");
   for (const section of SECTIONS) {
     await expect(
       nav.getByRole("link", { name: section, exact: true }),
@@ -89,6 +91,11 @@ interface ImplementedSection {
 }
 
 const IMPLEMENTED_SECTIONS: readonly ImplementedSection[] = [
+  {
+    path: "/management",
+    label: "Management",
+    readiness: { role: "heading", name: "Management" },
+  },
   {
     path: "/domains",
     label: "Domains",

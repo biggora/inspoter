@@ -81,6 +81,8 @@ import {
   AgentConversationUnavailableError,
 } from "@/lib/services/agent-conversations";
 import { EmbeddingProfileConfigurationError } from "@/lib/services/note-index";
+import { ManagementError } from "@/lib/services/management";
+import { ExecutiveBriefError } from "@/lib/services/executive-briefs";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
 // minor #4). Without this, a nonexistent categoryId on bookmark create
@@ -130,6 +132,18 @@ export function toErrorResponse(
     return jsonResponse(
       { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
       { status: 409 },
+    );
+  }
+  if (error instanceof ManagementError) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: error.status },
+    );
+  }
+  if (error instanceof ExecutiveBriefError) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: error.status },
     );
   }
   if (error instanceof MessageNameConflictError) {

@@ -136,10 +136,21 @@ export function buildAgentUserPrompt(task: string): string {
  * an e2e assertion on the step timeline is asserting the real thing.
  */
 export function buildAgentMockTurns(
-  input: Pick<AgentPromptInput, "agentName" | "toolNames">,
+  input: Pick<AgentPromptInput, "agentName" | "toolNames"> & { task?: string },
 ): LlmMockTurn[] {
   const first = input.toolNames[0];
   const report = `${input.agentName} finished: nothing needs attention.`;
+  if (input.toolNames.includes("management_snapshot_get")) {
+    const period = input.task?.toLowerCase().includes("weekly")
+      ? "WEEKLY"
+      : "DAILY";
+    return [
+      {
+        toolCalls: [{ name: "management_snapshot_get", arguments: { period } }],
+      },
+      { text: report },
+    ];
+  }
   return first
     ? [{ toolCalls: [{ name: first, arguments: {} }] }, { text: report }]
     : [{ text: report }];

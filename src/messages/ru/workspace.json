@@ -21,6 +21,8 @@
 
   "membersCardTitle": "Участники",
   "membersCardDescription": "Операторы с доступом к этому рабочему пространству.",
+  "ownerRole": "Владелец",
+  "managerRole": "Менеджер",
   "createCardTitle": "Создать новое рабочее пространство",
   "createCardDescription": "Начните новое пустое рабочее пространство и переключитесь на него.",
 

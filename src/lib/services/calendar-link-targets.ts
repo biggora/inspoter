@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { listLinkTargets as listInfrastructureTargets } from "@/lib/services/kanban-link-targets";
 import type { CalendarLinkInput } from "@/lib/calendar/types";
 
@@ -29,6 +30,7 @@ export class CalendarLinkTargetNotFoundError extends Error {
 export async function assertCalendarLinkTargets(
   workspaceId: string,
   links: CalendarLinkInput[],
+  client: Prisma.TransactionClient | typeof db = db,
 ): Promise<void> {
   let infrastructurePromise: ReturnType<
     typeof listInfrastructureTargets
@@ -43,7 +45,7 @@ export async function assertCalendarLinkTargets(
       switch (link.targetType) {
         case "DASHBOARD":
           exists = Boolean(
-            await db.dashboard.findFirst({
+            await client.dashboard.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -51,7 +53,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "BOOKMARK":
           exists = Boolean(
-            await db.bookmark.findFirst({
+            await client.bookmark.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -59,7 +61,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "KANBAN_BOARD":
           exists = Boolean(
-            await db.kanbanBoard.findFirst({
+            await client.kanbanBoard.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -67,7 +69,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "KANBAN_CARD":
           exists = Boolean(
-            await db.kanbanCard.findFirst({
+            await client.kanbanCard.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -75,7 +77,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "NOTE":
           exists = Boolean(
-            await db.note.findFirst({
+            await client.note.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -83,7 +85,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "AGENT":
           exists = Boolean(
-            await db.agent.findFirst({
+            await client.agent.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -91,7 +93,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "AGENT_RUN":
           exists = Boolean(
-            await db.agentRun.findFirst({
+            await client.agentRun.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -99,7 +101,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "AGENT_CONVERSATION":
           exists = Boolean(
-            await db.agentConversation.findFirst({
+            await client.agentConversation.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -107,7 +109,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "SERVICE":
           exists = Boolean(
-            await db.service.findFirst({
+            await client.service.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -115,7 +117,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "MAIL_ITEM":
           exists = Boolean(
-            await db.mailItem.findFirst({
+            await client.mailItem.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -123,7 +125,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "MAIL_TEMPLATE":
           exists = Boolean(
-            await db.mailTemplate.findFirst({
+            await client.mailTemplate.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -131,7 +133,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "CONTACT":
           exists = Boolean(
-            await db.contact.findFirst({
+            await client.contact.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -139,7 +141,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "MESSAGE_CHANNEL":
           exists = Boolean(
-            await db.channel.findFirst({
+            await client.channel.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -147,7 +149,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "MESSAGE":
           exists = Boolean(
-            await db.message.findFirst({
+            await client.message.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -155,7 +157,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "ACTIVITY":
           exists = Boolean(
-            await db.activity.findFirst({
+            await client.activity.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -163,7 +165,7 @@ export async function assertCalendarLinkTargets(
           break;
         case "LOG":
           exists = Boolean(
-            await db.logEntry.findFirst({
+            await client.logEntry.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
@@ -171,14 +173,32 @@ export async function assertCalendarLinkTargets(
           break;
         case "ALERT":
           exists = Boolean(
-            await db.alert.findFirst({
+            await client.alert.findFirst({
               where: { id: link.targetId, workspaceId },
               select: { id: true },
             }),
           );
           break;
         case "DOMAIN":
+          exists = Boolean(
+            await client.providerResourceBinding.findFirst({
+              where: {
+                id: link.targetId,
+                workspaceId,
+                resourceType: "DOMAIN",
+              },
+              select: { id: true },
+            }),
+          );
+          break;
         case "SERVER":
+          exists = Boolean(
+            await client.localServer.findFirst({
+              where: { id: link.targetId, workspaceId },
+              select: { id: true },
+            }),
+          );
+          break;
         case "HOSTING_ACCOUNT": {
           const targets = await infrastructure();
           exists = targets[link.targetType].some(

@@ -7,9 +7,9 @@ import type {
   CalendarMonthData,
 } from "@/lib/dashboards/widget-payloads";
 
-// Day buckets for the dashboard calendar widget. There is no calendar entity in
-// this product: the widget marks the days on which things the workspace already
-// records happened — alerts raised, service checks that came back DOWN, mail
+// Day buckets for the dashboard calendar widget. This aggregation complements
+// the CalendarEvent and Reminder domain with days on which other workspace
+// activity happened — alerts raised, service checks that came back DOWN, mail
 // received, operator actions. Domains are absent on purpose, since a DNS zone
 // (src/lib/providers/dns/types.ts) carries no expiry date.
 //

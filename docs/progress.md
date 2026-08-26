@@ -535,3 +535,29 @@ true` (implicit TLS) — правильный режим для 465. Кодом 
 - Unit-покрытие recurrence подтверждает DST, leap year, month-end, count/until;
   полная DB/E2E-проверка отмечена в `docs/test-plan.md` и требует тестового
   PostgreSQL/браузерного окружения.
+
+## Executive Management
+
+- Принята модель «один Workspace — одна компания» без cross-workspace Portfolio.
+- `/management` становится non-hideable home для OWNER и MEMBER; Dashboards
+  остаётся отдельным конструктором.
+- Зафиксированы bounded deterministic snapshot, ordinary Agent/Skill/Schedules
+  для AI Briefs и browser-only human approval.
+- Разрешены только CREATE_KANBAN_CARD, CREATE_REMINDER, CREATE_NOTE и локальный
+  CREATE_MAIL_DRAFT; отправка и destructive/provider actions исключены.
+- Exactly-once опирается на атомарные target + Receipt + DecisionEvent + durable
+  enqueue, а restore никогда не исполняет action.
+- Реализация завершена в ветке `feat/executive-management`: добавлены schema и
+  migration, private session API, `/management`, Decision Inbox с четырьмя
+  exactly-once actions, agent-only Brief tools/setup/schedules и management
+  backup/restore.
+- PASS: Prisma validation и replay всех 56 migrations на чистой тестовой БД,
+  lint/base-language/native-control, typecheck, production build, 907 integration
+  tests, focused management unit/integration/UI suites и focused Playwright для
+  landing/navigation/Management route.
+- BASELINE_FAIL: полный unit suite — 1960/1963 PASS; три прежних Bookmark failure
+  остаются в `bookmarks-favicon-suggest` и `bookmarks-categories-get` (timeouts и
+  последующий mock mismatch), вне Executive Management diff.
+- Независимый финальный аудит подтвердил workspace/session boundary, отсутствие
+  Management на public machine surfaces, lease/CAS/Receipt invariants,
+  fail-closed snapshot totals, zero-execution restore и полный human-only UI flow.

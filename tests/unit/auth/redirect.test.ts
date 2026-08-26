@@ -18,15 +18,15 @@ describe("sanitizeNextPath", () => {
   });
 
   it("falls back to the default when next is undefined", () => {
-    expect(sanitizeNextPath(undefined)).toBe("/dashboards");
+    expect(sanitizeNextPath(undefined)).toBe("/management");
   });
 
   it("falls back to the default when next is null", () => {
-    expect(sanitizeNextPath(null)).toBe("/dashboards");
+    expect(sanitizeNextPath(null)).toBe("/management");
   });
 
   it("falls back to the default when next is an empty string", () => {
-    expect(sanitizeNextPath("")).toBe("/dashboards");
+    expect(sanitizeNextPath("")).toBe("/management");
   });
 
   it("honors a custom fallback", () => {
@@ -34,22 +34,22 @@ describe("sanitizeNextPath", () => {
   });
 
   it("rejects a protocol-relative path (//evil.com)", () => {
-    expect(sanitizeNextPath("//evil.com")).toBe("/dashboards");
+    expect(sanitizeNextPath("//evil.com")).toBe("/management");
   });
 
   it("rejects a backslash-prefixed path (/\\evil.com)", () => {
-    expect(sanitizeNextPath("/\\evil.com")).toBe("/dashboards");
+    expect(sanitizeNextPath("/\\evil.com")).toBe("/management");
   });
 
   it("rejects an absolute URL", () => {
-    expect(sanitizeNextPath("https://evil.com")).toBe("/dashboards");
+    expect(sanitizeNextPath("https://evil.com")).toBe("/management");
   });
 
   it("rejects a javascript: URL", () => {
-    expect(sanitizeNextPath("javascript:alert(1)")).toBe("/dashboards");
+    expect(sanitizeNextPath("javascript:alert(1)")).toBe("/management");
   });
 
   it("rejects a path that doesn't start with a slash", () => {
-    expect(sanitizeNextPath("bookmarks")).toBe("/dashboards");
+    expect(sanitizeNextPath("bookmarks")).toBe("/management");
   });
 });

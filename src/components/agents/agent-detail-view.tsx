@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
-import type { McpScope } from "@/lib/mcp/scopes";
+import type { AgentScope } from "@/lib/agents/scopes";
 import type { AgentDetail } from "@/lib/services/agents";
 import type { AgentScheduleSummary } from "@/lib/services/agent-schedules";
 import type { SkillSummary } from "@/lib/services/skills";
@@ -42,7 +42,7 @@ export function AgentDetailView({
   const [dialogState, setDialogState] = useState<AgentDialogState | null>(null);
   const [runOpen, setRunOpen] = useState(false);
 
-  const [scopes, setScopes] = useState<McpScope[]>(agent.scopes);
+  const [scopes, setScopes] = useState<AgentScope[]>(agent.scopes);
   const [savingScopes, setSavingScopes] = useState(false);
 
   const [attached, setAttached] = useState<string[]>(

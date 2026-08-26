@@ -372,14 +372,26 @@ export async function enqueue(
   event: OutgoingWebhookEvent,
   data: Record<string, unknown>,
 ): Promise<void> {
-  const subscriptions = await db.outgoingWebhook.findMany({
+  await db.$transaction((tx) =>
+    enqueueWebhookEventTx(tx, workspaceId, event, data),
+  );
+}
+
+export async function enqueueWebhookEventTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  event: OutgoingWebhookEvent,
+  data: Record<string, unknown>,
+  eventKey?: string,
+): Promise<void> {
+  const subscriptions = await tx.outgoingWebhook.findMany({
     where: { workspaceId, isActive: true, events: { has: event } },
     select: { id: true },
   });
   if (subscriptions.length === 0) return;
 
   const now = new Date();
-  await db.webhookDelivery.createMany({
+  await tx.webhookDelivery.createMany({
     // `payload` stores only the event-specific `data` node; the full envelope
     // (with the delivery id) is assembled in deliverClaimed just before send.
     data: subscriptions.map((subscription) => ({
@@ -387,9 +399,11 @@ export async function enqueue(
       webhookId: subscription.id,
       webhookWorkspaceId: workspaceId,
       event,
+      ...(eventKey !== undefined ? { eventKey } : {}),
       payload: data as Prisma.InputJsonValue,
       nextAttemptAt: now,
     })),
+    ...(eventKey !== undefined ? { skipDuplicates: true } : {}),
   });
 }
 

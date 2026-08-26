@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
-import { MCP_SCOPES } from "@/lib/mcp/scopes";
+import { AGENT_SCOPES } from "@/lib/agents/scopes";
 import {
   isValidTimeZone,
   MIN_INTERVAL_SECONDS,
@@ -53,8 +53,8 @@ const instructionsSchema = z
 // with fewer permissions than the operator ticked would be a worse surprise
 // than a 400.
 const scopesSchema = z
-  .array(z.enum(MCP_SCOPES), { error: () => M.scopeInvalid })
-  .max(MCP_SCOPES.length)
+  .array(z.enum(AGENT_SCOPES), { error: () => M.scopeInvalid })
+  .max(AGENT_SCOPES.length)
   .refine((values) => new Set(values).size === values.length, {
     error: () => M.scopeDuplicated,
   });

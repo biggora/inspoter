@@ -21,6 +21,8 @@
 
   "membersCardTitle": "Members",
   "membersCardDescription": "Operators with access to this workspace.",
+  "ownerRole": "Owner",
+  "managerRole": "Manager",
   "createCardTitle": "Create New Workspace",
   "createCardDescription": "Start a new empty workspace and switch to it.",
 

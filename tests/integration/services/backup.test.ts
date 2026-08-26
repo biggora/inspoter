@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { Prisma, type Workspace } from "@/generated/prisma/client";
@@ -995,6 +995,222 @@ describe("backup service", () => {
         expect(imported.workspaceId).toBe(workspaceE.id);
         expect(imported.channelId).toBeNull();
       });
+    });
+  });
+
+  it("round-trips management history without resuming decision actions", async () => {
+    const source = await createWorkspaceFor("management-source");
+    const target = await createWorkspaceFor("management-target");
+    const now = new Date();
+    const generation = await db.executiveBriefGeneration.create({
+      data: {
+        workspaceId: source.id,
+        period: "DAILY",
+        status: "PUBLISHED",
+        sourceRunId: `run-${RUN_ID}`,
+        sourceAgentId: `agent-${RUN_ID}`,
+        sourceAgentName: "Archive agent",
+        snapshotVersion: 1,
+        snapshot: { capturedAt: now.toISOString() } as Prisma.InputJsonValue,
+        snapshotHash: "snapshot-hash",
+        snapshotByteLength: 32,
+        snapshotCapturedAt: now,
+        publishedAt: now,
+      },
+    });
+    const brief = await db.executiveBrief.create({
+      data: {
+        workspaceId: source.id,
+        generationId: generation.id,
+        generationWorkspaceId: source.id,
+        period: "DAILY",
+        windowStart: new Date(now.getTime() - 60_000),
+        windowEnd: now,
+        snapshotAsOf: now,
+        headline: "Archive brief",
+        summary: "Archive summary",
+        highlights: [] as Prisma.InputJsonValue,
+        risks: [] as Prisma.InputJsonValue,
+        opportunities: [] as Prisma.InputJsonValue,
+        snapshotHash: "snapshot-hash",
+        sourceRunId: `run-${RUN_ID}`,
+        sourceAgentId: `agent-${RUN_ID}`,
+        sourceAgentName: "Archive agent",
+      },
+    });
+    const completedPayload = { title: "Historical note", content: "" };
+    const completedHash = createHash("sha256")
+      .update(
+        JSON.stringify({ type: "CREATE_NOTE", payload: completedPayload }),
+      )
+      .digest("hex");
+    const completed = await db.decision.create({
+      data: {
+        workspaceId: source.id,
+        briefId: brief.id,
+        briefWorkspaceId: source.id,
+        origin: "EXECUTIVE_BRIEF",
+        title: "Completed history",
+        evidenceRefs: [] as Prisma.InputJsonValue,
+        status: "APPROVED",
+        actionType: "CREATE_NOTE",
+        actionPayload: completedPayload as Prisma.InputJsonValue,
+        actionRevision: 1,
+        executionStatus: "SUCCEEDED",
+        executionAttempts: 1,
+        executedAt: now,
+        resultType: "NOTE",
+        resultId: "legacy-note",
+        resultLabel: "Historical note",
+        resultHref: "/notes?note=legacy-note",
+        createdByType: "SYSTEM",
+        createdById: "system",
+        createdByName: "System",
+        resolvedByOperatorId: ownerOp.id,
+        resolvedByOperatorName: "owner",
+        resolvedAt: now,
+      },
+    });
+    await db.decisionActionReceipt.create({
+      data: {
+        workspaceId: source.id,
+        decisionId: completed.id,
+        decisionWorkspaceId: source.id,
+        actionRevision: 1,
+        actionType: "CREATE_NOTE",
+        payloadHash: completedHash,
+        historicalTargetId: "legacy-note",
+        historicalTargetType: "NOTE",
+        historicalTargetLabel: "Historical note",
+        historicalTargetHref: "/notes?note=legacy-note",
+        liveTargetId: "legacy-note",
+        liveTargetHref: "/notes?note=legacy-note",
+        targetAvailability: "AVAILABLE",
+      },
+    });
+    await db.decision.create({
+      data: {
+        workspaceId: source.id,
+        title: "Needs rebind",
+        evidenceRefs: [] as Prisma.InputJsonValue,
+        actionType: "CREATE_KANBAN_CARD",
+        actionPayload: {
+          columnId: "missing-column",
+          title: "Card",
+        } as Prisma.InputJsonValue,
+        actionRevision: 1,
+        createdByType: "SYSTEM",
+        createdById: "system",
+        createdByName: "System",
+      },
+    });
+    await db.decision.create({
+      data: {
+        workspaceId: source.id,
+        title: "Interrupted work",
+        evidenceRefs: [] as Prisma.InputJsonValue,
+        status: "APPROVED",
+        actionType: "CREATE_NOTE",
+        actionPayload: {
+          title: "Never run",
+          content: "",
+        } as Prisma.InputJsonValue,
+        actionRevision: 1,
+        executionStatus: "READY",
+        createdByType: "SYSTEM",
+        createdById: "system",
+        createdByName: "System",
+        resolvedByOperatorId: ownerOp.id,
+        resolvedByOperatorName: "owner",
+        resolvedAt: now,
+      },
+    });
+    await db.decision.create({
+      data: {
+        workspaceId: source.id,
+        title: "Rejected terminal history",
+        evidenceRefs: [] as Prisma.InputJsonValue,
+        status: "REJECTED",
+        actionType: "CREATE_NOTE",
+        actionPayload: {
+          title: "Never create",
+          content: "",
+          folderId: "missing-notes-folder",
+        } as Prisma.InputJsonValue,
+        actionRevision: 1,
+        executionStatus: "NONE",
+        createdByType: "HUMAN",
+        createdById: ownerOp.id,
+        createdByName: "owner",
+        resolvedByOperatorId: ownerOp.id,
+        resolvedByOperatorName: "owner",
+        resolvedAt: now,
+      },
+    });
+    await db.executiveBriefGeneration.create({
+      data: {
+        workspaceId: source.id,
+        period: "WEEKLY",
+        status: "PENDING",
+        sourceRunId: `pending-run-${RUN_ID}`,
+        sourceAgentId: `agent-${RUN_ID}`,
+        sourceAgentName: "Archive agent",
+      },
+    });
+
+    const { buffer } = await backupService.exportWorkspace(source.id, {
+      passphrase: PASSPHRASE,
+      sections: ["management"],
+    });
+    const archive = openArchive(buffer, PASSPHRASE) as BackupPayloadV1;
+    expect(Object.keys(archive.data).sort()).toEqual([
+      "decisionActionReceipts",
+      "decisionEvents",
+      "decisions",
+      "executiveBriefGenerations",
+      "executiveBriefs",
+    ]);
+    expect(archive.data.executiveBriefGenerations).toHaveLength(1);
+
+    await backupService.importWorkspace(target.id, {
+      mode: "replace",
+      passphrase: PASSPHRASE,
+      file: buffer,
+    });
+
+    const restored = await db.decision.findMany({
+      where: { workspaceId: target.id },
+      include: { receipts: true },
+      orderBy: { title: "asc" },
+    });
+    expect(restored).toHaveLength(4);
+    expect(
+      restored.find((row) => row.title === "Completed history"),
+    ).toMatchObject({
+      executionStatus: "SUCCEEDED",
+      resultId: "legacy-note",
+      receipts: [
+        {
+          targetAvailability: "UNAVAILABLE",
+          liveTargetId: null,
+          historicalTargetId: "legacy-note",
+        },
+      ],
+    });
+    expect(restored.find((row) => row.title === "Needs rebind")).toMatchObject({
+      executionStatus: "NEEDS_REBIND",
+    });
+    expect(
+      restored.find((row) => row.title === "Interrupted work"),
+    ).toMatchObject({
+      executionStatus: "FAILED",
+      lastExecutionErrorCode: "IMPORT_INTERRUPTED",
+    });
+    expect(
+      restored.find((row) => row.title === "Rejected terminal history"),
+    ).toMatchObject({
+      status: "REJECTED",
+      executionStatus: "NONE",
     });
   });
 });

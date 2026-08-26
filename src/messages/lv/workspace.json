@@ -21,6 +21,8 @@
 
   "membersCardTitle": "Dalībnieki",
   "membersCardDescription": "Operatori ar piekļuvi šai darbvietai.",
+  "ownerRole": "Īpašnieks",
+  "managerRole": "Vadītājs",
   "createCardTitle": "Izveidot jaunu darbvietu",
   "createCardDescription": "Sāciet jaunu tukšu darbvietu un pārslēdzieties uz to.",
 

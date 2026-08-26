@@ -2,10 +2,14 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { env } from "@/lib/config/env";
 import type { LlmToolDefinition } from "@/lib/llm/contract";
-import type { McpScope } from "@/lib/mcp/scopes";
+import {
+  hasAgentScope,
+  toMcpScopes,
+  type AgentScope,
+} from "@/lib/agents/scopes";
 import { selectTools } from "@/lib/mcp/server";
-import type { McpToolContext } from "@/lib/mcp/tool";
 import { TOOL_RESULT_CLOSE, TOOL_RESULT_OPEN } from "@/lib/agents/prompt";
+import { managementAgentTools } from "@/lib/agents/management-tools";
 
 // Adapts the existing MCP tool catalogue (src/lib/mcp/tools/**, 109 tools) into
 // what a model needs: a JSON-Schema description it can call, and a handler the
@@ -18,10 +22,20 @@ import { TOOL_RESULT_CLOSE, TOOL_RESULT_OPEN } from "@/lib/agents/prompt";
 
 export interface AgentToolBinding {
   name: string;
-  scope: McpScope;
+  scope: AgentScope;
   readOnly: boolean;
   definition: LlmToolDefinition;
-  invoke(args: unknown, ctx: McpToolContext): Promise<CallToolResult>;
+  invoke(args: unknown, ctx: AgentToolContext): Promise<CallToolResult>;
+}
+
+export interface AgentToolContext {
+  workspaceId: string;
+  scopes: AgentScope[];
+  tokenId: string;
+  tokenName: string;
+  runId: string;
+  agentId: string;
+  leaseToken: string;
 }
 
 // The catalogue is static and converting 109 zod schemas on every step would be
@@ -50,13 +64,13 @@ function jsonSchemaFor(name: string, schema: z.ZodObject) {
  * that could add one would make the agent's scope list a lie.
  */
 export function buildAgentToolset(
-  scopes: readonly McpScope[],
+  scopes: readonly AgentScope[],
   allowNames?: readonly string[],
 ): AgentToolBinding[] {
   const allow = allowNames?.length ? new Set(allowNames) : null;
-  return selectTools(scopes)
+  const mcpTools = selectTools(toMcpScopes(scopes))
     .filter((tool) => !allow || allow.has(tool.name))
-    .map((tool) => ({
+    .map((tool): AgentToolBinding => ({
       name: tool.name,
       scope: tool.scope,
       readOnly: tool.readOnly,
@@ -65,8 +79,19 @@ export function buildAgentToolset(
         description: tool.description,
         inputSchema: jsonSchemaFor(tool.name, tool.inputSchema),
       },
-      invoke: tool.invoke,
+      invoke: (args, context) =>
+        tool.invoke(args, {
+          workspaceId: context.workspaceId,
+          scopes: toMcpScopes(context.scopes),
+          tokenId: context.tokenId,
+          tokenName: context.tokenName,
+        }),
     }));
+  const privateTools = managementAgentTools.filter(
+    (tool) =>
+      hasAgentScope(scopes, tool.scope) && (!allow || allow.has(tool.name)),
+  );
+  return [...privateTools, ...mcpTools];
 }
 
 export interface ToolResultText {

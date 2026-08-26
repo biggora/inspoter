@@ -21,6 +21,7 @@ import { InspoterIcon } from "@/components/ui/inspoter-logo";
 import { NavPending } from "./route-progress";
 import {
   HELP_NAV_ITEM,
+  MANAGEMENT_NAV_ITEM,
   SECTION_NAV_ITEMS,
   SETTINGS_NAV_ITEM,
 } from "./nav-items";
@@ -59,9 +60,12 @@ export function AppSidebar({
   // Per-workspace section visibility (workspace-section-visibility): drop
   // sections the owner has hidden. Settings stays always-on (rendered
   // separately below). Direct URL access is intentionally not blocked.
-  const visibleSections = SECTION_NAV_ITEMS.filter(
-    (item) => !item.key || !hiddenSections.includes(item.key),
-  );
+  const visibleSections = [
+    MANAGEMENT_NAV_ITEM,
+    ...SECTION_NAV_ITEMS.filter(
+      (item) => !hiddenSections.includes(item.key as string),
+    ),
+  ];
 
   // Sync the per-tab active workspace id (read by every api.ts fetch
   // wrapper's X-Inspoter-Workspace header) on every render, including the

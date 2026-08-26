@@ -948,3 +948,16 @@ through their refusals.
 | CAL-004 | Complete/pay, snooze and skip update the due count immediately without shifting the next scheduled occurrence.             | INTEGRATION/E2E |
 | CAL-005 | Month/week/day creation, edit, drag/resize rollback, link picker and recurring scope dialog work on desktop and mobile.    | E2E             |
 | CAL-006 | Calendar backup replace/merge round-trips events, exceptions, reminders, occurrences and unresolved soft links.            | INTEGRATION     |
+
+### 16.9 Executive Management
+
+| ID      | Acceptance/evidence target                                                                                                          | Status          |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| MGT-001 | OWNER and MEMBER can manage Decisions; unauthenticated and foreign-workspace access is rejected without disclosure.                  | INTEGRATION/E2E |
+| MGT-002 | Snapshot ordering/hash/redaction/UTF-8 size cap are deterministic and work without an LLM credential.                                | UNIT/INTEGRATION |
+| MGT-003 | Optimistic version and action revision diverge correctly; concurrent approve/retry creates one Receipt and target.                    | INTEGRATION     |
+| MGT-004 | Note index jobs and Kanban webhook deliveries commit atomically with the target and remain idempotent.                               | INTEGRATION     |
+| MGT-005 | Agent-only scopes never enter token validation, public MCP/WebMCP, `/api/v1` or public OpenAPI.                                      | UNIT            |
+| MGT-006 | Concurrent Generate returns one active Generation; lease/hash/evidence validation and publish replay fail closed.                    | UNIT/INTEGRATION |
+| MGT-007 | Backup import executes nothing, preserves successful terminal history, and normalizes interrupted or missing-reference actions.      | INTEGRATION     |
+| MGT-008 | Management is first/non-hideable, both landing paths change, `/dashboards` remains functional, and EN/RU/LV/mobile/Axe checks pass. | E2E             |

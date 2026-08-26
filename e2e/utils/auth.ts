@@ -11,10 +11,8 @@ function requireCredential(name: "OPERATOR_USERNAME" | "OPERATOR_PASSWORD") {
 export const OPERATOR_USERNAME = requireCredential("OPERATOR_USERNAME");
 export const OPERATOR_PASSWORD = requireCredential("OPERATOR_PASSWORD");
 
-// Where a successful sign-in lands: the Dashboards section, which forwards to
-// the workspace's start dashboard (or shows the "create your first one" state).
 // Kept as one constant because several specs assert the post-login URL.
-export const POST_LOGIN_PATH = "/dashboards";
+export const POST_LOGIN_PATH = "/management";
 
 export async function submitLoginForm(
   page: Page,
@@ -22,13 +20,13 @@ export async function submitLoginForm(
   password: string = OPERATOR_PASSWORD,
 ) {
   await page.goto("/login");
-  const expectedDashboardUrl = new URL(POST_LOGIN_PATH, page.url()).href;
+  const expectedManagementUrl = new URL(POST_LOGIN_PATH, page.url()).href;
   await page.getByLabel("Username", { exact: true }).fill(username);
   // Exact: the reveal toggle inside the field is labelled "Show password",
   // which a substring match would pick up alongside the input itself.
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  return expectedDashboardUrl;
+  return expectedManagementUrl;
 }
 
 export async function login(
@@ -37,5 +35,5 @@ export async function login(
   password: string = OPERATOR_PASSWORD,
 ) {
   await submitLoginForm(page, username, password);
-  await page.waitForURL(/\/dashboards/);
+  await page.waitForURL(/\/management/);
 }

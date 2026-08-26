@@ -58,7 +58,7 @@ The precedence above, approved PRD decisions, and §0.1 exceptions still govern.
 
 The seven original product sections are, in this order: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts. Later slices added Hosting, Services, and — as of 2026-07-30 — Dashboards, which leads the list.
 
-Settings and Help are separated utility destinations, not product sections. Login and Shell are shared surfaces, not product sections. Dashboards is the product home: successful login and the root protected entry resolve to /dashboards, which itself forwards to the workspace's start dashboard or, when the workspace has none, renders the create prompt. There is still no home route outside the shell.
+Settings and Help are separated utility destinations, not product sections. Login and Shell are shared surfaces, not product sections. Management is the product home: successful login and the root protected entry resolve to `/management`. It is the first, non-hideable shell destination for owners and managers. Dashboards remains a hideable product section; `/dashboards` still forwards to the workspace's start dashboard or renders its create prompt.
 
 Desktop navigation places the product sections in the main group with Settings and Help at the bottom. Mobile uses the same order in an off-canvas sheet. Active navigation uses color, text weight, and aria-current; color alone is insufficient.
 
@@ -639,9 +639,10 @@ Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` 
 
 ### v2.19 — 2026-07-30 (Dashboards: widget boards on a 12-column grid)
 
-Adds §5.0 Dashboards and rewrites §1: Dashboards leads the navigation and is
-the product home, so login and the root protected entry now resolve to
-/dashboards instead of /bookmarks. Specifies the ten widget kinds, the board
+Adds §5.0 Dashboards and records the historical navigation decision that made
+Dashboards the product home at that release. Executive Management now leads
+the navigation and resolves the root entry to `/management`; this section
+continues to specify the ten widget kinds, the board
 links row, the explicit edit mode that gates drag and resize (view-mode tiles
 stay interactive and cannot be nudged), push-down-and-compact layout behaviour,
 the once-a-minute refresh that pauses on a hidden tab, per-widget error

@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { findMissingHistoricalScopes } from "@/lib/agents/conversation-scopes";
 import { db } from "@/lib/db";
-import { parseScopes, type McpScope } from "@/lib/mcp/scopes";
+import { parseAgentScopes, type AgentScope } from "@/lib/agents/scopes";
 import { wakeAgentScheduler } from "@/lib/services/agent-scheduler";
 import * as agentRunsService from "@/lib/services/agent-runs";
 
@@ -35,7 +35,7 @@ export class AgentConversationUnavailableError extends Error {
 
 export class AgentConversationScopeDowngradeError extends Error {
   readonly code = "AGENT_SCOPE_DOWNGRADE_CONFIRMATION_REQUIRED";
-  constructor(readonly missingScopes: McpScope[]) {
+  constructor(readonly missingScopes: AgentScope[]) {
     super("Reassigning this conversation removes scopes used by its history.");
   }
 }
@@ -290,11 +290,11 @@ export async function updateConversation(
   let nextAgent:
     | { id: string; name: string; scopes: string[]; isActive: boolean }
     | undefined;
-  let missingScopes: McpScope[] = [];
+  let missingScopes: AgentScope[] = [];
   let previousSnapshot: {
     id: string;
     name: string;
-    scopes: McpScope[];
+    scopes: AgentScope[];
   } | null = null;
   if (input.agentId && input.agentId !== conversation.agentId) {
     if (conversation.runs.length > 0)
@@ -315,7 +315,7 @@ export async function updateConversation(
       ? {
           id: conversation.agent.id,
           name: conversation.agent.name,
-          scopes: parseScopes(conversation.agent.scopes),
+          scopes: parseAgentScopes(conversation.agent.scopes),
         }
       : await agentRunsService.getConversationLastAgentSnapshot(
           workspaceId,
@@ -323,7 +323,7 @@ export async function updateConversation(
         );
     missingScopes = findMissingHistoricalScopes(
       historical,
-      parseScopes(nextAgent.scopes),
+      parseAgentScopes(nextAgent.scopes),
     );
     if (missingScopes.length > 0 && !input.acknowledgeScopeDowngrade) {
       throw new AgentConversationScopeDowngradeError(missingScopes);
