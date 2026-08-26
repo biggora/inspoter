@@ -123,12 +123,16 @@
   cursor: pointer;
   font-weight: 550;
 }
-.calendar-surface .fc .calendar-reminder-event {
+/* FullCalendar v7 no longer renders a ".fc" root element (its structural
+ * class names are obfuscated per build), so rules that hop through ".fc"
+ * never match. The reminder chips carry the app's own stable classes — see
+ * calendar-grid.tsx. */
+.calendar-surface .calendar-reminder-event {
   border: 1px dashed var(--warning-border);
   background: var(--warning-bg);
   color: var(--warning-text);
 }
-.calendar-surface .fc .calendar-reminder-due {
+.calendar-surface .calendar-reminder-due {
   border-color: var(--destructive);
   background: color-mix(in oklab, var(--destructive) 12%, var(--card));
 }

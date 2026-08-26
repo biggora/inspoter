@@ -81,7 +81,7 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(async ({ page }) => {
   for (const name of createdAgents) {
-    await deleteRow(page, "/agents", name).catch(() => {});
+    await deleteRow(page, "/agents/agents", name).catch(() => {});
   }
   for (const name of createdSkills) {
     await deleteRow(page, "/agents/skills", name).catch(() => {});
@@ -122,7 +122,9 @@ async function createSkill(page: Page, name: string) {
 }
 
 async function createAgent(page: Page, name: string) {
-  await page.goto("/agents");
+  // The agents table lives at /agents/agents — the /agents landing is the
+  // chats view since the agent-chats feature (see AgentSectionActions).
+  await page.goto("/agents/agents");
   await page.getByRole("button", { name: "New agent", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill(name);
   await page
@@ -155,9 +157,11 @@ test("the section is reachable from the sidebar", async ({ page }) => {
   // over the page after the navigation and marks the content behind it
   // aria-hidden — shell-wide behaviour, identical for every section, so this
   // spec records the reachability and leaves that to the shell's own suite.
+  // The section link lands on the chats view, whose h1 names the page
+  // ("Agent chats"), not the section ("AI Assistant" — that is /agents/agents).
   if (isDesktop) {
     await expect(
-      page.getByRole("heading", { name: "AI Assistant", level: 1 }),
+      page.getByRole("heading", { name: "Agent chats", level: 1 }),
     ).toBeVisible();
   }
 });
@@ -174,7 +178,12 @@ test("the section fits the viewport without horizontal overflow", async ({
   // is a CardTitle, not a heading element, so it is matched by text.
   await expect(page.getByText("Access", { exact: true })).toBeVisible();
 
-  for (const path of ["/agents", "/agents/skills", "/agents/runs"]) {
+  for (const path of [
+    "/agents",
+    "/agents/agents",
+    "/agents/skills",
+    "/agents/runs",
+  ]) {
     await page.goto(path);
     const overflows = await page.evaluate(
       () =>
@@ -223,7 +232,7 @@ test("creates a skill, an agent, grants access and attaches the skill", async ({
       .getByRole("button", { name: "Detach", exact: true }),
   ).toBeVisible();
 
-  await page.goto("/agents");
+  await page.goto("/agents/agents");
   await expect(row(page, agentName)).toContainText("1 skill");
   await expect(row(page, agentName)).toContainText("1 scope");
 });

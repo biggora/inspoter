@@ -217,6 +217,7 @@ export function CalendarView({
               today: t("today"),
               previous: t("previous"),
               next: t("next"),
+              view: t("view"),
               month: t("month"),
               week: t("week"),
               day: t("day"),

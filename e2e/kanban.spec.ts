@@ -236,18 +236,65 @@ test.describe("Kanban cards", () => {
     await createBoard(page, name);
     await openBoard(page, name);
     await addCard(page, "Backlog", "Deploy the worker");
+    // Let the add-card dialog's close animation settle so the measured
+    // handle position matches where the pointer actually lands.
+    await expect(page.getByRole("dialog")).toBeHidden();
 
-    const moveResponse = page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return (
-        url.pathname === "/api/kanban/cards/move" &&
-        response.request().method() === "PATCH"
-      );
+    // Manual pointer gesture instead of dragTo(): dnd-kit's PointerSensor
+    // needs intermediate pointermove events — dragTo's single leap makes the
+    // drop resolve against the pre-drag layout, so the move PATCH comes back
+    // 204 as a no-op with the card still in its source column. Like the
+    // keyboard gesture above, the whole pick-up/move/drop cycle is retried:
+    // if the press lands before the layout settles, dnd-kit never activates
+    // and no request fires.
+    const handle = card(page, "Deploy the worker").getByRole("button", {
+      name: "Move card Deploy the worker",
     });
-    await card(page, "Deploy the worker")
-      .getByRole("button", { name: "Move card Deploy the worker" })
-      .dragTo(column(page, "In progress"));
-    await moveResponse;
+    let moveResponse: Awaited<ReturnType<typeof page.waitForResponse>> | null =
+      null;
+    let landed = false;
+    for (let attempt = 0; attempt < 5 && !landed; attempt += 1) {
+      const responsePromise = page
+        .waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+            return (
+              url.pathname === "/api/kanban/cards/move" &&
+              response.request().method() === "PATCH"
+            );
+          },
+          { timeout: 1500 },
+        )
+        .catch(() => null);
+
+      const source = await handle.boundingBox();
+      const target = await column(page, "In progress").boundingBox();
+      await page.mouse.move(
+        source!.x + source!.width / 2,
+        source!.y + source!.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        target!.x + target!.width / 2,
+        target!.y + target!.height / 2,
+        { steps: 10 },
+      );
+      await page.mouse.up();
+
+      moveResponse = (await responsePromise) ?? moveResponse;
+      // A PATCH that resolves as a no-op (card dropped back onto its own
+      // column) still counts as a request but leaves the card in Backlog —
+      // only stop once it has actually landed.
+      landed =
+        (await column(page, "In progress")
+          .getByRole("article", { name: "Deploy the worker" })
+          .count()) > 0;
+    }
+    if (!moveResponse) {
+      throw new Error(
+        "Pointer drag never triggered PATCH /api/kanban/cards/move after 5 attempts.",
+      );
+    }
 
     await expect(
       column(page, "In progress").getByRole("article", {

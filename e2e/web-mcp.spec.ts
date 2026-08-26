@@ -111,45 +111,68 @@ for (const surface of SURFACES) {
       await page.goto("/kanban");
     });
 
-    test("registers the kanban tools and kanban_create_card creates a real card", async ({
+    test("registers the kanban tools and kanban_card_create creates a real card", async ({
       page,
     }) => {
       const name = unique("e2e-web-mcp");
       await createBoard(page, name);
       await openBoard(page, name);
-
-      // The board is rendered (columns visible), so KanbanBoardView's
-      // useWebMcpTool effects have run.
       await expect(column(page, "Backlog")).toBeVisible();
 
       const registeredNames = await page.evaluate(() =>
         (window.__webMcpCalls ?? []).map((c) => c.tool.name),
       );
-      expect(registeredNames).toContain("kanban_move_card");
-      expect(registeredNames).toContain("kanban_create_card");
+      expect(registeredNames).toContain("kanban_boards_list");
+      expect(registeredNames).toContain("kanban_card_create");
+      expect(registeredNames).toContain("kanban_card_move");
 
-      const executeResult = await page.evaluate(async () => {
-        const entry = (window.__webMcpCalls ?? []).find(
-          (c) => c.tool.name === "kanban_create_card",
+      // The catalog is id-based (aff7287): resolve the board and column
+      // through kanban_boards_list itself, then create the card.
+      const created = await page.evaluate(async (boardName: string) => {
+        const calls = window.__webMcpCalls ?? [];
+        const list = calls.find((c) => c.tool.name === "kanban_boards_list");
+        if (!list) throw new Error("kanban_boards_list was not registered.");
+        const listed = JSON.parse(
+          (
+            (await list.tool.execute({})) as {
+              content: { text: string }[];
+            }
+          ).content[0].text,
+        ) as {
+          boards: Array<{
+            id: string;
+            name: string;
+            columns: Array<{ id: string; name: string }>;
+          }>;
+        };
+        const board = listed.boards.find((item) => item.name === boardName);
+        if (!board) throw new Error(`Board ${boardName} not listed.`);
+        const target = board.columns.find(
+          (item) => item.name === "Backlog",
         );
-        if (!entry) return null;
-        return (await entry.tool.execute({
-          column: "Backlog",
+        if (!target) throw new Error("Backlog column not listed.");
+        const create = calls.find(
+          (c) => c.tool.name === "kanban_card_create",
+        );
+        if (!create) throw new Error("kanban_card_create was not registered.");
+        const result = (await create.tool.execute({
+          columnId: target.id,
           title: "WebMCP e2e test card",
         })) as {
           content: { type: string; text: string }[];
           isError?: boolean;
         };
-      });
+        return {
+          isError: result.isError ?? false,
+          columnId: target.id,
+          body: JSON.parse(result.content[0].text) as Record<string, unknown>,
+        };
+      }, name);
 
-      // `execute` always resolves to the MCP result shape; a guard or a
-      // failed call would come back with `isError: true` rather than
-      // rejecting (see src/lib/web-mcp/define-tool.ts).
-      expect(executeResult).not.toBeNull();
-      expect(executeResult!.isError).toBeFalsy();
-      expect(JSON.parse(executeResult!.content[0].text)).toMatchObject({
+      expect(created.isError).toBe(false);
+      expect(created.body).toMatchObject({
         title: "WebMCP e2e test card",
-        column: "Backlog",
+        columnId: created.columnId,
       });
 
       await page.reload();
@@ -167,11 +190,14 @@ for (const surface of SURFACES) {
 
       const executeResult = await page.evaluate(async () => {
         const entry = (window.__webMcpCalls ?? []).find(
-          (c) => c.tool.name === "kanban_create_card",
+          (c) => c.tool.name === "kanban_card_create",
         );
         if (!entry) return null;
+        // Shape-valid but nonexistent column id: the advertised schema accepts
+        // it and the service rejects it, so defineWebMcpTool must resolve
+        // (not reject) with the not-found error in-band.
         return (await entry.tool.execute({
-          column: "no-such-column",
+          columnId: "no-such-column-id",
           title: "Should never be created",
         })) as {
           content: { type: string; text: string }[];
@@ -181,7 +207,11 @@ for (const surface of SURFACES) {
 
       expect(executeResult).not.toBeNull();
       expect(executeResult!.isError).toBe(true);
-      expect(executeResult!.content[0].text).toContain("No match found");
+      // The API rejects an unknown column id with its RESOURCE_NOT_FOUND
+      // error code, which defineWebMcpTool relays in-band as the text.
+      expect(executeResult!.content[0].text).toContain("RESOURCE_NOT_FOUND");
+      // The rejected card must not have been created on the open board.
+      await expect(card(page, "Should never be created")).toHaveCount(0);
     });
   });
 }

@@ -201,7 +201,12 @@ test("creates a tagged variable template and applies it to a saved draft", async
     await tagDialog
       .getByRole("button", { name: "Create tag", exact: true })
       .click();
-    await tagDialog.getByLabel("Tag name", { exact: true }).fill(tagName);
+    // Role-scoped on purpose: the create form's empty preview chip also falls
+    // back to the accessible name "Tag name" (role=group), so a bare
+    // getByLabel matches both and trips strict mode.
+    await tagDialog
+      .getByRole("textbox", { name: "Tag name", exact: true })
+      .fill(tagName);
     const tagResponsePromise = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
@@ -220,10 +225,18 @@ test("creates a tagged variable template and applies it to a saved draft", async
       throw new Error("Created template tag response did not contain an id.");
     }
     tagId = tagBody.id;
-    await tagDialog.getByRole("button", { name: "Close", exact: true }).click();
+    // The dialog carries two "Close" buttons (the footer one and the
+    // DialogContent header X) — take the first in DOM order.
+    await tagDialog
+      .getByRole("button", { name: "Close", exact: true })
+      .first()
+      .click();
 
+    // With no templates yet the empty state repeats the primary action, so
+    // two "New template" buttons exist — the page header's is the first.
     await page
       .getByRole("button", { name: "New template", exact: true })
+      .first()
       .click();
     const editor = page.getByRole("dialog", { name: "Create template" });
     await editor
@@ -236,8 +249,10 @@ test("creates a tagged variable template and applies it to a saved draft", async
       .getByLabel("Message body", { exact: true })
       .fill("Hello, {{client}}");
     await editor.getByText(tagName, { exact: true }).click();
+    // Role-scoped: Base UI Checkbox pairs the visible role=checkbox control
+    // with a hidden native input that also carries the label association.
     await editor
-      .getByLabel("Show in starred templates", { exact: true })
+      .getByRole("checkbox", { name: "Show in starred templates" })
       .click();
     const templateResponsePromise = page.waitForResponse(
       (response) =>

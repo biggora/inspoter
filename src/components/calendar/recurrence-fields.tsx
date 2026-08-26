@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ interface RecurrenceFieldsProps {
 export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
   const t = useTranslations("calendar");
   const locale = useLocale();
+  // Field/FieldLabel carry no built-in htmlFor wiring — see event-dialog.tsx.
+  const idPrefix = useId();
   const weekdays = Array.from({ length: 7 }, (_, day) => ({
     day,
     label: new Intl.DateTimeFormat(locale, {
@@ -53,8 +56,11 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
   return (
     <div className="grid gap-3 rounded-lg border border-border bg-muted/25 p-3">
       <Field>
-        <FieldLabel>{t("repeatLabel")}</FieldLabel>
+        <FieldLabel htmlFor={`${idPrefix}-frequency`}>
+          {t("repeatLabel")}
+        </FieldLabel>
         <NativeSelect
+          id={`${idPrefix}-frequency`}
           value={frequency}
           onChange={(event) => setFrequency(event.target.value)}
           className="w-full"
@@ -79,9 +85,12 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
       {value && (
         <>
           <Field>
-            <FieldLabel>{t("repeatEvery")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-interval`}>
+              {t("repeatEvery")}
+            </FieldLabel>
             <div className="flex items-center gap-2">
               <Input
+                id={`${idPrefix}-interval`}
                 type="number"
                 min={1}
                 max={365}
@@ -129,8 +138,11 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
           {value.frequency === "MONTHLY" && (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
-                <FieldLabel>{t("monthlyModeLabel")}</FieldLabel>
+                <FieldLabel htmlFor={`${idPrefix}-monthly-mode`}>
+                  {t("monthlyModeLabel")}
+                </FieldLabel>
                 <NativeSelect
+                  id={`${idPrefix}-monthly-mode`}
                   value={value.monthlyMode ?? "DAY_OF_MONTH"}
                   onChange={(event) =>
                     onChange({
@@ -157,8 +169,11 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
               </Field>
               {value.monthlyMode === "DAY_OF_MONTH" && (
                 <Field>
-                  <FieldLabel>{t("monthlyDay")}</FieldLabel>
+                  <FieldLabel htmlFor={`${idPrefix}-month-day`}>
+                    {t("monthlyDay")}
+                  </FieldLabel>
                   <Input
+                    id={`${idPrefix}-month-day`}
                     type="number"
                     min={1}
                     max={31}
@@ -209,9 +224,12 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
             </div>
           )}
           <Field>
-            <FieldLabel>{t("endModeLabel")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-end-mode`}>
+              {t("endModeLabel")}
+            </FieldLabel>
             <div className="grid gap-2 sm:grid-cols-[12rem_1fr]">
               <NativeSelect
+                id={`${idPrefix}-end-mode`}
                 value={value.end?.type ?? "NEVER"}
                 onChange={(event) => {
                   const type = event.target.value;
@@ -245,6 +263,7 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
               {value.end?.type === "UNTIL" && (
                 <Input
                   type="date"
+                  aria-label={t("endUntil")}
                   value={value.end.until.slice(0, 10)}
                   onChange={(event) =>
                     onChange({
@@ -264,6 +283,7 @@ export function RecurrenceFields({ value, onChange }: RecurrenceFieldsProps) {
                   type="number"
                   min={1}
                   max={10000}
+                  aria-label={t("endCount")}
                   value={value.end.count}
                   onChange={(event) =>
                     onChange({

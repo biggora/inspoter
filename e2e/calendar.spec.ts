@@ -72,22 +72,49 @@ test("creates and edits a recurring event across calendar views", async ({
   const updatedTitle = testData.name("Updated calendar event");
 
   await createRecurringEvent(page, title);
-  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Week", exact: true }).click();
-  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Day", exact: true }).click();
-  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Month", exact: true }).click();
+  // The view switcher is one labeled select (Month/Week/Day), not buttons.
+  // The recurring series renders one chip per day plus a same-title chip per
+  // reminder occurrence, some collapsed ("+N more" mirrors) — so assert on
+  // the visible grid containing the title, not on an individual text node.
+  const gridShows = (text: string) =>
+    expect(page.locator('[role="grid"]').filter({ hasText: text })).toBeVisible();
 
-  await page.getByText(title, { exact: true }).first().click();
+  const viewSelect = page.getByLabel("View", { exact: true });
+  await viewSelect.selectOption("Week");
+  await gridShows(title);
+  await viewSelect.selectOption("Day");
+  await gridShows(title);
+  await viewSelect.selectOption("Month");
+
+  // FullCalendar v7 renders obfuscated per-build classes and the event's
+  // "notify before" reminder renders as its own chip carrying the same title
+  // (marked with .calendar-reminder-event). Month view also collapses cells
+  // behind "+N more", so open the event from the Day view where blocks
+  // render expanded, targeting the title node outside any reminder chip.
+  await viewSelect.selectOption("Day");
+  await gridShows(title);
+  await page
+    .locator('[role="grid"]')
+    .getByText(title, { exact: true })
+    .and(page.locator(":not(.calendar-reminder-event *)"))
+    .filter({ visible: true })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("heading", { name: "Edit event" }),
   ).toBeVisible();
+  // The scope select defaults to "occurrence", but occurrence-scoped edits
+  // only override times today (CalendarEventException has no title column),
+  // so a rename must target the series — see updateEvent in
+  // src/lib/services/calendar.ts.
+  await dialog
+    .getByLabel("Change a repeating series", { exact: true })
+    .selectOption("series");
   await expect(
     dialog.getByLabel("Change a repeating series", { exact: true }),
-  ).toHaveValue("occurrence");
+  ).toHaveValue("series");
   await dialog.getByLabel("Title", { exact: true }).fill(updatedTitle);
 
   const responsePromise = page.waitForResponse(
@@ -100,7 +127,5 @@ test("creates and edits a recurring event across calendar views", async ({
   const response = await responsePromise;
   expect(response.status()).toBe(200);
   await expect(dialog).toBeHidden();
-  await expect(
-    page.getByText(updatedTitle, { exact: true }).first(),
-  ).toBeVisible();
+  await gridShows(updatedTitle);
 });

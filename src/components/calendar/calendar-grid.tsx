@@ -56,6 +56,7 @@ export function CalendarGrid({
     today: string;
     previous: string;
     next: string;
+    view: string;
     month: string;
     week: string;
     day: string;
@@ -85,8 +86,10 @@ export function CalendarGrid({
         start: event.startAt,
         end: event.endAt,
         allDay: event.allDay,
-        backgroundColor: COLORS[event.color] ?? COLORS.BLUE,
-        borderColor: COLORS[event.color] ?? COLORS.BLUE,
+        // FullCalendar v7 renamed backgroundColor/borderColor to a single
+        // `color` and `classNames` to a `className` string — the v6 names are
+        // silently ignored (see the v7 migration guide).
+        color: COLORS[event.color] ?? COLORS.BLUE,
         extendedProps: { itemType: "event" },
       })),
       ...reminders
@@ -102,10 +105,10 @@ export function CalendarGrid({
           start: item.snoozedUntil ?? item.triggerAt,
           allDay: false,
           editable: false,
-          classNames: [
+          className: [
             "calendar-reminder-event",
             `calendar-reminder-${item.status.toLowerCase()}`,
-          ],
+          ].join(" "),
           extendedProps: { itemType: "reminder", reminderId: item.id },
         })),
     ],
@@ -153,6 +156,7 @@ export function CalendarGrid({
         </h2>
         <NativeSelect
           size="sm"
+          aria-label={labels.view}
           value={view}
           onChange={(event) => {
             setView(event.target.value);

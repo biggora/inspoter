@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -59,6 +59,10 @@ export function EventDialog({
   onSaved: () => void;
 }) {
   const t = useTranslations("calendar");
+  // Associates every FieldLabel with its control — Field/FieldLabel are plain
+  // div/label elements with no built-in htmlFor wiring, so without explicit
+  // ids the dialog's inputs are unnamed for assistive tech (and getByLabel).
+  const idPrefix = useId();
   const identity = event?.id ?? `${initialRange?.startAt ?? "new"}:${open}`;
   const [previousIdentity, setPreviousIdentity] = useState(identity);
   const [title, setTitle] = useState("");
@@ -170,8 +174,11 @@ export function EventDialog({
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <Field>
-            <FieldLabel>{t("titleLabel")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-title`}>
+              {t("titleLabel")}
+            </FieldLabel>
             <Input
+              id={`${idPrefix}-title`}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -180,8 +187,11 @@ export function EventDialog({
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel>{t("startLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-start`}>
+                {t("startLabel")}
+              </FieldLabel>
               <Input
+                id={`${idPrefix}-start`}
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
@@ -189,8 +199,9 @@ export function EventDialog({
               />
             </Field>
             <Field>
-              <FieldLabel>{t("endLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-end`}>{t("endLabel")}</FieldLabel>
               <Input
+                id={`${idPrefix}-end`}
                 type="datetime-local"
                 value={endAt}
                 onChange={(e) => setEndAt(e.target.value)}
@@ -200,22 +211,31 @@ export function EventDialog({
           </div>
           <Field orientation="horizontal">
             <Checkbox
+              id={`${idPrefix}-all-day`}
               checked={allDay}
               onCheckedChange={(checked) => setAllDay(checked === true)}
             />
-            <FieldLabel>{t("allDayLabel")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-all-day`}>
+              {t("allDayLabel")}
+            </FieldLabel>
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel>{t("locationLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-location`}>
+                {t("locationLabel")}
+              </FieldLabel>
               <Input
+                id={`${idPrefix}-location`}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
             </Field>
             <Field>
-              <FieldLabel>{t("colorLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-color`}>
+                {t("colorLabel")}
+              </FieldLabel>
               <NativeSelect
+                id={`${idPrefix}-color`}
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 className="w-full"
@@ -231,8 +251,11 @@ export function EventDialog({
             </Field>
           </div>
           <Field>
-            <FieldLabel>{t("descriptionLabel")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-description`}>
+              {t("descriptionLabel")}
+            </FieldLabel>
             <Textarea
+              id={`${idPrefix}-description`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -240,8 +263,11 @@ export function EventDialog({
           </Field>
           <RecurrenceFields value={recurrence} onChange={setRecurrence} />
           <Field>
-            <FieldLabel>{t("remindersLabel")}</FieldLabel>
+            <FieldLabel htmlFor={`${idPrefix}-reminders`}>
+              {t("remindersLabel")}
+            </FieldLabel>
             <Input
+              id={`${idPrefix}-reminders`}
               value={offsets}
               onChange={(e) => setOffsets(e.target.value)}
               placeholder={t("reminderOffsetsHint")}
@@ -253,8 +279,11 @@ export function EventDialog({
           </Field>
           {event?.recurring && (
             <Field>
-              <FieldLabel>{t("scopeTitle")}</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-scope`}>
+                {t("scopeTitle")}
+              </FieldLabel>
               <NativeSelect
+                id={`${idPrefix}-scope`}
                 value={scope}
                 onChange={(e) => setScope(e.target.value as SeriesScope)}
                 className="w-full"

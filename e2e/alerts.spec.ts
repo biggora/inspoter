@@ -50,6 +50,41 @@ async function postJson<T>(
   return result.body as T;
 }
 
+// testData.name() suffixes hash the test id, so every run mints the SAME
+// names — without teardown, a rerun on a non-fresh database hits the
+// category's unique-name constraint and the setup POST fails with 500.
+let cleanupWorkspaceId = "";
+const cleanupTokenIds: string[] = [];
+const cleanupCategoryIds: string[] = [];
+
+test.afterEach(async ({ page }) => {
+  if (!cleanupWorkspaceId) return;
+  await page.evaluate(
+    async ({ workspace, tokenIds, categoryIds }) => {
+      for (const id of tokenIds) {
+        await fetch(`/api/webhook-tokens/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "x-inspoter-workspace": workspace },
+        }).catch(() => {});
+      }
+      for (const id of categoryIds) {
+        await fetch(`/api/alert-categories/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "x-inspoter-workspace": workspace },
+        }).catch(() => {});
+      }
+    },
+    {
+      workspace: cleanupWorkspaceId,
+      tokenIds: [...cleanupTokenIds],
+      categoryIds: [...cleanupCategoryIds],
+    },
+  );
+  cleanupTokenIds.length = 0;
+  cleanupCategoryIds.length = 0;
+  cleanupWorkspaceId = "";
+});
+
 /** Ingests through the public webhook exactly as an external system would. */
 async function ingestAlert(
   page: Page,
@@ -82,17 +117,23 @@ test("an alert ingested without a category is filed by the operator and deleted"
   await login(page);
   await page.goto("/alerts");
   const workspaceId = await activeWorkspace(page);
+  cleanupWorkspaceId = workspaceId;
 
-  const { token } = await postJson<{ token: string }>(
+  const { id: tokenId, token } = await postJson<{
+    id: string;
+    token: string;
+  }>(page, workspaceId, "/api/webhook-tokens", {
+    name: testData.name("alerts-e2e"),
+  });
+  cleanupTokenIds.push(tokenId);
+  const categoryName = testData.name("E2E Alerts");
+  const category = await postJson<{ id: string }>(
     page,
     workspaceId,
-    "/api/webhook-tokens",
-    { name: testData.name("alerts-e2e") },
+    "/api/alert-categories",
+    { name: categoryName },
   );
-  const categoryName = testData.name("E2E Alerts");
-  await postJson(page, workspaceId, "/api/alert-categories", {
-    name: categoryName,
-  });
+  cleanupCategoryIds.push(category.id);
 
   const message = testData.name("uncategorized incident");
   const ingested = await ingestAlert(page, token, {
