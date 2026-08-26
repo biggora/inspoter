@@ -70,7 +70,7 @@ export function AgentsView({ agents }: AgentsViewProps) {
         actions={
           <>
             <Button
-              render={<Link href="/agents/chats" />}
+              render={<Link href="/agents" />}
               nativeButton={false}
               variant="outline"
             >

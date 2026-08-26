@@ -90,13 +90,13 @@ export function AgentDetailView({
   return (
     <>
       <PageHeader
-        back={{ href: "/agents", label: t("backToAgents") }}
+        back={{ href: "/agents/agents", label: t("backToAgents") }}
         title={agent.name}
         description={agent.description ?? undefined}
         actions={
           <>
             <Button
-              render={<Link href={`/agents/chats?agentId=${agent.id}`} />}
+              render={<Link href={`/agents?agentId=${agent.id}`} />}
               nativeButton={false}
               variant="outline"
               disabled={!agent.isActive}

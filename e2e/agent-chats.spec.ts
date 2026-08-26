@@ -112,7 +112,7 @@ test("agent chat uses indexed Notes and falls back without stale chunks", async 
       )
       .toBe("READY");
 
-    await page.goto(`/agents/chats?agentId=${agentId}`);
+    await page.goto(`/agents?agentId=${agentId}`);
     await page
       .getByPlaceholder("Message the agent…")
       .fill("deployment recovery");

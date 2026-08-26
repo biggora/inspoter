@@ -205,7 +205,7 @@ export function ChatsView({
     if (!selected) return;
     try {
       await agentConversationsApi.remove(selected.id);
-      router.push("/agents/chats");
+      router.push("/agents");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -229,14 +229,30 @@ export function ChatsView({
   return (
     <>
       <PageHeader
-        back={{ href: "/agents", label: t("backToAgents") }}
+        back={
+          selected ? { href: "/agents", label: t("chatsTitle") } : undefined
+        }
         title={t("chatsTitle")}
         description={t("chatsDescription")}
         actions={
-          <Button render={<Link href="/agents/chats" />} nativeButton={false}>
-            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            {t("newChatButton")}
-          </Button>
+          <>
+            <Button
+              render={<Link href="/agents/agents" />}
+              nativeButton={false}
+              variant="outline"
+            >
+              <Icon
+                name="ri-robot-2-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              {t("backToAgents")}
+            </Button>
+            <Button render={<Link href="/agents" />} nativeButton={false}>
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
+              {t("newChatButton")}
+            </Button>
+          </>
         }
       />
       <PageBody>
