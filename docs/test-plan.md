@@ -937,3 +937,14 @@ through their refusals.
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- |
 | AGT-MSG-001 | A single channel is readable by id on both surfaces; a foreign channel answers 404 (REST) or a tool error (MCP).                          | AC-AGT-002 | PENDING |
 | AGT-MSG-002 | Marking a channel read clears its unread messages and reports how many; a `messages:read` token answers 403 (REST) or a tool error (MCP). | AC-AGT-001 | PENDING |
+
+### 16.8 Calendar
+
+| ID      | Acceptance/evidence target                                                                                                 | Status          |
+| ------- | -------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| CAL-001 | Recurrence preserves wall time across DST and covers leap year, month end, count and until.                                | UNIT            |
+| CAL-002 | CRUD, range expansion, exceptions and future-series splits reject foreign workspace ids.                                   | INTEGRATION     |
+| CAL-003 | Concurrent scheduler ticks create one occurrence; standard catch-up collapses and payment catch-up preserves every period. | INTEGRATION     |
+| CAL-004 | Complete/pay, snooze and skip update the due count immediately without shifting the next scheduled occurrence.             | INTEGRATION/E2E |
+| CAL-005 | Month/week/day creation, edit, drag/resize rollback, link picker and recurring scope dialog work on desktop and mobile.    | E2E             |
+| CAL-006 | Calendar backup replace/merge round-trips events, exceptions, reminders, occurrences and unresolved soft links.            | INTEGRATION     |

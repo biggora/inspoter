@@ -33,6 +33,12 @@ interface IndicatorDefinition {
 // topbar shortcut and the sidebar entry must read as the same destination.
 const INDICATORS: IndicatorDefinition[] = [
   {
+    key: "calendar",
+    href: "/calendar?inbox=due",
+    icon: "ri-calendar-check-line",
+    labelKey: "notificationsCalendarLabel",
+  },
+  {
     key: "mail",
     href: "/mail",
     icon: "ri-mail-line",

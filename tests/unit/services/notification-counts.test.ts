@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   mailItemCount: vi.fn(),
   alertCount: vi.fn(),
   messageCount: vi.fn(),
+  reminderOccurrenceCount: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -13,6 +14,7 @@ vi.mock("@/lib/db", () => ({
     mailItem: { count: mocks.mailItemCount },
     alert: { count: mocks.alertCount },
     message: { count: mocks.messageCount },
+    reminderOccurrence: { count: mocks.reminderOccurrenceCount },
   },
 }));
 
@@ -29,6 +31,7 @@ beforeEach(() => {
   mocks.mailItemCount.mockResolvedValue(4);
   mocks.alertCount.mockResolvedValue(2);
   mocks.messageCount.mockResolvedValue(7);
+  mocks.reminderOccurrenceCount.mockResolvedValue(3);
 });
 
 describe("getUnreadCounts", () => {
@@ -37,6 +40,7 @@ describe("getUnreadCounts", () => {
       mail: 4,
       alerts: 2,
       messages: 7,
+      calendar: 3,
     });
   });
 

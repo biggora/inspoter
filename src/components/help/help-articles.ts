@@ -81,6 +81,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     outgoing: true,
   },
   {
+    slug: "calendar",
+    href: "/help/calendar",
+    icon: iconFor("calendar"),
+    titleKey: "calendarTitle",
+    cardDescriptionKey: "calendarCardDescription",
+  },
+  {
     slug: "agents",
     href: "/help/agents",
     icon: iconFor("agents"),

@@ -18,6 +18,10 @@ export async function register() {
     const { startServiceScheduler } = await import("@/lib/services/scheduler");
     startServiceScheduler();
 
+    const { startReminderScheduler } =
+      await import("@/lib/services/reminder-scheduler");
+    startReminderScheduler();
+
     const { startMailScheduler } =
       await import("@/lib/services/mail-scheduler");
     startMailScheduler();

@@ -990,6 +990,102 @@ export async function exportWorkspace(
         counts.dashboardWidgets = dashboardWidgets.length;
       }
 
+      if (sections.includes("calendar")) {
+        const [
+          calendarEvents,
+          calendarEventExceptions,
+          reminders,
+          reminderOccurrences,
+          calendarLinks,
+        ] = await Promise.all([
+          tx.calendarEvent.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.calendarEventException.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.reminder.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.reminderOccurrence.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.calendarLink.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+        ]);
+        data.calendarEvents = calendarEvents.map((row) => ({
+          ...row,
+          startAt: row.startAt.toISOString(),
+          endAt: row.endAt.toISOString(),
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+        }));
+        data.calendarEventExceptions = calendarEventExceptions.map((row) => ({
+          id: row.id,
+          calendarEventId: row.calendarEventId,
+          originalStartAt: row.originalStartAt.toISOString(),
+          replacementStartAt: row.replacementStartAt?.toISOString() ?? null,
+          replacementEndAt: row.replacementEndAt?.toISOString() ?? null,
+          isCancelled: row.isCancelled,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+        }));
+        data.reminders = reminders.map((row) => ({
+          id: row.id,
+          calendarEventId: row.calendarEventId,
+          kind: row.kind,
+          title: row.title,
+          description: row.description,
+          dueAt: row.dueAt?.toISOString() ?? null,
+          offsetMinutes: row.offsetMinutes,
+          timeZone: row.timeZone,
+          recurrence: row.recurrence,
+          nextTriggerAt: row.nextTriggerAt?.toISOString() ?? null,
+          isActive: row.isActive,
+          amount: row.amount?.toString() ?? null,
+          currency: row.currency,
+          payee: row.payee,
+          paymentReference: row.paymentReference,
+          paymentUrl: row.paymentUrl,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+        }));
+        data.reminderOccurrences = reminderOccurrences.map((row) => ({
+          id: row.id,
+          reminderId: row.reminderId,
+          scheduledFor: row.scheduledFor.toISOString(),
+          triggerAt: row.triggerAt.toISOString(),
+          status: row.status,
+          snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
+          resolvedAt: row.resolvedAt?.toISOString() ?? null,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+        }));
+        data.calendarLinks = calendarLinks.map((row) => ({
+          id: row.id,
+          calendarEventId: row.calendarEventId,
+          reminderId: row.reminderId,
+          targetType: row.targetType,
+          targetId: row.targetId,
+          targetContext: row.targetContext,
+          targetLabel: row.targetLabel,
+          targetHref: row.targetHref,
+          position: row.position,
+          createdAt: row.createdAt.toISOString(),
+        }));
+        counts.calendarEvents = calendarEvents.length;
+        counts.calendarEventExceptions = calendarEventExceptions.length;
+        counts.reminders = reminders.length;
+        counts.reminderOccurrences = reminderOccurrences.length;
+        counts.calendarLinks = calendarLinks.length;
+      }
+
       if (sections.includes("kanban")) {
         const [
           kanbanBoards,
@@ -1230,6 +1326,7 @@ export async function exportWorkspace(
       name: workspace.name,
       slug: workspace.slug,
       hiddenSections: workspace.hiddenSections,
+      timeZone: workspace.timeZone,
     },
     sections,
     counts,
@@ -1303,6 +1400,15 @@ export async function importWorkspace(
       const skipped = { webhookTokens: 0, providerResourceBindings: 0 };
 
       if (mode === "replace") {
+        if (sections.has("calendar")) {
+          await tx.calendarLink.deleteMany({ where: { workspaceId } });
+          await tx.reminderOccurrence.deleteMany({ where: { workspaceId } });
+          await tx.reminder.deleteMany({ where: { workspaceId } });
+          await tx.calendarEventException.deleteMany({
+            where: { workspaceId },
+          });
+          await tx.calendarEvent.deleteMany({ where: { workspaceId } });
+        }
         if (sections.has("mail")) {
           await tx.mailAttachment.deleteMany({
             where: { mailItem: { workspaceId } },
@@ -1385,7 +1491,10 @@ export async function importWorkspace(
         if (sections.has("workspaceSettings")) {
           await tx.workspace.update({
             where: { id: workspaceId },
-            data: { hiddenSections: payload.manifest.workspace.hiddenSections },
+            data: {
+              hiddenSections: payload.manifest.workspace.hiddenSections,
+              timeZone: payload.manifest.workspace.timeZone,
+            },
           });
         }
       }
@@ -1408,6 +1517,156 @@ export async function importWorkspace(
       const kanbanColumnIdMap = new Map<string, string>();
       const kanbanCardIdMap = new Map<string, string>();
       const kanbanLabelIdMap = new Map<string, string>();
+      const calendarEventIdMap = new Map<string, string>();
+      const reminderIdMap = new Map<string, string>();
+
+      if (payload.data.calendarEvents) {
+        const inserts = payload.data.calendarEvents.map((row) => {
+          const id = crypto.randomUUID();
+          calendarEventIdMap.set(row.id, id);
+          return {
+            id,
+            workspaceId,
+            title: row.title,
+            description: row.description,
+            location: row.location,
+            color: row.color,
+            startAt: row.startAt,
+            endAt: row.endAt,
+            allDay: row.allDay,
+            timeZone: row.timeZone,
+            recurrence:
+              row.recurrence === null
+                ? Prisma.DbNull
+                : (row.recurrence as Prisma.InputJsonValue),
+            isActive: row.isActive,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.calendarEvent.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.calendarEvents = inserts.length;
+      }
+
+      if (payload.data.calendarEventExceptions) {
+        const inserts = payload.data.calendarEventExceptions.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          calendarEventId: mustRemap(calendarEventIdMap, row.calendarEventId),
+          eventWorkspaceId: workspaceId,
+          originalStartAt: row.originalStartAt,
+          replacementStartAt: row.replacementStartAt,
+          replacementEndAt: row.replacementEndAt,
+          isCancelled: row.isCancelled,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.calendarEventException.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.calendarEventExceptions = inserts.length;
+      }
+
+      if (payload.data.reminders) {
+        const inserts = payload.data.reminders.map((row) => {
+          const id = crypto.randomUUID();
+          reminderIdMap.set(row.id, id);
+          const calendarEventId = row.calendarEventId
+            ? mustRemap(calendarEventIdMap, row.calendarEventId)
+            : null;
+          return {
+            id,
+            workspaceId,
+            calendarEventId,
+            calendarEventWorkspaceId: calendarEventId ? workspaceId : null,
+            kind: row.kind,
+            title: row.title,
+            description: row.description,
+            dueAt: row.dueAt,
+            offsetMinutes: row.offsetMinutes,
+            timeZone: row.timeZone,
+            recurrence:
+              row.recurrence === null
+                ? Prisma.DbNull
+                : (row.recurrence as Prisma.InputJsonValue),
+            nextTriggerAt: row.nextTriggerAt,
+            isActive: row.isActive,
+            amount: row.amount,
+            currency: row.currency,
+            payee: row.payee,
+            paymentReference: row.paymentReference,
+            paymentUrl: row.paymentUrl,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.reminder.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.reminders = inserts.length;
+      }
+
+      if (payload.data.reminderOccurrences) {
+        const inserts = payload.data.reminderOccurrences.map((row) => ({
+          id: crypto.randomUUID(),
+          workspaceId,
+          reminderId: mustRemap(reminderIdMap, row.reminderId),
+          reminderWorkspaceId: workspaceId,
+          scheduledFor: row.scheduledFor,
+          triggerAt: row.triggerAt,
+          status: row.status,
+          snoozedUntil: row.snoozedUntil,
+          resolvedAt: row.resolvedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }));
+        await createManyChunked(
+          (chunk) => tx.reminderOccurrence.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.reminderOccurrences = inserts.length;
+      }
+
+      if (payload.data.calendarLinks) {
+        const inserts = payload.data.calendarLinks.map((row) => {
+          const calendarEventId = row.calendarEventId
+            ? mustRemap(calendarEventIdMap, row.calendarEventId)
+            : null;
+          const reminderId = row.reminderId
+            ? mustRemap(reminderIdMap, row.reminderId)
+            : null;
+          return {
+            id: crypto.randomUUID(),
+            workspaceId,
+            calendarEventId,
+            eventWorkspaceId: calendarEventId ? workspaceId : null,
+            reminderId,
+            reminderWorkspaceId: reminderId ? workspaceId : null,
+            targetType: row.targetType,
+            targetId: row.targetId,
+            targetContext: jsonInput(row.targetContext),
+            targetLabel: row.targetLabel,
+            targetHref: row.targetHref,
+            position: row.position,
+            createdAt: row.createdAt,
+          };
+        });
+        await createManyChunked(
+          (chunk) => tx.calendarLink.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.calendarLinks = inserts.length;
+      }
 
       // --- Tier 1: Category (self-referential, topological) ---
       if (payload.data.categories) {

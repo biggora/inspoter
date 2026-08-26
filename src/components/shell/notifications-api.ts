@@ -26,6 +26,7 @@ export interface UnreadCountsDto {
   mail: number;
   alerts: number;
   messages: number;
+  calendar: number;
 }
 
 export async function fetchUnreadCounts(): Promise<UnreadCountsDto> {

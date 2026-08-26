@@ -150,6 +150,8 @@
   "calendar": {
     "sourcesLabel": "Источники событий",
     "sources": {
+      "calendarEvents": "События календаря",
+      "reminders": "Напоминания",
       "alerts": "Оповещения",
       "serviceIncidents": "Инциденты сервисов",
       "mail": "Письма",
@@ -162,6 +164,7 @@
     "noEvents": "В этот день событий не было.",
     "eventCount": "{count, plural, one {# событие} few {# события} other {# событий}}",
     "openAlertsForDay": "Открыть {count, plural, one {# оповещение} few {# оповещения} other {# оповещений}} за {date}",
+    "openCalendarForDay": "Открыть календарь за {date}",
     "markedDayHint": "Выделенные дни содержат активность рабочего пространства. Наведите курсор или установите фокус, чтобы увидеть подробности.",
     "truncatedNote": "Событий за месяц слишком много — показана часть.",
     "monthNavigationHint": "Календарь показывает текущий месяц."

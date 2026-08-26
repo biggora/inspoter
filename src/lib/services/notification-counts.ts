@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
 import { MailSpecialUse } from "@/generated/prisma/client";
+import { countDueReminders } from "@/lib/services/calendar";
 
 export interface UnreadCounts {
   mail: number;
   alerts: number;
   messages: number;
+  calendar: number;
 }
 
 /**
@@ -18,12 +20,13 @@ export interface UnreadCounts {
 export async function getUnreadCounts(
   workspaceId: string,
 ): Promise<UnreadCounts> {
-  const [mail, alerts, messages] = await Promise.all([
+  const [mail, alerts, messages, calendar] = await Promise.all([
     countUnreadInbox(workspaceId),
     db.alert.count({ where: { workspaceId, isRead: false } }),
     db.message.count({ where: { workspaceId, isRead: false } }),
+    countDueReminders(workspaceId),
   ]);
-  return { mail, alerts, messages };
+  return { mail, alerts, messages, calendar };
 }
 
 // Two queries instead of one relation filter (`folder: { specialUse: INBOX }`)

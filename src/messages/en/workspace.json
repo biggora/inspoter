@@ -3,6 +3,12 @@
 
   "renameCardTitle": "Workspace Name",
   "renameCardDescription": "Rename the current workspace.",
+  "timeZoneCardTitle": "Calendar Time Zone",
+  "timeZoneCardDescription": "New calendar series inherit this IANA time zone. Existing series keep their original zone.",
+  "timeZoneLabel": "Workspace time zone",
+  "timeZoneHint": "Use an IANA name such as Europe/Riga or America/New_York.",
+  "timeZoneSavedToast": "Workspace time zone updated.",
+  "timeZoneSaveError": "Failed to save the workspace time zone.",
   "sectionsCardTitle": "Section Visibility",
   "sectionsCardDescription": "Hide sections you don't use in this workspace. Hidden sections disappear from navigation.",
   "sectionsSavedToast": "Section visibility updated.",

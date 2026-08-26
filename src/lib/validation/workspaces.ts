@@ -9,6 +9,20 @@ export const updateWorkspaceSchema = z.object({
   name: z.string().min(1).max(100),
 });
 
+export const updateWorkspaceTimeZoneSchema = z.object({
+  timeZone: z
+    .string()
+    .trim()
+    .refine((value) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+});
+
 // Section visibility (workspace-section-visibility): sanitizes the incoming
 // keys — drops anything not in SECTION_KEYS and de-duplicates — so an unknown
 // or repeated key can never reach the DB.

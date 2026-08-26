@@ -83,6 +83,11 @@ export const workspacesApi = {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
+  setTimeZone: (id: string, timeZone: string) =>
+    request<Workspace>(`/api/workspaces/${id}/timezone`, {
+      method: "PATCH",
+      body: JSON.stringify({ timeZone }),
+    }),
   setSections: (id: string, hiddenSections: string[]) =>
     request<Workspace>(`/api/workspaces/${id}/sections`, {
       method: "PATCH",

@@ -2020,3 +2020,21 @@ src/
 | TARGET  | R2.1a–e and R2.2–R2.7 report only their facet evidence. Only R2.8 may report AC-WS-008/010/011 and the Workspaces family as PASS/11-of-11.                                                                                                                |
 | TARGET  | Real-provider identity/capability/reconciliation facts remain R3.x validation and must not be inferred from mock behavior.                                                                                                                                |
 | CURRENT | Q-13 is approved documentation target only; the current schema, APIs, provider mocks, and UI do not yet implement it.                                                                                                                                     |
+
+## 14. Workspace calendar
+
+The calendar is a workspace-scoped subsystem under `/calendar`. `CalendarEvent`
+owns an interval and optional typed recurrence rule; `Reminder` owns a trigger,
+resolution state and optional payment metadata. Event occurrences are expanded
+on the server in the series' stored IANA time zone. Per-occurrence changes live
+in `CalendarEventException`, while due, snoozed, completed and skipped reminder
+states live in `ReminderOccurrence` with an idempotency unique key on
+`(reminderId, scheduledFor)`.
+
+`CalendarLink` is a soft, workspace-validated reference. It stores the target
+type/id plus label, href and context snapshots, so deleting the target does not
+delete the calendar record. Browser APIs require the active-workspace header;
+range queries are limited to 93 days and report occurrence truncation. The
+instrumentation scheduler atomically advances `nextTriggerAt` before creating a
+due occurrence, catches up every missed payment period, and collapses ordinary
+missed reminders to the latest period.

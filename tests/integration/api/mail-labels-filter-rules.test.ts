@@ -51,6 +51,7 @@ function context(operatorId: string, username: string): AuthContext {
       name: `${PREFIX}-workspace`,
       slug: `${PREFIX}-workspace`,
       hiddenSections: [],
+      timeZone: "UTC",
       autoRefreshDisabledKinds: [],
       createdAt: new Date(),
       updatedAt: new Date(),

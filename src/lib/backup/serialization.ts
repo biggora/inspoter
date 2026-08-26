@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   AlertCategorySource,
+  CalendarLinkTargetType,
   DashboardWidgetKind,
   KanbanLinkType,
   KanbanPriority,
@@ -16,6 +17,8 @@ import {
   ProviderOperationState,
   ProviderResourceType,
   ProviderType,
+  ReminderKind,
+  ReminderOccurrenceStatus,
   ServiceStatus,
 } from "@/generated/prisma/client";
 
@@ -30,6 +33,7 @@ export const BACKUP_SECTIONS = [
   "contacts",
   "dashboards",
   "kanban",
+  "calendar",
   "messages",
   "mail",
   "logs",
@@ -62,6 +66,13 @@ export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
     "kanbanCardLabels",
     "kanbanChecklistItems",
     "kanbanComments",
+  ],
+  calendar: [
+    "calendarEvents",
+    "calendarEventExceptions",
+    "reminders",
+    "reminderOccurrences",
+    "calendarLinks",
   ],
   messages: ["messageCategories", "channels", "messages"],
   mail: [
@@ -204,6 +215,79 @@ const dashboardWidgetSchema = z.object({
   config: z.unknown(),
   createdAt: isoDate,
   updatedAt: isoDate,
+});
+
+const calendarEventSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  location: z.string().nullable(),
+  color: z.string(),
+  startAt: isoDate,
+  endAt: isoDate,
+  allDay: z.boolean(),
+  timeZone: z.string(),
+  recurrence: z.unknown().nullable(),
+  isActive: z.boolean(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const calendarEventExceptionSchema = z.object({
+  id: z.string(),
+  calendarEventId: z.string(),
+  originalStartAt: isoDate,
+  replacementStartAt: isoDate.nullable(),
+  replacementEndAt: isoDate.nullable(),
+  isCancelled: z.boolean(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const reminderSchema = z.object({
+  id: z.string(),
+  calendarEventId: z.string().nullable(),
+  kind: z.enum(ReminderKind),
+  title: z.string(),
+  description: z.string().nullable(),
+  dueAt: isoDate.nullable(),
+  offsetMinutes: z.number().int().nullable(),
+  timeZone: z.string(),
+  recurrence: z.unknown().nullable(),
+  nextTriggerAt: isoDate.nullable(),
+  isActive: z.boolean(),
+  amount: z.string().nullable(),
+  currency: z.string().nullable(),
+  payee: z.string().nullable(),
+  paymentReference: z.string().nullable(),
+  paymentUrl: z.string().nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const reminderOccurrenceSchema = z.object({
+  id: z.string(),
+  reminderId: z.string(),
+  scheduledFor: isoDate,
+  triggerAt: isoDate,
+  status: z.enum(ReminderOccurrenceStatus),
+  snoozedUntil: isoDate.nullable(),
+  resolvedAt: isoDate.nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const calendarLinkSchema = z.object({
+  id: z.string(),
+  calendarEventId: z.string().nullable(),
+  reminderId: z.string().nullable(),
+  targetType: z.enum(CalendarLinkTargetType),
+  targetId: z.string(),
+  targetContext: z.unknown().nullable(),
+  targetLabel: z.string(),
+  targetHref: z.string().nullable(),
+  position: z.number().int(),
+  createdAt: isoDate,
 });
 
 // The assignee is stored as a bare operator id, not a membership: the import
@@ -579,6 +663,7 @@ const manifestSchema = z.object({
     name: z.string(),
     slug: z.string(),
     hiddenSections: z.array(z.string()),
+    timeZone: z.string().default("UTC"),
   }),
   sections: z.array(z.enum(BACKUP_SECTIONS)),
   counts: z.record(z.string(), z.number().int()),
@@ -594,6 +679,11 @@ const dataSchema = z.object({
   contactLabelAssignments: z.array(contactLabelAssignmentSchema).optional(),
   dashboards: z.array(dashboardSchema).optional(),
   dashboardWidgets: z.array(dashboardWidgetSchema).optional(),
+  calendarEvents: z.array(calendarEventSchema).optional(),
+  calendarEventExceptions: z.array(calendarEventExceptionSchema).optional(),
+  reminders: z.array(reminderSchema).optional(),
+  reminderOccurrences: z.array(reminderOccurrenceSchema).optional(),
+  calendarLinks: z.array(calendarLinkSchema).optional(),
   kanbanBoards: z.array(kanbanBoardSchema).optional(),
   kanbanColumns: z.array(kanbanColumnSchema).optional(),
   kanbanLabels: z.array(kanbanLabelSchema).optional(),

@@ -89,6 +89,8 @@ const timeZoneField = z
   .optional();
 
 export const CALENDAR_EVENT_SOURCES = [
+  "calendarEvents",
+  "reminders",
   "alerts",
   "serviceIncidents",
   "mail",
@@ -173,7 +175,7 @@ const calendarConfigSchema = z.object({
   sources: z
     .array(z.enum(CALENDAR_EVENT_SOURCES))
     .min(1, { error: () => VALIDATION_MESSAGES.dashboard.sourcesRequired })
-    .default(["alerts", "serviceIncidents"]),
+    .default(["calendarEvents", "reminders"]),
 });
 
 const noteConfigSchema = z.object({

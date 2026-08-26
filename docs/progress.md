@@ -520,3 +520,18 @@ true` (implicit TLS) — правильный режим для 465. Кодом 
   Socket-бюджет заодно чинит латентный баг: он покрывает загрузку DATA, а вложение
   может достигать 25 MiB.
 - Вне объёма: режим `NONE`, изменение маппинга SSL/STARTTLS, аллоу-лист портов.
+
+## Календарь, события и напоминания
+
+- Добавлены workspace-модели событий, исключений серии, напоминаний, их
+  экземпляров и мягких ссылок; timezone рабочего пространства настраивается
+  владельцем, а каждая серия сохраняет собственную IANA-зону.
+- Реализованы `/calendar`, month/week/day, создание и редактирование событий и
+  разовых/регулярных платежных напоминаний, drag/resize с rollback, due inbox и
+  действия complete/pay, snooze, skip.
+- Добавлены workspace CRUD/range/action/link-target API, scheduler с атомарным
+  продвижением `nextTriggerAt`, notification count, Activity, dashboard sources,
+  EN/RU/LV, Help и backup round-trip.
+- Unit-покрытие recurrence подтверждает DST, leap year, month-end, count/until;
+  полная DB/E2E-проверка отмечена в `docs/test-plan.md` и требует тестового
+  PostgreSQL/браузерного окружения.

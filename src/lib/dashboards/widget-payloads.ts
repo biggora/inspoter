@@ -28,7 +28,12 @@ export interface WeatherSnapshot {
 }
 
 export type CalendarEventCounts = Record<
-  "alerts" | "serviceIncidents" | "mail" | "activity",
+  | "calendarEvents"
+  | "reminders"
+  | "alerts"
+  | "serviceIncidents"
+  | "mail"
+  | "activity",
   number
 >;
 

@@ -3,6 +3,12 @@
 
   "renameCardTitle": "Darbvietas nosaukums",
   "renameCardDescription": "Pārdēvēt pašreizējo darbvietu.",
+  "timeZoneCardTitle": "Kalendāra laika josla",
+  "timeZoneCardDescription": "Jaunās kalendāra sērijas pārmanto šo IANA laika joslu. Esošās sērijas saglabā sākotnējo joslu.",
+  "timeZoneLabel": "Darbvietas laika josla",
+  "timeZoneHint": "Izmantojiet IANA nosaukumu, piemēram, Europe/Riga vai America/New_York.",
+  "timeZoneSavedToast": "Darbvietas laika josla atjaunināta.",
+  "timeZoneSaveError": "Neizdevās saglabāt darbvietas laika joslu.",
   "sectionsCardTitle": "Sadaļu redzamība",
   "sectionsCardDescription": "Paslēpiet sadaļas, ko šajā darbvietā neizmantojat. Paslēptās sadaļas pazūd no navigācijas.",
   "sectionsSavedToast": "Sadaļu redzamība atjaunināta.",

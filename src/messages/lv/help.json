@@ -58,6 +58,18 @@
     "Komentāru, ko publicējis tokens, paraksta ar tā paša tokena nosaukumu, un tikai tas pats tokens to var atkal dzēst."
   ],
   "kanbanOutgoingWebhook": "Kanban nav ienākošā webhook — kartītes tiek izveidotas no saskarnes vai caur iepriekš minēto API. Taču kartītes pārvietošana izraisa izejošus notikumus: KANBAN_CARD_CREATED, KANBAN_CARD_MOVED un, kad kartīte nonāk gala kolonnā, KANBAN_CARD_COMPLETED. Abonējiet ārēju URL jebkuram no tiem sadaļā <outgoing>Iestatījumi → Izejošie webhook</outgoing>, lai tos pārsūtītu uz tērzēšanu, peidžeri vai automatizāciju.",
+  "calendarTitle": "Kalendārs",
+  "calendarCardDescription": "Plānojiet darbvietas notikumus, atgādinājumus un regulāros maksājumus.",
+  "calendarIntroP1": "Kalendārs ir kopīgs visai darbvietai. Notikums aizņem laika intervālu, bet atgādinājumam pienāk termiņš, un to var pabeigt, atlikt vai izlaist. Atgādinājums var būt patstāvīgs vai aktivizēties ar nobīdi no notikuma.",
+  "calendarIntroP2": "Atkārtotas sērijas saglabā savu IANA laika joslu, tāpēc darbvietas noklusējuma maiņa nepārvieto esošu sēriju. Maksājuma atgādinājums glabā summu, valūtu un saņēmēju, bet nepārskaita naudu un neveido grāmatvedības bilanci.",
+  "calendarSteps": [
+    "Kalendāra rīkjoslā pārslēdzieties starp mēneša, nedēļas un dienas skatu.",
+    "Atlasiet laika diapazonu vai izvēlieties Jauns notikums, pēc tam pievienojiet atkārtošanos, saites un vairākas atgādinājumu nobīdes.",
+    "Izvēlieties Jauns atgādinājums atsevišķam termiņam; ieslēdziet Maksājums, lai pievienotu summu, valūtu, saņēmēju, atsauci un maksājuma URL.",
+    "Atveriet aktuālu atgādinājumu, lai to pabeigtu vai atzīmētu kā apmaksātu, atliktu vai izlaistu šo reizi.",
+    "Datorā notikumu var vilkt un mainīt tā ilgumu. Atkārtotam notikumam izvēlieties vienu reizi, šo un turpmākās reizes vai visu sēriju.",
+    "Noklusējuma zonu iestatiet sadaļā Iestatījumi → Darbvieta. Kalendāra dati ir atsevišķa dublējuma sadaļa."
+  ],
   "agentsTitle": "AI asistents",
   "agentsCardDescription": "Palaidiet aģentus, kas darbojas ar paneli pēc grafika, ar jūsu pievienotajām prasmēm un tikai to piekļuvi, kuru piešķirat.",
   "agentsIntroP1": "Aģents ir instrukciju kopums plus sadaļas, ko tas drīkst lasīt vai mainīt, plus trīs griesti: soļi, tokeni un sekundes. Tam nav sava API atslēga un sava modeļa adreses — atbild nodrošinātājs, kas atzīmēts kā noklusējuma sadaļā Iestatījumi → Nodrošinātāji, tāpēc sadaļa paliek tukša, kamēr tāds nav konfigurēts.",

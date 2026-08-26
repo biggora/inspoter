@@ -174,7 +174,14 @@ describe("CalendarWidget", () => {
           days: [
             {
               date: "2026-07-03",
-              counts: { alerts: 2, serviceIncidents: 1, mail: 0, activity: 0 },
+              counts: {
+                calendarEvents: 0,
+                reminders: 0,
+                alerts: 2,
+                serviceIncidents: 1,
+                mail: 0,
+                activity: 0,
+              },
               total: 3,
             },
           ],
@@ -202,7 +209,14 @@ describe("CalendarWidget", () => {
           days: [
             {
               date: "2026-07-03",
-              counts: { alerts: 2, serviceIncidents: 1, mail: 0, activity: 0 },
+              counts: {
+                calendarEvents: 0,
+                reminders: 0,
+                alerts: 2,
+                serviceIncidents: 1,
+                mail: 0,
+                activity: 0,
+              },
               total: 3,
             },
           ],
@@ -217,7 +231,7 @@ describe("CalendarWidget", () => {
     expect(screen.getByText(/Alerts 2/)).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: /Open 2 alerts from Jul 3/i,
+        name: /Open calendar for Jul 3/i,
       }),
     ).toHaveAttribute("href", expect.stringContaining("date=2026-07-03"));
 
@@ -253,6 +267,8 @@ describe("CalendarWidget", () => {
             {
               date: "2026-07-03",
               counts: {
+                calendarEvents: 0,
+                reminders: 0,
                 alerts: 2000,
                 serviceIncidents: 0,
                 mail: 0,

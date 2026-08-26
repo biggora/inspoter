@@ -96,6 +96,51 @@
   --radius-xl: 12px;
 }
 
+/* FullCalendar supplies layout and interaction; these overrides make it part
+   of Inspoter's existing surface/token system instead of a foreign widget. */
+.calendar-surface .fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--surface-sunken);
+  --fc-list-event-hover-bg-color: var(--muted);
+  --fc-today-bg-color: color-mix(in oklab, var(--primary) 8%, transparent);
+  --fc-now-indicator-color: var(--destructive);
+  color: var(--foreground);
+  font-size: 0.8125rem;
+}
+.calendar-surface .fc-theme-standard td,
+.calendar-surface .fc-theme-standard th,
+.calendar-surface .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--border);
+}
+.calendar-surface .fc .fc-col-header-cell-cushion,
+.calendar-surface .fc .fc-daygrid-day-number {
+  color: var(--foreground);
+  text-decoration: none;
+}
+.calendar-surface .fc .fc-event {
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 550;
+}
+.calendar-surface .fc .calendar-reminder-event {
+  border: 1px dashed var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+.calendar-surface .fc .calendar-reminder-due {
+  border-color: var(--destructive);
+  background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+}
+@media (max-width: 639px) {
+  .calendar-surface .fc {
+    font-size: 0.72rem;
+  }
+  .calendar-surface .fc-timegrid-slot {
+    height: 2.25rem;
+  }
+}
+
 :root {
   --background: var(--surface-app);
   --foreground: var(--text-body);

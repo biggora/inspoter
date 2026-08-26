@@ -31,6 +31,8 @@ import type { CalendarEventSource } from "@/lib/validation/dashboards";
 const WEEK_START_MONDAY_OFFSET = 1;
 const MIDNIGHT_GRACE_MS = 50;
 const EVENT_SOURCES = [
+  "calendarEvents",
+  "reminders",
   "alerts",
   "serviceIncidents",
   "mail",
@@ -283,27 +285,22 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
             );
             return (
               <li key={day.date}>
-                {day.counts.alerts > 0 ? (
-                  <Link
-                    href={`/alerts?date=${encodeURIComponent(day.date)}`}
-                    aria-label={t("calendar.openAlertsForDay", {
-                      date: dayFormatter.format(
-                        new Date(`${day.date}T00:00:00.000Z`),
-                      ),
-                      count: day.counts.alerts,
-                    })}
-                    className="flex items-baseline gap-1.5 rounded-sm no-underline outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-card)]"
-                  >
-                    {content}
-                    <Icon
-                      name="ri-arrow-right-up-line"
-                      className="ms-auto shrink-0 self-center text-muted-foreground"
-                      aria-hidden
-                    />
-                  </Link>
-                ) : (
-                  <span className="flex items-baseline gap-1.5">{content}</span>
-                )}
+                <Link
+                  href={`/calendar?date=${encodeURIComponent(day.date)}`}
+                  aria-label={t("calendar.openCalendarForDay", {
+                    date: dayFormatter.format(
+                      new Date(`${day.date}T00:00:00.000Z`),
+                    ),
+                  })}
+                  className="flex items-baseline gap-1.5 rounded-sm no-underline outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-card)]"
+                >
+                  {content}
+                  <Icon
+                    name="ri-arrow-right-up-line"
+                    className="ms-auto shrink-0 self-center text-muted-foreground"
+                    aria-hidden
+                  />
+                </Link>
               </li>
             );
           })}

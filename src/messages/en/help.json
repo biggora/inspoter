@@ -58,6 +58,18 @@
     "A comment posted by a token is signed with the token's name, and only that same token can delete it again."
   ],
   "kanbanOutgoingWebhook": "Kanban has no incoming webhook — cards are created from the interface or through the API above. Moving a card does fire outgoing events, though: KANBAN_CARD_CREATED, KANBAN_CARD_MOVED and, when a card lands in the terminal column, KANBAN_CARD_COMPLETED. Subscribe an external URL to any of them under <outgoing>Settings → Outgoing webhooks</outgoing> to forward them to a chat, pager, or automation.",
+  "calendarTitle": "Calendar",
+  "calendarCardDescription": "Plan events, reminders and recurring payments for the workspace.",
+  "calendarIntroP1": "Calendar is shared by the workspace. Events reserve an interval; reminders track something that becomes due and can be completed, snoozed or skipped. A reminder can stand alone or fire at an offset from an event.",
+  "calendarIntroP2": "Recurring schedules retain their own IANA time zone, so changing the workspace default does not move an existing series. Payment reminders record an amount, currency and payee, but do not move money or keep an accounting balance.",
+  "calendarSteps": [
+    "Switch between month, week and day views with the calendar toolbar.",
+    "Select a time range or choose New event, then add recurrence, links and one or more reminder offsets.",
+    "Choose New reminder for a standalone due date; enable Payment to add amount, currency, payee, reference and payment URL.",
+    "Open a due reminder to complete or mark it paid, snooze it for later, or skip that occurrence.",
+    "Drag or resize an event on desktop. For a recurring event, choose whether the change affects one occurrence, this and future occurrences, or the whole series.",
+    "Set the default zone under Settings → Workspace. Calendar data is included as its own section in Backup & restore."
+  ],
   "agentsTitle": "AI Assistant",
   "agentsCardDescription": "Run agents against the dashboard on a schedule, with the skills you attach and only the access you grant.",
   "agentsIntroP1": "An agent is a set of instructions plus the sections it may read or change, plus three ceilings: steps, tokens and seconds. It holds no API key and no model address of its own — the provider marked as default under Settings → Providers is the one that answers, so the section stays empty until one is configured.",

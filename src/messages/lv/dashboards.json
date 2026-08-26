@@ -150,6 +150,8 @@
   "calendar": {
     "sourcesLabel": "Notikumu avoti",
     "sources": {
+      "calendarEvents": "Kalendāra notikumi",
+      "reminders": "Atgādinājumi",
       "alerts": "Brīdinājumi",
       "serviceIncidents": "Pakalpojumu incidenti",
       "mail": "Pasts",
@@ -162,6 +164,7 @@
     "noEvents": "Šajā dienā nekas nenotika.",
     "eventCount": "{count, plural, one {# notikums} other {# notikumi}}",
     "openAlertsForDay": "Atvērt {count, plural, one {# brīdinājumu} other {# brīdinājumus}} no {date}",
+    "openCalendarForDay": "Atvērt kalendāru datumam {date}",
     "markedDayHint": "Iezīmētajās dienās ir darbvietas aktivitāte. Novietojiet kursoru vai fokusu uz dienu, lai redzētu detaļas.",
     "truncatedNote": "Šajā mēnesī ir pārāk daudz notikumu — tiek rādīta daļa no tiem.",
     "monthNavigationHint": "Kalendārs rāda pašreizējo mēnesi."

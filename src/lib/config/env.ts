@@ -33,6 +33,12 @@ const envSchema = z
       .int()
       .positive()
       .default(15000),
+    REMINDER_SCHEDULER_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30_000),
+    REMINDER_SCHEDULER_BATCH: z.coerce.number().int().positive().default(100),
     // --- Outgoing webhooks (durable delivery queue + scheduler) ---
     WEBHOOK_SCHEDULER_TICK_MS: z.coerce
       .number()

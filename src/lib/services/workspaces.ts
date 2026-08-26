@@ -252,6 +252,16 @@ export async function setHiddenSections(
   });
 }
 
+export async function setTimeZone(
+  id: string,
+  operatorId: string,
+  timeZone: string,
+): Promise<Workspace> {
+  await findWorkspaceOrThrow(id);
+  await requireOwner(id, operatorId);
+  return db.workspace.update({ where: { id }, data: { timeZone } });
+}
+
 // Section-wide kill switch for the background provider-listing refresh
 // (provider-snapshot-scheduler.ts). Owner-only, like section visibility above:
 // it changes how often the workspace's provider quota is spent.

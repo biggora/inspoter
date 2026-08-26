@@ -88,6 +88,7 @@ model Workspace {
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
   hiddenSections           String[]               @default([])
+  timeZone                 String                 @default("UTC")
   // Section-wide kill switch for the background snapshot refresh, mirroring
   // hiddenSections above. Empty = every section refreshes automatically.
   autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
@@ -157,6 +158,11 @@ model Workspace {
   agentRunSteps           AgentRunStep[]
   agentConversations      AgentConversation[]
   agentConversationEvents AgentConversationEvent[]
+  calendarEvents          CalendarEvent[]
+  calendarEventExceptions CalendarEventException[]
+  reminders               Reminder[]
+  reminderOccurrences     ReminderOccurrence[]
+  calendarLinks           CalendarLink[]
 }
 
 model WorkspaceMember {
@@ -1844,6 +1850,162 @@ model NoteAsset {
 // never grants privilege: the effective toolset is the agent's scopes, then
 // intersected with the union of the attached skills' toolNames when any of
 // them declares one.
+
+enum ReminderKind {
+  STANDARD
+  PAYMENT
+}
+
+enum ReminderOccurrenceStatus {
+  DUE
+  SNOOZED
+  COMPLETED
+  SKIPPED
+}
+
+enum CalendarLinkTargetType {
+  DASHBOARD
+  BOOKMARK
+  KANBAN_BOARD
+  KANBAN_CARD
+  NOTE
+  AGENT
+  AGENT_RUN
+  AGENT_CONVERSATION
+  DOMAIN
+  SERVER
+  HOSTING_ACCOUNT
+  SERVICE
+  MAIL_ITEM
+  MAIL_TEMPLATE
+  CONTACT
+  MESSAGE_CHANNEL
+  MESSAGE
+  ACTIVITY
+  LOG
+  ALERT
+  EXTERNAL_URL
+}
+
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  location    String?
+  color       String    @default("BLUE")
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean   @default(false)
+  timeZone    String    @default("UTC")
+  recurrence  Json?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  exceptions CalendarEventException[]
+  reminders  Reminder[]
+  links      CalendarLink[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, startAt, id])
+  @@index([workspaceId, isActive, startAt])
+}
+
+model CalendarEventException {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  calendarEventId    String
+  eventWorkspaceId   String
+  calendarEvent      CalendarEvent @relation(fields: [calendarEventId, eventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  originalStartAt    DateTime
+  replacementStartAt DateTime?
+  replacementEndAt   DateTime?
+  isCancelled        Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@unique([calendarEventId, originalStartAt])
+  @@index([workspaceId, originalStartAt])
+}
+
+model Reminder {
+  id                       String        @id @default(cuid())
+  workspaceId              String
+  workspace                Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  calendarEventId          String?
+  calendarEventWorkspaceId String?
+  calendarEvent            CalendarEvent? @relation(fields: [calendarEventId, calendarEventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  kind                     ReminderKind  @default(STANDARD)
+  title                    String
+  description              String?
+  dueAt                    DateTime?
+  offsetMinutes            Int?
+  timeZone                 String        @default("UTC")
+  recurrence               Json?
+  nextTriggerAt            DateTime?
+  isActive                 Boolean       @default(true)
+  amount                   Decimal?      @db.Decimal(18, 2)
+  currency                 String?
+  payee                    String?
+  paymentReference         String?
+  paymentUrl               String?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  occurrences ReminderOccurrence[]
+  links       CalendarLink[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, dueAt, id])
+  @@index([isActive, nextTriggerAt])
+  @@index([workspaceId, calendarEventId])
+}
+
+model ReminderOccurrence {
+  id                  String                   @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reminderId          String
+  reminderWorkspaceId String
+  reminder            Reminder                 @relation(fields: [reminderId, reminderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  scheduledFor        DateTime
+  triggerAt           DateTime
+  status              ReminderOccurrenceStatus @default(DUE)
+  snoozedUntil        DateTime?
+  resolvedAt          DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@unique([reminderId, scheduledFor])
+  @@index([workspaceId, status, triggerAt])
+  @@index([status, snoozedUntil])
+}
+
+model CalendarLink {
+  id                  String                  @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  calendarEventId     String?
+  eventWorkspaceId    String?
+  calendarEvent       CalendarEvent?          @relation(fields: [calendarEventId, eventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  reminderId          String?
+  reminderWorkspaceId String?
+  reminder            Reminder?               @relation(fields: [reminderId, reminderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  targetType          CalendarLinkTargetType
+  targetId            String
+  targetContext       Json?
+  targetLabel         String
+  targetHref          String?
+  position            Int                     @default(0)
+  createdAt           DateTime                @default(now())
+
+  @@index([workspaceId, calendarEventId, position])
+  @@index([workspaceId, reminderId, position])
+  @@index([workspaceId, targetType, targetId])
+}
 
 enum AgentRunStatus {
   PENDING

@@ -17,6 +17,7 @@ import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-for
 import { MembersSection } from "@/components/workspace/members-section";
 import { RenameWorkspaceForm } from "@/components/workspace/rename-workspace-form";
 import { SectionVisibilityForm } from "@/components/workspace/section-visibility-form";
+import { TimeZoneForm } from "@/components/workspace/time-zone-form";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,19 @@ export default async function WorkspaceSettingsPage() {
           <RenameWorkspaceForm
             workspaceId={workspace.id}
             currentName={workspace.name}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("timeZoneCardTitle")}</CardTitle>
+          <CardDescription>{t("timeZoneCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TimeZoneForm
+            workspaceId={workspace.id}
+            currentTimeZone={workspace.timeZone}
           />
         </CardContent>
       </Card>

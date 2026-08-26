@@ -56,12 +56,26 @@ describe("getMonthEvents", () => {
     expect(result.days).toEqual([
       {
         date: "2026-07-03",
-        counts: { alerts: 2, serviceIncidents: 0, mail: 0, activity: 0 },
+        counts: {
+          calendarEvents: 0,
+          reminders: 0,
+          alerts: 2,
+          serviceIncidents: 0,
+          mail: 0,
+          activity: 0,
+        },
         total: 2,
       },
       {
         date: "2026-07-09",
-        counts: { alerts: 1, serviceIncidents: 0, mail: 0, activity: 0 },
+        counts: {
+          calendarEvents: 0,
+          reminders: 0,
+          alerts: 1,
+          serviceIncidents: 0,
+          mail: 0,
+          activity: 0,
+        },
         total: 1,
       },
     ]);
@@ -84,7 +98,14 @@ describe("getMonthEvents", () => {
     expect(result.days).toHaveLength(1);
     expect(result.days[0]).toMatchObject({
       date: "2026-07-04",
-      counts: { alerts: 1, serviceIncidents: 1, mail: 0, activity: 0 },
+      counts: {
+        calendarEvents: 0,
+        reminders: 0,
+        alerts: 1,
+        serviceIncidents: 1,
+        mail: 0,
+        activity: 0,
+      },
       total: 2,
     });
   });

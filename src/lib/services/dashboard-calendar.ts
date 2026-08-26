@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { listRange } from "@/lib/services/calendar";
 import type { CalendarEventSource } from "@/lib/validation/dashboards";
 import type {
   CalendarDayBucket,
@@ -47,6 +48,18 @@ async function fetchTimestamps(
 ): Promise<Date[]> {
   const range = { gte: from, lt: to };
   switch (source) {
+    case "calendarEvents": {
+      const calendar = await listRange(workspaceId, from, to);
+      return calendar.events
+        .slice(0, MAX_ROWS_PER_SOURCE + 1)
+        .map((event) => new Date(event.startAt));
+    }
+    case "reminders": {
+      const calendar = await listRange(workspaceId, from, to);
+      return calendar.reminders
+        .slice(0, MAX_ROWS_PER_SOURCE + 1)
+        .map((reminder) => new Date(reminder.triggerAt));
+    }
     case "alerts": {
       const rows = await db.alert.findMany({
         where: { workspaceId, timestamp: range },
@@ -134,5 +147,12 @@ export async function getMonthEvents(
 // Every source is present with a zero, including the ones this widget didn't
 // ask for, so the client never has to guard on a missing key.
 function emptyCounts(): CalendarEventCounts {
-  return { alerts: 0, serviceIncidents: 0, mail: 0, activity: 0 };
+  return {
+    calendarEvents: 0,
+    reminders: 0,
+    alerts: 0,
+    serviceIncidents: 0,
+    mail: 0,
+    activity: 0,
+  };
 }
