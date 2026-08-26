@@ -334,35 +334,44 @@ export async function createNote(
   workspaceId: string,
   input: NoteCreateInput,
 ): Promise<NoteDetail> {
-  const content = input.content ?? "";
-
   try {
-    const note = await db.$transaction(async (tx) => {
-      const count = await tx.note.count({ where: { workspaceId } });
-      if (count >= NOTE_LIMIT) {
-        throw new NoteLimitReachedError("Workspace note limit reached.");
-      }
-      if (input.folderId != null) {
-        await requireFolder(tx, workspaceId, input.folderId);
-      }
-      return tx.note.create({
-        data: {
-          workspaceId,
-          folderId: input.folderId ?? null,
-          folderWorkspaceId: input.folderId != null ? workspaceId : null,
-          title: input.title,
-          normalizedTitle: normalizeTitle(input.title),
-          content,
-          excerpt: buildExcerpt(content),
-        },
-      });
-    });
+    const note = await db.$transaction((tx) =>
+      createNoteTx(tx, workspaceId, input),
+    );
     const detail = toDetail(note);
     await enqueueNoteIndexJob(workspaceId, detail.id, detail.version);
     return detail;
   } catch (error) {
     throw await toTitleConflict(error, workspaceId, input.title);
   }
+}
+
+export async function createNoteTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  input: NoteCreateInput,
+  preferredId?: string,
+): Promise<Note> {
+  const content = input.content ?? "";
+  const count = await tx.note.count({ where: { workspaceId } });
+  if (count >= NOTE_LIMIT) {
+    throw new NoteLimitReachedError("Workspace note limit reached.");
+  }
+  if (input.folderId != null) {
+    await requireFolder(tx, workspaceId, input.folderId);
+  }
+  return tx.note.create({
+    data: {
+      ...(preferredId ? { id: preferredId } : {}),
+      workspaceId,
+      folderId: input.folderId ?? null,
+      folderWorkspaceId: input.folderId != null ? workspaceId : null,
+      title: input.title,
+      normalizedTitle: normalizeTitle(input.title),
+      content,
+      excerpt: buildExcerpt(content),
+    },
+  });
 }
 
 // Optimistic concurrency via updateMany + a version predicate, not a plain

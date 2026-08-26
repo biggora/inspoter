@@ -4,7 +4,7 @@ import {
   normalizeLabelDisplayName,
   normalizeLabelName,
 } from "@/lib/label-normalization";
-import { parseScopes, type McpScope } from "@/lib/mcp/scopes";
+import { parseAgentScopes, type AgentScope } from "@/lib/agents/scopes";
 import type {
   AgentCreateInput,
   AgentUpdateInput,
@@ -71,7 +71,7 @@ export interface AgentSummary {
   id: string;
   name: string;
   description: string | null;
-  scopes: McpScope[];
+  scopes: AgentScope[];
   isActive: boolean;
   reportOnCompletion: boolean;
   skillCount: number;
@@ -131,7 +131,7 @@ function toSummary(row: SummaryRow): AgentSummary {
     id: row.id,
     name: row.name,
     description: row.description,
-    scopes: parseScopes(row.scopes),
+    scopes: parseAgentScopes(row.scopes),
     isActive: row.isActive,
     reportOnCompletion: row.reportOnCompletion,
     skillCount: row._count.skills,

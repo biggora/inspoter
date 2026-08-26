@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@/generated/prisma/client";
 import { env } from "@/lib/config/env";
 import { db } from "@/lib/db";
 import { chunkMarkdown } from "@/lib/notes/rag";
@@ -146,12 +147,23 @@ export async function enqueueNoteIndexJob(
   noteId: string,
   noteVersion: number,
 ): Promise<void> {
-  const profile = await db.workspaceEmbeddingProfile.findUnique({
+  await db.$transaction((tx) =>
+    enqueueNoteIndexTx(tx, workspaceId, noteId, noteVersion),
+  );
+}
+
+export async function enqueueNoteIndexTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  noteId: string,
+  noteVersion: number,
+): Promise<void> {
+  const profile = await tx.workspaceEmbeddingProfile.findUnique({
     where: { workspaceId },
     select: { revision: true },
   });
   if (!profile) return;
-  await db.noteIndexJob.createMany({
+  await tx.noteIndexJob.createMany({
     data: [
       {
         workspaceId,
@@ -164,10 +176,11 @@ export async function enqueueNoteIndexJob(
     ],
     skipDuplicates: true,
   });
-  await db.workspaceEmbeddingProfile.update({
+  const totalNotes = await tx.note.count({ where: { workspaceId } });
+  await tx.workspaceEmbeddingProfile.update({
     where: { workspaceId },
     data: {
-      totalNotes: await db.note.count({ where: { workspaceId } }),
+      totalNotes,
       backfillStatus: "PENDING",
     },
   });

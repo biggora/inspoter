@@ -1,9 +1,9 @@
-import type { McpScope } from "@/lib/mcp/scopes";
+import type { AgentScope } from "@/lib/agents/scopes";
 
 export function findMissingHistoricalScopes(
-  historicalScopes: readonly McpScope[],
-  nextScopes: readonly McpScope[],
-): McpScope[] {
+  historicalScopes: readonly AgentScope[],
+  nextScopes: readonly AgentScope[],
+): AgentScope[] {
   const available = new Set(nextScopes);
   return historicalScopes.filter((scope) => !available.has(scope));
 }

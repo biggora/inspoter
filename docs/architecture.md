@@ -1042,13 +1042,14 @@ otherwise cost ten requests a minute for data that all comes from one workspace.
 The route records no activity — journalling a timer-driven read would bury the
 Activity page.
 
-### 7E.3 Calendar events without a calendar entity
+### 7E.3 Dashboard calendar aggregation
 
-There is no calendar model in this product. `dashboard-calendar.ts` buckets the
-days on which things the workspace already records happened: alerts raised,
-service checks that returned DOWN, mail received, operator actions. Each source
-is one indexed range query selecting nothing but its timestamp column, bucketed
-per day in JS.
+The dashboard Calendar widget predates and remains separate from the workspace
+calendar described in §14. `dashboard-calendar.ts` buckets the days on which
+selected operational records happened: alerts raised, service checks that
+returned DOWN, mail received and operator actions. It does not query or mutate
+`CalendarEvent` or `Reminder`; the dedicated `/calendar` surface owns those
+entities.
 
 Buckets could be computed in SQL with `date_trunc`, but no application code in
 this repository uses raw SQL and a month of timestamps is small enough that the
@@ -2038,3 +2039,31 @@ range queries are limited to 93 days and report occurrence truncation. The
 instrumentation scheduler atomically advances `nextTriggerAt` before creating a
 due occurrence, catches up every missed payment period, and collapses ordinary
 missed reminders to the latest period.
+
+## 15. Executive management
+
+`/management` is the authenticated, non-hideable company home. One `Workspace`
+is one company; both `OWNER` and `MEMBER` may use the surface, while MEMBER is
+labelled Manager in product copy. `/dashboards` remains an independent
+customizable section.
+
+The deterministic `ExecutiveSnapshotV1` reads bounded, workspace-scoped local
+data from alerts, services, Kanban, Calendar, Mail, Messages, Logs, Decisions
+and Activity. The canonical UTF-8 JSON is redacted, limited to 128 KiB and
+SHA-256 hashed. It remains available when no LLM credential is configured.
+
+`ExecutiveBriefGeneration` binds one ordinary `AgentRun` to the exact snapshot
+used for an `ExecutiveBrief`. Management-only read/publish tools are visible to
+the in-app agent runtime but are absent from public MCP, WebMCP, `/api/v1` and
+the public OpenAPI document. AI publication may create proposed `Decision`
+rows, but it cannot approve, reject, defer, retry or execute them.
+
+`Decision` is the human-controlled lifecycle. `version` protects every mutable
+command and `actionRevision` identifies one typed action payload. Approval may
+create only a Kanban card, one-shot standard Reminder, Note or local Mail draft.
+The primary object, immutable `DecisionActionReceipt`, authoritative
+append-only `DecisionEvent`, and any required durable Note-index or Kanban
+webhook work commit in one PostgreSQL transaction. A committed receipt makes
+the action non-repeatable. Import never executes an action; completed receipts
+remain terminal history and interrupted work requires explicit human retry or
+rebind.

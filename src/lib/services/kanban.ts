@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import type {
   KanbanBoard,
+  KanbanCard,
   KanbanChecklistItem,
   KanbanColumn,
   KanbanComment,
@@ -456,52 +457,62 @@ export async function createCard(
   workspaceId: string,
   input: CreateCardInput,
 ): Promise<KanbanCardDetail> {
-  const card = await db.$transaction(async (tx) => {
-    const column = await tx.kanbanColumn.findFirst({
-      where: { id: input.columnId, workspaceId },
-      select: { id: true, boardId: true, isDone: true },
-    });
-    if (!column) throw new KanbanNotFoundError();
-
-    const assignee = await resolveAssignee(
-      tx,
-      workspaceId,
-      input.assigneeOperatorId,
-    );
-    const last = await tx.kanbanCard.findFirst({
-      where: { workspaceId, columnId: column.id },
-      orderBy: { position: "desc" },
-      select: { position: true },
-    });
-
-    const created = await tx.kanbanCard.create({
-      data: {
-        workspaceId,
-        boardId: column.boardId,
-        boardWorkspaceId: workspaceId,
-        columnId: column.id,
-        columnWorkspaceId: workspaceId,
-        title: input.title,
-        description: normalizeCardDescription(input.description),
-        position: (last?.position ?? -1) + 1,
-        priority: input.priority ?? "MEDIUM",
-        dueDate: input.dueDate ?? null,
-        assigneeOperatorId: assignee,
-        assigneeWorkspaceId: assignee === null ? null : workspaceId,
-        linkedType: input.linkedType ?? null,
-        linkedId: input.linkedId ?? null,
-        linkedLabel: input.linkedLabel ?? null,
-        completedAt: column.isDone ? new Date() : null,
-      },
-    });
-
-    if (input.labelIds?.length) {
-      await setCardLabels(tx, workspaceId, created.id, input.labelIds);
-    }
-    return created;
-  });
+  const card = await db.$transaction((tx) =>
+    createCardTx(tx, workspaceId, input),
+  );
 
   return requireCardDetail(workspaceId, card.id);
+}
+
+export async function createCardTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  input: CreateCardInput,
+  preferredId?: string,
+): Promise<KanbanCard> {
+  const column = await tx.kanbanColumn.findFirst({
+    where: { id: input.columnId, workspaceId },
+    select: { id: true, boardId: true, isDone: true },
+  });
+  if (!column) throw new KanbanNotFoundError();
+
+  const assignee = await resolveAssignee(
+    tx,
+    workspaceId,
+    input.assigneeOperatorId,
+  );
+  const last = await tx.kanbanCard.findFirst({
+    where: { workspaceId, columnId: column.id },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+
+  const created = await tx.kanbanCard.create({
+    data: {
+      ...(preferredId ? { id: preferredId } : {}),
+      workspaceId,
+      boardId: column.boardId,
+      boardWorkspaceId: workspaceId,
+      columnId: column.id,
+      columnWorkspaceId: workspaceId,
+      title: input.title,
+      description: normalizeCardDescription(input.description),
+      position: (last?.position ?? -1) + 1,
+      priority: input.priority ?? "MEDIUM",
+      dueDate: input.dueDate ?? null,
+      assigneeOperatorId: assignee,
+      assigneeWorkspaceId: assignee === null ? null : workspaceId,
+      linkedType: input.linkedType ?? null,
+      linkedId: input.linkedId ?? null,
+      linkedLabel: input.linkedLabel ?? null,
+      completedAt: column.isDone ? new Date() : null,
+    },
+  });
+
+  if (input.labelIds?.length) {
+    await setCardLabels(tx, workspaceId, created.id, input.labelIds);
+  }
+  return created;
 }
 
 export async function updateCard(

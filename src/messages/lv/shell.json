@@ -22,6 +22,7 @@
   "notificationsAlertsLabel": "Brīdinājumi: {count, plural, =0 {nav jaunu} one {# jauns brīdinājums} other {# jauni brīdinājumi}}",
   "notificationsMessagesLabel": "Ziņas: {count, plural, =0 {nav jaunu} one {# jauna ziņa} other {# jaunas ziņas}}",
   "notificationsCalendarLabel": "Kalendārs: {count, plural, =0 {nav aktīvu} one {# aktīvs atgādinājums} other {# aktīvi atgādinājumi}}",
+  "navManagement": "Pārvaldība",
   "navDashboards": "Paneļi",
   "navBookmarks": "Grāmatzīmes",
   "navKanban": "Kanban",

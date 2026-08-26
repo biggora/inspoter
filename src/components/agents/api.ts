@@ -14,7 +14,7 @@ import type {
 } from "@/lib/services/agent-runs";
 import type { AgentScheduleSummary } from "@/lib/services/agent-schedules";
 import type { SkillDetail, SkillSummary } from "@/lib/services/skills";
-import type { McpScope } from "@/lib/mcp/scopes";
+import type { AgentScope } from "@/lib/agents/scopes";
 import type {
   AgentConversationDetail,
   AgentConversationSummary,
@@ -26,7 +26,7 @@ export class ApiError extends Error {
   code?: string;
   /** Only set alongside code === "SKILL_TOOL_UNKNOWN". */
   unknownTools?: string[];
-  missingScopes?: McpScope[];
+  missingScopes?: AgentScope[];
 
   constructor(
     message: string,
@@ -34,7 +34,7 @@ export class ApiError extends Error {
       fieldErrors?: Record<string, string>;
       code?: string;
       unknownTools?: string[];
-      missingScopes?: McpScope[];
+      missingScopes?: AgentScope[];
     },
   ) {
     super(message);
@@ -66,7 +66,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     let fieldErrors: Record<string, string> | undefined;
     let code: string | undefined;
     let unknownTools: string[] | undefined;
-    let missingScopes: McpScope[] | undefined;
+    let missingScopes: AgentScope[] | undefined;
     try {
       const body = await res.json();
       if (typeof body?.error === "string") {
@@ -76,7 +76,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
           unknownTools = body.unknownTools as string[];
         }
         if (Array.isArray(body?.missingScopes)) {
-          missingScopes = body.missingScopes as McpScope[];
+          missingScopes = body.missingScopes.filter(
+            (scope: unknown): scope is AgentScope => typeof scope === "string",
+          );
         }
       } else if (Array.isArray(body?.error)) {
         fieldErrors = {};
@@ -107,7 +109,7 @@ export interface AgentInput {
   name: string;
   description?: string;
   instructions: string;
-  scopes?: McpScope[];
+  scopes?: AgentScope[];
   maxSteps?: number;
   maxTokens?: number;
   timeoutSeconds?: number;

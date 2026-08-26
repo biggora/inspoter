@@ -138,13 +138,17 @@ function makeSnippet(body: string): string {
   return body.replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
-async function requireDraftFolder(accountId: string, workspaceId: string) {
+async function requireDraftFolder(
+  tx: Prisma.TransactionClient,
+  accountId: string,
+  workspaceId: string,
+) {
   const [account, folder] = await Promise.all([
-    db.mailAccount.findFirst({
+    tx.mailAccount.findFirst({
       where: { id: accountId, workspaceId, kind: "IMAP" },
       select: { id: true, name: true, email: true },
     }),
-    db.mailFolder.findFirst({
+    tx.mailFolder.findFirst({
       where: { accountId, workspaceId, specialUse: "DRAFTS" },
       select: { id: true },
     }),
@@ -155,13 +159,14 @@ async function requireDraftFolder(accountId: string, workspaceId: string) {
 }
 
 async function assertContextExists(
+  tx: Prisma.TransactionClient,
   workspaceId: string,
   inReplyToId?: string,
   forwardOfId?: string,
 ) {
   const contextId = inReplyToId ?? forwardOfId;
   if (!contextId) return;
-  const context = await db.mailItem.findFirst({
+  const context = await tx.mailItem.findFirst({
     where: { id: contextId, workspaceId },
     select: { id: true },
   });
@@ -173,71 +178,86 @@ export async function saveMailDraft(
   input: SaveMailDraftData,
   runAccountTransaction: MailAccountTransactionRunner = runMailAccountTransaction,
 ): Promise<MailDraftDto> {
+  return runAccountTransaction(input.accountId, (tx) =>
+    saveMailDraftTx(tx, workspaceId, input),
+  );
+}
+
+/**
+ * Creates or updates a draft inside an already account-locked transaction.
+ * Callers that open the transaction themselves must use runMailAccountTransaction
+ * for input.accountId before invoking this helper.
+ */
+export async function saveMailDraftTx(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  input: SaveMailDraftData,
+  preferredId?: string,
+): Promise<MailDraftDto> {
   const [{ account, folder }] = await Promise.all([
-    requireDraftFolder(input.accountId, workspaceId),
-    assertContextExists(workspaceId, input.inReplyToId, input.forwardOfId),
+    requireDraftFolder(tx, input.accountId, workspaceId),
+    assertContextExists(tx, workspaceId, input.inReplyToId, input.forwardOfId),
   ]);
   const now = new Date();
   const cleanHtml = sanitizeOutgoingMailHtml(input.bodyHtml);
 
-  return runAccountTransaction(account.id, async (tx) => {
-    let id = input.draftId;
-    if (id) {
-      const updated = await tx.mailItem.updateMany({
-        where: {
-          id,
-          workspaceId,
-          accountId: account.id,
-          folderId: folder.id,
-        },
-        data: {
-          toRecipients: jsonAddresses(input.to),
-          ccRecipients: jsonAddresses(input.cc),
-          bccRecipients: jsonAddresses(input.bcc),
-          subject: input.subject,
-          bodyText: input.bodyText,
-          bodyHtml: cleanHtml,
-          draftReplyToId: input.inReplyToId ?? null,
-          draftForwardOfId: input.forwardOfId ?? null,
-          snippet: makeSnippet(input.bodyText),
-          receivedAt: now,
-        },
-      });
-      if (updated.count === 0) throw new MailDraftNotFoundError(id);
-    } else {
-      const created = await tx.mailItem.create({
-        data: {
-          workspaceId,
-          accountId: account.id,
-          accountWorkspaceId: workspaceId,
-          folderId: folder.id,
-          folderWorkspaceId: workspaceId,
-          fromAddress: account.email,
-          fromName: account.name,
-          toRecipients: jsonAddresses(input.to),
-          ccRecipients: jsonAddresses(input.cc),
-          bccRecipients: jsonAddresses(input.bcc),
-          subject: input.subject,
-          bodyText: input.bodyText,
-          bodyHtml: cleanHtml,
-          draftReplyToId: input.inReplyToId,
-          draftForwardOfId: input.forwardOfId,
-          snippet: makeSnippet(input.bodyText),
-          isRead: true,
-          receivedAt: now,
-        },
-        select: { id: true },
-      });
-      id = created.id;
-    }
-
-    const row = await tx.mailItem.findFirst({
-      where: { id, workspaceId, folderId: folder.id },
-      include: DRAFT_INCLUDE,
+  let id = input.draftId;
+  if (id) {
+    const updated = await tx.mailItem.updateMany({
+      where: {
+        id,
+        workspaceId,
+        accountId: account.id,
+        folderId: folder.id,
+      },
+      data: {
+        toRecipients: jsonAddresses(input.to),
+        ccRecipients: jsonAddresses(input.cc),
+        bccRecipients: jsonAddresses(input.bcc),
+        subject: input.subject,
+        bodyText: input.bodyText,
+        bodyHtml: cleanHtml,
+        draftReplyToId: input.inReplyToId ?? null,
+        draftForwardOfId: input.forwardOfId ?? null,
+        snippet: makeSnippet(input.bodyText),
+        receivedAt: now,
+      },
     });
-    if (!row) throw new MailDraftNotFoundError(id);
-    return toDraftDto(row);
+    if (updated.count === 0) throw new MailDraftNotFoundError(id);
+  } else {
+    const created = await tx.mailItem.create({
+      data: {
+        ...(preferredId ? { id: preferredId } : {}),
+        workspaceId,
+        accountId: account.id,
+        accountWorkspaceId: workspaceId,
+        folderId: folder.id,
+        folderWorkspaceId: workspaceId,
+        fromAddress: account.email,
+        fromName: account.name,
+        toRecipients: jsonAddresses(input.to),
+        ccRecipients: jsonAddresses(input.cc),
+        bccRecipients: jsonAddresses(input.bcc),
+        subject: input.subject,
+        bodyText: input.bodyText,
+        bodyHtml: cleanHtml,
+        draftReplyToId: input.inReplyToId,
+        draftForwardOfId: input.forwardOfId,
+        snippet: makeSnippet(input.bodyText),
+        isRead: true,
+        receivedAt: now,
+      },
+      select: { id: true },
+    });
+    id = created.id;
+  }
+
+  const row = await tx.mailItem.findFirst({
+    where: { id, workspaceId, folderId: folder.id },
+    include: DRAFT_INCLUDE,
   });
+  if (!row) throw new MailDraftNotFoundError(id);
+  return toDraftDto(row);
 }
 
 async function loadDraftForAttachment(

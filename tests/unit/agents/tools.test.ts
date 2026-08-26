@@ -31,6 +31,14 @@ describe("buildAgentToolset", () => {
     expect(toolset.every((tool) => tool.scope === "logs:read")).toBe(true);
   });
 
+  it("keeps management tools out of the public MCP scope set", () => {
+    expect(MCP_SCOPES).not.toContain("management:read");
+    expect(MCP_SCOPES).not.toContain("management:write");
+    expect(buildAgentToolset(["management:read"])).toEqual([
+      expect.objectContaining({ name: "management_snapshot_get" }),
+    ]);
+  });
+
   it("intersects with a skill's allowlist, never widening it", () => {
     const logsOnly = buildAgentToolset(["logs:read"]);
     const name = logsOnly[0].name;

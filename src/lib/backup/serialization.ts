@@ -2,7 +2,16 @@ import { z } from "zod";
 import {
   AlertCategorySource,
   CalendarLinkTargetType,
+  DecisionActionType,
+  DecisionActorKind,
+  DecisionEventType,
+  DecisionExecutionStatus,
+  DecisionOrigin,
+  DecisionPriority,
+  DecisionStatus,
+  DecisionTargetAvailability,
   DashboardWidgetKind,
+  ExecutiveBriefPeriod,
   KanbanLinkType,
   KanbanPriority,
   MailAccountKind,
@@ -41,6 +50,7 @@ export const BACKUP_SECTIONS = [
   "services",
   "webhooks",
   "providers",
+  "management",
   "workspaceSettings",
 ] as const;
 
@@ -89,6 +99,13 @@ export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
   services: ["services", "serviceChecks"],
   webhooks: ["webhookTokens", "outgoingWebhooks"],
   providers: ["providerResourceBindings", "providerCredentials"],
+  management: [
+    "executiveBriefGenerations",
+    "executiveBriefs",
+    "decisions",
+    "decisionEvents",
+    "decisionActionReceipts",
+  ],
   workspaceSettings: [], // lives in manifest.workspace, not manifest.data
 };
 
@@ -96,6 +113,7 @@ export const BACKUP_SCHEMA_VERSION = 1;
 
 const isoDate = z.string().datetime();
 const bigintString = z.string().regex(/^\d+$/);
+const jsonValueSchema = z.unknown().refine((value) => value !== null);
 
 const categorySchema = z.object({
   id: z.string(),
@@ -654,6 +672,121 @@ const providerCredentialSchema = z.object({
   updatedAt: isoDate,
 });
 
+// Management archives intentionally contain published history only. Agent
+// configuration and runs are operational state, not restoreable history.
+const executiveBriefGenerationSchema = z.object({
+  id: z.string(),
+  period: z.enum(ExecutiveBriefPeriod),
+  status: z.literal("PUBLISHED"),
+  sourceRunId: z.string(),
+  sourceAgentId: z.string(),
+  sourceAgentName: z.string(),
+  snapshotVersion: z.number().int().positive(),
+  snapshot: jsonValueSchema,
+  snapshotHash: z.string(),
+  snapshotByteLength: z.number().int().nonnegative(),
+  snapshotCapturedAt: isoDate,
+  publishedAt: isoDate,
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const executiveBriefSchema = z.object({
+  id: z.string(),
+  generationId: z.string(),
+  period: z.enum(ExecutiveBriefPeriod),
+  windowStart: isoDate,
+  windowEnd: isoDate,
+  snapshotAsOf: isoDate,
+  headline: z.string(),
+  summary: z.string(),
+  highlights: jsonValueSchema,
+  risks: jsonValueSchema,
+  opportunities: jsonValueSchema,
+  snapshotHash: z.string(),
+  sourceRunId: z.string(),
+  sourceAgentId: z.string(),
+  sourceAgentName: z.string(),
+  publishedAt: isoDate,
+  createdAt: isoDate,
+});
+
+const decisionSchema = z.object({
+  id: z.string(),
+  briefId: z.string().nullable(),
+  origin: z.enum(DecisionOrigin),
+  title: z.string(),
+  context: z.string().nullable(),
+  recommendation: z.string().nullable(),
+  evidenceRefs: jsonValueSchema,
+  priority: z.enum(DecisionPriority),
+  dueAt: isoDate.nullable(),
+  status: z.enum(DecisionStatus),
+  deferredUntil: isoDate.nullable(),
+  resolutionNote: z.string().nullable(),
+  actionType: z.enum(DecisionActionType).nullable(),
+  actionPayload: z.unknown().nullable(),
+  actionRevision: z.number().int().nonnegative(),
+  executionStatus: z.enum(DecisionExecutionStatus),
+  executionAttempts: z.number().int().nonnegative(),
+  lastExecutionErrorCode: z.string().nullable(),
+  lastExecutionError: z.string().nullable(),
+  executedAt: isoDate.nullable(),
+  resultType: z.string().nullable(),
+  resultId: z.string().nullable(),
+  resultLabel: z.string().nullable(),
+  resultHref: z.string().nullable(),
+  createdByType: z.enum(DecisionActorKind),
+  createdById: z.string(),
+  createdByName: z.string(),
+  resolvedByOperatorId: z.string().nullable(),
+  resolvedByOperatorName: z.string().nullable(),
+  resolvedAt: isoDate.nullable(),
+  version: z.number().int().positive(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const decisionActionReceiptSchema = z.object({
+  id: z.string(),
+  decisionId: z.string(),
+  actionRevision: z.number().int().positive(),
+  actionType: z.enum(DecisionActionType),
+  payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
+  historicalTargetId: z.string(),
+  historicalTargetType: z.string(),
+  historicalTargetLabel: z.string(),
+  historicalTargetHref: z.string().nullable(),
+  liveTargetId: z.string().nullable(),
+  liveTargetHref: z.string().nullable(),
+  targetAvailability: z.enum(DecisionTargetAvailability),
+  committedAt: isoDate,
+  createdAt: isoDate,
+});
+
+const decisionEventSchema = z.object({
+  id: z.string(),
+  decisionId: z.string(),
+  receiptId: z.string().nullable(),
+  sequence: z.number().int().positive(),
+  type: z.enum(DecisionEventType),
+  actorKind: z.enum(DecisionActorKind),
+  actorId: z.string(),
+  actorName: z.string(),
+  fromStatus: z.enum(DecisionStatus).nullable(),
+  toStatus: z.enum(DecisionStatus).nullable(),
+  fromExecutionStatus: z.enum(DecisionExecutionStatus).nullable(),
+  toExecutionStatus: z.enum(DecisionExecutionStatus).nullable(),
+  actionRevision: z.number().int().nonnegative(),
+  payloadHash: z.string().nullable(),
+  targetType: z.string().nullable(),
+  targetId: z.string().nullable(),
+  targetLabel: z.string().nullable(),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  createdAt: isoDate,
+});
+
 const manifestSchema = z.object({
   schemaVersion: z.literal(BACKUP_SCHEMA_VERSION),
   exportedAt: isoDate,
@@ -710,12 +843,127 @@ const dataSchema = z.object({
   outgoingWebhooks: z.array(outgoingWebhookSchema).optional(),
   providerResourceBindings: z.array(providerResourceBindingSchema).optional(),
   providerCredentials: z.array(providerCredentialSchema).optional(),
+  executiveBriefGenerations: z.array(executiveBriefGenerationSchema).optional(),
+  executiveBriefs: z.array(executiveBriefSchema).optional(),
+  decisions: z.array(decisionSchema).optional(),
+  decisionEvents: z.array(decisionEventSchema).optional(),
+  decisionActionReceipts: z.array(decisionActionReceiptSchema).optional(),
 });
 
-export const backupPayloadSchema = z.object({
-  manifest: manifestSchema,
-  data: dataSchema,
-});
+export const backupPayloadSchema = z
+  .object({
+    manifest: manifestSchema,
+    data: dataSchema,
+  })
+  .superRefine(({ data }, ctx) => {
+    const generations = new Set(
+      (data.executiveBriefGenerations ?? []).map((row) => row.id),
+    );
+    const briefs = new Set((data.executiveBriefs ?? []).map((row) => row.id));
+    const decisions = new Map(
+      (data.decisions ?? []).map((row) => [row.id, row]),
+    );
+    const receipts = new Map(
+      (data.decisionActionReceipts ?? []).map((row) => [row.id, row]),
+    );
+    const receiptRevisions = new Set<string>();
+    const eventSequences = new Set<string>();
+
+    for (const row of data.executiveBriefs ?? []) {
+      if (!generations.has(row.generationId)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Executive brief references a missing generation.",
+        });
+      }
+    }
+    for (const row of data.decisions ?? []) {
+      const hasAction = row.actionType !== null && row.actionPayload !== null;
+      if (hasAction !== row.actionRevision > 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Decision action is invalid.",
+        });
+      }
+      if (row.briefId !== null && !briefs.has(row.briefId)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Decision references a missing brief.",
+        });
+      }
+      if (
+        row.executionStatus === "SUCCEEDED" &&
+        (row.executedAt === null ||
+          row.resultType === null ||
+          row.resultId === null ||
+          row.resultLabel === null)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Succeeded decision is invalid.",
+        });
+      }
+      if (row.executionStatus === "FAILED" && row.lastExecutionError === null) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Failed decision is invalid.",
+        });
+      }
+    }
+    for (const row of data.decisionActionReceipts ?? []) {
+      const decision = decisions.get(row.decisionId);
+      const key = `${row.decisionId}\u0000${row.actionRevision}`;
+      if (
+        decision === undefined ||
+        row.actionRevision > decision.actionRevision ||
+        receiptRevisions.has(key) ||
+        (row.targetAvailability === "AVAILABLE" && row.liveTargetId === null) ||
+        (row.targetAvailability === "UNAVAILABLE" &&
+          (row.liveTargetId !== null || row.liveTargetHref !== null))
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Decision receipt is invalid.",
+        });
+      }
+      receiptRevisions.add(key);
+    }
+    for (const row of data.decisions ?? []) {
+      if (row.executionStatus !== "SUCCEEDED") continue;
+      const receipt = (data.decisionActionReceipts ?? []).find(
+        (candidate) =>
+          candidate.decisionId === row.id &&
+          candidate.actionRevision === row.actionRevision,
+      );
+      if (
+        receipt === undefined ||
+        receipt.historicalTargetType !== row.resultType ||
+        receipt.historicalTargetId !== row.resultId ||
+        receipt.historicalTargetLabel !== row.resultLabel
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Succeeded decision receipt is inconsistent.",
+        });
+      }
+    }
+    for (const row of data.decisionEvents ?? []) {
+      const sequenceKey = `${row.decisionId}\u0000${row.sequence}`;
+      const receipt =
+        row.receiptId === null ? null : receipts.get(row.receiptId);
+      if (
+        !decisions.has(row.decisionId) ||
+        eventSequences.has(sequenceKey) ||
+        (row.receiptId !== null &&
+          (receipt === null ||
+            receipt === undefined ||
+            receipt.decisionId !== row.decisionId))
+      ) {
+        ctx.addIssue({ code: "custom", message: "Decision event is invalid." });
+      }
+      eventSequences.add(sequenceKey);
+    }
+  });
 
 export type BackupPayloadV1 = z.infer<typeof backupPayloadSchema>;
 export type BackupManifest = z.infer<typeof manifestSchema>;
@@ -765,3 +1013,12 @@ export type BackupProviderResourceBindingRecord = z.infer<
 export type BackupProviderCredentialRecord = z.infer<
   typeof providerCredentialSchema
 >;
+export type BackupExecutiveBriefGenerationRecord = z.infer<
+  typeof executiveBriefGenerationSchema
+>;
+export type BackupExecutiveBriefRecord = z.infer<typeof executiveBriefSchema>;
+export type BackupDecisionRecord = z.infer<typeof decisionSchema>;
+export type BackupDecisionActionReceiptRecord = z.infer<
+  typeof decisionActionReceiptSchema
+>;
+export type BackupDecisionEventRecord = z.infer<typeof decisionEventSchema>;

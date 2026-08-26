@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type AgentRunStatus } from "@/generated/prisma/client";
 import { env } from "@/lib/config/env";
 import { db } from "@/lib/db";
-import { parseScopes, type McpScope } from "@/lib/mcp/scopes";
+import { parseAgentScopes, type AgentScope } from "@/lib/agents/scopes";
 import { emitWebhookEvent } from "@/lib/services/webhook-events";
 
 // Sole Prisma caller for AgentRun and AgentRunStep.
@@ -123,7 +123,7 @@ export interface AgentRunStepView {
 
 export interface AgentRunDetail extends AgentRunSummary {
   input: string | null;
-  scopes: McpScope[];
+  scopes: AgentScope[];
   steps: AgentRunStepView[];
   cancelRequestedAt: Date | null;
 }
@@ -434,10 +434,11 @@ export async function renewAgentRunLease(
 }
 
 export interface AgentRunExecutionState {
+  agentId: string;
   input: string | null;
   agentName: string;
   instructions: string;
-  scopes: McpScope[];
+  scopes: AgentScope[];
   skills: AgentRunSnapshotSkill[];
   maxSteps: number;
   maxTokens: number;
@@ -457,6 +458,7 @@ export async function loadRunState(
   const run = await db.agentRun.findFirst({
     where: { id: claim.id, workspaceId: claim.workspaceId },
     select: {
+      sourceAgentId: true,
       input: true,
       snapshotAgentName: true,
       snapshotInstructions: true,
@@ -475,10 +477,11 @@ export async function loadRunState(
   });
   if (!run) throw new AgentRunNotFoundError();
   return {
+    agentId: run.sourceAgentId,
     input: run.input,
     agentName: run.snapshotAgentName,
     instructions: run.snapshotInstructions,
-    scopes: parseScopes(run.snapshotScopes),
+    scopes: parseAgentScopes(run.snapshotScopes),
     skills: run.snapshotSkills as unknown as AgentRunSnapshotSkill[],
     maxSteps: run.snapshotMaxSteps,
     maxTokens: run.snapshotMaxTokens,
@@ -853,7 +856,7 @@ export async function getRunDetail(
   return {
     ...toSummary(summary),
     input,
-    scopes: parseScopes(snapshotScopes),
+    scopes: parseAgentScopes(snapshotScopes),
     cancelRequestedAt,
     steps,
   };
@@ -894,7 +897,7 @@ export async function listConversationRuns(
     return {
       ...toSummary(summary),
       input,
-      scopes: parseScopes(snapshotScopes),
+      scopes: parseAgentScopes(snapshotScopes),
       cancelRequestedAt,
       steps,
     };
@@ -904,18 +907,20 @@ export async function listConversationRuns(
 export async function getConversationScopeHistory(
   workspaceId: string,
   conversationId: string,
-): Promise<McpScope[]> {
+): Promise<AgentScope[]> {
   const runs = await db.agentRun.findMany({
     where: { workspaceId, conversationId },
     select: { snapshotScopes: true },
   });
-  return parseScopes([...new Set(runs.flatMap((run) => run.snapshotScopes))]);
+  return parseAgentScopes([
+    ...new Set(runs.flatMap((run) => run.snapshotScopes)),
+  ]);
 }
 
 export async function getConversationLastAgentSnapshot(
   workspaceId: string,
   conversationId: string,
-): Promise<{ id: string; name: string; scopes: McpScope[] } | null> {
+): Promise<{ id: string; name: string; scopes: AgentScope[] } | null> {
   const run = await db.agentRun.findFirst({
     where: { workspaceId, conversationId },
     select: {
@@ -929,7 +934,7 @@ export async function getConversationLastAgentSnapshot(
     ? {
         id: run.sourceAgentId,
         name: run.snapshotAgentName,
-        scopes: parseScopes(run.snapshotScopes),
+        scopes: parseAgentScopes(run.snapshotScopes),
       }
     : null;
 }

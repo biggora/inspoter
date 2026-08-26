@@ -5,6 +5,11 @@ import { computeNextRunAt } from "@/lib/agents/schedule";
 import { LLM_PROVIDER_TYPES } from "@/lib/providers/registry";
 import { AgentNotFoundError } from "@/lib/services/agents";
 import { createRun, type AgentRunRuntime } from "@/lib/services/agent-runs";
+import {
+  createScheduledExecutiveBriefGeneration,
+  EXECUTIVE_BRIEF_DAILY_SCHEDULE_KEY,
+  EXECUTIVE_BRIEF_WEEKLY_SCHEDULE_KEY,
+} from "@/lib/services/executive-briefs";
 import type {
   AgentScheduleCreateInput,
   AgentScheduleUpdateInput,
@@ -207,6 +212,7 @@ export async function materializeDueSchedules(
       daysOfWeek: true,
       timeZone: true,
       input: true,
+      systemKey: true,
       nextRunAt: true,
     },
     orderBy: [{ nextRunAt: "asc" }, { id: "asc" }],
@@ -245,6 +251,22 @@ export async function materializeDueSchedules(
     if (!hasProvider) continue;
 
     try {
+      if (
+        schedule.systemKey === EXECUTIVE_BRIEF_DAILY_SCHEDULE_KEY ||
+        schedule.systemKey === EXECUTIVE_BRIEF_WEEKLY_SCHEDULE_KEY
+      ) {
+        const createdGeneration = await createScheduledExecutiveBriefGeneration(
+          schedule.workspaceId,
+          schedule.agentId,
+          schedule.id,
+          schedule.systemKey === EXECUTIVE_BRIEF_DAILY_SCHEDULE_KEY
+            ? "DAILY"
+            : "WEEKLY",
+          occurrence,
+        );
+        if (createdGeneration) created += 1;
+        continue;
+      }
       const run = await createRun(
         schedule.workspaceId,
         {

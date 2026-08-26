@@ -36,6 +36,11 @@ import type {
   OutgoingWebhook,
   ProviderResourceBinding,
   ProviderCredential,
+  ExecutiveBriefGeneration,
+  ExecutiveBrief,
+  Decision,
+  DecisionActionReceipt,
+  DecisionEvent,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
@@ -97,6 +102,11 @@ import {
   type BackupOutgoingWebhookRecord,
   type BackupProviderResourceBindingRecord,
   type BackupProviderCredentialRecord,
+  type BackupExecutiveBriefGenerationRecord,
+  type BackupExecutiveBriefRecord,
+  type BackupDecisionRecord,
+  type BackupDecisionActionReceiptRecord,
+  type BackupDecisionEventRecord,
 } from "@/lib/backup/serialization";
 import {
   encrypt,
@@ -106,6 +116,10 @@ import {
 import { EncryptionNotConfiguredError } from "@/lib/services/outgoingWebhooks";
 import { WorkspaceNotFoundError } from "@/lib/services/workspaces";
 import type { BackupImportMode } from "@/lib/validation/backup";
+import {
+  managementActionSchema,
+  type ManagementAction,
+} from "@/lib/validation/management";
 import packageJson from "../../../package.json";
 
 // Sole service layer for the workspace backup feature (export + import).
@@ -152,6 +166,11 @@ function jsonInput(
   value: unknown,
 ): Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue {
   return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
+}
+
+function requiredJsonInput(value: unknown): Prisma.InputJsonValue {
+  if (value === null) throw new BackupInvalidFileError();
+  return value as Prisma.InputJsonValue;
 }
 
 function formatTimestamp(date: Date): string {
@@ -877,6 +896,140 @@ function toProviderCredentialRecord(
   };
 }
 
+function requiredBackupValue<T>(value: T): NonNullable<T> {
+  if (value === null) throw new BackupInvalidFileError();
+  return value as NonNullable<T>;
+}
+
+function toExecutiveBriefGenerationRecord(
+  row: ExecutiveBriefGeneration,
+): BackupExecutiveBriefGenerationRecord {
+  return {
+    id: row.id,
+    period: row.period,
+    status: "PUBLISHED",
+    sourceRunId: row.sourceRunId,
+    sourceAgentId: row.sourceAgentId,
+    sourceAgentName: row.sourceAgentName,
+    snapshotVersion: row.snapshotVersion,
+    snapshot: requiredBackupValue(row.snapshot),
+    snapshotHash: requiredBackupValue(row.snapshotHash),
+    snapshotByteLength: requiredBackupValue(row.snapshotByteLength),
+    snapshotCapturedAt: iso(requiredBackupValue(row.snapshotCapturedAt)),
+    publishedAt: iso(requiredBackupValue(row.publishedAt)),
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toExecutiveBriefRecord(
+  row: ExecutiveBrief,
+): BackupExecutiveBriefRecord {
+  return {
+    id: row.id,
+    generationId: row.generationId,
+    period: row.period,
+    windowStart: iso(row.windowStart),
+    windowEnd: iso(row.windowEnd),
+    snapshotAsOf: iso(row.snapshotAsOf),
+    headline: row.headline,
+    summary: row.summary,
+    highlights: requiredBackupValue(row.highlights),
+    risks: requiredBackupValue(row.risks),
+    opportunities: requiredBackupValue(row.opportunities),
+    snapshotHash: row.snapshotHash,
+    sourceRunId: row.sourceRunId,
+    sourceAgentId: row.sourceAgentId,
+    sourceAgentName: row.sourceAgentName,
+    publishedAt: iso(row.publishedAt),
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toDecisionRecord(row: Decision): BackupDecisionRecord {
+  return {
+    id: row.id,
+    briefId: row.briefId,
+    origin: row.origin,
+    title: row.title,
+    context: row.context,
+    recommendation: row.recommendation,
+    evidenceRefs: requiredBackupValue(row.evidenceRefs),
+    priority: row.priority,
+    dueAt: isoOrNull(row.dueAt),
+    status: row.status,
+    deferredUntil: isoOrNull(row.deferredUntil),
+    resolutionNote: row.resolutionNote,
+    actionType: row.actionType,
+    actionPayload: row.actionPayload,
+    actionRevision: row.actionRevision,
+    executionStatus: row.executionStatus,
+    executionAttempts: row.executionAttempts,
+    lastExecutionErrorCode: row.lastExecutionErrorCode,
+    lastExecutionError: row.lastExecutionError,
+    executedAt: isoOrNull(row.executedAt),
+    resultType: row.resultType,
+    resultId: row.resultId,
+    resultLabel: row.resultLabel,
+    resultHref: row.resultHref,
+    createdByType: row.createdByType,
+    createdById: row.createdById,
+    createdByName: row.createdByName,
+    resolvedByOperatorId: row.resolvedByOperatorId,
+    resolvedByOperatorName: row.resolvedByOperatorName,
+    resolvedAt: isoOrNull(row.resolvedAt),
+    version: row.version,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toDecisionActionReceiptRecord(
+  row: DecisionActionReceipt,
+): BackupDecisionActionReceiptRecord {
+  return {
+    id: row.id,
+    decisionId: row.decisionId,
+    actionRevision: row.actionRevision,
+    actionType: row.actionType,
+    payloadHash: row.payloadHash,
+    historicalTargetId: row.historicalTargetId,
+    historicalTargetType: row.historicalTargetType,
+    historicalTargetLabel: row.historicalTargetLabel,
+    historicalTargetHref: row.historicalTargetHref,
+    liveTargetId: row.liveTargetId,
+    liveTargetHref: row.liveTargetHref,
+    targetAvailability: row.targetAvailability,
+    committedAt: iso(row.committedAt),
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toDecisionEventRecord(row: DecisionEvent): BackupDecisionEventRecord {
+  return {
+    id: row.id,
+    decisionId: row.decisionId,
+    receiptId: row.receiptId,
+    sequence: row.sequence,
+    type: row.type,
+    actorKind: row.actorKind,
+    actorId: row.actorId,
+    actorName: row.actorName,
+    fromStatus: row.fromStatus,
+    toStatus: row.toStatus,
+    fromExecutionStatus: row.fromExecutionStatus,
+    toExecutionStatus: row.toExecutionStatus,
+    actionRevision: row.actionRevision,
+    payloadHash: row.payloadHash,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    targetLabel: row.targetLabel,
+    errorCode: row.errorCode,
+    errorMessage: row.errorMessage,
+    createdAt: iso(row.createdAt),
+  };
+}
+
 async function fetchMailAttachments(
   tx: Prisma.TransactionClient,
   workspaceId: string,
@@ -1309,6 +1462,46 @@ export async function exportWorkspace(
         counts.providerResourceBindings = providerResourceBindings.length;
         counts.providerCredentials = providerCredentials.length;
       }
+
+      if (sections.includes("management")) {
+        const generations = await tx.executiveBriefGeneration.findMany({
+          where: { workspaceId, status: "PUBLISHED" },
+          orderBy: orderByCreated(),
+        });
+        const generationIds = generations.map((row) => row.id);
+        const [briefs, decisions, events, receipts] = await Promise.all([
+          tx.executiveBrief.findMany({
+            where: { workspaceId, generationId: { in: generationIds } },
+            orderBy: orderByCreated(),
+          }),
+          tx.decision.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.decisionEvent.findMany({
+            where: { workspaceId },
+            orderBy: [{ decisionId: "asc" }, { sequence: "asc" }],
+          }),
+          tx.decisionActionReceipt.findMany({
+            where: { workspaceId },
+            orderBy: [{ decisionId: "asc" }, { actionRevision: "asc" }],
+          }),
+        ]);
+        data.executiveBriefGenerations = generations.map(
+          toExecutiveBriefGenerationRecord,
+        );
+        data.executiveBriefs = briefs.map(toExecutiveBriefRecord);
+        data.decisions = decisions.map(toDecisionRecord);
+        data.decisionEvents = events.map(toDecisionEventRecord);
+        data.decisionActionReceipts = receipts.map(
+          toDecisionActionReceiptRecord,
+        );
+        counts.executiveBriefGenerations = generations.length;
+        counts.executiveBriefs = briefs.length;
+        counts.decisions = decisions.length;
+        counts.decisionEvents = events.length;
+        counts.decisionActionReceipts = receipts.length;
+      }
     },
     {
       timeout: env.BACKUP_IMPORT_TX_TIMEOUT_MS,
@@ -1364,6 +1557,231 @@ function topoSortCategories(
   return sorted;
 }
 
+type ManagementReferenceMaps = {
+  alertIds: Map<string, string>;
+  bookmarkIds: Map<string, string>;
+  channelIds: Map<string, string>;
+  contactIds: Map<string, string>;
+  dashboardIds: Map<string, string>;
+  kanbanBoardIds: Map<string, string>;
+  kanbanCardIds: Map<string, string>;
+  kanbanColumnIds: Map<string, string>;
+  kanbanLabelIds: Map<string, string>;
+  logEntryIds: Map<string, string>;
+  mailAccountIds: Map<string, string>;
+  mailItemIds: Map<string, string>;
+  mailTemplateIds: Map<string, string>;
+  messageIds: Map<string, string>;
+  reminderIds: Map<string, string>;
+  serviceIds: Map<string, string>;
+};
+
+function targetTypeForAction(actionType: string): string {
+  switch (actionType) {
+    case "CREATE_KANBAN_CARD":
+      return "KANBAN_CARD";
+    case "CREATE_REMINDER":
+      return "REMINDER";
+    case "CREATE_NOTE":
+      return "NOTE";
+    case "CREATE_MAIL_DRAFT":
+      return "MAIL_DRAFT";
+    default:
+      throw new BackupInvalidFileError();
+  }
+}
+
+function managementActionHash(action: ManagementAction): string {
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ type: action.type, payload: action.payload }))
+    .digest("hex");
+}
+
+function validateManagementArchive(data: BackupData): void {
+  const decisions = new Map((data.decisions ?? []).map((row) => [row.id, row]));
+  for (const row of data.decisions ?? []) {
+    if (row.actionType === null || row.actionPayload === null) continue;
+    const action = managementActionSchema.safeParse({
+      type: row.actionType,
+      payload: row.actionPayload,
+    });
+    if (!action.success) throw new BackupInvalidFileError();
+    const currentReceipt = (data.decisionActionReceipts ?? []).find(
+      (receipt) =>
+        receipt.decisionId === row.id &&
+        receipt.actionRevision === row.actionRevision,
+    );
+    if (
+      currentReceipt !== undefined &&
+      currentReceipt.payloadHash !== managementActionHash(action.data)
+    ) {
+      throw new BackupInvalidFileError();
+    }
+  }
+  for (const receipt of data.decisionActionReceipts ?? []) {
+    const decision = decisions.get(receipt.decisionId);
+    if (
+      decision === undefined ||
+      receipt.historicalTargetType !== targetTypeForAction(receipt.actionType)
+    ) {
+      throw new BackupInvalidFileError();
+    }
+  }
+}
+
+function mapManagementLinkTarget(
+  type: string,
+  id: string,
+  maps: ManagementReferenceMaps,
+): string | null {
+  const map =
+    type === "DASHBOARD"
+      ? maps.dashboardIds
+      : type === "BOOKMARK"
+        ? maps.bookmarkIds
+        : type === "KANBAN_BOARD"
+          ? maps.kanbanBoardIds
+          : type === "KANBAN_CARD"
+            ? maps.kanbanCardIds
+            : type === "SERVICE"
+              ? maps.serviceIds
+              : type === "MAIL_ITEM"
+                ? maps.mailItemIds
+                : type === "MAIL_TEMPLATE"
+                  ? maps.mailTemplateIds
+                  : type === "CONTACT"
+                    ? maps.contactIds
+                    : type === "MESSAGE_CHANNEL"
+                      ? maps.channelIds
+                      : type === "MESSAGE"
+                        ? maps.messageIds
+                        : type === "REMINDER"
+                          ? maps.reminderIds
+                          : type === "MAIL_DRAFT"
+                            ? maps.mailItemIds
+                            : type === "LOG"
+                              ? maps.logEntryIds
+                              : type === "ALERT"
+                                ? maps.alertIds
+                                : null;
+  return map?.get(id) ?? null;
+}
+
+function remapManagementAction(
+  action: ManagementAction,
+  maps: ManagementReferenceMaps,
+): { action: ManagementAction; hasMissingReferences: boolean } {
+  switch (action.type) {
+    case "CREATE_KANBAN_CARD": {
+      const columnId = maps.kanbanColumnIds.get(action.payload.columnId);
+      const labelIds = action.payload.labelIds?.map((id) =>
+        maps.kanbanLabelIds.get(id),
+      );
+      const hasMissingReferences =
+        columnId === undefined ||
+        labelIds?.some((id) => id === undefined) === true;
+      return {
+        action: {
+          type: action.type,
+          payload: {
+            ...action.payload,
+            columnId: columnId ?? action.payload.columnId,
+            ...(labelIds
+              ? {
+                  labelIds: labelIds.map(
+                    (id, index) => id ?? action.payload.labelIds?.[index] ?? "",
+                  ),
+                }
+              : {}),
+          },
+        },
+        hasMissingReferences,
+      };
+    }
+    case "CREATE_REMINDER": {
+      let hasMissingReferences = false;
+      const links = action.payload.links?.map((link) => {
+        if (link.targetType === "EXTERNAL_URL") return link;
+        const targetId = mapManagementLinkTarget(
+          link.targetType,
+          link.targetId,
+          maps,
+        );
+        if (targetId === null) {
+          hasMissingReferences = true;
+          return link;
+        }
+        return { ...link, targetId };
+      });
+      return {
+        action: {
+          type: action.type,
+          payload: { ...action.payload, ...(links ? { links } : {}) },
+        },
+        hasMissingReferences,
+      };
+    }
+    case "CREATE_NOTE": {
+      // Notes and folders are deliberately outside the backup contract, so a
+      // folder-bound action always requires an operator rebind after restore.
+      return {
+        action,
+        hasMissingReferences: action.payload.folderId != null,
+      };
+    }
+    case "CREATE_MAIL_DRAFT": {
+      const accountId = maps.mailAccountIds.get(action.payload.accountId);
+      const inReplyToId = action.payload.inReplyToId
+        ? maps.mailItemIds.get(action.payload.inReplyToId)
+        : undefined;
+      const forwardOfId = action.payload.forwardOfId
+        ? maps.mailItemIds.get(action.payload.forwardOfId)
+        : undefined;
+      const hasMissingReferences =
+        accountId === undefined ||
+        (action.payload.inReplyToId !== undefined &&
+          inReplyToId === undefined) ||
+        (action.payload.forwardOfId !== undefined && forwardOfId === undefined);
+      return {
+        action: {
+          type: action.type,
+          payload: {
+            ...action.payload,
+            accountId: accountId ?? action.payload.accountId,
+            ...(action.payload.inReplyToId !== undefined
+              ? { inReplyToId: inReplyToId ?? action.payload.inReplyToId }
+              : {}),
+            ...(action.payload.forwardOfId !== undefined
+              ? { forwardOfId: forwardOfId ?? action.payload.forwardOfId }
+              : {}),
+          },
+        },
+        hasMissingReferences,
+      };
+    }
+  }
+}
+
+function remapReceiptTarget(
+  receipt: BackupDecisionActionReceiptRecord,
+  maps: ManagementReferenceMaps,
+): { liveTargetId: string | null; liveTargetHref: string | null } {
+  const id = mapManagementLinkTarget(
+    receipt.historicalTargetType,
+    receipt.historicalTargetId,
+    maps,
+  );
+  if (id === null) return { liveTargetId: null, liveTargetHref: null };
+  const liveTargetHref =
+    receipt.historicalTargetType === "KANBAN_CARD"
+      ? `/kanban?card=${id}`
+      : receipt.historicalTargetType === "REMINDER"
+        ? `/calendar?reminder=${id}`
+        : `/mail?item=${id}`;
+  return { liveTargetId: id, liveTargetHref };
+}
+
 export async function importWorkspace(
   workspaceId: string,
   input: { mode: BackupImportMode; passphrase: string; file: Buffer },
@@ -1383,6 +1801,7 @@ export async function importWorkspace(
     throw new BackupInvalidFileError();
   }
   const payload = parsed.data;
+  validateManagementArchive(payload.data);
   const { mode } = input;
 
   const hasSecrets =
@@ -1400,6 +1819,15 @@ export async function importWorkspace(
       const skipped = { webhookTokens: 0, providerResourceBindings: 0 };
 
       if (mode === "replace") {
+        if (sections.has("management")) {
+          await tx.decisionEvent.deleteMany({ where: { workspaceId } });
+          await tx.decisionActionReceipt.deleteMany({ where: { workspaceId } });
+          await tx.decision.deleteMany({ where: { workspaceId } });
+          await tx.executiveBrief.deleteMany({ where: { workspaceId } });
+          await tx.executiveBriefGeneration.deleteMany({
+            where: { workspaceId },
+          });
+        }
         if (sections.has("calendar")) {
           await tx.calendarLink.deleteMany({ where: { workspaceId } });
           await tx.reminderOccurrence.deleteMany({ where: { workspaceId } });
@@ -1519,6 +1947,10 @@ export async function importWorkspace(
       const kanbanLabelIdMap = new Map<string, string>();
       const calendarEventIdMap = new Map<string, string>();
       const reminderIdMap = new Map<string, string>();
+      const bookmarkIdMap = new Map<string, string>();
+      const messageIdMap = new Map<string, string>();
+      const logEntryIdMap = new Map<string, string>();
+      const alertIdMap = new Map<string, string>();
 
       if (payload.data.calendarEvents) {
         const inserts = payload.data.calendarEvents.map((row) => {
@@ -2295,16 +2727,20 @@ export async function importWorkspace(
       }
 
       if (payload.data.logEntries) {
-        const inserts = payload.data.logEntries.map((row) => ({
-          id: crypto.randomUUID(),
-          workspaceId,
-          level: row.level,
-          source: row.source,
-          message: row.message,
-          details: row.details ?? null,
-          timestamp: row.timestamp,
-          createdAt: row.createdAt,
-        }));
+        const inserts = payload.data.logEntries.map((row) => {
+          const id = crypto.randomUUID();
+          logEntryIdMap.set(row.id, id);
+          return {
+            id,
+            workspaceId,
+            level: row.level,
+            source: row.source,
+            message: row.message,
+            details: row.details ?? null,
+            timestamp: row.timestamp,
+            createdAt: row.createdAt,
+          };
+        });
         await createManyChunked(
           (chunk) => tx.logEntry.createMany({ data: chunk }),
           inserts,
@@ -2316,9 +2752,11 @@ export async function importWorkspace(
       // --- Tier 3: children of tier 1/2 ---
       if (payload.data.bookmarks) {
         const inserts = payload.data.bookmarks.map((row) => {
+          const id = crypto.randomUUID();
+          bookmarkIdMap.set(row.id, id);
           const categoryId = mustRemap(categoryIdMap, row.categoryId);
           return {
-            id: crypto.randomUUID(),
+            id,
             workspaceId,
             categoryId,
             categoryWorkspaceId: workspaceId,
@@ -2692,12 +3130,14 @@ export async function importWorkspace(
 
       if (payload.data.alerts) {
         const inserts = payload.data.alerts.map((row) => {
+          const id = crypto.randomUUID();
+          alertIdMap.set(row.id, id);
           const alertCategoryId = remapOrNull(
             alertCategoryIdMap,
             row.alertCategoryId,
           );
           return {
-            id: crypto.randomUUID(),
+            id,
             workspaceId,
             alertCategoryId,
             alertCategoryWorkspaceId:
@@ -2795,9 +3235,11 @@ export async function importWorkspace(
       // --- Tier 4: mail items / messages ---
       if (payload.data.messages) {
         const inserts = payload.data.messages.map((row) => {
+          const id = crypto.randomUUID();
+          messageIdMap.set(row.id, id);
           const channelId = mustRemap(channelIdMap, row.channelId);
           return {
-            id: crypto.randomUUID(),
+            id,
             workspaceId,
             channelId,
             channelWorkspaceId: workspaceId,
@@ -2892,6 +3334,301 @@ export async function importWorkspace(
           100,
         );
         imported.mailAttachments = inserts.length;
+      }
+
+      if (sections.has("management")) {
+        const referenceMaps: ManagementReferenceMaps = {
+          alertIds: alertIdMap,
+          bookmarkIds: bookmarkIdMap,
+          channelIds: channelIdMap,
+          contactIds: contactIdMap,
+          dashboardIds: dashboardIdMap,
+          kanbanBoardIds: kanbanBoardIdMap,
+          kanbanCardIds: kanbanCardIdMap,
+          kanbanColumnIds: kanbanColumnIdMap,
+          kanbanLabelIds: kanbanLabelIdMap,
+          logEntryIds: logEntryIdMap,
+          mailAccountIds: mailAccountIdMap,
+          mailItemIds: mailItemIdMap,
+          mailTemplateIds: mailTemplateIdMap,
+          messageIds: messageIdMap,
+          reminderIds: reminderIdMap,
+          serviceIds: serviceIdMap,
+        };
+        const generationIdMap = new Map<string, string>();
+        const briefIdMap = new Map<string, string>();
+        const decisionIdMap = new Map<string, string>();
+        const receiptIdMap = new Map<string, string>();
+        const receiptByCurrentRevision = new Map(
+          (payload.data.decisionActionReceipts ?? []).map((receipt) => [
+            `${receipt.decisionId}\u0000${receipt.actionRevision}`,
+            receipt,
+          ]),
+        );
+
+        if (payload.data.executiveBriefGenerations) {
+          const inserts = payload.data.executiveBriefGenerations.map((row) => {
+            const id = crypto.randomUUID();
+            generationIdMap.set(row.id, id);
+            return {
+              id,
+              workspaceId,
+              period: row.period,
+              status: "PUBLISHED" as const,
+              sourceAgentRunId: null,
+              sourceAgentRunWorkspaceId: null,
+              sourceRunId: row.sourceRunId,
+              sourceAgentId: row.sourceAgentId,
+              sourceAgentName: row.sourceAgentName,
+              snapshotVersion: row.snapshotVersion,
+              snapshot: requiredJsonInput(row.snapshot),
+              snapshotHash: row.snapshotHash,
+              snapshotByteLength: row.snapshotByteLength,
+              snapshotCapturedAt: row.snapshotCapturedAt,
+              lastError: null,
+              publishedAt: row.publishedAt,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            };
+          });
+          await createManyChunked(
+            (chunk) => tx.executiveBriefGeneration.createMany({ data: chunk }),
+            inserts,
+            500,
+          );
+          imported.executiveBriefGenerations = inserts.length;
+        }
+
+        if (payload.data.executiveBriefs) {
+          const inserts = payload.data.executiveBriefs.map((row) => {
+            const id = crypto.randomUUID();
+            briefIdMap.set(row.id, id);
+            return {
+              id,
+              workspaceId,
+              generationId: mustRemap(generationIdMap, row.generationId),
+              generationWorkspaceId: workspaceId,
+              period: row.period,
+              windowStart: row.windowStart,
+              windowEnd: row.windowEnd,
+              snapshotAsOf: row.snapshotAsOf,
+              headline: row.headline,
+              summary: row.summary,
+              highlights: requiredJsonInput(row.highlights),
+              risks: requiredJsonInput(row.risks),
+              opportunities: requiredJsonInput(row.opportunities),
+              snapshotHash: row.snapshotHash,
+              sourceRunId: row.sourceRunId,
+              sourceAgentId: row.sourceAgentId,
+              sourceAgentName: row.sourceAgentName,
+              publishedAt: row.publishedAt,
+              createdAt: row.createdAt,
+            };
+          });
+          await createManyChunked(
+            (chunk) => tx.executiveBrief.createMany({ data: chunk }),
+            inserts,
+            500,
+          );
+          imported.executiveBriefs = inserts.length;
+        }
+
+        if (payload.data.decisions) {
+          const inserts = payload.data.decisions.map((row) => {
+            const id = crypto.randomUUID();
+            decisionIdMap.set(row.id, id);
+            const parsedAction =
+              row.actionType === null || row.actionPayload === null
+                ? null
+                : managementActionSchema.parse({
+                    type: row.actionType,
+                    payload: row.actionPayload,
+                  });
+            const remappedAction = parsedAction
+              ? remapManagementAction(parsedAction, referenceMaps)
+              : null;
+            const currentReceipt = receiptByCurrentRevision.get(
+              `${row.id}\u0000${row.actionRevision}`,
+            );
+            const remappedTarget = currentReceipt
+              ? remapReceiptTarget(currentReceipt, referenceMaps)
+              : null;
+            const needsRebind =
+              row.status !== "REJECTED" &&
+              row.executionStatus !== "SUCCEEDED" &&
+              remappedAction?.hasMissingReferences === true;
+            const interrupted =
+              row.status === "APPROVED" &&
+              (row.executionStatus === "READY" ||
+                row.executionStatus === "RUNNING") &&
+              currentReceipt === undefined;
+            const succeeded =
+              currentReceipt !== undefined &&
+              (row.executionStatus === "SUCCEEDED" ||
+                (row.status === "APPROVED" &&
+                  (row.executionStatus === "READY" ||
+                    row.executionStatus === "RUNNING")));
+            const executionStatus = interrupted
+              ? "FAILED"
+              : succeeded
+                ? "SUCCEEDED"
+                : needsRebind
+                  ? "NEEDS_REBIND"
+                  : row.executionStatus;
+            const isSucceeded = executionStatus === "SUCCEEDED";
+            const isFailed = executionStatus === "FAILED";
+            const briefId = remapOrNull(briefIdMap, row.briefId);
+            return {
+              id,
+              workspaceId,
+              briefId,
+              briefWorkspaceId: briefId === null ? null : workspaceId,
+              origin: row.origin,
+              title: row.title,
+              context: row.context,
+              recommendation: row.recommendation,
+              evidenceRefs: requiredJsonInput(row.evidenceRefs),
+              priority: row.priority,
+              dueAt: row.dueAt,
+              status: row.status,
+              deferredUntil: row.deferredUntil,
+              resolutionNote: row.resolutionNote,
+              actionType: row.actionType,
+              actionPayload:
+                remappedAction === null
+                  ? Prisma.DbNull
+                  : requiredJsonInput(remappedAction.action.payload),
+              actionRevision: row.actionRevision,
+              executionStatus,
+              executionAttempts: row.executionAttempts,
+              executionLeaseToken: null,
+              executionLeaseExpiresAt: null,
+              lastExecutionErrorCode: interrupted
+                ? "IMPORT_INTERRUPTED"
+                : isFailed
+                  ? row.lastExecutionErrorCode
+                  : null,
+              lastExecutionError: interrupted
+                ? "Restore never resumes an interrupted decision action."
+                : isFailed
+                  ? row.lastExecutionError
+                  : null,
+              executedAt: isSucceeded
+                ? (row.executedAt ?? currentReceipt?.committedAt ?? null)
+                : null,
+              resultType: isSucceeded
+                ? (currentReceipt?.historicalTargetType ?? row.resultType)
+                : null,
+              resultId: isSucceeded
+                ? (remappedTarget?.liveTargetId ??
+                  currentReceipt?.historicalTargetId ??
+                  row.resultId)
+                : null,
+              resultLabel: isSucceeded
+                ? (currentReceipt?.historicalTargetLabel ?? row.resultLabel)
+                : null,
+              resultHref: isSucceeded
+                ? (remappedTarget?.liveTargetHref ??
+                  currentReceipt?.historicalTargetHref ??
+                  row.resultHref)
+                : null,
+              createdByType: row.createdByType,
+              createdById: row.createdById,
+              createdByName: row.createdByName,
+              resolvedByOperatorId: row.resolvedByOperatorId,
+              resolvedByOperatorName: row.resolvedByOperatorName,
+              resolvedAt: row.resolvedAt,
+              version: row.version,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            };
+          });
+          await createManyChunked(
+            (chunk) => tx.decision.createMany({ data: chunk }),
+            inserts,
+            500,
+          );
+          imported.decisions = inserts.length;
+        }
+
+        if (payload.data.decisionActionReceipts) {
+          const inserts = payload.data.decisionActionReceipts.map((row) => {
+            const id = crypto.randomUUID();
+            receiptIdMap.set(row.id, id);
+            const target = remapReceiptTarget(row, referenceMaps);
+            return {
+              id,
+              workspaceId,
+              decisionId: mustRemap(decisionIdMap, row.decisionId),
+              decisionWorkspaceId: workspaceId,
+              actionRevision: row.actionRevision,
+              actionType: row.actionType,
+              payloadHash: row.payloadHash,
+              historicalTargetId: row.historicalTargetId,
+              historicalTargetType: row.historicalTargetType,
+              historicalTargetLabel: row.historicalTargetLabel,
+              historicalTargetHref: row.historicalTargetHref,
+              liveTargetId: target.liveTargetId,
+              liveTargetHref: target.liveTargetHref,
+              targetAvailability:
+                target.liveTargetId === null
+                  ? ("UNAVAILABLE" as const)
+                  : ("AVAILABLE" as const),
+              committedAt: row.committedAt,
+              createdAt: row.createdAt,
+            };
+          });
+          await createManyChunked(
+            (chunk) => tx.decisionActionReceipt.createMany({ data: chunk }),
+            inserts,
+            500,
+          );
+          imported.decisionActionReceipts = inserts.length;
+        }
+
+        if (payload.data.decisionEvents) {
+          const inserts = payload.data.decisionEvents.map((row) => ({
+            id: crypto.randomUUID(),
+            workspaceId,
+            decisionId: mustRemap(decisionIdMap, row.decisionId),
+            decisionWorkspaceId: workspaceId,
+            receiptId: remapOrNull(receiptIdMap, row.receiptId),
+            receiptWorkspaceId:
+              row.receiptId === null || !receiptIdMap.has(row.receiptId)
+                ? null
+                : workspaceId,
+            sequence: row.sequence,
+            type: row.type,
+            actorKind: row.actorKind,
+            actorId: row.actorId,
+            actorName: row.actorName,
+            fromStatus: row.fromStatus,
+            toStatus: row.toStatus,
+            fromExecutionStatus: row.fromExecutionStatus,
+            toExecutionStatus: row.toExecutionStatus,
+            actionRevision: row.actionRevision,
+            payloadHash: row.payloadHash,
+            targetType: row.targetType,
+            targetId:
+              row.targetType === null || row.targetId === null
+                ? row.targetId
+                : (mapManagementLinkTarget(
+                    row.targetType,
+                    row.targetId,
+                    referenceMaps,
+                  ) ?? row.targetId),
+            targetLabel: row.targetLabel,
+            errorCode: row.errorCode,
+            errorMessage: row.errorMessage,
+            createdAt: row.createdAt,
+          }));
+          await createManyChunked(
+            (chunk) => tx.decisionEvent.createMany({ data: chunk }),
+            inserts,
+            500,
+          );
+          imported.decisionEvents = inserts.length;
+        }
       }
 
       return { mode, imported, skipped };

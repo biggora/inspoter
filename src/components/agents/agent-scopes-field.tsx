@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { MCP_SCOPES, type McpScope } from "@/lib/mcp/scopes";
+import { AGENT_SCOPES, type AgentScope } from "@/lib/agents/scopes";
 
 // The agent's permission surface, grouped the way an operator thinks about it:
 // one row per dashboard section, a read box and a write box. The scope list
@@ -14,14 +14,14 @@ import { MCP_SCOPES, type McpScope } from "@/lib/mcp/scopes";
 
 interface ScopeDomain {
   domain: string;
-  read?: McpScope;
-  write?: McpScope;
+  read?: AgentScope;
+  write?: AgentScope;
 }
 
-// Built once at module load: MCP_SCOPES is a frozen tuple.
+// Built once at module load from the complete in-app agent scope registry.
 const SCOPE_DOMAINS: ScopeDomain[] = (() => {
   const byDomain = new Map<string, ScopeDomain>();
-  for (const scope of MCP_SCOPES) {
+  for (const scope of AGENT_SCOPES) {
     const [domain, access] = scope.split(":");
     const entry = byDomain.get(domain) ?? { domain };
     if (access === "write") entry.write = scope;
@@ -36,8 +36,8 @@ function domainLabelKey(domain: string): string {
 }
 
 interface AgentScopesFieldProps {
-  value: readonly McpScope[];
-  onChange: (next: McpScope[]) => void;
+  value: readonly AgentScope[];
+  onChange: (next: AgentScope[]) => void;
   disabled?: boolean;
 }
 
@@ -50,7 +50,7 @@ export function AgentScopesField({
   const idPrefix = useId();
   const selected = new Set(value);
 
-  function toggle(scope: McpScope, checked: boolean): void {
+  function toggle(scope: AgentScope, checked: boolean): void {
     const next = new Set(selected);
     if (checked) {
       next.add(scope);
@@ -64,7 +64,7 @@ export function AgentScopesField({
       const pair = SCOPE_DOMAINS.find((entry) => entry.read === scope);
       if (pair?.write) next.delete(pair.write);
     }
-    onChange(MCP_SCOPES.filter((scope) => next.has(scope)));
+    onChange(AGENT_SCOPES.filter((scope) => next.has(scope)));
   }
 
   return (

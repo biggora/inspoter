@@ -25,6 +25,7 @@ import status from "@/messages/ru/status.json";
 import validation from "@/messages/ru/validation.json";
 import marketing from "@/messages/ru/marketing.json";
 import calendar from "@/messages/ru/calendar.json";
+import management from "@/messages/ru/management.json";
 
 import enShell from "@/messages/en/shell.json";
 import enActivity from "@/messages/en/activity.json";
@@ -53,6 +54,7 @@ import enStatus from "@/messages/en/status.json";
 import enValidation from "@/messages/en/validation.json";
 import enMarketing from "@/messages/en/marketing.json";
 import enCalendar from "@/messages/en/calendar.json";
+import enManagement from "@/messages/en/management.json";
 
 import lvShell from "@/messages/lv/shell.json";
 import lvActivity from "@/messages/lv/activity.json";
@@ -81,6 +83,7 @@ import lvStatus from "@/messages/lv/status.json";
 import lvValidation from "@/messages/lv/validation.json";
 import lvMarketing from "@/messages/lv/marketing.json";
 import lvCalendar from "@/messages/lv/calendar.json";
+import lvManagement from "@/messages/lv/management.json";
 
 export const ruMessages = {
   shell,
@@ -110,6 +113,7 @@ export const ruMessages = {
   validation,
   marketing,
   calendar,
+  management,
 };
 
 export const enMessages = {
@@ -140,6 +144,7 @@ export const enMessages = {
   validation: enValidation,
   marketing: enMarketing,
   calendar: enCalendar,
+  management: enManagement,
 };
 
 export const lvMessages = {
@@ -170,4 +175,5 @@ export const lvMessages = {
   validation: lvValidation,
   marketing: lvMarketing,
   calendar: lvCalendar,
+  management: lvManagement,
 };

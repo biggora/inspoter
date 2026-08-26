@@ -1,6 +1,5 @@
 import { env } from "@/lib/config/env";
 import type { LlmMessage, LlmResult, LlmToolCall } from "@/lib/llm/contract";
-import type { McpToolContext } from "@/lib/mcp/tool";
 import * as llmService from "@/lib/services/llm";
 import {
   appendStep,
@@ -17,7 +16,8 @@ import {
 } from "@/lib/services/agent-runs";
 import { buildChatHistory } from "@/lib/agents/chat-context";
 import { retrieveNoteContext } from "@/lib/services/note-rag";
-import { hasScope } from "@/lib/mcp/scopes";
+import { finalizeExecutiveBriefGenerationForRun } from "@/lib/services/executive-briefs";
+import { hasAgentScope } from "@/lib/agents/scopes";
 import { Prisma } from "@/generated/prisma/client";
 import {
   buildAgentMockTurns,
@@ -29,6 +29,7 @@ import {
   frameToolResult,
   toolResultToText,
   type AgentToolBinding,
+  type AgentToolContext,
 } from "@/lib/agents/tools";
 
 // The agent loop. One run = build the prompt and the toolset from the run's own
@@ -96,13 +97,16 @@ export async function executeAgentRun(
     toolNames: toolset.map((tool) => tool.name),
   });
 
-  const toolContext: McpToolContext = {
+  const toolContext: AgentToolContext = {
     workspaceId: claim.workspaceId,
     scopes: state.scopes,
     // Not an operator id: the columns this reaches (KanbanComment.author*) are
     // plain strings, so an agent can sign its own work.
     tokenId: `agent:${claim.id}`,
     tokenName: state.agentName,
+    runId: claim.id,
+    agentId: state.agentId,
+    leaseToken: claim.leaseToken,
   };
 
   const messages: LlmMessage[] = [];
@@ -122,7 +126,7 @@ export async function executeAgentRun(
     );
   }
   let currentPrompt = buildAgentUserPrompt(state.input ?? "");
-  if (state.trigger === "CHAT" && hasScope(state.scopes, "notes:read")) {
+  if (state.trigger === "CHAT" && hasAgentScope(state.scopes, "notes:read")) {
     const rag = await retrieveNoteContext(
       claim.workspaceId,
       state.input ?? "",
@@ -139,6 +143,7 @@ export async function executeAgentRun(
   const mockTurns = buildAgentMockTurns({
     agentName: state.agentName,
     toolNames: toolset.map((tool) => tool.name),
+    task: state.input ?? undefined,
   });
 
   const caller = callerFor(state.agentName, claim.id);
@@ -161,6 +166,11 @@ export async function executeAgentRun(
         throw new AgentRunLeaseLostError();
       if (await isCancelRequested(claim)) {
         await markCancelled(claim);
+        await finalizeExecutiveBriefGenerationForRun(
+          claim.workspaceId,
+          claim.id,
+          "CANCELLED",
+        );
         await emitRunReport(claim);
         return {
           status: "CANCELLED",
@@ -191,6 +201,13 @@ export async function executeAgentRun(
         // A retryable failure leaves the run PENDING, so there is nothing
         // final to report yet.
         if (!retryable) await emitRunReport(claim);
+        if (!retryable) {
+          await finalizeExecutiveBriefGenerationForRun(
+            claim.workspaceId,
+            claim.id,
+            "FAILED",
+          );
+        }
         return {
           status: "FAILED",
           summary: lastText,
@@ -217,6 +234,11 @@ export async function executeAgentRun(
           summary: lastText,
           stopReason: answer.stopReason,
         });
+        await finalizeExecutiveBriefGenerationForRun(
+          claim.workspaceId,
+          claim.id,
+          "UNPUBLISHED",
+        );
         await emitRunReport(claim);
         return {
           status: "SUCCEEDED",
@@ -259,6 +281,11 @@ async function finishFailed(
   // A ceiling is not transient: retrying spends the same budget to hit the same
   // wall, so this fails outright and stays visible.
   await failRun(claim, { message, retryable: false });
+  await finalizeExecutiveBriefGenerationForRun(
+    claim.workspaceId,
+    claim.id,
+    "FAILED",
+  );
   await emitRunReport(claim);
   return { status: "FAILED", summary: "", stopReason: "limit" };
 }
@@ -273,7 +300,7 @@ async function runToolCall(
   claim: ClaimedAgentRun,
   call: LlmToolCall,
   toolsByName: ReadonlyMap<string, AgentToolBinding>,
-  toolContext: McpToolContext,
+  toolContext: AgentToolContext,
   index: number,
 ): Promise<LlmMessage> {
   const startedAt = Date.now();

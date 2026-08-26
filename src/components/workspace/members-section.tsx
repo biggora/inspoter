@@ -66,7 +66,7 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
                 {member.operator.username}
               </span>
               <span className="text-xs text-muted-foreground capitalize">
-                {member.role}
+                {member.role === "MEMBER" ? t("managerRole") : t("ownerRole")}
               </span>
             </div>
             <Button

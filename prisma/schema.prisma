@@ -93,76 +93,81 @@ model Workspace {
   // hiddenSections above. Empty = every section refreshes automatically.
   autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
 
-  members                 WorkspaceMember[]
-  defaultForOperators     Operator[]                 @relation("DefaultWorkspace")
-  categories              Category[]
-  bookmarks               Bookmark[]
-  messageCategories       MessageCategory[]
-  channels                Channel[]
-  messages                Message[]
-  mailAccounts            MailAccount[]
-  mailFolders             MailFolder[]
-  mailItems               MailItem[]
-  mailLabels              MailLabel[]
-  mailItemLabels          MailItemLabel[]
-  mailFilterRules         MailFilterRule[]
-  mailFilterConditions    MailFilterCondition[]
-  mailFilterRuns          MailFilterRun[]
-  mailFilterActionJobs    MailFilterActionJob[]
-  mailTemplates           MailTemplate[]
-  mailTemplateTags        MailTemplateTag[]
-  mailTemplateTagLinks    MailTemplateTagLink[]
-  contacts                Contact[]
-  contactFields           ContactField[]
-  contactAddresses        ContactAddress[]
-  contactLabels           ContactLabel[]
-  contactLabelAssignments ContactLabelAssignment[]
-  logEntries              LogEntry[]
-  alertCategories         AlertCategory[]
-  alerts                  Alert[]
-  webhookTokens           WebhookToken[]
-  idempotencyKeys         IdempotencyKey[]
-  providerBindings        ProviderResourceBinding[]
-  credentials             ProviderCredential[]
-  services                Service[]
-  serviceChecks           ServiceCheck[]
-  serviceLabels           ServiceLabel[]
-  serviceLabelAssignments ServiceLabelAssignment[]
-  outgoingWebhooks        OutgoingWebhook[]
-  webhookDeliveries       WebhookDelivery[]
-  localServers            LocalServer[]
-  activities              Activity[]
-  dashboards              Dashboard[]
-  dashboardWidgets        DashboardWidget[]
-  kanbanBoards            KanbanBoard[]
-  kanbanColumns           KanbanColumn[]
-  kanbanCards             KanbanCard[]
-  kanbanLabels            KanbanLabel[]
-  kanbanCardLabels        KanbanCardLabel[]
-  kanbanChecklistItems    KanbanChecklistItem[]
-  kanbanComments          KanbanComment[]
-  noteFolders             NoteFolder[]
-  notes                   Note[]
-  noteLinks               NoteLink[]
-  noteTags                NoteTag[]
-  noteTagLinks            NoteTagLink[]
-  noteAssets              NoteAsset[]
-  noteChunks              NoteChunk[]
-  noteIndexJobs           NoteIndexJob[]
-  embeddingProfile        WorkspaceEmbeddingProfile?
-  agents                  Agent[]
-  skills                  Skill[]
-  agentSkills             AgentSkill[]
-  agentSchedules          AgentSchedule[]
-  agentRuns               AgentRun[]
-  agentRunSteps           AgentRunStep[]
-  agentConversations      AgentConversation[]
-  agentConversationEvents AgentConversationEvent[]
-  calendarEvents          CalendarEvent[]
-  calendarEventExceptions CalendarEventException[]
-  reminders               Reminder[]
-  reminderOccurrences     ReminderOccurrence[]
-  calendarLinks           CalendarLink[]
+  members                   WorkspaceMember[]
+  defaultForOperators       Operator[]                 @relation("DefaultWorkspace")
+  categories                Category[]
+  bookmarks                 Bookmark[]
+  messageCategories         MessageCategory[]
+  channels                  Channel[]
+  messages                  Message[]
+  mailAccounts              MailAccount[]
+  mailFolders               MailFolder[]
+  mailItems                 MailItem[]
+  mailLabels                MailLabel[]
+  mailItemLabels            MailItemLabel[]
+  mailFilterRules           MailFilterRule[]
+  mailFilterConditions      MailFilterCondition[]
+  mailFilterRuns            MailFilterRun[]
+  mailFilterActionJobs      MailFilterActionJob[]
+  mailTemplates             MailTemplate[]
+  mailTemplateTags          MailTemplateTag[]
+  mailTemplateTagLinks      MailTemplateTagLink[]
+  contacts                  Contact[]
+  contactFields             ContactField[]
+  contactAddresses          ContactAddress[]
+  contactLabels             ContactLabel[]
+  contactLabelAssignments   ContactLabelAssignment[]
+  logEntries                LogEntry[]
+  alertCategories           AlertCategory[]
+  alerts                    Alert[]
+  webhookTokens             WebhookToken[]
+  idempotencyKeys           IdempotencyKey[]
+  providerBindings          ProviderResourceBinding[]
+  credentials               ProviderCredential[]
+  services                  Service[]
+  serviceChecks             ServiceCheck[]
+  serviceLabels             ServiceLabel[]
+  serviceLabelAssignments   ServiceLabelAssignment[]
+  outgoingWebhooks          OutgoingWebhook[]
+  webhookDeliveries         WebhookDelivery[]
+  localServers              LocalServer[]
+  activities                Activity[]
+  dashboards                Dashboard[]
+  dashboardWidgets          DashboardWidget[]
+  kanbanBoards              KanbanBoard[]
+  kanbanColumns             KanbanColumn[]
+  kanbanCards               KanbanCard[]
+  kanbanLabels              KanbanLabel[]
+  kanbanCardLabels          KanbanCardLabel[]
+  kanbanChecklistItems      KanbanChecklistItem[]
+  kanbanComments            KanbanComment[]
+  noteFolders               NoteFolder[]
+  notes                     Note[]
+  noteLinks                 NoteLink[]
+  noteTags                  NoteTag[]
+  noteTagLinks              NoteTagLink[]
+  noteAssets                NoteAsset[]
+  noteChunks                NoteChunk[]
+  noteIndexJobs             NoteIndexJob[]
+  embeddingProfile          WorkspaceEmbeddingProfile?
+  agents                    Agent[]
+  skills                    Skill[]
+  agentSkills               AgentSkill[]
+  agentSchedules            AgentSchedule[]
+  agentRuns                 AgentRun[]
+  agentRunSteps             AgentRunStep[]
+  agentConversations        AgentConversation[]
+  agentConversationEvents   AgentConversationEvent[]
+  calendarEvents            CalendarEvent[]
+  calendarEventExceptions   CalendarEventException[]
+  reminders                 Reminder[]
+  reminderOccurrences       ReminderOccurrence[]
+  calendarLinks             CalendarLink[]
+  executiveBriefGenerations ExecutiveBriefGeneration[]
+  executiveBriefs           ExecutiveBrief[]
+  decisions                 Decision[]
+  decisionActionReceipts    DecisionActionReceipt[]
+  decisionEvents            DecisionEvent[]
 }
 
 model WorkspaceMember {
@@ -1406,6 +1411,9 @@ model WebhookDelivery {
   webhookWorkspaceId String
   webhook            OutgoingWebhook       @relation(fields: [webhookId, webhookWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   event              OutgoingWebhookEvent
+  // Optional stable domain-event key. Management actions use it to make
+  // webhook fan-out idempotent without changing existing delivery semantics.
+  eventKey           String?
   payload            Json
   status             WebhookDeliveryStatus @default(PENDING)
   attempts           Int                   @default(0)
@@ -1420,6 +1428,7 @@ model WebhookDelivery {
   updatedAt          DateTime              @updatedAt
 
   @@index([workspaceId, webhookId, createdAt, id]) // history + keyset pagination
+  @@index([webhookId, eventKey])
   @@index([status, nextAttemptAt]) // scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant sweep)
   @@index([status, createdAt]) // retention prune scan; also cross-tenant, mirrors the sweep above
 }
@@ -1932,28 +1941,28 @@ model CalendarEventException {
 }
 
 model Reminder {
-  id                       String        @id @default(cuid())
+  id                       String         @id @default(cuid())
   workspaceId              String
-  workspace                Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace                Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   calendarEventId          String?
   calendarEventWorkspaceId String?
   calendarEvent            CalendarEvent? @relation(fields: [calendarEventId, calendarEventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
-  kind                     ReminderKind  @default(STANDARD)
+  kind                     ReminderKind   @default(STANDARD)
   title                    String
   description              String?
   dueAt                    DateTime?
   offsetMinutes            Int?
-  timeZone                 String        @default("UTC")
+  timeZone                 String         @default("UTC")
   recurrence               Json?
   nextTriggerAt            DateTime?
-  isActive                 Boolean       @default(true)
-  amount                   Decimal?      @db.Decimal(18, 2)
+  isActive                 Boolean        @default(true)
+  amount                   Decimal?       @db.Decimal(18, 2)
   currency                 String?
   payee                    String?
   paymentReference         String?
   paymentUrl               String?
-  createdAt                DateTime      @default(now())
-  updatedAt                DateTime      @updatedAt
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
 
   occurrences ReminderOccurrence[]
   links       CalendarLink[]
@@ -1985,22 +1994,22 @@ model ReminderOccurrence {
 }
 
 model CalendarLink {
-  id                  String                  @id @default(cuid())
+  id                  String                 @id @default(cuid())
   workspaceId         String
-  workspace           Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   calendarEventId     String?
   eventWorkspaceId    String?
-  calendarEvent       CalendarEvent?          @relation(fields: [calendarEventId, eventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  calendarEvent       CalendarEvent?         @relation(fields: [calendarEventId, eventWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   reminderId          String?
   reminderWorkspaceId String?
-  reminder            Reminder?               @relation(fields: [reminderId, reminderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  reminder            Reminder?              @relation(fields: [reminderId, reminderWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   targetType          CalendarLinkTargetType
   targetId            String
   targetContext       Json?
   targetLabel         String
   targetHref          String?
-  position            Int                     @default(0)
-  createdAt           DateTime                @default(now())
+  position            Int                    @default(0)
+  createdAt           DateTime               @default(now())
 
   @@index([workspaceId, calendarEventId, position])
   @@index([workspaceId, reminderId, position])
@@ -2052,6 +2061,7 @@ model Agent {
   workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name               String
   normalizedName     String
+  systemKey          String?
   description        String?
   // The operator-authored half of the system prompt. Trusted input: it comes
   // from a workspace member, unlike anything a tool returns.
@@ -2078,6 +2088,7 @@ model Agent {
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, normalizedName])
+  @@unique([workspaceId, systemKey])
   @@index([workspaceId, normalizedName])
 }
 
@@ -2087,6 +2098,7 @@ model Skill {
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name           String
   normalizedName String
+  systemKey      String?
   // One line, always injected as the skill index even when the body is cut by
   // the prompt budget — the model still needs to know the skill exists.
   description    String
@@ -2102,6 +2114,7 @@ model Skill {
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, normalizedName])
+  @@unique([workspaceId, systemKey])
   @@index([workspaceId, normalizedName])
 }
 
@@ -2130,6 +2143,7 @@ model AgentSchedule {
   agentWorkspaceId String
   agent            Agent             @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
   name             String
+  systemKey        String?
   kind             AgentScheduleKind
   // INTERVAL only.
   intervalSeconds  Int?
@@ -2153,6 +2167,7 @@ model AgentSchedule {
   runs AgentRun[]
 
   @@unique([id, workspaceId])
+  @@unique([workspaceId, systemKey])
   @@index([workspaceId, agentId, nextRunAt])
   // Scheduler due-query; intentionally NOT workspace-prefixed (cross-tenant
   // sweep), exactly like Service.nextCheckAt.
@@ -2221,7 +2236,8 @@ model AgentRun {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  steps AgentRunStep[]
+  steps                    AgentRunStep[]
+  executiveBriefGeneration ExecutiveBriefGeneration?
 
   @@unique([id, workspaceId])
   @@unique([conversationId, conversationSequence])
@@ -2232,6 +2248,252 @@ model AgentRun {
   @@index([status, nextAttemptAt, createdAt, id])
   @@index([status, leaseExpiresAt, id])
   @@index([status, createdAt])
+}
+
+// --- Executive management ---
+enum ExecutiveBriefPeriod {
+  DAILY
+  WEEKLY
+}
+
+enum ExecutiveBriefGenerationStatus {
+  PENDING
+  SNAPSHOT_READY
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum DecisionOrigin {
+  MANUAL
+  EXECUTIVE_BRIEF
+}
+
+enum DecisionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DecisionStatus {
+  OPEN
+  DEFERRED
+  APPROVED
+  REJECTED
+}
+
+enum DecisionActionType {
+  CREATE_KANBAN_CARD
+  CREATE_REMINDER
+  CREATE_NOTE
+  CREATE_MAIL_DRAFT
+}
+
+enum DecisionExecutionStatus {
+  NONE
+  READY
+  RUNNING
+  SUCCEEDED
+  FAILED
+  NEEDS_REBIND
+}
+
+enum DecisionEventType {
+  CREATED
+  UPDATED
+  DEFERRED
+  APPROVED
+  REJECTED
+  ACTION_REBOUND
+  ACTION_STARTED
+  PRIMARY_COMMITTED
+  ACTION_FAILED
+  ACTION_RETRIED
+  BRIEF_LINKED
+}
+
+enum DecisionActorKind {
+  HUMAN
+  AGENT
+  SYSTEM
+  IMPORT
+}
+
+enum DecisionTargetAvailability {
+  AVAILABLE
+  UNAVAILABLE
+}
+
+model ExecutiveBriefGeneration {
+  id                        String                         @id @default(cuid())
+  workspaceId               String
+  workspace                 Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  period                    ExecutiveBriefPeriod
+  status                    ExecutiveBriefGenerationStatus @default(PENDING)
+  sourceAgentRunId          String?
+  sourceAgentRunWorkspaceId String?
+  sourceAgentRun            AgentRun?                      @relation(fields: [sourceAgentRunId, sourceAgentRunWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceRunId               String
+  sourceAgentId             String
+  sourceAgentName           String
+  snapshotVersion           Int                            @default(1)
+  snapshot                  Json?
+  snapshotHash              String?
+  snapshotByteLength        Int?
+  snapshotCapturedAt        DateTime?
+  lastError                 String?
+  publishedAt               DateTime?
+  createdAt                 DateTime                       @default(now())
+  updatedAt                 DateTime                       @updatedAt
+
+  brief ExecutiveBrief?
+
+  @@unique([id, workspaceId])
+  @@unique([sourceAgentRunId, sourceAgentRunWorkspaceId])
+  @@index([workspaceId, period, status, createdAt, id])
+  @@index([workspaceId, createdAt, id])
+}
+
+model ExecutiveBrief {
+  id                    String                   @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  generationId          String
+  generationWorkspaceId String
+  generation            ExecutiveBriefGeneration @relation(fields: [generationId, generationWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  period                ExecutiveBriefPeriod
+  windowStart           DateTime
+  windowEnd             DateTime
+  snapshotAsOf          DateTime
+  headline              String
+  summary               String
+  highlights            Json                     @default("[]")
+  risks                 Json                     @default("[]")
+  opportunities         Json                     @default("[]")
+  snapshotHash          String
+  sourceRunId           String
+  sourceAgentId         String
+  sourceAgentName       String
+  publishedAt           DateTime                 @default(now())
+  createdAt             DateTime                 @default(now())
+
+  decisions Decision[]
+
+  @@unique([id, workspaceId])
+  @@unique([generationId, generationWorkspaceId])
+  @@index([workspaceId, publishedAt, id])
+}
+
+model Decision {
+  id                      String                  @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  briefId                 String?
+  briefWorkspaceId        String?
+  brief                   ExecutiveBrief?         @relation(fields: [briefId, briefWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  origin                  DecisionOrigin          @default(MANUAL)
+  title                   String
+  context                 String?
+  recommendation          String?
+  evidenceRefs            Json                    @default("[]")
+  priority                DecisionPriority        @default(MEDIUM)
+  dueAt                   DateTime?
+  status                  DecisionStatus          @default(OPEN)
+  deferredUntil           DateTime?
+  resolutionNote          String?
+  actionType              DecisionActionType?
+  actionPayload           Json?
+  actionRevision          Int                     @default(0)
+  executionStatus         DecisionExecutionStatus @default(NONE)
+  executionAttempts       Int                     @default(0)
+  executionLeaseToken     String?
+  executionLeaseExpiresAt DateTime?
+  lastExecutionErrorCode  String?
+  lastExecutionError      String?
+  executedAt              DateTime?
+  resultType              String?
+  resultId                String?
+  resultLabel             String?
+  resultHref              String?
+  createdByType           DecisionActorKind
+  createdById             String
+  createdByName           String
+  resolvedByOperatorId    String?
+  resolvedByOperatorName  String?
+  resolvedAt              DateTime?
+  version                 Int                     @default(1)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  receipts DecisionActionReceipt[]
+  events   DecisionEvent[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, status, priority, dueAt, id])
+  @@index([workspaceId, deferredUntil, id])
+  @@index([workspaceId, briefId, id])
+  @@index([executionStatus, executionLeaseExpiresAt, id])
+}
+
+model DecisionActionReceipt {
+  id                    String                     @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  decisionId            String
+  decisionWorkspaceId   String
+  decision              Decision                   @relation(fields: [decisionId, decisionWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  actionRevision        Int
+  actionType            DecisionActionType
+  payloadHash           String
+  historicalTargetId    String
+  historicalTargetType  String
+  historicalTargetLabel String
+  historicalTargetHref  String?
+  liveTargetId          String?
+  liveTargetHref        String?
+  targetAvailability    DecisionTargetAvailability @default(AVAILABLE)
+  committedAt           DateTime                   @default(now())
+  createdAt             DateTime                   @default(now())
+
+  events DecisionEvent[]
+
+  @@unique([id, workspaceId])
+  @@unique([decisionId, actionRevision])
+  @@index([workspaceId, decisionId, actionRevision])
+}
+
+model DecisionEvent {
+  id                  String                   @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  decisionId          String
+  decisionWorkspaceId String
+  decision            Decision                 @relation(fields: [decisionId, decisionWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  receiptId           String?
+  receiptWorkspaceId  String?
+  receipt             DecisionActionReceipt?   @relation(fields: [receiptId, receiptWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sequence            Int
+  type                DecisionEventType
+  actorKind           DecisionActorKind
+  actorId             String
+  actorName           String
+  fromStatus          DecisionStatus?
+  toStatus            DecisionStatus?
+  fromExecutionStatus DecisionExecutionStatus?
+  toExecutionStatus   DecisionExecutionStatus?
+  actionRevision      Int
+  payloadHash         String?
+  targetType          String?
+  targetId            String?
+  targetLabel         String?
+  errorCode           String?
+  errorMessage        String?
+  createdAt           DateTime                 @default(now())
+
+  @@unique([decisionId, sequence])
+  @@index([workspaceId, decisionId, sequence])
+  @@index([workspaceId, createdAt, id])
 }
 
 model AgentConversation {

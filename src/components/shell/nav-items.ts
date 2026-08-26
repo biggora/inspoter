@@ -8,15 +8,21 @@ export interface NavItem {
   icon: string;
 }
 
+// Management is the workspace home. It deliberately has no visibility key: it
+// must stay available even when an owner hides every configurable section.
+export const MANAGEMENT_NAV_ITEM: NavItem = {
+  href: "/management",
+  labelKey: "navManagement",
+  icon: "ri-briefcase-4-line",
+};
+
 // AC-SHELL-001: the seven PRD sections plus Services (Uptime Kuma-style
 // monitoring, additive), in design.md §3.2.1 order. `labelKey` resolves
 // against the "shell" i18n namespace (src/messages/ru/shell.json) via
 // `useTranslations("shell")` in the consuming components.
 //
-// Dashboards leads the list: it is the workspace's overview and the section the
-// post-login redirect lands on (src/app/[locale]/page.tsx). It stays hideable
-// like every other section — a workspace that doesn't use boards can switch it
-// off in workspace settings.
+// Dashboards stays hideable like every other configurable section — a workspace
+// that does not use boards can switch it off in workspace settings.
 export const SECTION_NAV_ITEMS: NavItem[] = [
   {
     key: "dashboards",
