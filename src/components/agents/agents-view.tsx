@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AgentSummary } from "@/lib/services/agents";
+import { AgentSectionActions } from "./agent-section-actions";
 import { agentsApi, ApiError } from "./api";
 import { AgentDialog, type AgentDialogState } from "./agent-dialog";
 
@@ -68,43 +69,7 @@ export function AgentsView({ agents }: AgentsViewProps) {
         title={t("title")}
         description={t("description")}
         actions={
-          <>
-            <Button
-              render={<Link href="/agents" />}
-              nativeButton={false}
-              variant="outline"
-            >
-              <Icon
-                name="ri-message-2-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("chatsButton")}
-            </Button>
-            <Button
-              render={<Link href="/agents/runs" />}
-              nativeButton={false}
-              variant="outline"
-            >
-              <Icon
-                name="ri-play-circle-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("runsButton")}
-            </Button>
-            <Button
-              render={<Link href="/agents/skills" />}
-              nativeButton={false}
-              variant="outline"
-            >
-              <Icon
-                name="ri-lightbulb-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("manageSkillsButton")}
-            </Button>
+          <AgentSectionActions current="agents">
             <Button
               type="button"
               onClick={() => setDialogState({ mode: "create" })}
@@ -112,7 +77,7 @@ export function AgentsView({ agents }: AgentsViewProps) {
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               {t("newAgentButton")}
             </Button>
-          </>
+          </AgentSectionActions>
         }
       />
       <PageBody>

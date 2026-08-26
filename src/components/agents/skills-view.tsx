@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SkillSummary } from "@/lib/services/skills";
+import { AgentSectionActions } from "./agent-section-actions";
 import { ApiError, skillsApi } from "./api";
 import { SkillDialog, type SkillDialogState } from "./skill-dialog";
 
@@ -79,17 +80,18 @@ export function SkillsView({ skills }: SkillsViewProps) {
   return (
     <>
       <PageHeader
-        back={{ href: "/agents", label: t("backToAgents") }}
         title={t("skillsPageTitle")}
         description={t("skillsPageDescription")}
         actions={
-          <Button
-            type="button"
-            onClick={() => setDialogState({ mode: "create" })}
-          >
-            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
-            {t("newSkillButton")}
-          </Button>
+          <AgentSectionActions current="skills">
+            <Button
+              type="button"
+              onClick={() => setDialogState({ mode: "create" })}
+            >
+              <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
+              {t("newSkillButton")}
+            </Button>
+          </AgentSectionActions>
         }
       />
       <PageBody>

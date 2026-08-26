@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AgentRunSummary } from "@/lib/services/agent-runs";
+import { AgentSectionActions } from "./agent-section-actions";
 import { agentRunsApi, ApiError } from "./api";
 import { RunStatusBadge } from "./run-status-badge";
 
@@ -89,9 +90,9 @@ export function RunsView({
   return (
     <>
       <PageHeader
-        back={{ href: "/agents", label: t("backToAgents") }}
         title={t("runsTitle")}
         description={t("runsDescription")}
+        actions={<AgentSectionActions current="runs" />}
       />
       <PageBody>
         {runs.length === 0 ? (

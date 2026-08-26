@@ -112,7 +112,35 @@ test("agent chat uses indexed Notes and falls back without stale chunks", async 
       )
       .toBe("READY");
 
+    await page.goto("/agents/runs");
+    await expect(
+      page.getByRole("heading", { name: "Runs", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Chats", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Agents", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Skills", exact: true }),
+    ).toBeVisible();
+
     await page.goto(`/agents?agentId=${agentId}`);
+    await expect(
+      page.getByRole("heading", { name: "Agent chats", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Agents", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Runs", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Skills", exact: true }),
+    ).toBeVisible();
     await page
       .getByPlaceholder("Message the agent…")
       .fill("deployment recovery");

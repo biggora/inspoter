@@ -51,6 +51,7 @@ import {
   ApiError,
 } from "@/components/agents/api";
 import { RunStatusBadge } from "@/components/agents/run-status-badge";
+import { AgentSectionActions } from "@/components/agents/agent-section-actions";
 
 const POLL_MS = 3_000;
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
@@ -235,24 +236,12 @@ export function ChatsView({
         title={t("chatsTitle")}
         description={t("chatsDescription")}
         actions={
-          <>
-            <Button
-              render={<Link href="/agents/agents" />}
-              nativeButton={false}
-              variant="outline"
-            >
-              <Icon
-                name="ri-robot-2-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("backToAgents")}
-            </Button>
+          <AgentSectionActions current="chats">
             <Button render={<Link href="/agents" />} nativeButton={false}>
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               {t("newChatButton")}
             </Button>
-          </>
+          </AgentSectionActions>
         }
       />
       <PageBody>
