@@ -93,7 +93,7 @@ model Workspace {
   autoRefreshDisabledKinds ProviderSnapshotKind[] @default([])
 
   members                 WorkspaceMember[]
-  defaultForOperators     Operator[]                @relation("DefaultWorkspace")
+  defaultForOperators     Operator[]                 @relation("DefaultWorkspace")
   categories              Category[]
   bookmarks               Bookmark[]
   messageCategories       MessageCategory[]
@@ -143,12 +143,17 @@ model Workspace {
   noteTags                NoteTag[]
   noteTagLinks            NoteTagLink[]
   noteAssets              NoteAsset[]
+  noteChunks              NoteChunk[]
+  noteIndexJobs           NoteIndexJob[]
+  embeddingProfile        WorkspaceEmbeddingProfile?
   agents                  Agent[]
   skills                  Skill[]
   agentSkills             AgentSkill[]
   agentSchedules          AgentSchedule[]
   agentRuns               AgentRun[]
   agentRunSteps           AgentRunStep[]
+  agentConversations      AgentConversation[]
+  agentConversationEvents AgentConversationEvent[]
 }
 
 model WorkspaceMember {
@@ -1453,8 +1458,9 @@ model ProviderCredential {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
-  localServers LocalServer[]
-  snapshots    ProviderSnapshot[]
+  localServers      LocalServer[]
+  snapshots         ProviderSnapshot[]
+  embeddingProfiles WorkspaceEmbeddingProfile[]
 
   @@unique([id, workspaceId])
   @@index([workspaceId, provider])
@@ -1687,10 +1693,12 @@ model Note {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
 
-  outgoingLinks NoteLink[]    @relation("NoteLinkSource")
-  incomingLinks NoteLink[]    @relation("NoteLinkTarget")
+  outgoingLinks NoteLink[]     @relation("NoteLinkSource")
+  incomingLinks NoteLink[]     @relation("NoteLinkTarget")
   tags          NoteTagLink[]
   assets        NoteAsset[]
+  chunks        NoteChunk[]
+  indexJobs     NoteIndexJob[]
 
   @@unique([id, workspaceId])
   // Global-in-workspace title uniqueness is what makes [[Note]] resolvable
@@ -1795,6 +1803,21 @@ enum AgentRunStatus {
 enum AgentRunTrigger {
   MANUAL
   SCHEDULE
+  CHAT
+}
+
+enum NoteIndexJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum EmbeddingBackfillStatus {
+  PENDING
+  RUNNING
+  READY
+  ERROR
 }
 
 enum AgentRunStepKind {
@@ -1833,9 +1856,10 @@ model Agent {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  skills    AgentSkill[]
-  schedules AgentSchedule[]
-  runs      AgentRun[]
+  skills        AgentSkill[]
+  schedules     AgentSchedule[]
+  runs          AgentRun[]
+  conversations AgentConversation[]
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, normalizedName])
@@ -1921,19 +1945,23 @@ model AgentSchedule {
 }
 
 model AgentRun {
-  id                  String         @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id                      String             @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   // Live pointers go null when the agent or schedule is deleted; the source
   // ids and the snapshot below keep the history readable regardless.
-  agentId             String?
-  agentWorkspaceId    String?
-  agent               Agent?         @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
-  sourceAgentId       String
-  scheduleId          String?
-  scheduleWorkspaceId String?
-  schedule            AgentSchedule? @relation(fields: [scheduleId, scheduleWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
-  sourceScheduleId    String?
+  agentId                 String?
+  agentWorkspaceId        String?
+  agent                   Agent?             @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceAgentId           String
+  scheduleId              String?
+  scheduleWorkspaceId     String?
+  schedule                AgentSchedule?     @relation(fields: [scheduleId, scheduleWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  sourceScheduleId        String?
+  conversationId          String?
+  conversationWorkspaceId String?
+  conversation            AgentConversation? @relation(fields: [conversationId, conversationWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  conversationSequence    Int?
 
   // Immutable snapshot of the configuration this run executed under, so a run
   // stays reproducible and explainable after the agent is edited.
@@ -1945,6 +1973,8 @@ model AgentRun {
   snapshotMaxTokens      Int
   snapshotTimeoutSeconds Int
   input                  String?
+  ragMode                String?
+  ragSources             Json     @default("[]")
 
   // Claim queue, mirroring MailFilterRun. The idempotency key is what makes
   // schedule materialisation safe against two ticks racing.
@@ -1979,12 +2009,131 @@ model AgentRun {
   steps AgentRunStep[]
 
   @@unique([id, workspaceId])
+  @@unique([conversationId, conversationSequence])
   @@index([workspaceId, sourceAgentId, createdAt, id])
   @@index([workspaceId, status, createdAt, id])
+  @@index([workspaceId, conversationId, conversationSequence])
   // Cross-tenant sweeps: claim, lease reclaim, retention prune.
   @@index([status, nextAttemptAt, createdAt, id])
   @@index([status, leaseExpiresAt, id])
   @@index([status, createdAt])
+}
+
+model AgentConversation {
+  id                        String    @id @default(cuid())
+  workspaceId               String
+  workspace                 Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agentId                   String?
+  agentWorkspaceId          String?
+  agent                     Agent?    @relation(fields: [agentId, agentWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  title                     String
+  createdByOperatorId       String
+  createdByOperatorName     String
+  rollingSummary            String?
+  summarizedThroughSequence Int       @default(0)
+  archivedAt                DateTime?
+  lastMessageAt             DateTime  @default(now())
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  runs   AgentRun[]
+  events AgentConversationEvent[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, archivedAt, lastMessageAt, id])
+}
+
+model AgentConversationEvent {
+  id                      String            @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversationId          String
+  conversationWorkspaceId String
+  conversation            AgentConversation @relation(fields: [conversationId, conversationWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  previousAgentId         String?
+  previousAgentName       String?
+  previousScopes          String[]          @default([])
+  nextAgentId             String?
+  nextAgentName           String?
+  nextScopes              String[]          @default([])
+  actorOperatorId         String
+  actorOperatorName       String
+  scopeDowngradeConfirmed Boolean           @default(false)
+  missingScopes           String[]          @default([])
+  createdAt               DateTime          @default(now())
+
+  @@index([workspaceId, conversationId, createdAt, id])
+}
+
+model WorkspaceEmbeddingProfile {
+  id                    String                  @id @default(cuid())
+  workspaceId           String                  @unique
+  workspace             Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  credentialId          String?
+  credentialWorkspaceId String?
+  credential            ProviderCredential?     @relation(fields: [credentialId, credentialWorkspaceId], references: [id, workspaceId], onDelete: SetNull)
+  model                 String
+  dimensions            Int
+  revision              Int                     @default(1)
+  backfillStatus        EmbeddingBackfillStatus @default(PENDING)
+  indexedNotes          Int                     @default(0)
+  totalNotes            Int                     @default(0)
+  lastError             String?
+  lastErrorAt           DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  jobs NoteIndexJob[]
+
+  @@index([credentialId, credentialWorkspaceId])
+}
+
+model NoteChunk {
+  id              String                 @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  noteId          String
+  noteWorkspaceId String
+  note            Note                   @relation(fields: [noteId, noteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  noteVersion     Int
+  position        Int
+  headingPath     String[]               @default([])
+  content         String
+  contentHash     String
+  profileRevision Int
+  embedding       Unsupported("vector")?
+  createdAt       DateTime               @default(now())
+
+  @@unique([noteId, noteVersion, profileRevision, position])
+  @@index([workspaceId, profileRevision, noteId, noteVersion])
+}
+
+model NoteIndexJob {
+  id                 String                    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  profileWorkspaceId String
+  profile            WorkspaceEmbeddingProfile @relation(fields: [profileWorkspaceId], references: [workspaceId], onDelete: Cascade)
+  noteId             String
+  noteWorkspaceId    String
+  note               Note                      @relation(fields: [noteId, noteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  noteVersion        Int
+  profileRevision    Int
+  status             NoteIndexJobStatus        @default(PENDING)
+  attempts           Int                       @default(0)
+  maxAttempts        Int                       @default(5)
+  nextAttemptAt      DateTime                  @default(now())
+  leaseToken         String?
+  leaseExpiresAt     DateTime?
+  lastError          String?
+  completedAt        DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  @@unique([noteId, noteVersion, profileRevision])
+  @@index([status, nextAttemptAt, createdAt, id])
+  @@index([status, leaseExpiresAt, id])
+  @@index([workspaceId, profileRevision, noteId])
 }
 
 model AgentRunStep {

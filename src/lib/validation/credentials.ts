@@ -18,6 +18,16 @@ export const updateCredentialDefaultSchema = z.object({
   isDefault: z.boolean(),
 });
 
+export const updateEmbeddingDefaultSchema = z
+  .object({
+    enabled: z.boolean(),
+    model: z.string().trim().min(1).max(200).optional(),
+  })
+  .refine((value) => !value.enabled || value.model !== undefined, {
+    path: ["model"],
+    message: "Embedding model is required.",
+  });
+
 export const upsertCredentialSchema = z.discriminatedUnion("provider", [
   z.object({
     provider: z.literal("CLOUDFLARE_DNS"),

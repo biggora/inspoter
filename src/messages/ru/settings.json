@@ -254,5 +254,22 @@
   "chatIdRequiredError": "Укажите chat id",
   "scopeGroupNotes": "Заметки",
   "scopeGroupActivity": "Активность",
-  "scopeGroupDomains": "Домены"
+  "scopeGroupDomains": "Домены",
+  "embeddingProfileTitle": "Embeddings заметок",
+  "embeddingProfileDescription": "Выберите отдельные OpenAI-compatible реквизиты и embedding-модель для семантического поиска по Заметкам.",
+  "embeddingCloudWarning": "Markdown заметок будет отправляться выбранному embedding endpoint. Используйте локальный endpoint, если заметки не должны покидать этот сервер.",
+  "embeddingCredentialLabel": "Embedding-провайдер",
+  "embeddingModelLabel": "Embedding-модель",
+  "embeddingModelPlaceholder": "text-embedding-3-small",
+  "embeddingSaveButton": "Включить и индексировать",
+  "embeddingDisableButton": "Отключить embeddings",
+  "embeddingDimensions": "Размерность: {count}",
+  "embeddingProgress": "Проиндексировано заметок: {indexed} из {total}",
+  "embeddingStatusPENDING": "В очереди",
+  "embeddingStatusRUNNING": "Индексируется",
+  "embeddingStatusREADY": "Готово",
+  "embeddingStatusERROR": "Ошибка",
+  "embeddingProfileSavedToast": "Embedding-профиль включён",
+  "embeddingProfileDisabledToast": "Embedding-профиль отключён",
+  "embeddingProfileSaveError": "Не удалось обновить embedding-профиль."
 }

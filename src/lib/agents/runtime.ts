@@ -12,8 +12,13 @@ import {
   markCancelled,
   renewAgentRunLease,
   AgentRunLeaseLostError,
+  saveRunRagSnapshot,
   type ClaimedAgentRun,
 } from "@/lib/services/agent-runs";
+import { buildChatHistory } from "@/lib/agents/chat-context";
+import { retrieveNoteContext } from "@/lib/services/note-rag";
+import { hasScope } from "@/lib/mcp/scopes";
+import { Prisma } from "@/generated/prisma/client";
 import {
   buildAgentMockTurns,
   buildAgentSystemPrompt,
@@ -100,9 +105,37 @@ export async function executeAgentRun(
     tokenName: state.agentName,
   };
 
-  const messages: LlmMessage[] = [
-    { role: "user", content: buildAgentUserPrompt(state.input ?? "") },
-  ];
+  const messages: LlmMessage[] = [];
+  if (
+    state.trigger === "CHAT" &&
+    state.conversationId &&
+    state.conversationSequence != null
+  ) {
+    messages.push(
+      ...(await buildChatHistory({
+        workspaceId: claim.workspaceId,
+        conversationId: state.conversationId,
+        currentSequence: state.conversationSequence,
+        agentName: state.agentName,
+        runId: claim.id,
+      })),
+    );
+  }
+  let currentPrompt = buildAgentUserPrompt(state.input ?? "");
+  if (state.trigger === "CHAT" && hasScope(state.scopes, "notes:read")) {
+    const rag = await retrieveNoteContext(
+      claim.workspaceId,
+      state.input ?? "",
+      claim.id,
+    );
+    await saveRunRagSnapshot(
+      claim,
+      rag.mode,
+      rag.sources as unknown as Prisma.InputJsonValue,
+    );
+    if (rag.context) currentPrompt = `${rag.context}\n\n${currentPrompt}`;
+  }
+  messages.push({ role: "user", content: currentPrompt });
   const mockTurns = buildAgentMockTurns({
     agentName: state.agentName,
     toolNames: toolset.map((tool) => tool.name),

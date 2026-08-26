@@ -24,6 +24,19 @@ export interface CredentialDto {
   updatedAt: string;
 }
 
+export interface EmbeddingStatusDto {
+  credentialId: string | null;
+  model: string;
+  dimensions: number;
+  revision: number;
+  backfillStatus: "PENDING" | "RUNNING" | "READY" | "ERROR";
+  indexedNotes: number;
+  totalNotes: number;
+  lastError: string | null;
+  lastErrorAt: string | null;
+  updatedAt: string;
+}
+
 export type UpsertCredentialInput =
   | {
       provider:
@@ -86,7 +99,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     try {
       const body = await res.json();
       if (typeof body?.error === "string") {
-        message = body.error;
+        message = body.message ?? body.error;
       } else if (Array.isArray(body?.error)) {
         fieldErrors = {};
         for (const issue of body.error as ZodIssueLike[]) {
@@ -129,6 +142,16 @@ export const credentialsApi = {
       method: "PATCH",
       body: JSON.stringify({ isDefault }),
     }),
+  embeddingStatus: () =>
+    request<EmbeddingStatusDto | null>("/api/embeddings/status"),
+  setEmbeddingDefault: (id: string, enabled: boolean, model?: string) =>
+    request<EmbeddingStatusDto | null>(
+      `/api/credentials/${id}/embedding-default`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ enabled, ...(model ? { model } : {}) }),
+      },
+    ),
   remove: (id: string) =>
     request<void>(`/api/credentials/${id}`, { method: "DELETE" }),
 };

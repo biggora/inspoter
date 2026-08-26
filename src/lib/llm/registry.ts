@@ -27,6 +27,30 @@ function isLlmCredential(
   );
 }
 
+function providerFromCredential(
+  credential: LlmCredential,
+  model = credential.model,
+): LlmProvider {
+  if (credential.mode === "MOCK") {
+    return new MockLlmProvider(credential.id, credential.label, model);
+  }
+  return credential.type === "ANTHROPIC_COMPATIBLE"
+    ? new AnthropicCompatibleLlmProvider(
+        credential.id,
+        credential.label,
+        credential.baseUrl,
+        model,
+        credential.apiKey,
+      )
+    : new OpenAiCompatibleLlmProvider(
+        credential.id,
+        credential.label,
+        credential.baseUrl,
+        model,
+        credential.apiKey,
+      );
+}
+
 export async function getLlmProviderForWorkspace(
   workspaceId: string,
 ): Promise<LlmProvider | null> {
@@ -48,23 +72,39 @@ export async function getLlmProviderForWorkspace(
   // MOCK is checked before the transport: the deterministic driver is a hard
   // requirement for the Playwright suite (architecture.md §7F.1) regardless of
   // which endpoint the credential names.
-  if (chosen.mode === "MOCK") {
-    return new MockLlmProvider(chosen.id, chosen.label, chosen.model);
-  }
+  return providerFromCredential(chosen);
+}
 
-  return chosen.type === "ANTHROPIC_COMPATIBLE"
-    ? new AnthropicCompatibleLlmProvider(
-        chosen.id,
-        chosen.label,
-        chosen.baseUrl,
-        chosen.model,
-        chosen.apiKey,
-      )
-    : new OpenAiCompatibleLlmProvider(
-        chosen.id,
-        chosen.label,
-        chosen.baseUrl,
-        chosen.model,
-        chosen.apiKey,
-      );
+export async function getEmbeddingProviderForWorkspace(
+  workspaceId: string,
+): Promise<LlmProvider | null> {
+  const profile =
+    await credentialsService.getEmbeddingProfileSelection(workspaceId);
+  if (!profile?.credentialId) return null;
+  const credential = await credentialsService.getDecryptedCredentialById(
+    profile.credentialId,
+    workspaceId,
+  );
+  if (!credential || !isLlmCredential(credential)) return null;
+  if (credential.type !== "OPENAI_COMPATIBLE") return null;
+  return providerFromCredential(credential, profile.model);
+}
+
+export async function getEmbeddingProviderForCredential(
+  workspaceId: string,
+  credentialId: string,
+  model: string,
+): Promise<LlmProvider | null> {
+  const credential = await credentialsService.getDecryptedCredentialById(
+    credentialId,
+    workspaceId,
+  );
+  if (
+    !credential ||
+    !isLlmCredential(credential) ||
+    credential.type !== "OPENAI_COMPATIBLE"
+  ) {
+    return null;
+  }
+  return providerFromCredential(credential, model);
 }

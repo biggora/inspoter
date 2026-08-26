@@ -47,6 +47,13 @@ export interface CredentialSummary {
   updatedAt: Date;
 }
 
+export async function getEmbeddingProfileSelection(workspaceId: string) {
+  return db.workspaceEmbeddingProfile.findUnique({
+    where: { workspaceId },
+    select: { credentialId: true, model: true },
+  });
+}
+
 export type DecryptedCredential = CredentialData & {
   id: string;
   label: string;

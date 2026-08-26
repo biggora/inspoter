@@ -254,5 +254,22 @@
   "chatIdRequiredError": "Chat id is required",
   "scopeGroupNotes": "Notes",
   "scopeGroupActivity": "Activity",
-  "scopeGroupDomains": "Domains"
+  "scopeGroupDomains": "Domains",
+  "embeddingProfileTitle": "Notes embeddings",
+  "embeddingProfileDescription": "Select a separate OpenAI-compatible credential and embedding model for semantic Notes retrieval.",
+  "embeddingCloudWarning": "Markdown note content will be sent to the selected embedding endpoint. Use a local endpoint if notes must not leave this deployment.",
+  "embeddingCredentialLabel": "Embedding credential",
+  "embeddingModelLabel": "Embedding model",
+  "embeddingModelPlaceholder": "text-embedding-3-small",
+  "embeddingSaveButton": "Enable and index",
+  "embeddingDisableButton": "Disable embeddings",
+  "embeddingDimensions": "{count} dimensions",
+  "embeddingProgress": "{indexed} of {total} notes indexed",
+  "embeddingStatusPENDING": "Queued",
+  "embeddingStatusRUNNING": "Indexing",
+  "embeddingStatusREADY": "Ready",
+  "embeddingStatusERROR": "Error",
+  "embeddingProfileSavedToast": "Embedding profile enabled",
+  "embeddingProfileDisabledToast": "Embedding profile disabled",
+  "embeddingProfileSaveError": "Failed to update the embedding profile."
 }
