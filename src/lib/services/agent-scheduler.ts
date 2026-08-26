@@ -70,6 +70,10 @@ async function tick(): Promise<void> {
   }
 }
 
+export function wakeAgentScheduler(): void {
+  void tick();
+}
+
 export function startAgentScheduler(): void {
   if (globalForAgentScheduler.__inspoterAgentSchedulerStarted) return;
   globalForAgentScheduler.__inspoterAgentSchedulerStarted = true;

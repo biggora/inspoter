@@ -53,5 +53,9 @@ export async function register() {
     const { startAgentRunRetentionScheduler } =
       await import("@/lib/services/agent-run-retention-scheduler");
     startAgentRunRetentionScheduler();
+
+    const { startNoteIndexScheduler } =
+      await import("@/lib/services/note-index-scheduler");
+    startNoteIndexScheduler();
   }
 }

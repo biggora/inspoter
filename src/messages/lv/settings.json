@@ -254,5 +254,22 @@
   "chatIdRequiredError": "Tērzēšanas ID ir obligāts",
   "scopeGroupNotes": "Piezīmes",
   "scopeGroupActivity": "Aktivitāte",
-  "scopeGroupDomains": "Domēni"
+  "scopeGroupDomains": "Domēni",
+  "embeddingProfileTitle": "Piezīmju iegultnes",
+  "embeddingProfileDescription": "Izvēlieties atsevišķu OpenAI saderīgu akreditācijas ierakstu un iegultņu modeli semantiskai Piezīmju meklēšanai.",
+  "embeddingCloudWarning": "Piezīmju Markdown saturs tiks nosūtīts izvēlētajam iegultņu galapunktam. Izmantojiet lokālu galapunktu, ja piezīmes nedrīkst atstāt šo serveri.",
+  "embeddingCredentialLabel": "Iegultņu akreditācijas ieraksts",
+  "embeddingModelLabel": "Iegultņu modelis",
+  "embeddingModelPlaceholder": "text-embedding-3-small",
+  "embeddingSaveButton": "Iespējot un indeksēt",
+  "embeddingDisableButton": "Atspējot iegultnes",
+  "embeddingDimensions": "{count} dimensijas",
+  "embeddingProgress": "Indeksētas {indexed} no {total} piezīmēm",
+  "embeddingStatusPENDING": "Rindā",
+  "embeddingStatusRUNNING": "Indeksē",
+  "embeddingStatusREADY": "Gatavs",
+  "embeddingStatusERROR": "Kļūda",
+  "embeddingProfileSavedToast": "Iegultņu profils iespējots",
+  "embeddingProfileDisabledToast": "Iegultņu profils atspējots",
+  "embeddingProfileSaveError": "Neizdevās atjaunināt iegultņu profilu."
 }

@@ -1,7 +1,7 @@
 name: inspoter-prod
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -58,6 +58,12 @@ services:
       AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE: ${AGENT_MAX_CONCURRENT_RUNS_PER_WORKSPACE:-}
       AGENT_TOOL_RESULT_MAX_CHARS: ${AGENT_TOOL_RESULT_MAX_CHARS:-}
       AGENT_STEP_PAYLOAD_MAX_CHARS: ${AGENT_STEP_PAYLOAD_MAX_CHARS:-}
+      AGENT_CHAT_HISTORY_MAX_CHARS: ${AGENT_CHAT_HISTORY_MAX_CHARS:-}
+      AGENT_RAG_CONTEXT_MAX_CHARS: ${AGENT_RAG_CONTEXT_MAX_CHARS:-}
+      NOTE_INDEX_SCHEDULER_TICK_MS: ${NOTE_INDEX_SCHEDULER_TICK_MS:-}
+      NOTE_INDEX_JOB_BATCH: ${NOTE_INDEX_JOB_BATCH:-}
+      LLM_QUERY_EMBED_RATE_LIMIT: ${LLM_QUERY_EMBED_RATE_LIMIT:-}
+      LLM_INDEX_EMBED_RATE_LIMIT: ${LLM_INDEX_EMBED_RATE_LIMIT:-}
       # Retention for the run history only. Agents, skills and schedules have
       # no retention window and are never pruned — see §7I.9.
       AGENT_RUN_RETENTION_DAYS: ${AGENT_RUN_RETENTION_DAYS:-}

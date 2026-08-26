@@ -7,6 +7,7 @@ import type {
   NoteSearchQuery,
   NoteUpdateInput,
 } from "@/lib/validation/notes";
+import { enqueueNoteIndexJob } from "@/lib/services/note-index";
 
 // Sole Prisma caller for Note (folder/hierarchy concerns live in
 // src/lib/services/note-folders.ts). Modeled on src/lib/services/kanban.ts:
@@ -356,7 +357,9 @@ export async function createNote(
         },
       });
     });
-    return toDetail(note);
+    const detail = toDetail(note);
+    await enqueueNoteIndexJob(workspaceId, detail.id, detail.version);
+    return detail;
   } catch (error) {
     throw await toTitleConflict(error, workspaceId, input.title);
   }
@@ -412,7 +415,9 @@ export async function updateNote(
     throw new NoteVersionConflictError(existing.version);
   }
 
-  return requireNoteDetail(workspaceId, id);
+  const detail = await requireNoteDetail(workspaceId, id);
+  await enqueueNoteIndexJob(workspaceId, detail.id, detail.version);
+  return detail;
 }
 
 export async function moveNote(

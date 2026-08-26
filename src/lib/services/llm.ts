@@ -10,7 +10,11 @@ import type {
   LlmResult,
   LlmUsage,
 } from "@/lib/llm/contract";
-import { getLlmProviderForWorkspace } from "@/lib/llm/registry";
+import {
+  getEmbeddingProviderForWorkspace,
+  getEmbeddingProviderForCredential,
+  getLlmProviderForWorkspace,
+} from "@/lib/llm/registry";
 import { recordActivity } from "@/lib/services/activity";
 import { BoundedFixedWindowLimiter } from "@/lib/rate-limit/fixed-window";
 
@@ -134,6 +138,102 @@ export function embed(
   return run(workspaceId, caller, "embed", (provider) =>
     provider.embed(request),
   );
+}
+
+export type EmbeddingWorkload = "query" | "index" | "probe";
+
+export async function embedForRag(
+  workspaceId: string,
+  caller: LlmCaller,
+  workload: EmbeddingWorkload,
+  request: LlmEmbedRequest,
+): Promise<LlmResult<LlmEmbedding>> {
+  const provider = await getEmbeddingProviderForWorkspace(workspaceId);
+  if (!provider) return { ok: false, kind: "unsupported", operation: "embed" };
+
+  const isIndex = workload === "index";
+  const limit = isIndex
+    ? env.LLM_INDEX_EMBED_RATE_LIMIT
+    : env.LLM_QUERY_EMBED_RATE_LIMIT;
+  const policy = {
+    key: `embedding:${workload}:${workspaceId}`,
+    limit,
+    windowMs: env.LLM_CALL_RATE_WINDOW_MS,
+  };
+  if (!withinRateLimit(policy.key, policy.limit, policy.windowMs)) {
+    return {
+      ok: false,
+      kind: "error",
+      category: "rate_limit",
+      message: `Embedding rate limit reached (${policy.limit} per ${policy.windowMs} ms)`,
+    };
+  }
+
+  const result = await provider.embed(request);
+  await recordActivity(workspaceId, {
+    operatorId: caller.operatorId,
+    operatorName: caller.operatorName,
+    action: "llm_embed",
+    entityType: "llm_provider",
+    entityId: provider.id,
+    entityLabel: provider.label,
+    details: JSON.stringify({
+      mode: provider.mode,
+      workload,
+      model: result.ok ? result.data.model : provider.model,
+      tokens: result.ok ? result.data.usage.totalTokens : 0,
+      inputCount: request.input.length,
+      ...(result.ok
+        ? {}
+        : { error: result.kind === "error" ? result.category : result.kind }),
+    }),
+  });
+  return result;
+}
+
+export async function probeEmbeddingProvider(
+  workspaceId: string,
+  credentialId: string,
+  model: string,
+  caller: LlmCaller,
+): Promise<LlmResult<LlmEmbedding>> {
+  const provider = await getEmbeddingProviderForCredential(
+    workspaceId,
+    credentialId,
+    model,
+  );
+  if (!provider) return { ok: false, kind: "unsupported", operation: "embed" };
+  const policy = {
+    key: `embedding:probe:${workspaceId}`,
+    limit: env.LLM_QUERY_EMBED_RATE_LIMIT,
+    windowMs: env.LLM_CALL_RATE_WINDOW_MS,
+  };
+  if (!withinRateLimit(policy.key, policy.limit, policy.windowMs)) {
+    return {
+      ok: false,
+      kind: "error",
+      category: "rate_limit",
+      message: "Embedding probe rate limit reached.",
+    };
+  }
+  const result = await provider.embed({ input: ["Inspoter embedding probe"] });
+  await recordActivity(workspaceId, {
+    operatorId: caller.operatorId,
+    operatorName: caller.operatorName,
+    action: "llm_embed",
+    entityType: "llm_provider",
+    entityId: provider.id,
+    entityLabel: provider.label,
+    details: JSON.stringify({
+      workload: "probe",
+      model: result.ok ? result.data.model : model,
+      tokens: result.ok ? result.data.usage.totalTokens : 0,
+      ...(result.ok
+        ? {}
+        : { error: result.kind === "error" ? result.category : result.kind }),
+    }),
+  });
+  return result;
 }
 
 export function chat(

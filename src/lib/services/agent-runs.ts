@@ -92,7 +92,11 @@ export interface AgentRunSummary {
   sourceAgentId: string;
   agentName: string;
   status: AgentRunStatus;
-  trigger: "MANUAL" | "SCHEDULE";
+  trigger: "MANUAL" | "SCHEDULE" | "CHAT";
+  conversationId: string | null;
+  conversationSequence: number | null;
+  ragMode: string | null;
+  ragSources: Prisma.JsonValue;
   stepCount: number;
   toolCallCount: number;
   totalTokens: number;
@@ -131,6 +135,10 @@ const SUMMARY_SELECT = {
   snapshotAgentName: true,
   status: true,
   trigger: true,
+  conversationId: true,
+  conversationSequence: true,
+  ragMode: true,
+  ragSources: true,
   stepCount: true,
   toolCallCount: true,
   totalTokens: true,
@@ -168,13 +176,15 @@ export function sanitizeStepPayload(value: string | null): string | null {
     : `${redacted.slice(0, max)}\n[truncated ${redacted.length - max} characters]`;
 }
 
-interface CreateRunInput {
+export interface CreateRunInput {
   agentId: string;
-  trigger: "MANUAL" | "SCHEDULE";
+  trigger: "MANUAL" | "SCHEDULE" | "CHAT";
   /** Unique per occurrence; a MANUAL run gets a fresh uuid. */
   idempotencyKey: string;
   scheduleId?: string | null;
   input?: string | null;
+  conversationId?: string | null;
+  conversationSequence?: number | null;
 }
 
 /**
@@ -240,6 +250,13 @@ export async function createRun(
         agentId: agent.id,
         agentWorkspaceId: workspaceId,
         sourceAgentId: agent.id,
+        ...(input.conversationId
+          ? {
+              conversationId: input.conversationId,
+              conversationWorkspaceId: workspaceId,
+              conversationSequence: input.conversationSequence,
+            }
+          : {}),
         ...(input.scheduleId
           ? {
               scheduleId: input.scheduleId,
@@ -428,6 +445,9 @@ export interface AgentRunExecutionState {
   stepCount: number;
   totalTokens: number;
   cancelRequestedAt: Date | null;
+  trigger: "MANUAL" | "SCHEDULE" | "CHAT";
+  conversationId: string | null;
+  conversationSequence: number | null;
 }
 
 /** The snapshot the runtime executes, read once when the run starts. */
@@ -448,6 +468,9 @@ export async function loadRunState(
       stepCount: true,
       totalTokens: true,
       cancelRequestedAt: true,
+      trigger: true,
+      conversationId: true,
+      conversationSequence: true,
     },
   });
   if (!run) throw new AgentRunNotFoundError();
@@ -463,6 +486,9 @@ export async function loadRunState(
     stepCount: run.stepCount,
     totalTokens: run.totalTokens,
     cancelRequestedAt: run.cancelRequestedAt,
+    trigger: run.trigger,
+    conversationId: run.conversationId,
+    conversationSequence: run.conversationSequence,
   };
 }
 
@@ -474,6 +500,18 @@ export async function isCancelRequested(
     select: { cancelRequestedAt: true },
   });
   return run?.cancelRequestedAt != null;
+}
+
+export async function saveRunRagSnapshot(
+  claim: ClaimedAgentRun,
+  ragMode: string,
+  ragSources: Prisma.InputJsonValue,
+): Promise<void> {
+  const updated = await db.agentRun.updateMany({
+    where: { id: claim.id, status: "RUNNING", leaseToken: claim.leaseToken },
+    data: { ragMode, ragSources },
+  });
+  if (updated.count !== 1) throw new AgentRunLeaseLostError();
 }
 
 export interface AppendStepInput {
@@ -719,6 +757,7 @@ export async function cancelRun(
 
 export interface ListRunsQuery {
   agentId?: string;
+  conversationId?: string;
   limit?: number;
   /** Keyset cursor, "<createdAt ISO>|<id>". */
   cursor?: string;
@@ -742,6 +781,7 @@ export async function listRuns(
     where: {
       workspaceId,
       ...(query.agentId ? { sourceAgentId: query.agentId } : {}),
+      ...(query.conversationId ? { conversationId: query.conversationId } : {}),
       ...(cursor
         ? {
             OR: [
@@ -819,6 +859,93 @@ export async function getRunDetail(
   };
 }
 
+export async function listConversationRuns(
+  workspaceId: string,
+  conversationId: string,
+): Promise<AgentRunDetail[]> {
+  const rows = await db.agentRun.findMany({
+    where: { workspaceId, conversationId },
+    select: {
+      ...SUMMARY_SELECT,
+      input: true,
+      snapshotScopes: true,
+      cancelRequestedAt: true,
+      steps: {
+        select: {
+          id: true,
+          index: true,
+          kind: true,
+          toolName: true,
+          argsJson: true,
+          resultText: true,
+          isError: true,
+          modelText: true,
+          stopReason: true,
+          durationMs: true,
+          createdAt: true,
+        },
+        orderBy: { index: "asc" },
+      },
+    },
+    orderBy: { conversationSequence: "asc" },
+  });
+  return rows.map((run) => {
+    const { input, snapshotScopes, cancelRequestedAt, steps, ...summary } = run;
+    return {
+      ...toSummary(summary),
+      input,
+      scopes: parseScopes(snapshotScopes),
+      cancelRequestedAt,
+      steps,
+    };
+  });
+}
+
+export async function getConversationScopeHistory(
+  workspaceId: string,
+  conversationId: string,
+): Promise<McpScope[]> {
+  const runs = await db.agentRun.findMany({
+    where: { workspaceId, conversationId },
+    select: { snapshotScopes: true },
+  });
+  return parseScopes([...new Set(runs.flatMap((run) => run.snapshotScopes))]);
+}
+
+export async function getConversationLastAgentSnapshot(
+  workspaceId: string,
+  conversationId: string,
+): Promise<{ id: string; name: string; scopes: McpScope[] } | null> {
+  const run = await db.agentRun.findFirst({
+    where: { workspaceId, conversationId },
+    select: {
+      sourceAgentId: true,
+      snapshotAgentName: true,
+      snapshotScopes: true,
+    },
+    orderBy: { conversationSequence: "desc" },
+  });
+  return run
+    ? {
+        id: run.sourceAgentId,
+        name: run.snapshotAgentName,
+        scopes: parseScopes(run.snapshotScopes),
+      }
+    : null;
+}
+
+export async function nextConversationSequence(
+  workspaceId: string,
+  conversationId: string,
+): Promise<number> {
+  const latest = await db.agentRun.findFirst({
+    where: { workspaceId, conversationId },
+    select: { conversationSequence: true },
+    orderBy: { conversationSequence: "desc" },
+  });
+  return (latest?.conversationSequence ?? 0) + 1;
+}
+
 /**
  * Deletes terminal runs older than the retention window, oldest first. PENDING
  * and RUNNING rows are never eligible regardless of age — the same rule
@@ -831,6 +958,7 @@ export async function pruneOldRuns(
   const doomed = await db.agentRun.findMany({
     where: {
       status: { in: ["SUCCEEDED", "FAILED", "CANCELLED"] },
+      conversationId: null,
       createdAt: { lt: olderThan },
     },
     select: { id: true },

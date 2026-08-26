@@ -15,6 +15,10 @@ import type {
 import type { AgentScheduleSummary } from "@/lib/services/agent-schedules";
 import type { SkillDetail, SkillSummary } from "@/lib/services/skills";
 import type { McpScope } from "@/lib/mcp/scopes";
+import type {
+  AgentConversationDetail,
+  AgentConversationSummary,
+} from "@/lib/services/agent-conversations";
 
 export class ApiError extends Error {
   fieldErrors?: Record<string, string>;
@@ -22,6 +26,7 @@ export class ApiError extends Error {
   code?: string;
   /** Only set alongside code === "SKILL_TOOL_UNKNOWN". */
   unknownTools?: string[];
+  missingScopes?: McpScope[];
 
   constructor(
     message: string,
@@ -29,6 +34,7 @@ export class ApiError extends Error {
       fieldErrors?: Record<string, string>;
       code?: string;
       unknownTools?: string[];
+      missingScopes?: McpScope[];
     },
   ) {
     super(message);
@@ -36,6 +42,7 @@ export class ApiError extends Error {
     this.fieldErrors = options?.fieldErrors;
     this.code = options?.code;
     this.unknownTools = options?.unknownTools;
+    this.missingScopes = options?.missingScopes;
   }
 }
 
@@ -59,6 +66,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     let fieldErrors: Record<string, string> | undefined;
     let code: string | undefined;
     let unknownTools: string[] | undefined;
+    let missingScopes: McpScope[] | undefined;
     try {
       const body = await res.json();
       if (typeof body?.error === "string") {
@@ -66,6 +74,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
         code = body.error;
         if (Array.isArray(body?.unknownTools)) {
           unknownTools = body.unknownTools as string[];
+        }
+        if (Array.isArray(body?.missingScopes)) {
+          missingScopes = body.missingScopes as McpScope[];
         }
       } else if (Array.isArray(body?.error)) {
         fieldErrors = {};
@@ -80,7 +91,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     } catch {
       // Non-JSON error body — fall back to the generic message above.
     }
-    throw new ApiError(message, { fieldErrors, code, unknownTools });
+    throw new ApiError(message, {
+      fieldErrors,
+      code,
+      unknownTools,
+      missingScopes,
+    });
   }
 
   if (res.status === 204) return undefined as T;
@@ -176,9 +192,13 @@ export const agentSchedulesApi = {
 };
 
 export const agentRunsApi = {
-  list: (params: { agentId?: string; cursor?: string } = {}) => {
+  list: (
+    params: { agentId?: string; conversationId?: string; cursor?: string } = {},
+  ) => {
     const search = new URLSearchParams();
     if (params.agentId) search.set("agentId", params.agentId);
+    if (params.conversationId)
+      search.set("conversationId", params.conversationId);
     if (params.cursor) search.set("cursor", params.cursor);
     const qs = search.toString();
     return request<AgentRunListResult>(`/api/agents/runs${qs ? `?${qs}` : ""}`);
@@ -188,6 +208,48 @@ export const agentRunsApi = {
     request<AgentRunDetail>(`/api/agents/runs/${id}/cancel`, {
       method: "POST",
     }),
+};
+
+export interface AgentConversationListResult {
+  items: AgentConversationSummary[];
+  nextCursor: string | null;
+}
+
+export const agentConversationsApi = {
+  list: (archived = false) =>
+    request<AgentConversationListResult>(
+      `/api/agents/conversations?archived=${archived}`,
+    ),
+  get: (id: string) =>
+    request<AgentConversationDetail>(`/api/agents/conversations/${id}`),
+  create: (agentId: string, message: string) =>
+    request<{ conversationId: string; run: AgentRunSummary }>(
+      "/api/agents/conversations",
+      {
+        method: "POST",
+        body: JSON.stringify({ agentId, message }),
+      },
+    ),
+  send: (id: string, message: string) =>
+    request<AgentRunSummary>(`/api/agents/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+  update: (
+    id: string,
+    input: {
+      title?: string;
+      archived?: boolean;
+      agentId?: string;
+      acknowledgeScopeDowngrade?: boolean;
+    },
+  ) =>
+    request<AgentConversationDetail>(`/api/agents/conversations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string) =>
+    request<void>(`/api/agents/conversations/${id}`, { method: "DELETE" }),
 };
 
 // --- authoring assistant (architecture.md §7F.7) ---

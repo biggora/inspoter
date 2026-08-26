@@ -171,6 +171,8 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000),
+    LLM_QUERY_EMBED_RATE_LIMIT: z.coerce.number().int().positive().default(120),
+    LLM_INDEX_EMBED_RATE_LIMIT: z.coerce.number().int().positive().default(600),
     // --- AI Assistant runs (src/lib/agents) ---
     // Deployment-wide ceilings. Each agent carries its own limits; a run uses
     // the smaller of the two, so one workspace cannot configure its way out of
@@ -198,6 +200,22 @@ const envSchema = z
       .int()
       .positive()
       .default(4_000),
+    AGENT_CHAT_HISTORY_MAX_CHARS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(24_000),
+    AGENT_RAG_CONTEXT_MAX_CHARS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(12_000),
+    NOTE_INDEX_SCHEDULER_TICK_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5_000),
+    NOTE_INDEX_JOB_BATCH: z.coerce.number().int().positive().default(10),
     // A run holds its lease across N model round-trips, so the lease is
     // minutes rather than the seconds a webhook delivery needs.
     AGENT_RUN_LEASE_MS: z.coerce.number().int().positive().default(120_000),

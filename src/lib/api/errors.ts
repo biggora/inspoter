@@ -74,6 +74,13 @@ import {
 import { jsonResponse } from "@/lib/api/response";
 import { logError } from "@/lib/services/logs";
 import { MessageNameConflictError } from "@/lib/services/messages";
+import {
+  AgentConversationConflictError,
+  AgentConversationNotFoundError,
+  AgentConversationScopeDowngradeError,
+  AgentConversationUnavailableError,
+} from "@/lib/services/agent-conversations";
+import { EmbeddingProfileConfigurationError } from "@/lib/services/note-index";
 
 // Shared Prisma-error -> HTTP response mapping (code-review fix, Slice 1,
 // minor #4). Without this, a nonexistent categoryId on bookmark create
@@ -214,6 +221,30 @@ export function toErrorResponse(
     error instanceof SkillNotInWorkspaceError
   ) {
     return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof AgentConversationNotFoundError) {
+    return jsonResponse({ error: error.code }, { status: 404 });
+  }
+  if (error instanceof AgentConversationScopeDowngradeError) {
+    return jsonResponse(
+      { error: error.code, missingScopes: error.missingScopes },
+      { status: 409 },
+    );
+  }
+  if (
+    error instanceof AgentConversationConflictError ||
+    error instanceof AgentConversationUnavailableError
+  ) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 409 },
+    );
+  }
+  if (error instanceof EmbeddingProfileConfigurationError) {
+    return jsonResponse(
+      { error: error.code, message: error.message },
+      { status: 400 },
+    );
   }
   if (
     error instanceof AgentInactiveError ||

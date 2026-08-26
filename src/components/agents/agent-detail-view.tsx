@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,19 @@ export function AgentDetailView({
         description={agent.description ?? undefined}
         actions={
           <>
+            <Button
+              render={<Link href={`/agents/chats?agentId=${agent.id}`} />}
+              nativeButton={false}
+              variant="outline"
+              disabled={!agent.isActive}
+            >
+              <Icon
+                name="ri-message-2-line"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              {t("startChatButton")}
+            </Button>
             <Button
               type="button"
               variant="outline"

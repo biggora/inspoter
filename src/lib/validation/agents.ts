@@ -268,6 +268,7 @@ export const agentRunCreateSchema = z
 export const agentRunListQuerySchema = z
   .object({
     agentId: z.string().trim().min(1).optional(),
+    conversationId: z.string().trim().min(1).optional(),
     cursor: z.string().trim().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(50).optional(),
   })

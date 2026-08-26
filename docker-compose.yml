@@ -1,7 +1,7 @@
 name: inspoter
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres

@@ -9,8 +9,25 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +52,11 @@ import {
   PROVIDER_REGISTRY,
   type ProviderCategory,
 } from "@/lib/providers/registry";
-import { credentialsApi, type CredentialDto } from "./credentials-api";
+import {
+  credentialsApi,
+  type CredentialDto,
+  type EmbeddingStatusDto,
+} from "./credentials-api";
 import { ProviderCredentialDialog } from "./provider-credential-dialog";
 
 // "DNS" and "LLM" aren't prose so they stay plain literal strings;
@@ -78,12 +99,25 @@ export function ProviderCredentialsView() {
     null,
   );
   const [savingDefault, setSavingDefault] = useState<string | null>(null);
+  const [embeddingStatus, setEmbeddingStatus] =
+    useState<EmbeddingStatusDto | null>(null);
+  const [embeddingCredentialId, setEmbeddingCredentialId] = useState("");
+  const [embeddingModel, setEmbeddingModel] = useState("");
+  const [savingEmbedding, setSavingEmbedding] = useState(false);
 
   const load = useCallback(() => {
-    return credentialsApi
-      .list()
-      .then((data) => {
+    return Promise.all([
+      credentialsApi.list(),
+      credentialsApi.embeddingStatus(),
+    ])
+      .then(([data, status]) => {
         setCredentials(data);
+        setEmbeddingStatus(status);
+        const openAi = data.filter(
+          (credential) => credential.provider === "OPENAI_COMPATIBLE",
+        );
+        setEmbeddingCredentialId(status?.credentialId ?? openAi[0]?.id ?? "");
+        setEmbeddingModel(status?.model ?? "");
         setError(null);
       })
       .catch(() => setError(t("loadCredentialsError")))
@@ -106,6 +140,42 @@ export function ProviderCredentialsView() {
       toast.error(t("deleteProviderError"));
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function saveEmbeddingProfile() {
+    if (!embeddingCredentialId || !embeddingModel.trim()) return;
+    setSavingEmbedding(true);
+    try {
+      const status = await credentialsApi.setEmbeddingDefault(
+        embeddingCredentialId,
+        true,
+        embeddingModel.trim(),
+      );
+      setEmbeddingStatus(status);
+      toast.success(t("embeddingProfileSavedToast"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("embeddingProfileSaveError"),
+      );
+    } finally {
+      setSavingEmbedding(false);
+    }
+  }
+
+  async function disableEmbeddingProfile() {
+    if (!embeddingCredentialId) return;
+    setSavingEmbedding(true);
+    try {
+      await credentialsApi.setEmbeddingDefault(embeddingCredentialId, false);
+      setEmbeddingStatus(null);
+      toast.success(t("embeddingProfileDisabledToast"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("embeddingProfileSaveError"),
+      );
+    } finally {
+      setSavingEmbedding(false);
     }
   }
 
@@ -191,6 +261,118 @@ export function ProviderCredentialsView() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {!loading ? (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle>{t("embeddingProfileTitle")}</CardTitle>
+                <CardDescription>
+                  {t("embeddingProfileDescription")}
+                </CardDescription>
+              </div>
+              {embeddingStatus ? (
+                <Badge
+                  variant={
+                    embeddingStatus.backfillStatus === "READY"
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {t(`embeddingStatus${embeddingStatus.backfillStatus}`)}
+                </Badge>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Alert>
+              <AlertDescription>{t("embeddingCloudWarning")}</AlertDescription>
+            </Alert>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <Select
+                value={embeddingCredentialId}
+                onValueChange={(value) =>
+                  setEmbeddingCredentialId(value as string)
+                }
+                items={Object.fromEntries(
+                  credentials
+                    .filter(
+                      (credential) =>
+                        credential.provider === "OPENAI_COMPATIBLE",
+                    )
+                    .map((credential) => [credential.id, credential.label]),
+                )}
+              >
+                <SelectTrigger
+                  className="w-full"
+                  aria-label={t("embeddingCredentialLabel")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {credentials
+                      .filter(
+                        (credential) =>
+                          credential.provider === "OPENAI_COMPATIBLE",
+                      )
+                      .map((credential) => (
+                        <SelectItem key={credential.id} value={credential.id}>
+                          {credential.label}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Input
+                value={embeddingModel}
+                onChange={(event) => setEmbeddingModel(event.target.value)}
+                placeholder={t("embeddingModelPlaceholder")}
+                aria-label={t("embeddingModelLabel")}
+              />
+              <Button
+                onClick={saveEmbeddingProfile}
+                disabled={
+                  savingEmbedding ||
+                  !embeddingCredentialId ||
+                  !embeddingModel.trim()
+                }
+              >
+                {t("embeddingSaveButton")}
+              </Button>
+            </div>
+            {embeddingStatus ? (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span>
+                  {t("embeddingDimensions", {
+                    count: embeddingStatus.dimensions,
+                  })}
+                </span>
+                <span>
+                  {t("embeddingProgress", {
+                    indexed: embeddingStatus.indexedNotes,
+                    total: embeddingStatus.totalNotes,
+                  })}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={disableEmbeddingProfile}
+                  disabled={savingEmbedding}
+                >
+                  {t("embeddingDisableButton")}
+                </Button>
+              </div>
+            ) : null}
+            {embeddingStatus?.lastError ? (
+              <p className="text-sm text-destructive">
+                {embeddingStatus.lastError}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {loading ? (
         <LoadingRegion>
