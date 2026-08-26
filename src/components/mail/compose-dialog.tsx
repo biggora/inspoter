@@ -47,6 +47,7 @@ import {
   type MailDraftAttachmentDto,
   type MailDraftDto,
 } from "./api";
+import { MailTemplatePickerDialog } from "./mail-template-picker-dialog";
 import { RichTextEditor, type RichTextValue } from "./rich-text-editor";
 
 export type ComposeMode = "new" | "reply" | "forward";
@@ -248,6 +249,11 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
     const [aiDraftHtml, setAiDraftHtml] = useState<string | null>(null);
     const [aiDraftVersion, setAiDraftVersion] = useState(0);
     const aiAbortRef = useRef<AbortController | null>(null);
+    const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+    const [templateBodyHtml, setTemplateBodyHtml] = useState<string | null>(
+      null,
+    );
+    const [templateVersion, setTemplateVersion] = useState(0);
 
     const baseId = useId();
     const fieldId = (field: string) => `${baseId}-${field}`;
@@ -288,6 +294,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
         );
         if (controller.signal.aborted) return;
         const html = toParagraphHtml(draft.bodyText);
+        setTemplateBodyHtml(null);
         setAiDraftHtml(html);
         setAiDraftVersion((value) => value + 1);
         setBody({ html, text: draft.bodyText, isEmpty: false });
@@ -316,6 +323,30 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
 
     function updateValue(setValue: (value: string) => void, value: string) {
       setValue(value);
+      markDirty();
+    }
+
+    function applyTemplate(template: {
+      subject: string;
+      bodyText: string;
+      bodyHtml: string;
+    }): void {
+      setSubject(template.subject);
+      setBody({
+        html: template.bodyHtml,
+        text: template.bodyText,
+        isEmpty: !template.bodyText.trim(),
+      });
+      setAiDraftHtml(null);
+      setTemplateBodyHtml(template.bodyHtml);
+      setTemplateVersion((value) => value + 1);
+      setErrors((current) => {
+        const next = { ...current };
+        delete next.subject;
+        delete next.bodyText;
+        delete next.bodyHtml;
+        return next;
+      });
       markDirty();
     }
 
@@ -601,42 +632,59 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
           </Field>
 
           <Field data-invalid={!!bodyError || undefined}>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <FieldLabel id={`${fieldId("body")}-label`}>
                 {t("bodyLabel")}
               </FieldLabel>
-              {mode === "reply" && original && (
+              <div className="flex flex-wrap items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  disabled={aiDrafting}
-                  onClick={handleAiDraft}
+                  onClick={() => setTemplatePickerOpen(true)}
                 >
-                  {aiDrafting ? (
-                    <Spinner
-                      aria-label={t("aiDraftReplyLoadingLabel")}
-                      data-icon="inline-start"
-                    />
-                  ) : (
-                    <Icon
-                      name="ri-sparkling-2-line"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  )}
-                  {t("aiDraftReplyButton")}
+                  <Icon
+                    name="ri-file-copy-2-line"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  {t("useTemplateButton")}
                 </Button>
-              )}
+                {mode === "reply" && original && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={aiDrafting}
+                    onClick={handleAiDraft}
+                  >
+                    {aiDrafting ? (
+                      <Spinner
+                        aria-label={t("aiDraftReplyLoadingLabel")}
+                        data-icon="inline-start"
+                      />
+                    ) : (
+                      <Icon
+                        name="ri-sparkling-2-line"
+                        aria-hidden
+                        data-icon="inline-start"
+                      />
+                    )}
+                    {t("aiDraftReplyButton")}
+                  </Button>
+                )}
+              </div>
             </div>
             <RichTextEditor
               // Remounted when a model draft arrives: the editor reads
               // initialHtml once, so replacing the body means replacing the
               // editor.
-              key={`body-${aiDraftVersion}`}
+              key={`body-${aiDraftVersion}-${templateVersion}`}
               id={fieldId("body")}
               labelledBy={`${fieldId("body")}-label`}
-              initialHtml={aiDraftHtml ?? initialDraft?.bodyHtml}
+              initialHtml={
+                templateBodyHtml ?? aiDraftHtml ?? initialDraft?.bodyHtml
+              }
               autoFocus={mode === "reply" && !initialDraft}
               compact={variant === "inline"}
               invalid={!!bodyError}
@@ -733,6 +781,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
             <OriginalPreview original={original} />
           )}
         </div>
+
+        <MailTemplatePickerDialog
+          open={templatePickerOpen}
+          hasExistingContent={Boolean(subject.trim() || !body.isEmpty)}
+          onOpenChange={setTemplatePickerOpen}
+          onApply={applyTemplate}
+        />
 
         <div
           className={cn(

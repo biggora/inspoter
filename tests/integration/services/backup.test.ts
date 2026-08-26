@@ -58,6 +58,8 @@ let childCategoryName: string;
 let bookmarkName: string;
 let mailFolderPath: string;
 let mailAttachmentBytes: Buffer;
+let mailTemplateName: string;
+let mailTemplateTagName: string;
 let providerCredentialLabel: string;
 let providerCredentialData: { type: "CLOUDFLARE_DNS"; apiToken: string };
 let originalWebhookTokenHash: string;
@@ -197,6 +199,37 @@ beforeAll(async () => {
     },
   });
 
+  mailTemplateName = `Invoice reminder ${RUN_ID}`;
+  mailTemplateTagName = `Billing ${RUN_ID}`;
+  const mailTemplateTag = await db.mailTemplateTag.create({
+    data: {
+      workspaceId: workspaceA.id,
+      name: mailTemplateTagName,
+      normalizedName: mailTemplateTagName.toLocaleLowerCase("en-US"),
+      color: "BLUE",
+    },
+  });
+  const mailTemplate = await db.mailTemplate.create({
+    data: {
+      workspaceId: workspaceA.id,
+      name: mailTemplateName,
+      normalizedName: mailTemplateName.toLocaleLowerCase("en-US"),
+      subject: "Invoice {{number}}",
+      bodyText: "Hello {{name}}",
+      bodyHtml: "<p>Hello {{name}}</p>",
+      starred: true,
+    },
+  });
+  await db.mailTemplateTagLink.create({
+    data: {
+      workspaceId: workspaceA.id,
+      templateId: mailTemplate.id,
+      templateWorkspaceId: workspaceA.id,
+      tagId: mailTemplateTag.id,
+      tagWorkspaceId: workspaceA.id,
+    },
+  });
+
   // --- logs: LogEntry (no service creator for a bare entry — direct db) ---
   await db.logEntry.create({
     data: {
@@ -308,6 +341,9 @@ beforeAll(async () => {
     mailFolders: 1,
     mailItems: 1,
     mailAttachments: 1,
+    mailTemplateTags: 1,
+    mailTemplates: 1,
+    mailTemplateTagLinks: 1,
     logEntries: 1,
     alertCategories: 1,
     alerts: 1,
@@ -419,6 +455,19 @@ describe("backup service", () => {
         where: { mailItem: { workspaceId: workspaceB.id } },
       });
       expect(Buffer.from(attachment.content!)).toEqual(mailAttachmentBytes);
+    });
+
+    it("preserves mail templates, tags, and their relationship", async () => {
+      const template = await db.mailTemplate.findFirstOrThrow({
+        where: { workspaceId: workspaceB.id, name: mailTemplateName },
+        include: { tags: { include: { tag: true } } },
+      });
+      expect(template.subject).toBe("Invoice {{number}}");
+      expect(template.bodyHtml).toBe("<p>Hello {{name}}</p>");
+      expect(template.starred).toBe(true);
+      expect(template.tags.map((link) => link.tag.name)).toEqual([
+        mailTemplateTagName,
+      ]);
     });
 
     it("preserves original createdAt timestamps", async () => {
@@ -598,6 +647,9 @@ describe("backup service", () => {
         // AlertCategory is matched and reused by name on merge, so no new
         // row is created for the already-existing "Alert Category {RUN_ID}".
         alertCategories: 0,
+        mailTemplateTags: 0,
+        mailTemplates: 0,
+        mailTemplateTagLinks: 0,
       });
       // Workspace A only ever had an IMAP mail account (no WEBHOOK account
       // was auto-vivified anywhere above), so all archived mail accounts are

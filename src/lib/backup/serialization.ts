@@ -64,7 +64,15 @@ export const SECTION_MODELS: Record<BackupSection, readonly string[]> = {
     "kanbanComments",
   ],
   messages: ["messageCategories", "channels", "messages"],
-  mail: ["mailAccounts", "mailFolders", "mailItems", "mailAttachments"],
+  mail: [
+    "mailTemplateTags",
+    "mailTemplates",
+    "mailTemplateTagLinks",
+    "mailAccounts",
+    "mailFolders",
+    "mailItems",
+    "mailAttachments",
+  ],
   logs: ["logEntries"],
   alerts: ["alertCategories", "alerts"],
   services: ["services", "serviceChecks"],
@@ -393,6 +401,31 @@ const mailAttachmentSchema = z.object({
   createdAt: isoDate,
 });
 
+const mailTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  subject: z.string(),
+  bodyText: z.string(),
+  bodyHtml: z.string(),
+  starred: z.boolean(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const mailTemplateTagSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+});
+
+const mailTemplateTagLinkSchema = z.object({
+  templateId: z.string(),
+  tagId: z.string(),
+  appliedAt: isoDate,
+});
+
 const logEntrySchema = z.object({
   id: z.string(),
   level: z.string(),
@@ -575,6 +608,9 @@ const dataSchema = z.object({
   mailFolders: z.array(mailFolderSchema).optional(),
   mailItems: z.array(mailItemSchema).optional(),
   mailAttachments: z.array(mailAttachmentSchema).optional(),
+  mailTemplates: z.array(mailTemplateSchema).optional(),
+  mailTemplateTags: z.array(mailTemplateTagSchema).optional(),
+  mailTemplateTagLinks: z.array(mailTemplateTagLinkSchema).optional(),
   logEntries: z.array(logEntrySchema).optional(),
   alertCategories: z.array(alertCategorySchema).optional(),
   alerts: z.array(alertSchema).optional(),
@@ -621,6 +657,11 @@ export type BackupMailAccountRecord = z.infer<typeof mailAccountSchema>;
 export type BackupMailFolderRecord = z.infer<typeof mailFolderSchema>;
 export type BackupMailItemRecord = z.infer<typeof mailItemSchema>;
 export type BackupMailAttachmentRecord = z.infer<typeof mailAttachmentSchema>;
+export type BackupMailTemplateRecord = z.infer<typeof mailTemplateSchema>;
+export type BackupMailTemplateTagRecord = z.infer<typeof mailTemplateTagSchema>;
+export type BackupMailTemplateTagLinkRecord = z.infer<
+  typeof mailTemplateTagLinkSchema
+>;
 export type BackupLogEntryRecord = z.infer<typeof logEntrySchema>;
 export type BackupAlertCategoryRecord = z.infer<typeof alertCategorySchema>;
 export type BackupAlertRecord = z.infer<typeof alertSchema>;

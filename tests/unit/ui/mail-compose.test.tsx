@@ -13,6 +13,8 @@ import { renderWithIntl } from "../../test-utils";
 
 const apiMocks = vi.hoisted(() => ({
   deleteMailDraftAttachment: vi.fn(),
+  fetchMailTemplate: vi.fn(),
+  fetchMailTemplates: vi.fn(),
   saveMailDraft: vi.fn(),
   sendMail: vi.fn(),
   uploadMailDraftAttachment: vi.fn(),
@@ -106,6 +108,35 @@ beforeEach(() => {
     sizeBytes: 11,
   });
   apiMocks.deleteMailDraftAttachment.mockResolvedValue(undefined);
+  apiMocks.fetchMailTemplates.mockResolvedValue({
+    items: [
+      {
+        id: "template-1",
+        name: "Welcome",
+        subject: "Welcome {{name}}",
+        bodyText: "Hello {{name}}",
+        starred: true,
+        createdAt: "2026-08-26T10:00:00.000Z",
+        updatedAt: "2026-08-26T10:00:00.000Z",
+        tags: [],
+      },
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 100,
+  });
+  apiMocks.fetchMailTemplate.mockResolvedValue({
+    id: "template-1",
+    name: "Welcome",
+    subject: "Welcome {{name}}",
+    bodyText: "Hello {{name}}",
+    bodyHtml: "<p>Hello {{name}}</p>",
+    starred: true,
+    createdAt: "2026-08-26T10:00:00.000Z",
+    updatedAt: "2026-08-26T10:00:00.000Z",
+    tags: [],
+    variables: ["name"],
+  });
 });
 
 describe("mail composer", () => {
@@ -268,5 +299,50 @@ describe("mail composer", () => {
     });
     expect(within(dialog).getByText("report.txt")).toBeInTheDocument();
     expect(toastMocks.success).toHaveBeenCalled();
+  });
+
+  it("applies a variable template and autosaves the completed content", async () => {
+    const user = userEvent.setup();
+    renderWithIntl(
+      <ComposeDialog
+        open
+        onOpenChange={vi.fn()}
+        mode="new"
+        original={null}
+        accountId="account-1"
+        onSent={vi.fn()}
+      />,
+    );
+
+    const composer = screen.getByRole("dialog");
+    await user.type(
+      within(composer).getByLabelText("To", { exact: true }),
+      "ada@example.com",
+    );
+    await user.click(screen.getByRole("button", { name: "Use template" }));
+    await user.click(await screen.findByRole("button", { name: /Welcome/ }));
+    const value = await screen.findByLabelText("Value for name");
+    await user.type(value, "Ada");
+    await user.click(screen.getByRole("button", { name: "Apply template" }));
+
+    expect(within(composer).getByLabelText("Subject")).toHaveValue(
+      "Welcome Ada",
+    );
+    expect(
+      await within(composer).findByLabelText("Message body"),
+    ).toHaveTextContent("Hello Ada");
+    await waitFor(
+      () => {
+        expect(apiMocks.saveMailDraft).toHaveBeenCalledWith(
+          expect.objectContaining({
+            to: ["ada@example.com"],
+            subject: "Welcome Ada",
+            bodyText: "Hello Ada",
+            bodyHtml: "<p>Hello Ada</p>",
+          }),
+        );
+      },
+      { timeout: 2_000 },
+    );
   });
 });

@@ -108,6 +108,9 @@ model Workspace {
   mailFilterConditions    MailFilterCondition[]
   mailFilterRuns          MailFilterRun[]
   mailFilterActionJobs    MailFilterActionJob[]
+  mailTemplates           MailTemplate[]
+  mailTemplateTags        MailTemplateTag[]
+  mailTemplateTagLinks    MailTemplateTagLink[]
   contacts                Contact[]
   contactFields           ContactField[]
   contactAddresses        ContactAddress[]
@@ -869,6 +872,56 @@ model MailFilterActionJob {
   @@index([status, nextAttemptAt, createdAt, id])
   @@index([accountId, status, createdAt, id])
   @@index([workspaceId, mailItemId, createdAt, id])
+}
+
+model MailTemplate {
+  id             String                @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  subject        String
+  bodyText       String
+  bodyHtml       String
+  starred        Boolean               @default(false)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  tags           MailTemplateTagLink[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, starred, updatedAt, id])
+}
+
+model MailTemplateTag {
+  id             String                @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  color          String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  templates      MailTemplateTagLink[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, normalizedName])
+}
+
+model MailTemplateTagLink {
+  workspaceId         String
+  workspace           Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  templateId          String
+  templateWorkspaceId String
+  template            MailTemplate    @relation(fields: [templateId, templateWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  tagId               String
+  tagWorkspaceId      String
+  tag                 MailTemplateTag @relation(fields: [tagId, tagWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  appliedAt           DateTime        @default(now())
+
+  @@unique([templateId, tagId])
+  @@index([workspaceId, tagId, templateId])
 }
 
 // --- Contacts (FR-CNT-001..006; Google-Contacts-style address book) ---

@@ -215,6 +215,32 @@ async function resolveCurrentEntityLabels(
     );
   }
 
+  const mailTemplateIds = idsFor("mail_template");
+  if (mailTemplateIds.length > 0) {
+    addLookup(
+      "mail_template",
+      db.mailTemplate.findMany({
+        where: { id: { in: mailTemplateIds }, workspaceId },
+        select: { id: true, name: true },
+      }),
+      (row) => row.id,
+      (row) => row.name,
+    );
+  }
+
+  const mailTemplateTagIds = idsFor("mail_template_tag");
+  if (mailTemplateTagIds.length > 0) {
+    addLookup(
+      "mail_template_tag",
+      db.mailTemplateTag.findMany({
+        where: { id: { in: mailTemplateTagIds }, workspaceId },
+        select: { id: true, name: true },
+      }),
+      (row) => row.id,
+      (row) => row.name,
+    );
+  }
+
   const alertCategoryIds = idsFor("alert_category");
   if (alertCategoryIds.length > 0) {
     addLookup(

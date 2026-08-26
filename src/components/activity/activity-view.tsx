@@ -68,6 +68,8 @@ const ENTITY_TYPE_LABEL_KEYS: Record<string, string> = {
   mail_account: "entityMailAccount",
   mail_label: "entityMailLabel",
   mail_filter_rule: "entityMailFilterRule",
+  mail_template: "entityMailTemplate",
+  mail_template_tag: "entityMailTemplateTag",
   mail: "entityMail",
   message_category: "entityMessageCategory",
   channel: "entityChannel",

@@ -24,6 +24,9 @@ import type {
   MailFolder,
   MailItem,
   MailAttachment,
+  MailTemplate,
+  MailTemplateTag,
+  MailTemplateTagLink,
   LogEntry,
   AlertCategory,
   Alert,
@@ -82,6 +85,9 @@ import {
   type BackupMailFolderRecord,
   type BackupMailItemRecord,
   type BackupMailAttachmentRecord,
+  type BackupMailTemplateRecord,
+  type BackupMailTemplateTagRecord,
+  type BackupMailTemplateTagLinkRecord,
   type BackupLogEntryRecord,
   type BackupAlertCategoryRecord,
   type BackupAlertRecord,
@@ -157,13 +163,15 @@ function formatTimestamp(date: Date): string {
 }
 
 async function createManyChunked<T>(
-  create: (chunk: T[]) => Promise<unknown>,
+  create: (chunk: T[]) => Promise<{ count: number }>,
   rows: T[],
   chunkSize: number,
-): Promise<void> {
+): Promise<number> {
+  let count = 0;
   for (let i = 0; i < rows.length; i += chunkSize) {
-    await create(rows.slice(i, i + chunkSize));
+    count += (await create(rows.slice(i, i + chunkSize))).count;
   }
+  return count;
 }
 
 function mustRemap(map: Map<string, string>, id: string): string {
@@ -651,6 +659,41 @@ function toMailAttachmentRecord(
   };
 }
 
+function toMailTemplateRecord(row: MailTemplate): BackupMailTemplateRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    subject: row.subject,
+    bodyText: row.bodyText,
+    bodyHtml: row.bodyHtml,
+    starred: row.starred,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toMailTemplateTagRecord(
+  row: MailTemplateTag,
+): BackupMailTemplateTagRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function toMailTemplateTagLinkRecord(
+  row: MailTemplateTagLink,
+): BackupMailTemplateTagLinkRecord {
+  return {
+    templateId: row.templateId,
+    tagId: row.tagId,
+    appliedAt: iso(row.appliedAt),
+  };
+}
+
 function toLogEntryRecord(row: LogEntry): BackupLogEntryRecord {
   return {
     id: row.id,
@@ -1026,19 +1069,41 @@ export async function exportWorkspace(
       }
 
       if (sections.includes("mail")) {
-        const mailAccounts = await tx.mailAccount.findMany({
-          where: { workspaceId },
-          orderBy: orderByCreated(),
-        });
-        const mailFolders = await tx.mailFolder.findMany({
-          where: { workspaceId },
-          orderBy: orderByCreated(),
-        });
-        const mailItems = await tx.mailItem.findMany({
-          where: { workspaceId },
-          orderBy: orderByCreated(),
-        });
-        const mailAttachments = await fetchMailAttachments(tx, workspaceId);
+        const [
+          mailAccounts,
+          mailFolders,
+          mailItems,
+          mailAttachments,
+          mailTemplates,
+          mailTemplateTags,
+          mailTemplateTagLinks,
+        ] = await Promise.all([
+          tx.mailAccount.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.mailFolder.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.mailItem.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          fetchMailAttachments(tx, workspaceId),
+          tx.mailTemplate.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.mailTemplateTag.findMany({
+            where: { workspaceId },
+            orderBy: orderByCreated(),
+          }),
+          tx.mailTemplateTagLink.findMany({
+            where: { workspaceId },
+            orderBy: { appliedAt: "asc" },
+          }),
+        ]);
 
         if (
           mailAccounts.some((a) => a.encryptedData !== null) &&
@@ -1051,10 +1116,18 @@ export async function exportWorkspace(
         data.mailFolders = mailFolders.map(toMailFolderRecord);
         data.mailItems = mailItems.map(toMailItemRecord);
         data.mailAttachments = mailAttachments.map(toMailAttachmentRecord);
+        data.mailTemplates = mailTemplates.map(toMailTemplateRecord);
+        data.mailTemplateTags = mailTemplateTags.map(toMailTemplateTagRecord);
+        data.mailTemplateTagLinks = mailTemplateTagLinks.map(
+          toMailTemplateTagLinkRecord,
+        );
         counts.mailAccounts = mailAccounts.length;
         counts.mailFolders = mailFolders.length;
         counts.mailItems = mailItems.length;
         counts.mailAttachments = mailAttachments.length;
+        counts.mailTemplates = mailTemplates.length;
+        counts.mailTemplateTags = mailTemplateTags.length;
+        counts.mailTemplateTagLinks = mailTemplateTagLinks.length;
       }
 
       if (sections.includes("logs")) {
@@ -1234,6 +1307,7 @@ export async function importWorkspace(
           await tx.mailAttachment.deleteMany({
             where: { mailItem: { workspaceId } },
           });
+          await tx.mailTemplateTagLink.deleteMany({ where: { workspaceId } });
         }
         if (sections.has("webhooks")) {
           await tx.webhookDelivery.deleteMany({ where: { workspaceId } });
@@ -1244,6 +1318,8 @@ export async function importWorkspace(
         }
         if (sections.has("mail")) {
           await tx.mailItem.deleteMany({ where: { workspaceId } });
+          await tx.mailTemplate.deleteMany({ where: { workspaceId } });
+          await tx.mailTemplateTag.deleteMany({ where: { workspaceId } });
         }
         if (sections.has("services")) {
           await tx.serviceCheck.deleteMany({ where: { workspaceId } });
@@ -1324,6 +1400,8 @@ export async function importWorkspace(
       const remappedWebhookAccountOldIds = new Set<string>();
       const mailFolderIdMap = new Map<string, string>();
       const mailItemIdMap = new Map<string, string>();
+      const mailTemplateIdMap = new Map<string, string>();
+      const mailTemplateTagIdMap = new Map<string, string>();
       const alertCategoryIdMap = new Map<string, string>();
       const serviceIdMap = new Map<string, string>();
       const kanbanBoardIdMap = new Map<string, string>();
@@ -1692,6 +1770,104 @@ export async function importWorkspace(
           });
         }
         imported.mailAccounts = inserts.length;
+      }
+
+      if (payload.data.mailTemplateTags) {
+        const existing = await tx.mailTemplateTag.findMany({
+          where: { workspaceId },
+          select: { id: true, normalizedName: true },
+        });
+        const existingByName = new Map(
+          existing.map((tag) => [tag.normalizedName, tag.id]),
+        );
+        const inserts = [];
+        for (const row of payload.data.mailTemplateTags) {
+          const normalizedName = normalizeLabelName(row.name);
+          const existingId = existingByName.get(normalizedName);
+          if (existingId) {
+            mailTemplateTagIdMap.set(row.id, existingId);
+            continue;
+          }
+          const newId = crypto.randomUUID();
+          mailTemplateTagIdMap.set(row.id, newId);
+          existingByName.set(normalizedName, newId);
+          inserts.push({
+            id: newId,
+            workspaceId,
+            name: row.name,
+            normalizedName,
+            color: row.color,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          });
+        }
+        await createManyChunked(
+          (chunk) => tx.mailTemplateTag.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.mailTemplateTags = inserts.length;
+      }
+
+      if (payload.data.mailTemplates) {
+        const existing = await tx.mailTemplate.findMany({
+          where: { workspaceId },
+          select: { id: true, normalizedName: true },
+        });
+        const existingByName = new Map(
+          existing.map((template) => [template.normalizedName, template.id]),
+        );
+        const inserts = [];
+        for (const row of payload.data.mailTemplates) {
+          const normalizedName = normalizeLabelName(row.name);
+          const existingId = existingByName.get(normalizedName);
+          if (existingId) {
+            mailTemplateIdMap.set(row.id, existingId);
+            continue;
+          }
+          const newId = crypto.randomUUID();
+          mailTemplateIdMap.set(row.id, newId);
+          existingByName.set(normalizedName, newId);
+          inserts.push({
+            id: newId,
+            workspaceId,
+            name: row.name,
+            normalizedName,
+            subject: row.subject,
+            bodyText: row.bodyText,
+            bodyHtml: row.bodyHtml,
+            starred: row.starred,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          });
+        }
+        await createManyChunked(
+          (chunk) => tx.mailTemplate.createMany({ data: chunk }),
+          inserts,
+          500,
+        );
+        imported.mailTemplates = inserts.length;
+      }
+
+      if (payload.data.mailTemplateTagLinks) {
+        const inserts = payload.data.mailTemplateTagLinks.map((row) => ({
+          workspaceId,
+          templateId: mustRemap(mailTemplateIdMap, row.templateId),
+          templateWorkspaceId: workspaceId,
+          tagId: mustRemap(mailTemplateTagIdMap, row.tagId),
+          tagWorkspaceId: workspaceId,
+          appliedAt: row.appliedAt,
+        }));
+        const inserted = await createManyChunked(
+          (chunk) =>
+            tx.mailTemplateTagLink.createMany({
+              data: chunk,
+              skipDuplicates: true,
+            }),
+          inserts,
+          500,
+        );
+        imported.mailTemplateTagLinks = inserted;
       }
 
       if (payload.data.services) {

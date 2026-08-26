@@ -552,6 +552,140 @@ export function deleteMailDraftAttachment(
   );
 }
 
+// --- Reusable workspace templates ---
+
+export interface MailTemplateTagDto {
+  id: string;
+  name: string;
+  color: MailLabelColor;
+}
+
+export interface MailTemplateTagSummaryDto extends MailTemplateTagDto {
+  templateCount: number;
+}
+
+export interface MailTemplateSummaryDto {
+  id: string;
+  name: string;
+  subject: string;
+  bodyText: string;
+  starred: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tags: MailTemplateTagDto[];
+}
+
+export interface MailTemplateDetailDto extends MailTemplateSummaryDto {
+  bodyHtml: string;
+  variables: string[];
+}
+
+export interface MailTemplateListDto {
+  items: MailTemplateSummaryDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SaveMailTemplateInput {
+  name: string;
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  starred: boolean;
+  tagIds: string[];
+}
+
+export function fetchMailTemplates(
+  params: {
+    query?: string;
+    tagId?: string;
+    starred?: boolean;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<MailTemplateListDto> {
+  const search = new URLSearchParams();
+  if (params.query) search.set("query", params.query);
+  if (params.tagId) search.set("tagId", params.tagId);
+  if (params.starred) search.set("starred", "true");
+  if (params.page) search.set("page", String(params.page));
+  if (params.pageSize) search.set("pageSize", String(params.pageSize));
+  const suffix = search.size > 0 ? `?${search}` : "";
+  return request<MailTemplateListDto>(`/api/mail/templates${suffix}`);
+}
+
+export function fetchMailTemplate(id: string): Promise<MailTemplateDetailDto> {
+  return request<MailTemplateDetailDto>(
+    `/api/mail/templates/${encodeURIComponent(id)}`,
+  );
+}
+
+export function createMailTemplate(
+  input: SaveMailTemplateInput,
+): Promise<MailTemplateDetailDto> {
+  return request<MailTemplateDetailDto>("/api/mail/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function patchMailTemplate(
+  id: string,
+  input: Partial<SaveMailTemplateInput>,
+): Promise<MailTemplateDetailDto> {
+  return request<MailTemplateDetailDto>(
+    `/api/mail/templates/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function deleteMailTemplate(id: string): Promise<void> {
+  return request<void>(`/api/mail/templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchMailTemplateTags(): Promise<MailTemplateTagSummaryDto[]> {
+  return request<MailTemplateTagSummaryDto[]>("/api/mail/template-tags");
+}
+
+export function createMailTemplateTag(input: {
+  name: string;
+  color: MailLabelColor;
+}): Promise<MailTemplateTagSummaryDto> {
+  return request<MailTemplateTagSummaryDto>("/api/mail/template-tags", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function patchMailTemplateTag(
+  id: string,
+  input: { name?: string; color?: MailLabelColor },
+): Promise<MailTemplateTagSummaryDto> {
+  return request<MailTemplateTagSummaryDto>(
+    `/api/mail/template-tags/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function deleteMailTemplateTag(id: string): Promise<void> {
+  return request<void>(`/api/mail/template-tags/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 // --- AI features (specs/ai-integration.md scenarios 1-3) ---
 //
 // All three are POST even though nothing is mutated: the call is not

@@ -397,6 +397,20 @@ export function MailSidebar({
           </Button>
         )}
         <Button
+          render={<Link href="/mail/templates" />}
+          nativeButton={false}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+        >
+          <Icon
+            name="ri-file-copy-2-line"
+            aria-hidden
+            data-icon="inline-start"
+          />
+          {t("templatesButton")}
+        </Button>
+        <Button
           render={<Link href="/settings/mail" />}
           nativeButton={false}
           variant="ghost"

@@ -137,8 +137,186 @@ async function deleteMailAccount(page: Page, accountId: string) {
   }
 }
 
+async function deleteMailTemplateResource(
+  page: Page,
+  resource: "templates" | "template-tags",
+  id: string,
+) {
+  const wsId = await getWorkspaceId(page);
+  const status = await page.evaluate(
+    async ([resourceName, resourceId, workspaceId]) =>
+      (
+        await fetch(
+          `/api/mail/${resourceName}/${encodeURIComponent(resourceId)}`,
+          {
+            method: "DELETE",
+            redirect: "manual",
+            headers: { "x-inspoter-workspace": workspaceId },
+          },
+        )
+      ).status,
+    [resource, id, wsId] as const,
+  );
+  if (status !== 204 && status !== 404) {
+    throw new Error(
+      `Mail ${resource} cleanup failed for ${id}: expected 204/404, received ${status}.`,
+    );
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await login(page);
+});
+
+test("creates a tagged variable template and applies it to a saved draft", async ({
+  page,
+  testData,
+}) => {
+  test.setTimeout(45_000);
+  let accountId: string | undefined;
+  let templateId: string | undefined;
+  let tagId: string | undefined;
+  const templateName = testData.name("Welcome template");
+  const tagName = testData.name("Onboarding");
+  const draftSubject = "Welcome Ada Lovelace";
+
+  try {
+    accountId = await createMockMailAccount(
+      page,
+      testData.name("Template drafts"),
+    );
+    await waitForInitialSync(page, accountId);
+
+    await page.goto("/mail/templates");
+    await expect(
+      page.getByRole("heading", { name: "Mail templates", exact: true }),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Manage template tags", exact: true })
+      .click();
+    const tagDialog = page.getByRole("dialog", {
+      name: "Manage template tags",
+    });
+    await tagDialog
+      .getByRole("button", { name: "Create tag", exact: true })
+      .click();
+    await tagDialog.getByLabel("Tag name", { exact: true }).fill(tagName);
+    const tagResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/api/mail/template-tags",
+    );
+    await tagDialog
+      .getByRole("button", { name: "Save tag", exact: true })
+      .click();
+    const tagBody: unknown = await (await tagResponsePromise).json();
+    if (
+      typeof tagBody !== "object" ||
+      tagBody === null ||
+      !("id" in tagBody) ||
+      typeof tagBody.id !== "string"
+    ) {
+      throw new Error("Created template tag response did not contain an id.");
+    }
+    tagId = tagBody.id;
+    await tagDialog.getByRole("button", { name: "Close", exact: true }).click();
+
+    await page
+      .getByRole("button", { name: "New template", exact: true })
+      .click();
+    const editor = page.getByRole("dialog", { name: "Create template" });
+    await editor
+      .getByLabel("Template name", { exact: true })
+      .fill(templateName);
+    await editor
+      .getByLabel("Subject", { exact: true })
+      .fill("Welcome {{client}}");
+    await editor
+      .getByLabel("Message body", { exact: true })
+      .fill("Hello, {{client}}");
+    await editor.getByText(tagName, { exact: true }).click();
+    await editor
+      .getByLabel("Show in starred templates", { exact: true })
+      .click();
+    const templateResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/api/mail/templates",
+    );
+    await editor
+      .getByRole("button", { name: "Save template", exact: true })
+      .click();
+    const templateBody: unknown = await (await templateResponsePromise).json();
+    if (
+      typeof templateBody !== "object" ||
+      templateBody === null ||
+      !("id" in templateBody) ||
+      typeof templateBody.id !== "string"
+    ) {
+      throw new Error("Created mail template response did not contain an id.");
+    }
+    templateId = templateBody.id;
+    await expect(page.getByText(templateName, { exact: true })).toBeVisible();
+
+    await page.goto("/mail");
+    await page.getByRole("button", { name: "Compose", exact: true }).click();
+    const composer = page.getByRole("dialog", { name: "New message" });
+    await composer.getByLabel("To", { exact: true }).fill("ada@example.com");
+    await composer
+      .getByRole("button", { name: "Use template", exact: true })
+      .click();
+    const picker = page.getByRole("dialog", { name: "Use a template" });
+    await picker
+      .getByRole("button", { name: new RegExp(templateName) })
+      .click();
+    const variables = page.getByRole("dialog", {
+      name: "Fill template fields",
+    });
+    await variables
+      .getByLabel("Value for client", { exact: true })
+      .fill("Ada Lovelace");
+    await variables
+      .getByRole("button", { name: "Apply template", exact: true })
+      .click();
+    await expect(composer.getByLabel("Subject", { exact: true })).toHaveValue(
+      draftSubject,
+    );
+    await expect(
+      composer.getByLabel("Message body", { exact: true }),
+    ).toHaveText("Hello, Ada Lovelace");
+    await composer
+      .getByRole("button", { name: "Close composer", exact: true })
+      .click();
+
+    const sidebar = page.getByRole("navigation", { name: "Folders" });
+    await sidebar.getByRole("button", { name: "Drafts", exact: true }).click();
+    const draft = page
+      .getByRole("list", { name: "Message list" })
+      .getByRole("listitem")
+      .filter({ hasText: draftSubject });
+    await expect(draft).toBeVisible();
+    await draft.getByRole("button").click();
+    await page.getByRole("button", { name: "Edit draft", exact: true }).click();
+    const reopened = page.getByRole("dialog", { name: "Edit draft" });
+    await expect(reopened.getByLabel("To", { exact: true })).toHaveValue(
+      "ada@example.com",
+    );
+    await expect(reopened.getByLabel("Subject", { exact: true })).toHaveValue(
+      draftSubject,
+    );
+    await expect(
+      reopened.getByLabel("Message body", { exact: true }),
+    ).toHaveText("Hello, Ada Lovelace");
+  } finally {
+    if (templateId) {
+      await deleteMailTemplateResource(page, "templates", templateId);
+    }
+    if (tagId) {
+      await deleteMailTemplateResource(page, "template-tags", tagId);
+    }
+    if (accountId) await deleteMailAccount(page, accountId);
+  }
 });
 
 test("mail client shows folders with unread badges, reads a message, switches folders, and filters", async ({
