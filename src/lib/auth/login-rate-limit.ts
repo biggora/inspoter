@@ -15,6 +15,12 @@ export function normalizeLoginUsername(username: string): string {
   return username.normalize("NFKC").trim().toLocaleLowerCase("en-US");
 }
 
+// Exported so the login-action integration test can seed a bucket row for a
+// given username without duplicating the key scheme.
+export function loginUsernameBucketKey(username: string): string {
+  return bucketKey("username", normalizeLoginUsername(username));
+}
+
 async function clientKey(): Promise<string> {
   if (!env.LOGIN_TRUST_PROXY) return DIRECT_CLIENT;
   try {
@@ -59,7 +65,7 @@ export async function consumeLoginAttempt(
   username: string,
 ): Promise<{ allowed: boolean; usernameKey: string }> {
   const now = new Date();
-  const usernameKey = bucketKey("username", normalizeLoginUsername(username));
+  const usernameKey = loginUsernameBucketKey(username);
   const ipKey = bucketKey("ip", await clientKey());
   const allowed = await db.$transaction(async (tx) => {
     const ipAllowed = await consumeBucket(

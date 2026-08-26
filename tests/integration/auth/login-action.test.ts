@@ -60,15 +60,42 @@ describe("AC-AUTH-002/003: login Server Action contract", () => {
   it("throttles a normalized username without revealing whether it exists", async () => {
     await db.loginRateLimitBucket.deleteMany();
     const { login } = await import("@/app/[locale]/login/actions");
-    let result = await login(
-      formDataFor({ username: "  Missing User  ", password: "wrong" }),
+    const { env } = await import("@/lib/config/env");
+    const { loginUsernameBucketKey } = await import(
+      "@/lib/auth/login-rate-limit"
     );
-    for (let attempt = 1; attempt <= 10; attempt += 1) {
-      result = await login(
-        formDataFor({ username: "MISSING USER", password: "wrong" }),
-      );
-    }
-    expect(result).toEqual({ ok: false, error: "LOGIN_RATE_LIMITED" });
+
+    // CI runs the whole verification job with LOGIN_RATE_LIMIT_USERNAME raised
+    // to 5000 (the e2e suite shares one username bucket — see
+    // .github/workflows/ci.yml), so driving the bucket over the limit with
+    // real attempts is neither practical nor limit-independent. Seed the
+    // bucket for "  Missing User  " one attempt below the configured limit
+    // instead; the differently-spelled "MISSING USER" below must hit the same
+    // bucket because the key is built from the normalized username.
+    await db.loginRateLimitBucket.create({
+      data: {
+        key: loginUsernameBucketKey("  Missing User  "),
+        count: env.LOGIN_RATE_LIMIT_USERNAME - 1,
+        windowStartedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // One attempt below the limit: the username is missing, but the response
+    // is the generic credential error — no existence reveal.
+    const allowed = await login(
+      formDataFor({ username: "MISSING USER", password: "wrong" }),
+    );
+    expect(allowed).toEqual({
+      ok: false,
+      error: "Invalid username or password.",
+    });
+
+    // Tipping over the limit throttles without touching the operator table.
+    const blocked = await login(
+      formDataFor({ username: "MISSING USER", password: "wrong" }),
+    );
+    expect(blocked).toEqual({ ok: false, error: "LOGIN_RATE_LIMITED" });
     await db.loginRateLimitBucket.deleteMany();
   });
 });
