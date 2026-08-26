@@ -381,7 +381,19 @@ export class ImapSmtpMailDriver implements MailDriver {
       }
       if (start > mailbox.exists) return [];
       const end = Math.min(mailbox.exists, start + limit - 1);
+      // Drain the metadata FETCH completely before fetching any body.
+      // toRemoteMessage() issues its own FETCH, and ImapFlow runs one command
+      // at a time: while this generator is mid-iteration the outer FETCH is
+      // still the active request and holds back its untagged responses until
+      // the consumer resumes, so a command issued from inside the loop is
+      // queued behind a command that is waiting on the loop — a deadlock that
+      // ends as a 120s socket timeout. The batch is MAIL_SYNC_BATCH_SIZE
+      // metadata rows, so buffering them costs nothing.
+      const fetched: FetchMessageObject[] = [];
       for await (const msg of client.fetch(`${start}:${end}`, query)) {
+        fetched.push(msg);
+      }
+      for (const msg of fetched) {
         messages.push(await this.toRemoteMessage(client, msg));
       }
       return messages;
