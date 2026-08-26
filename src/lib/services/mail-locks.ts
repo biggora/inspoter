@@ -8,7 +8,11 @@ export type MailAccountTransactionRunner = <T>(
 
 export async function acquireMailAdvisoryLock(
   tx: Prisma.TransactionClient,
-  scope: "account" | "workspace-labels",
+  scope:
+    | "account"
+    | "workspace-labels"
+    | "workspace-mail-templates"
+    | "workspace-mail-template-tags",
   id: string,
 ): Promise<void> {
   const key = `inspoter:mail:${scope}:${id}`;

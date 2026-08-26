@@ -43,6 +43,8 @@
   "entityMailAccount": "Mail account",
   "entityMailLabel": "Mail label",
   "entityMailFilterRule": "Filter rule",
+  "entityMailTemplate": "Mail template",
+  "entityMailTemplateTag": "Mail template tag",
   "entityMail": "Email",
   "entityMessageCategory": "Message category",
   "entityChannel": "Channel",

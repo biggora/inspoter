@@ -192,6 +192,65 @@ export const saveMailDraftSchema = z
 
 export type SaveMailDraftInput = z.infer<typeof saveMailDraftSchema>;
 
+// --- Reusable workspace mail templates ---
+
+const mailTemplateTagIdsSchema = z
+  .array(z.string().min(1))
+  .max(20)
+  .refine((ids) => new Set(ids).size === ids.length, {
+    error: "Template tags must be unique.",
+  });
+
+const mailTemplateContentSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    subject: z.string().max(500),
+    bodyText: z.string().max(500_000),
+    bodyHtml: z.string().max(500_000),
+    starred: z.boolean().default(false),
+    tagIds: mailTemplateTagIdsSchema.default([]),
+  })
+  .refine(
+    (input) =>
+      input.subject.trim().length > 0 || input.bodyText.trim().length > 0,
+    { error: "A template subject or body is required.", path: ["bodyText"] },
+  );
+
+export const createMailTemplateSchema = mailTemplateContentSchema.strict();
+
+export const updateMailTemplateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100).optional(),
+    subject: z.string().max(500).optional(),
+    bodyText: z.string().max(500_000).optional(),
+    bodyHtml: z.string().max(500_000).optional(),
+    starred: z.boolean().optional(),
+    tagIds: mailTemplateTagIdsSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    error: "At least one template field must be updated.",
+  });
+
+export const listMailTemplatesQuerySchema = z
+  .object({
+    query: z.string().trim().max(500).optional(),
+    tagId: z.string().min(1).optional(),
+    starred: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(24),
+  })
+  .strict();
+
+export type CreateMailTemplateInput = z.infer<typeof createMailTemplateSchema>;
+export type UpdateMailTemplateInput = z.infer<typeof updateMailTemplateSchema>;
+export type ListMailTemplatesQuery = z.infer<
+  typeof listMailTemplatesQuerySchema
+>;
+
 // --- Inspoter labels and future-message rules (Q-15) ---
 
 export const mailLabelColorSchema = z
@@ -199,6 +258,30 @@ export const mailLabelColorSchema = z
   .transform((value) => value.trim().toUpperCase())
   .refine(isMailLabelColor, { error: "LABEL_COLOR_INVALID" })
   .transform((value) => value as MailLabelColor);
+
+export const createMailTemplateTagSchema = z
+  .object({
+    name: z.string().trim().min(1).max(40),
+    color: mailLabelColorSchema,
+  })
+  .strict();
+
+export const updateMailTemplateTagSchema = z
+  .object({
+    name: z.string().trim().min(1).max(40).optional(),
+    color: mailLabelColorSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    error: "At least one tag field must be updated.",
+  });
+
+export type CreateMailTemplateTagInput = z.infer<
+  typeof createMailTemplateTagSchema
+>;
+export type UpdateMailTemplateTagInput = z.infer<
+  typeof updateMailTemplateTagSchema
+>;
 
 const mailLabelNameSchema = z
   .string({ error: "LABEL_NAME_REQUIRED" })

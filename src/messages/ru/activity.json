@@ -43,6 +43,8 @@
   "entityMailAccount": "Почтовый аккаунт",
   "entityMailLabel": "Почтовая метка",
   "entityMailFilterRule": "Правило фильтрации",
+  "entityMailTemplate": "Почтовый шаблон",
+  "entityMailTemplateTag": "Тег почтового шаблона",
   "entityMail": "Письмо",
   "entityMessageCategory": "Категория сообщений",
   "entityChannel": "Канал",

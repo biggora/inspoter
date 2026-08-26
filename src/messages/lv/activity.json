@@ -43,6 +43,8 @@
   "entityMailAccount": "Pasta konts",
   "entityMailLabel": "Pasta etiķete",
   "entityMailFilterRule": "Filtra noteikums",
+  "entityMailTemplate": "Pasta veidne",
+  "entityMailTemplateTag": "Pasta veidnes birka",
   "entityMail": "E-pasts",
   "entityMessageCategory": "Ziņojuma kategorija",
   "entityChannel": "Kanāls",
