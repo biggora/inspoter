@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,31 @@ interface SetupSummary {
   edited: string[];
   providerConfigured: boolean;
   agentId?: string;
+  parts: {
+    agent: SetupAgentSummary | null;
+    skill: SetupSkillSummary | null;
+    daily: SetupScheduleSummary | null;
+    weekly: SetupScheduleSummary | null;
+  };
+}
+interface SetupAgentSummary {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+interface SetupSkillSummary {
+  id: string;
+  name: string;
+  isActive: boolean;
+  toolNames: string[];
+}
+interface SetupScheduleSummary {
+  id: string;
+  name: string;
+  isActive: boolean;
+  minuteOfDay?: number;
+  timeZone: string;
+  nextRunAt?: string;
 }
 interface BriefSummary {
   id: string;
@@ -354,17 +379,83 @@ function parseSetup(payload: unknown): SetupSummary | null {
   }
   const missing = field(payload, "missing");
   const edited = field(payload, "edited");
+  const parts = objectField(payload, "parts");
+  const agent = objectField(parts, "agent");
+  const skill = objectField(parts, "skill");
+  const daily = objectField(parts, "daily");
+  const weekly = objectField(parts, "weekly");
+  const parseStringArray = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  const parseAgent = (
+    value: Record<string, unknown> | undefined,
+  ): SetupAgentSummary | null => {
+    const id = stringField(value, "id");
+    const name = stringField(value, "name");
+    if (!id || !name) return null;
+    return { id, name, isActive: field(value, "isActive") === true };
+  };
+  const parseSkill = (
+    value: Record<string, unknown> | undefined,
+  ): SetupSkillSummary | null => {
+    const id = stringField(value, "id");
+    const name = stringField(value, "name");
+    if (!id || !name) return null;
+    return {
+      id,
+      name,
+      isActive: field(value, "isActive") === true,
+      toolNames: parseStringArray(field(value, "toolNames")),
+    };
+  };
+  const parseSchedule = (
+    value: Record<string, unknown> | undefined,
+  ): SetupScheduleSummary | null => {
+    const id = stringField(value, "id");
+    const name = stringField(value, "name");
+    const timeZone = stringField(value, "timeZone");
+    if (!id || !name || !timeZone) return null;
+    return {
+      id,
+      name,
+      isActive: field(value, "isActive") === true,
+      minuteOfDay: numberField(value, "minuteOfDay"),
+      timeZone,
+      nextRunAt: stringField(value, "nextRunAt"),
+    };
+  };
   return {
     status,
-    missing: Array.isArray(missing)
-      ? missing.filter((item): item is string => typeof item === "string")
-      : [],
-    edited: Array.isArray(edited)
-      ? edited.filter((item): item is string => typeof item === "string")
-      : [],
+    missing: parseStringArray(missing),
+    edited: parseStringArray(edited),
     providerConfigured: field(payload, "providerConfigured") === true,
     agentId: stringField(payload, "agentId"),
+    parts: {
+      agent: parseAgent(agent),
+      skill: parseSkill(skill),
+      daily: parseSchedule(daily),
+      weekly: parseSchedule(weekly),
+    },
   };
+}
+
+type AutomationPartStatus = "MISSING" | "EDITED" | "READY";
+
+function automationPartStatus(
+  setup: SetupSummary,
+  keys: readonly string[],
+): AutomationPartStatus {
+  if (keys.some((key) => setup.missing.includes(key))) return "MISSING";
+  if (keys.some((key) => setup.edited.includes(key))) return "EDITED";
+  return "READY";
+}
+
+function scheduleTime(schedule: SetupScheduleSummary | null): string | null {
+  if (!schedule || schedule.minuteOfDay === undefined) return null;
+  const hours = String(Math.floor(schedule.minuteOfDay / 60)).padStart(2, "0");
+  const minutes = String(schedule.minuteOfDay % 60).padStart(2, "0");
+  return `${hours}:${minutes} ${schedule.timeZone}`;
 }
 function parseBriefs(payload: unknown): BriefSummary[] {
   if (!Array.isArray(payload)) return [];
@@ -467,6 +558,7 @@ export function ManagementView({
   kanbanTargets: ManagementKanbanTarget[];
 }) {
   const t = useTranslations("management");
+  const format = useFormatter();
   const searchParams = useSearchParams();
   const [period, setPeriod] = useState<"DAILY" | "WEEKLY">("DAILY");
   const [bucket, setBucket] = useState<"active" | "deferred" | "resolved">(
@@ -733,6 +825,100 @@ export function ManagementView({
   const editorNeedsKanbanTarget = editorActionType === "CREATE_KANBAN_CARD";
   const editorHasValidKanbanTarget =
     !editorNeedsKanbanTarget || editorKanbanTarget !== null;
+  const setupValue = setup.state === "ready" ? setup.value : null;
+  const scheduleDescription = (schedule: SetupScheduleSummary | null) => {
+    const time = scheduleTime(schedule);
+    if (!schedule) return t("automationNotCreated");
+    if (!schedule.nextRunAt) return time ?? t("automationScheduleUnavailable");
+    const nextRunAt = new Date(schedule.nextRunAt);
+    const nextRun = Number.isNaN(nextRunAt.getTime())
+      ? null
+      : format.dateTime(nextRunAt, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+    return [time, nextRun ? t("automationNextRun", { value: nextRun }) : null]
+      .filter((value): value is string => Boolean(value))
+      .join(" · ");
+  };
+  const automationCards = setupValue
+    ? [
+        {
+          key: "provider",
+          icon: "ri-sparkling-2-line",
+          title: t("automationProviderTitle"),
+          name: setupValue.providerConfigured
+            ? t("automationProviderConfigured")
+            : t("automationProviderMissing"),
+          description: setupValue.providerConfigured
+            ? t("automationProviderReadyDescription")
+            : t("automationProviderMissingDescription"),
+          status: setupValue.providerConfigured
+            ? ("READY" as const)
+            : ("MISSING" as const),
+          href: "/settings/providers",
+          repair: false,
+        },
+        {
+          key: "agent",
+          icon: "ri-robot-2-line",
+          title: t("automationAgentTitle"),
+          name: setupValue.parts.agent?.name ?? t("automationNotCreated"),
+          description: t("automationAgentDescription"),
+          status: setupValue.parts.agent
+            ? automationPartStatus(setupValue, ["agent"])
+            : ("MISSING" as const),
+          href: setupValue.agentId ? `/agents/${setupValue.agentId}` : null,
+          repair: !setupValue.parts.agent,
+        },
+        {
+          key: "skill",
+          icon: "ri-lightbulb-line",
+          title: t("automationSkillTitle"),
+          name: setupValue.parts.skill?.name ?? t("automationNotCreated"),
+          description: setupValue.parts.skill
+            ? t("automationSkillTools", {
+                count: setupValue.parts.skill.toolNames.length,
+              })
+            : t("automationSkillDescription"),
+          status: setupValue.parts.skill
+            ? automationPartStatus(setupValue, ["skill", "attachment"])
+            : ("MISSING" as const),
+          href: setupValue.parts.skill ? "/agents/skills" : null,
+          repair:
+            !setupValue.parts.skill ||
+            setupValue.missing.includes("attachment"),
+        },
+        {
+          key: "daily",
+          icon: "ri-sun-line",
+          title: t("automationDailyTitle"),
+          name: setupValue.parts.daily?.name ?? t("automationNotCreated"),
+          description: scheduleDescription(setupValue.parts.daily),
+          status: setupValue.parts.daily
+            ? automationPartStatus(setupValue, ["daily"])
+            : ("MISSING" as const),
+          href: setupValue.agentId
+            ? `/agents/${setupValue.agentId}#schedules`
+            : null,
+          repair: !setupValue.parts.daily,
+        },
+        {
+          key: "weekly",
+          icon: "ri-calendar-2-line",
+          title: t("automationWeeklyTitle"),
+          name: setupValue.parts.weekly?.name ?? t("automationNotCreated"),
+          description: scheduleDescription(setupValue.parts.weekly),
+          status: setupValue.parts.weekly
+            ? automationPartStatus(setupValue, ["weekly"])
+            : ("MISSING" as const),
+          href: setupValue.agentId
+            ? `/agents/${setupValue.agentId}#schedules`
+            : null,
+          repair: !setupValue.parts.weekly,
+        },
+      ]
+    : [];
 
   return (
     <PageBody>
@@ -893,43 +1079,11 @@ export function ManagementView({
                           ? t("aiEdited")
                           : t("aiMissing")}
                   </div>
-                  {setup.value &&
-                  (setup.value.missing.length || setup.value.edited.length) ? (
-                    <p className="text-xs text-muted-foreground">
-                      {[...setup.value.missing, ...setup.value.edited].join(
-                        ", ",
-                      )}
-                    </p>
-                  ) : null}
+                  <p className="text-xs text-muted-foreground">
+                    {t("automationOverviewDescription")}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {setup.value?.status === "MISSING" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === "setup"}
-                      onClick={() => void configureAi(true)}
-                    >
-                      {t("aiRepair")}
-                    </Button>
-                  ) : null}
-                  {setup.value?.status === "EDITED" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      render={
-                        <Link
-                          href={
-                            setup.value.agentId
-                              ? `/agents/${setup.value.agentId}`
-                              : "/agents/agents"
-                          }
-                        />
-                      }
-                    >
-                      {t("openAutomation")}
-                    </Button>
-                  ) : null}
                   <Button
                     size="sm"
                     disabled={
@@ -943,6 +1097,82 @@ export function ManagementView({
                   </Button>
                 </div>
               </div>
+              {setupValue ? (
+                <div
+                  className="grid gap-3 md:grid-cols-2 xl:grid-cols-5"
+                  aria-label={t("automationComponentsLabel")}
+                >
+                  {automationCards.map((card) => (
+                    <div
+                      key={card.key}
+                      className="flex min-h-48 flex-col rounded-lg border bg-card p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                          <Icon name={card.icon} className="text-lg" />
+                        </span>
+                        <Badge
+                          variant={
+                            card.status === "READY"
+                              ? "success"
+                              : card.status === "EDITED"
+                                ? "warning"
+                                : "error"
+                          }
+                        >
+                          {card.status === "READY"
+                            ? t("automationStatusReady")
+                            : card.status === "EDITED"
+                              ? t("automationStatusEdited")
+                              : t("automationStatusMissing")}
+                        </Badge>
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {card.title}
+                        </div>
+                        <div className="mt-1 font-medium">{card.name}</div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {card.description}
+                        </p>
+                      </div>
+                      <div className="mt-auto pt-4">
+                        {card.repair ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === "setup"}
+                            onClick={() => void configureAi(true)}
+                          >
+                            <Icon
+                              name="ri-tools-line"
+                              aria-hidden
+                              data-icon="inline-start"
+                            />
+                            {t("aiRepair")}
+                          </Button>
+                        ) : card.href ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            render={<Link href={card.href} />}
+                            nativeButton={false}
+                          >
+                            <Icon
+                              name="ri-settings-3-line"
+                              aria-hidden
+                              data-icon="inline-start"
+                            />
+                            {card.key === "provider"
+                              ? t("automationConfigureProvider")
+                              : t("automationOpenSettings")}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {briefs.value.length ? (
                 <ul className="space-y-2" aria-label={t("briefHistoryLabel")}>
                   {briefs.value.slice(0, 5).map((brief) => (

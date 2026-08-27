@@ -256,7 +256,7 @@ export async function getExecutiveBriefSetupStatus(workspaceId: string) {
           systemKey: EXECUTIVE_BRIEF_AGENT_KEY,
         },
       },
-      select: { id: true, isActive: true, scopes: true },
+      select: { id: true, name: true, isActive: true, scopes: true },
     }),
     db.skill.findUnique({
       where: {
@@ -265,7 +265,12 @@ export async function getExecutiveBriefSetupStatus(workspaceId: string) {
           systemKey: EXECUTIVE_BRIEF_SKILL_KEY,
         },
       },
-      select: { id: true, isActive: true, toolNames: true },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        toolNames: true,
+      },
     }),
     db.agentSchedule.findUnique({
       where: {
@@ -274,7 +279,15 @@ export async function getExecutiveBriefSetupStatus(workspaceId: string) {
           systemKey: EXECUTIVE_BRIEF_DAILY_SCHEDULE_KEY,
         },
       },
-      select: { id: true, agentId: true, isActive: true },
+      select: {
+        id: true,
+        agentId: true,
+        name: true,
+        minuteOfDay: true,
+        timeZone: true,
+        isActive: true,
+        nextRunAt: true,
+      },
     }),
     db.agentSchedule.findUnique({
       where: {
@@ -283,7 +296,15 @@ export async function getExecutiveBriefSetupStatus(workspaceId: string) {
           systemKey: EXECUTIVE_BRIEF_WEEKLY_SCHEDULE_KEY,
         },
       },
-      select: { id: true, agentId: true, isActive: true },
+      select: {
+        id: true,
+        agentId: true,
+        name: true,
+        minuteOfDay: true,
+        timeZone: true,
+        isActive: true,
+        nextRunAt: true,
+      },
     }),
     db.providerCredential.count({
       where: { workspaceId, provider: { in: LLM_PROVIDER_TYPES } },
@@ -327,6 +348,39 @@ export async function getExecutiveBriefSetupStatus(workspaceId: string) {
     providerConfigured: providerCount > 0,
     agentId: agent?.id ?? null,
     skillId: skill?.id ?? null,
+    parts: {
+      agent: agent
+        ? { id: agent.id, name: agent.name, isActive: agent.isActive }
+        : null,
+      skill: skill
+        ? {
+            id: skill.id,
+            name: skill.name,
+            isActive: skill.isActive,
+            toolNames: skill.toolNames,
+          }
+        : null,
+      daily: daily
+        ? {
+            id: daily.id,
+            name: daily.name,
+            minuteOfDay: daily.minuteOfDay,
+            timeZone: daily.timeZone,
+            isActive: daily.isActive,
+            nextRunAt: daily.nextRunAt,
+          }
+        : null,
+      weekly: weekly
+        ? {
+            id: weekly.id,
+            name: weekly.name,
+            minuteOfDay: weekly.minuteOfDay,
+            timeZone: weekly.timeZone,
+            isActive: weekly.isActive,
+            nextRunAt: weekly.nextRunAt,
+          }
+        : null,
+    },
   };
 }
 

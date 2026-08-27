@@ -18,6 +18,88 @@ afterEach(() => {
 });
 
 describe("ManagementView", () => {
+  it("renders brief automation as actionable component cards", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "READY",
+              missing: [],
+              edited: [],
+              providerConfigured: true,
+              agentId: "agent-1",
+              skillId: "skill-1",
+              parts: {
+                agent: {
+                  id: "agent-1",
+                  name: "Executive brief agent",
+                  isActive: true,
+                },
+                skill: {
+                  id: "skill-1",
+                  name: "Executive brief workflow",
+                  isActive: true,
+                  toolNames: [
+                    "management_snapshot_get",
+                    "management_brief_publish",
+                  ],
+                },
+                daily: {
+                  id: "daily-1",
+                  name: "Executive brief (daily)",
+                  isActive: true,
+                  minuteOfDay: 480,
+                  daysOfWeek: [],
+                  timeZone: "Europe/Riga",
+                  nextRunAt: "2026-08-28T05:00:00.000Z",
+                },
+                weekly: {
+                  id: "weekly-1",
+                  name: "Executive brief (weekly)",
+                  isActive: true,
+                  minuteOfDay: 495,
+                  daysOfWeek: [1],
+                  timeZone: "Europe/Riga",
+                  nextRunAt: "2026-08-31T05:15:00.000Z",
+                },
+              },
+            }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return { ok: true, json: async () => [] };
+        }
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({ latestBrief: { headline: "Stable" } }),
+        };
+      }),
+    );
+
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+
+    expect(await screen.findByText("AI provider")).toBeVisible();
+    expect(screen.getByText("Executive brief agent")).toBeVisible();
+    expect(screen.getByText("Executive brief workflow")).toBeVisible();
+    expect(screen.getByText("Executive brief (daily)")).toBeVisible();
+    expect(screen.getByText("Executive brief (weekly)")).toBeVisible();
+    expect(screen.queryByText("agent, skill, daily, weekly")).toBeNull();
+    expect(screen.getByRole("link", { name: "Configure" })).toHaveAttribute(
+      "href",
+      "/settings/providers",
+    );
+    expect(
+      screen.getAllByRole("link", { name: "Open settings" })[0],
+    ).toHaveAttribute("href", "/agents/agent-1");
+  });
+
   it("renders independently loaded snapshot and decision summaries", async () => {
     vi.stubGlobal(
       "fetch",

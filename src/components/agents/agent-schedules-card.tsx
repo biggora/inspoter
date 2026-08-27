@@ -96,7 +96,7 @@ export function AgentSchedulesCard({
 
   return (
     <>
-      <Card>
+      <Card id="schedules" className="scroll-mt-6">
         <CardHeader>
           <CardTitle>{t("schedulesTitle")}</CardTitle>
           <CardDescription>{t("schedulesDescription")}</CardDescription>

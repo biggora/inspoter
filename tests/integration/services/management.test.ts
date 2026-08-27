@@ -198,6 +198,26 @@ describe("executive brief lifecycle", () => {
     ).resolves.toMatchObject({
       status: "EDITED",
       edited: expect.arrayContaining(["agent", "skill"]),
+      parts: {
+        agent: {
+          id: first.agent.id,
+          name: "Executive brief agent",
+          isActive: false,
+        },
+        skill: {
+          id: first.skill.id,
+          name: "Executive brief workflow",
+          isActive: false,
+        },
+        daily: {
+          name: "Executive brief (daily)",
+          minuteOfDay: 480,
+        },
+        weekly: {
+          name: "Executive brief (weekly)",
+          minuteOfDay: 495,
+        },
+      },
     });
   });
 
