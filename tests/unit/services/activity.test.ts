@@ -76,6 +76,23 @@ describe("activity entity labels", () => {
     expect(result.items[0].entityLabel).toBe("Hostinger Inspot");
   });
 
+  it("searches the action and entity type shown in the activity table", async () => {
+    mocks.activityFindMany.mockResolvedValue([]);
+
+    await list("workspace-1", { query: "llm_chat" });
+
+    expect(mocks.activityFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { action: { contains: "llm_chat", mode: "insensitive" } },
+            { entityType: { contains: "llm_chat", mode: "insensitive" } },
+          ]),
+        }),
+      }),
+    );
+  });
+
   it("resolves live workspace, mail label, and filter rule names", async () => {
     mocks.activityFindMany
       .mockResolvedValueOnce([

@@ -133,7 +133,9 @@ export function AgentDetailView({
 
           <Card>
             <CardHeader>
-              <CardTitle>{t("accessTitle")}</CardTitle>
+              <CardTitle>
+                <h2>{t("accessTitle")}</h2>
+              </CardTitle>
               <CardDescription>{t("accessDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -156,7 +158,9 @@ export function AgentDetailView({
 
           <Card>
             <CardHeader>
-              <CardTitle>{t("skillsTitle")}</CardTitle>
+              <CardTitle>
+                <h2>{t("skillsTitle")}</h2>
+              </CardTitle>
               <CardDescription>{t("skillsDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">

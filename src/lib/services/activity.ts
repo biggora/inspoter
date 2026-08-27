@@ -468,6 +468,8 @@ export async function list(
 
   const textCondition: Prisma.ActivityWhereInput[] | null = params.query
     ? [
+        { action: { contains: params.query, mode: "insensitive" } },
+        { entityType: { contains: params.query, mode: "insensitive" } },
         { entityLabel: { contains: params.query, mode: "insensitive" } },
         { details: { contains: params.query, mode: "insensitive" } },
         { operatorName: { contains: params.query, mode: "insensitive" } },

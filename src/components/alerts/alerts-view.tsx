@@ -465,7 +465,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                 <TableHead>{t("sourceColumn")}</TableHead>
                 <TableHead>{t("messageColumn")}</TableHead>
                 <TableHead>{t("timeColumn")}</TableHead>
-                <TableHead className="sr-only">{t("actionsColumn")}</TableHead>
+                <TableHead className="min-w-20">{t("actionsColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

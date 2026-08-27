@@ -10,5 +10,8 @@
   "paginationMorePages": "Vairāk lapu",
   "sidebarToggle": "Pārslēgt sānjoslu",
   "sidebarTitle": "Sānjosla",
-  "sidebarDescription": "Rāda mobilo sānjoslu."
+  "sidebarDescription": "Rāda mobilo sānjoslu.",
+  "notFoundTitle": "Lapa nav atrasta",
+  "notFoundDescription": "Pieprasītā lapa nepastāv vai ir pārvietota.",
+  "notFoundDashboardAction": "Atpakaļ uz paneļiem"
 }

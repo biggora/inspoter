@@ -257,6 +257,8 @@ describe("standardized form contracts", () => {
       />,
     );
 
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+
     const parent = screen.getByRole("combobox", {
       name: "Parent Category",
     });

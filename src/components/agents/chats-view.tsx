@@ -455,6 +455,7 @@ export function ChatsView({
                 <Textarea
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
+                  aria-label={t("chatComposerLabel")}
                   placeholder={t("chatComposerPlaceholder")}
                   disabled={
                     sending ||

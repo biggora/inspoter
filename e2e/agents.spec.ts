@@ -174,9 +174,16 @@ test("the section fits the viewport without horizontal overflow", async ({
   await row(page, agentName).getByRole("link", { name: agentName }).click();
 
   // The Access matrix is the widest thing the section renders: one row per
-  // domain with a Read and a Write box pushed to the right edge. Its caption
-  // is a CardTitle, not a heading element, so it is matched by text.
-  await expect(page.getByText("Access", { exact: true })).toBeVisible();
+  // domain with a Read and a Write box pushed to the right edge.
+  await expect(
+    page.getByRole("heading", { name: "Access", level: 2 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Skills", level: 2 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Attached", level: 3 }),
+  ).toBeVisible();
 
   for (const path of [
     "/agents",

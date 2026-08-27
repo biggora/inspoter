@@ -98,7 +98,9 @@ export function AgentSchedulesCard({
     <>
       <Card id="schedules" className="scroll-mt-6">
         <CardHeader>
-          <CardTitle>{t("schedulesTitle")}</CardTitle>
+          <CardTitle>
+            <h2>{t("schedulesTitle")}</h2>
+          </CardTitle>
           <CardDescription>{t("schedulesDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

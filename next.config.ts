@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    globalNotFound: true,
+  },
   // Mail transport libs use Node APIs/dynamic requires that must not be
   // bundled by Turbopack (plan §2) — keep them external at runtime.
   // nodemailer is excluded: imap-smtp.ts imports the internal

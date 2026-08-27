@@ -56,8 +56,8 @@ export async function MarketingHomePage() {
         reverse
         visual={
           <div className="rounded-xl border border-foreground-800/20 bg-background-900/60 p-4">
-            <div className="flex gap-3">
-              <div className="w-1/4 space-y-2 border-r border-foreground-800/20 pr-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-3">
+              <div className="min-w-0 space-y-2 border-r border-foreground-800/20 pr-3">
                 {mailFolders.map((folder, index) => (
                   <div
                     key={folder}
@@ -67,7 +67,7 @@ export async function MarketingHomePage() {
                   </div>
                 ))}
               </div>
-              <div className="w-3/4 space-y-2">
+              <div className="min-w-0 space-y-2">
                 {[
                   {
                     from: "deploy@ci.internal",

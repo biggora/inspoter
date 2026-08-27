@@ -10,5 +10,8 @@
   "paginationMorePages": "Больше страниц",
   "sidebarToggle": "Переключить боковую панель",
   "sidebarTitle": "Боковая панель",
-  "sidebarDescription": "Отображает мобильную боковую панель."
+  "sidebarDescription": "Отображает мобильную боковую панель.",
+  "notFoundTitle": "Страница не найдена",
+  "notFoundDescription": "Запрошенная страница не существует или была перемещена.",
+  "notFoundDashboardAction": "К панелям"
 }

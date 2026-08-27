@@ -194,6 +194,7 @@
   "newChatTitle": "Sākt sarunu",
   "newChatDescription": "Izvēlieties aktīvu aģentu un nosūtiet pirmo ziņojumu.",
   "selectAgentLabel": "Aģents",
+  "chatComposerLabel": "Ziņojums aģentam",
   "chatComposerPlaceholder": "Ziņojums aģentam…",
   "sendMessageButton": "Nosūtīt ziņojumu",
   "chatMessageQueuedToast": "Ziņojums ievietots rindā",
