@@ -799,4 +799,44 @@ describe("resolveWidgetData", () => {
       `${prefix}-subject-1`,
     ]);
   });
+
+  it("keeps one row per account when the same messageId is shared across accounts", async () => {
+    // A Message-ID is only unique within the mailbox that stored it: a
+    // mailing-list post or a colleague CC'd on the same external email lands
+    // in two different connected accounts with the identical messageId. Those
+    // are two distinct inbox events, not duplicates of one message, so the
+    // dedup key must be scoped per account.
+    const prefix = `mail-cross-account-${randomUUID()}`;
+    const accountA = await createMailAccountWithFolders(`${prefix}-a`);
+    const accountB = await createMailAccountWithFolders(`${prefix}-b`);
+    const sharedMessageId = `<${prefix}@example.com>`;
+
+    for (const { account, folders } of [accountA, accountB]) {
+      await db.mailItem.create({
+        data: {
+          workspaceId,
+          accountId: account.id,
+          accountWorkspaceId: workspaceId,
+          folderId: folders[0].id,
+          folderWorkspaceId: workspaceId,
+          messageId: sharedMessageId,
+          fromAddress: "sender@example.com",
+          subject: `${prefix}-subject`,
+          bodyText: "body",
+          receivedAt: new Date("2026-08-19T08:31:00.000Z"),
+        },
+      });
+    }
+
+    // No accountId filter: the tile aggregates every connected account.
+    const payload = await resolveMailWidget({ unreadOnly: false, limit: 50 });
+
+    const matching = payload.items.filter(
+      (item) => item.subject === `${prefix}-subject`,
+    );
+    expect(matching).toHaveLength(2);
+    expect(new Set(matching.map((item) => item.accountId))).toEqual(
+      new Set([accountA.account.id, accountB.account.id]),
+    );
+  });
 });

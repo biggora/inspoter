@@ -291,9 +291,15 @@ function filterBySelection<T>(
 // (INBOX, [Gmail]/All Mail, [Gmail]/Important, ...) — correct for the
 // per-folder mail list, but the Mail tile aggregates across every folder, so
 // the same message rendered as several identical rows. Over-fetch (same
-// trade-off as overFetchFor above) and collapse by messageId — falling back
-// to id for the webhook-ingested rows that have none — before trimming to
-// `limit`.
+// trade-off as overFetchFor above) and collapse by (accountId, messageId) —
+// falling back to id for the webhook-ingested rows that have none — before
+// trimming to `limit`.
+//
+// The key is scoped per account, not global: a Message-ID is only guaranteed
+// unique within the mailbox that stored it. Two different connected accounts
+// can genuinely each hold a MailItem with the same messageId — a mailing list
+// post, or a colleague CC'd on the same external email — and those are two
+// distinct inbox events the tile must keep, not one message to collapse.
 const MAIL_WIDGET_OVERFETCH_FACTOR = 4;
 
 async function listDistinctMailItems(
@@ -308,7 +314,7 @@ async function listDistinctMailItems(
   const seen = new Set<string>();
   const distinct: mailService.MailListItem[] = [];
   for (const item of result.items) {
-    const key = item.messageId ?? item.id;
+    const key = `${item.accountId}:${item.messageId ?? item.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
     distinct.push(item);
