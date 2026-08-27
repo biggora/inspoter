@@ -14,7 +14,10 @@ import { login } from "./utils/auth";
 // which makes `import.meta.url` a load-time SyntaxError.
 const spec = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), "specs/openapi.json"), "utf8"),
-) as { paths: Record<string, Record<string, unknown>> };
+) as {
+  info: { version: string; license?: unknown };
+  paths: Record<string, Record<string, unknown>>;
+};
 const expectedOperations: Record<string, string[]> = Object.fromEntries(
   Object.entries(spec.paths).map(([name, item]) => [
     name,
@@ -145,6 +148,89 @@ test("Swagger reference does not nest a second main landmark", async ({
   await expect(page.locator("main#operations")).toHaveCount(0);
   await expect(page.locator(".swagger-ui div#operations")).toHaveCount(1);
   await expect(page.getByRole("main")).toHaveCount(1);
+});
+
+test("Swagger reference exposes current metadata and accessible controls", async ({
+  page,
+}) => {
+  expect(spec.info.version).toBe("0.5.7");
+  expect(spec.info.license).toBeUndefined();
+
+  await login(page);
+  await page.goto(API_DOCS_PATH);
+  await expect(page.locator(".swagger-ui")).toBeVisible();
+  await expect(page.locator(".swagger-ui .version")).toContainText("0.5.7");
+  await expect(page.getByText("UNLICENSED", { exact: true })).toHaveCount(0);
+
+  const contrastRatio = async (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((element) => {
+        const parse = (color: string) =>
+          color
+            .match(/[\d.]+/g)!
+            .slice(0, 3)
+            .map(Number)
+            .map((channel) => channel / 255)
+            .map((channel) =>
+              channel <= 0.04045
+                ? channel / 12.92
+                : ((channel + 0.055) / 1.055) ** 2.4,
+            );
+        const luminance = (color: string) => {
+          const [red, green, blue] = parse(color);
+          return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+        };
+        const styles = getComputedStyle(element);
+        const foreground = luminance(styles.color);
+        const background = luminance(styles.backgroundColor);
+        return (
+          (Math.max(foreground, background) + 0.05) /
+          (Math.min(foreground, background) + 0.05)
+        );
+      });
+
+  expect(
+    await contrastRatio(".swagger-ui .btn.authorize"),
+  ).toBeGreaterThanOrEqual(4.5);
+  for (const method of ["get", "post", "put", "delete", "patch"]) {
+    const badge = `.swagger-ui .opblock-${method} .opblock-summary-method`;
+    if ((await page.locator(badge).count()) > 0) {
+      expect(await contrastRatio(badge)).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+
+  const overlaps = await page.locator(".opblock-summary").evaluateAll((rows) =>
+    rows.flatMap((row, rowIndex) => {
+      const boxes = Array.from(row.children).map((child) =>
+        child.getBoundingClientRect(),
+      );
+      return boxes.flatMap((box, index) =>
+        boxes
+          .slice(index + 1)
+          .flatMap((other) =>
+            box.right > other.left &&
+            other.right > box.left &&
+            box.bottom > other.top &&
+            other.bottom > box.top
+              ? [`${rowIndex}:${index}`]
+              : [],
+          ),
+      );
+    }),
+  );
+  expect(overlaps).toEqual([]);
+
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  const documentationBackground = await page
+    .locator('[data-slot="swagger-documentation"]')
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  const schemeBackground = await page
+    .locator(".swagger-ui .scheme-container")
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(documentationBackground).not.toBe("rgb(255, 255, 255)");
+  expect(schemeBackground).not.toBe("rgb(255, 255, 255)");
 });
 
 test("Try It Out sends only synthetic explicit auth and does not persist it", async ({

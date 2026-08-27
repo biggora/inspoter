@@ -149,7 +149,10 @@ export function SwaggerDocumentation({
   }, []);
 
   return (
-    <div className="min-w-0 overflow-x-auto rounded-lg border border-background-200 bg-white text-black">
+    <div
+      data-slot="swagger-documentation"
+      className="min-w-0 overflow-x-auto rounded-lg border border-background-200 bg-card text-card-foreground"
+    >
       <Script
         src={SWAGGER_UI_SCRIPT}
         strategy="afterInteractive"

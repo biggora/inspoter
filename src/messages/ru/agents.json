@@ -194,6 +194,7 @@
   "newChatTitle": "Начать разговор",
   "newChatDescription": "Выберите активного агента и отправьте первое сообщение.",
   "selectAgentLabel": "Агент",
+  "chatComposerLabel": "Сообщение агенту",
   "chatComposerPlaceholder": "Сообщение агенту…",
   "sendMessageButton": "Отправить сообщение",
   "chatMessageQueuedToast": "Сообщение поставлено в очередь",

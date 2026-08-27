@@ -142,7 +142,7 @@ test("agent chat uses indexed Notes and falls back without stale chunks", async 
       page.getByRole("button", { name: "Skills", exact: true }),
     ).toBeVisible();
     await page
-      .getByPlaceholder("Message the agent…")
+      .getByRole("textbox", { name: "Message the agent", exact: true })
       .fill("deployment recovery");
     await page.getByRole("button", { name: "Send message" }).click();
     await page.waitForURL(/\/agents\/chats\/[^/]+$/);
@@ -161,7 +161,7 @@ test("agent chat uses indexed Notes and falls back without stale chunks", async 
       },
     });
     await page
-      .getByPlaceholder("Message the agent…")
+      .getByRole("textbox", { name: "Message the agent", exact: true })
       .fill("rotated emergency key");
     await page.getByRole("button", { name: "Send message" }).click();
     await expect(page.getByText("Full-text only", { exact: true })).toBeVisible(

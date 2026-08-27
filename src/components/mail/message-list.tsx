@@ -53,6 +53,12 @@ function formatListDate(iso: string, format: Format): string {
   );
 }
 
+function formatSnippet(snippet: string): string {
+  return snippet
+    .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1");
+}
+
 export interface MessageListProps {
   items: MailListItemDto[];
   loading: boolean;
@@ -332,7 +338,7 @@ export function MessageList({
                       </span>
                       {item.snippet && (
                         <span className="truncate text-xs text-foreground-400">
-                          {item.snippet}
+                          {formatSnippet(item.snippet)}
                         </span>
                       )}
                     </span>

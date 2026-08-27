@@ -24,7 +24,7 @@ export function FeatureDeepDive({
           reverse && "lg:flex-row-reverse",
         )}
       >
-        <div className="flex-1 space-y-6">
+        <div className="w-full min-w-0 flex-1 space-y-6">
           <span className="text-sm font-medium uppercase tracking-wider text-primary-400">
             {title}
           </span>
@@ -47,7 +47,7 @@ export function FeatureDeepDive({
             ))}
           </ul>
         </div>
-        <div className="flex-1">{visual}</div>
+        <div className="w-full min-w-0 flex-1">{visual}</div>
       </div>
     </section>
   );

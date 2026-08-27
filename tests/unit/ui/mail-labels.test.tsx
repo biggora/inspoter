@@ -761,6 +761,36 @@ describe("Mail label chips", () => {
     expect(sortControl).not.toHaveTextContent("▼");
   });
 
+  it("renders Markdown links as plain text in message previews", () => {
+    renderWithIntl(
+      <MessageList
+        items={[{ ...ITEM, snippet: "[Meta](https://example.com) update" }]}
+        loading={false}
+        error={null}
+        onRetry={vi.fn()}
+        selectedMessageId={null}
+        onSelectMessage={vi.fn()}
+        searchInput=""
+        onSearchChange={vi.fn()}
+        unreadOnly={false}
+        onUnreadOnlyChange={vi.fn()}
+        sort="desc"
+        onSortChange={vi.fn()}
+        page={1}
+        hasPrevious={false}
+        hasNext={false}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        hasActiveFilters={false}
+        isWebhookAccount
+        onOpenSidebar={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Meta update")).toBeInTheDocument();
+    expect(screen.queryByText(/\[Meta\]\(/)).not.toBeInTheDocument();
+  });
+
   it("shows an accessible attachment marker in the message list", () => {
     renderWithIntl(
       <MessageList

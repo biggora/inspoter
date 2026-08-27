@@ -194,6 +194,7 @@
   "newChatTitle": "Start a conversation",
   "newChatDescription": "Choose an active agent and send the first message.",
   "selectAgentLabel": "Agent",
+  "chatComposerLabel": "Message the agent",
   "chatComposerPlaceholder": "Message the agent…",
   "sendMessageButton": "Send message",
   "chatMessageQueuedToast": "Message queued",
