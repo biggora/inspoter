@@ -100,6 +100,90 @@ describe("ManagementView", () => {
     ).toHaveAttribute("href", "/agents/agent-1");
   });
 
+  it("renders brief items as cards with evidence actions", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/management/briefs/brief-1")) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: "brief-1",
+              headline: "Overnight incident resolved",
+              summary: "All affected services recovered.",
+              highlights: [
+                {
+                  title: "Full recovery confirmed",
+                  detail: "All providers reported reachable again.",
+                  evidenceRefs: ["alert:alert-1", "service:service-1"],
+                },
+              ],
+              risks: [
+                {
+                  title: "Simultaneous timeouts",
+                  detail: "Three services timed out together.",
+                  evidenceRefs: ["alert:alert-2"],
+                },
+              ],
+              opportunities: [],
+            }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return {
+            ok: true,
+            json: async () => [
+              {
+                id: "brief-1",
+                headline: "Overnight incident resolved",
+                summary: "All affected services recovered.",
+              },
+            ],
+          };
+        }
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "MISSING",
+              missing: ["agent", "skill", "daily", "weekly"],
+              edited: [],
+              providerConfigured: false,
+              parts: {
+                agent: null,
+                skill: null,
+                daily: null,
+                weekly: null,
+              },
+            }),
+          };
+        }
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({ latestBrief: { headline: "Stable" } }),
+        };
+      }),
+    );
+
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "View details" }),
+    );
+
+    expect(await screen.findByText("Full recovery confirmed")).toBeVisible();
+    expect(screen.getByText("Simultaneous timeouts")).toBeVisible();
+    expect(screen.queryByText(/"evidenceRefs"/)).toBeNull();
+    expect(
+      screen.getAllByRole("link", { name: "Source 1" })[0],
+    ).toHaveAttribute("href", "/alerts?alert=alert-1");
+    expect(screen.getByText("No items in this section.")).toBeVisible();
+  });
+
   it("renders independently loaded snapshot and decision summaries", async () => {
     vi.stubGlobal(
       "fetch",

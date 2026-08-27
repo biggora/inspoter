@@ -121,9 +121,14 @@ interface BriefSummary {
   publishedAt?: string;
 }
 interface BriefDetail extends BriefSummary {
-  highlights: unknown[];
-  risks: unknown[];
-  opportunities: unknown[];
+  highlights: BriefItem[];
+  risks: BriefItem[];
+  opportunities: BriefItem[];
+}
+interface BriefItem {
+  title: string;
+  detail: string;
+  evidenceRefs: string[];
 }
 
 function field(value: unknown, name: string): unknown {
@@ -476,15 +481,33 @@ function parseBriefs(payload: unknown): BriefSummary[] {
 function parseBriefDetail(payload: unknown): BriefDetail | null {
   const brief = parseBriefs([payload])[0];
   if (!brief) return null;
-  const array = (name: string) => {
+  const items = (name: string): BriefItem[] => {
     const value = field(payload, name);
-    return Array.isArray(value) ? value : [];
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((entry) => {
+      const title = stringField(entry, "title");
+      const detail = stringField(entry, "detail");
+      const evidenceRefs = field(entry, "evidenceRefs");
+      if (!title || !detail) return [];
+      return [
+        {
+          title,
+          detail,
+          evidenceRefs: Array.isArray(evidenceRefs)
+            ? evidenceRefs.filter(
+                (reference): reference is string =>
+                  typeof reference === "string" && Boolean(reference.trim()),
+              )
+            : [],
+        },
+      ];
+    });
   };
   return {
     ...brief,
-    highlights: array("highlights"),
-    risks: array("risks"),
-    opportunities: array("opportunities"),
+    highlights: items("highlights"),
+    risks: items("risks"),
+    opportunities: items("opportunities"),
   };
 }
 
@@ -1207,30 +1230,99 @@ export function ManagementView({
                   description={t("briefDetailErrorDescription")}
                 />
               ) : briefDetail.value ? (
-                <div className="space-y-3 rounded-lg border p-4">
-                  <div className="font-medium">
-                    {briefDetail.value.headline}
-                  </div>
+                <article className="space-y-5 rounded-lg border p-4">
+                  <h3 className="font-medium">{briefDetail.value.headline}</h3>
                   {briefDetail.value.summary ? (
                     <p className="text-sm text-muted-foreground">
                       {briefDetail.value.summary}
                     </p>
                   ) : null}
                   {[
-                    ["highlights", briefDetail.value.highlights],
-                    ["risks", briefDetail.value.risks],
-                    ["opportunities", briefDetail.value.opportunities],
-                  ].map(([name, items]) => (
-                    <div key={String(name)}>
-                      <div className="text-xs font-medium uppercase text-muted-foreground">
-                        {t(String(name))}
+                    {
+                      name: "highlights" as const,
+                      icon: "ri-checkbox-circle-line",
+                      items: briefDetail.value.highlights,
+                    },
+                    {
+                      name: "risks" as const,
+                      icon: "ri-error-warning-line",
+                      items: briefDetail.value.risks,
+                    },
+                    {
+                      name: "opportunities" as const,
+                      icon: "ri-lightbulb-line",
+                      items: briefDetail.value.opportunities,
+                    },
+                  ].map((section) => (
+                    <section key={section.name}>
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          name={section.icon}
+                          className="text-muted-foreground"
+                        />
+                        <h4 className="text-sm font-medium">
+                          {t(section.name)}
+                        </h4>
+                        <Badge variant="outline">{section.items.length}</Badge>
                       </div>
-                      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">
-                        {JSON.stringify(items, null, 2)}
-                      </pre>
-                    </div>
+                      {section.items.length ? (
+                        <ul className="mt-2 grid gap-2 lg:grid-cols-2">
+                          {section.items.map((item, itemIndex) => (
+                            <li
+                              key={`${section.name}-${itemIndex}-${item.title}`}
+                              className="rounded-lg border bg-card p-3"
+                            >
+                              <h5 className="font-medium">{item.title}</h5>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {item.detail}
+                              </p>
+                              {item.evidenceRefs.length ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {item.evidenceRefs.map(
+                                    (reference, referenceIndex) => {
+                                      const href = evidenceHref(reference);
+                                      return href ? (
+                                        <Button
+                                          key={reference}
+                                          size="xs"
+                                          variant="outline"
+                                          render={<Link href={href} />}
+                                          nativeButton={false}
+                                        >
+                                          <Icon
+                                            name="ri-links-line"
+                                            aria-hidden
+                                            data-icon="inline-start"
+                                          />
+                                          {t("briefSource", {
+                                            number: referenceIndex + 1,
+                                          })}
+                                        </Button>
+                                      ) : (
+                                        <Badge
+                                          key={reference}
+                                          variant="outline"
+                                        >
+                                          {t("briefSourceUnavailable", {
+                                            number: referenceIndex + 1,
+                                          })}
+                                        </Badge>
+                                      );
+                                    },
+                                  )}
+                                </div>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {t("briefSectionEmpty")}
+                        </p>
+                      )}
+                    </section>
                   ))}
-                </div>
+                </article>
               ) : null}
             </>
           )}
