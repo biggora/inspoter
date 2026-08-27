@@ -30,6 +30,7 @@ import {
   WORKSPACE_HEADER_NAME,
 } from "@/lib/client/active-workspace";
 import { Link } from "@/i18n/navigation";
+import type { ManagementKanbanTarget } from "@/lib/services/management";
 
 type LoadState<T> =
   { state: "loading" } | { state: "ready"; value: T } | { state: "error" };
@@ -112,6 +113,114 @@ function numberField(value: unknown, name: string): number | undefined {
   return typeof result === "number" && Number.isFinite(result)
     ? result
     : undefined;
+}
+
+function objectField(
+  value: unknown,
+  name: string,
+): Record<string, unknown> | undefined {
+  const result = field(value, name);
+  return typeof result === "object" && result !== null && !Array.isArray(result)
+    ? Object.fromEntries(Object.entries(result))
+    : undefined;
+}
+
+interface KanbanTargetMatch {
+  board: ManagementKanbanTarget;
+  column: ManagementKanbanTarget["columns"][number];
+}
+
+function findKanbanTarget(
+  targets: readonly ManagementKanbanTarget[],
+  columnId: string | undefined,
+): KanbanTargetMatch | null {
+  if (!columnId) return null;
+  for (const board of targets) {
+    const column = board.columns.find((candidate) => candidate.id === columnId);
+    if (column) return { board, column };
+  }
+  return null;
+}
+
+function findUniqueKanbanTargetByName(
+  targets: readonly ManagementKanbanTarget[],
+  columnName: string | undefined,
+): KanbanTargetMatch | null {
+  if (!columnName?.trim()) return null;
+  const normalized = columnName.trim().toLocaleLowerCase();
+  const matches = targets.flatMap((board) =>
+    board.columns
+      .filter((column) => column.name.toLocaleLowerCase() === normalized)
+      .map((column) => ({ board, column })),
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function parseActionEditor(value: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? Object.fromEntries(Object.entries(parsed))
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function withKanbanColumnId(value: string, columnId: string): string {
+  const action = parseActionEditor(value);
+  if (!action) return value;
+  const payload = objectField(action, "payload") ?? {};
+  return JSON.stringify(
+    { ...action, payload: { ...payload, columnId } },
+    null,
+    2,
+  );
+}
+
+function prepareActionEditor(
+  decision: DecisionSummary | null,
+  targets: readonly ManagementKanbanTarget[],
+): { json: string; boardId: string } {
+  if (!decision?.actionType) return { json: "", boardId: "" };
+  const action = {
+    type: decision.actionType,
+    payload: decision.actionPayload ?? {},
+  };
+  if (decision.actionType !== "CREATE_KANBAN_CARD") {
+    return { json: JSON.stringify(action, null, 2), boardId: "" };
+  }
+  const columnId = stringField(decision.actionPayload, "columnId");
+  const target =
+    findKanbanTarget(targets, columnId) ??
+    findUniqueKanbanTargetByName(targets, columnId);
+  if (!target) return { json: JSON.stringify(action, null, 2), boardId: "" };
+  return {
+    json: JSON.stringify(
+      {
+        ...action,
+        payload: {
+          ...objectField(action, "payload"),
+          columnId: target.column.id,
+        },
+      },
+      null,
+      2,
+    ),
+    boardId: target.board.id,
+  };
+}
+
+function hasValidKanbanTarget(
+  decision: Pick<DecisionSummary, "actionType" | "actionPayload">,
+  targets: readonly ManagementKanbanTarget[],
+): boolean {
+  if (decision.actionType !== "CREATE_KANBAN_CARD") return true;
+  return Boolean(
+    findKanbanTarget(targets, stringField(decision.actionPayload, "columnId")),
+  );
 }
 function parseSnapshot(payload: unknown): SnapshotSummary | null {
   const brief = field(payload, "latestBrief") ?? field(payload, "brief");
@@ -331,7 +440,11 @@ function tomorrowIso(): string {
   return new Date(Date.now() + 86_400_000).toISOString();
 }
 
-export function ManagementView() {
+export function ManagementView({
+  kanbanTargets,
+}: {
+  kanbanTargets: ManagementKanbanTarget[];
+}) {
   const t = useTranslations("management");
   const searchParams = useSearchParams();
   const [period, setPeriod] = useState<"DAILY" | "WEEKLY">("DAILY");
@@ -360,6 +473,7 @@ export function ManagementView() {
     },
   );
   const [actionJson, setActionJson] = useState("");
+  const [kanbanBoardId, setKanbanBoardId] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState(false);
   const [title, setTitle] = useState("");
@@ -436,15 +550,9 @@ export function ManagementView() {
         if (cancelled) return;
         const value = parseDecisionDetail(payload);
         setDecisionDetail({ state: "ready", value });
-        setActionJson(
-          value?.actionType
-            ? JSON.stringify(
-                { type: value.actionType, payload: value.actionPayload ?? {} },
-                null,
-                2,
-              )
-            : "",
-        );
+        const editor = prepareActionEditor(value, kanbanTargets);
+        setActionJson(editor.json);
+        setKanbanBoardId(editor.boardId);
       })
       .catch(() => {
         if (!cancelled) setDecisionDetail({ state: "error" });
@@ -452,7 +560,7 @@ export function ManagementView() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, [kanbanTargets, searchParams]);
 
   async function createDecision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -509,15 +617,9 @@ export function ManagementView() {
         await requestJson(`/api/management/decisions/${id}`),
       );
       setDecisionDetail({ state: "ready", value });
-      setActionJson(
-        value?.actionType
-          ? JSON.stringify(
-              { type: value.actionType, payload: value.actionPayload ?? {} },
-              null,
-              2,
-            )
-          : "",
-      );
+      const editor = prepareActionEditor(value, kanbanTargets);
+      setActionJson(editor.json);
+      setKanbanBoardId(editor.boardId);
     } catch {
       setDecisionDetail({ state: "error" });
     }
@@ -592,6 +694,18 @@ export function ManagementView() {
       setBusyId(null);
     }
   }
+
+  const editorAction = parseActionEditor(actionJson);
+  const editorActionType = stringField(editorAction, "type");
+  const editorPayload = objectField(editorAction, "payload");
+  const editorColumnId = stringField(editorPayload, "columnId");
+  const editorKanbanTarget = findKanbanTarget(kanbanTargets, editorColumnId);
+  const selectedKanbanBoardId = editorKanbanTarget?.board.id ?? kanbanBoardId;
+  const selectedKanbanBoard =
+    kanbanTargets.find((board) => board.id === selectedKanbanBoardId) ?? null;
+  const editorNeedsKanbanTarget = editorActionType === "CREATE_KANBAN_CARD";
+  const editorHasValidKanbanTarget =
+    !editorNeedsKanbanTarget || editorKanbanTarget !== null;
 
   return (
     <PageBody>
@@ -905,109 +1019,131 @@ export function ManagementView() {
             />
           ) : (
             <ul className="space-y-3" aria-label={t("decisionsListLabel")}>
-              {decisions.value.map((decision) => (
-                <li
-                  key={decision.id}
-                  className="space-y-3 rounded-lg border p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium">{decision.title}</div>
-                      {decision.actionType ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {t("actionPreview")}: {decision.actionType}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant="outline">
-                        {t(priorityKey(decision.priority))}
-                      </Badge>
-                      <Badge variant="secondary">
-                        {t(statusKey(decision.status))}
-                      </Badge>
-                      {decision.executionStatus ? (
+              {decisions.value.map((decision) => {
+                const targetValid = hasValidKanbanTarget(
+                  decision,
+                  kanbanTargets,
+                );
+                return (
+                  <li
+                    key={decision.id}
+                    className="space-y-3 rounded-lg border p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">{decision.title}</div>
+                        {decision.actionType ? (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {t("actionPreview")}: {decision.actionType}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
                         <Badge variant="outline">
-                          {decision.executionStatus}
+                          {t(priorityKey(decision.priority))}
                         </Badge>
-                      ) : null}
+                        <Badge variant="secondary">
+                          {t(statusKey(decision.status))}
+                        </Badge>
+                        {decision.executionStatus ? (
+                          <Badge variant="outline">
+                            {decision.executionStatus}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                  {decision.lastExecutionError ? (
-                    <p className="text-sm text-destructive">
-                      {decision.lastExecutionError}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === decision.id}
-                      onClick={() => void showDecision(decision.id)}
-                    >
-                      {t("viewDetails")}
-                    </Button>
-                    {decision.status === "OPEN" ||
-                    decision.status === "DEFERRED" ? (
-                      <>
-                        <Button
-                          size="sm"
-                          disabled={busyId === decision.id}
-                          onClick={() => void mutate(decision, "APPROVE")}
-                        >
-                          {t("approve")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busyId === decision.id}
-                          onClick={() => void mutate(decision, "DEFER")}
-                        >
-                          {t("defer")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={busyId === decision.id}
-                          onClick={() => void mutate(decision, "REJECT")}
-                        >
-                          {t("reject")}
-                        </Button>
-                      </>
+                    {!targetValid ? (
+                      <p className="text-sm text-destructive">
+                        {t("kanbanTargetRequired")}
+                      </p>
+                    ) : decision.lastExecutionError ? (
+                      <p className="text-sm text-destructive">
+                        {decision.lastExecutionError}
+                      </p>
                     ) : null}
-                    {decision.executionStatus === "READY" ||
-                    decision.executionStatus === "FAILED" ? (
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={busyId === decision.id}
-                        onClick={() => void mutate(decision, "RETRY")}
+                        onClick={() => void showDecision(decision.id)}
                       >
-                        {t("retry")}
+                        {t("viewDetails")}
                       </Button>
-                    ) : null}
-                    {decision.targetAvailability === "UNAVAILABLE" ? (
-                      <Badge variant="outline">{t("resultUnavailable")}</Badge>
-                    ) : decision.liveTargetHref || decision.resultHref ? (
-                      <Button
-                        size="sm"
-                        variant="link"
-                        render={
-                          <Link
-                            href={
-                              decision.liveTargetHref ??
-                              decision.resultHref ??
-                              "/management"
-                            }
-                          />
-                        }
-                      >
-                        {t("openResult")}
-                      </Button>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
+                      {decision.status === "OPEN" ||
+                      decision.status === "DEFERRED" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            disabled={busyId === decision.id || !targetValid}
+                            onClick={() => void mutate(decision, "APPROVE")}
+                          >
+                            {t("approve")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === decision.id}
+                            onClick={() => void mutate(decision, "DEFER")}
+                          >
+                            {t("defer")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={busyId === decision.id}
+                            onClick={() => void mutate(decision, "REJECT")}
+                          >
+                            {t("reject")}
+                          </Button>
+                        </>
+                      ) : null}
+                      {!targetValid &&
+                      decision.actionType === "CREATE_KANBAN_CARD" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === decision.id}
+                          onClick={() => void showDecision(decision.id)}
+                        >
+                          {t("chooseKanbanTarget")}
+                        </Button>
+                      ) : decision.executionStatus === "READY" ||
+                        decision.executionStatus === "FAILED" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === decision.id}
+                          onClick={() => void mutate(decision, "RETRY")}
+                        >
+                          {t("retry")}
+                        </Button>
+                      ) : null}
+                      {decision.targetAvailability === "UNAVAILABLE" ? (
+                        <Badge variant="outline">
+                          {t("resultUnavailable")}
+                        </Badge>
+                      ) : decision.liveTargetHref || decision.resultHref ? (
+                        <Button
+                          size="sm"
+                          variant="link"
+                          render={
+                            <Link
+                              href={
+                                decision.liveTargetHref ??
+                                decision.resultHref ??
+                                "/management"
+                              }
+                            />
+                          }
+                        >
+                          {t("openResult")}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {decisionDetail.state === "loading" ? (
@@ -1066,8 +1202,86 @@ export function ManagementView() {
               decisionDetail.value.executionStatus === "FAILED" ||
               decisionDetail.value.executionStatus === "NEEDS_REBIND" ? (
                 <div className="space-y-2">
+                  {editorNeedsKanbanTarget ? (
+                    kanbanTargets.length ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor="management-kanban-board">
+                            {t("kanbanBoardLabel")}
+                          </FieldLabel>
+                          <NativeSelect
+                            id="management-kanban-board"
+                            value={selectedKanbanBoardId}
+                            onChange={(event) => {
+                              const boardId = event.target.value;
+                              const board = kanbanTargets.find(
+                                (candidate) => candidate.id === boardId,
+                              );
+                              setKanbanBoardId(boardId);
+                              setActionJson(
+                                withKanbanColumnId(
+                                  actionJson,
+                                  board?.columns[0]?.id ?? "",
+                                ),
+                              );
+                            }}
+                          >
+                            <NativeSelectOption value="">
+                              {t("selectKanbanBoard")}
+                            </NativeSelectOption>
+                            {kanbanTargets.map((board) => (
+                              <NativeSelectOption
+                                key={board.id}
+                                value={board.id}
+                              >
+                                {board.name}
+                              </NativeSelectOption>
+                            ))}
+                          </NativeSelect>
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="management-kanban-column">
+                            {t("kanbanColumnLabel")}
+                          </FieldLabel>
+                          <NativeSelect
+                            id="management-kanban-column"
+                            value={editorKanbanTarget?.column.id ?? ""}
+                            disabled={!selectedKanbanBoard}
+                            onChange={(event) =>
+                              setActionJson(
+                                withKanbanColumnId(
+                                  actionJson,
+                                  event.target.value,
+                                ),
+                              )
+                            }
+                          >
+                            <NativeSelectOption value="">
+                              {t("selectKanbanColumn")}
+                            </NativeSelectOption>
+                            {selectedKanbanBoard?.columns.map((column) => (
+                              <NativeSelectOption
+                                key={column.id}
+                                value={column.id}
+                              >
+                                {column.name}
+                              </NativeSelectOption>
+                            ))}
+                          </NativeSelect>
+                        </Field>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-destructive">
+                        {t("kanbanTargetsEmpty")}
+                      </p>
+                    )
+                  ) : null}
                   <FieldLabel htmlFor="management-action-json">
-                    {t("actionEditor")}
+                    {t(
+                      editorNeedsKanbanTarget
+                        ? "actionAdvancedEditor"
+                        : "actionEditor",
+                    )}
                   </FieldLabel>
                   <Textarea
                     id="management-action-json"
@@ -1078,7 +1292,9 @@ export function ManagementView() {
                   <Button
                     size="sm"
                     disabled={
-                      !actionJson.trim() || busyId === decisionDetail.value.id
+                      !actionJson.trim() ||
+                      !editorHasValidKanbanTarget ||
+                      busyId === decisionDetail.value.id
                     }
                     onClick={() =>
                       void saveAction(
@@ -1087,9 +1303,11 @@ export function ManagementView() {
                       )
                     }
                   >
-                    {decisionDetail.value.executionStatus === "NEEDS_REBIND"
-                      ? t("rebind")
-                      : t("saveAction")}
+                    {editorNeedsKanbanTarget
+                      ? t("saveKanbanTarget")
+                      : decisionDetail.value.executionStatus === "NEEDS_REBIND"
+                        ? t("rebind")
+                        : t("saveAction")}
                   </Button>
                 </div>
               ) : decisionDetail.value.actionType ? (

@@ -41,6 +41,33 @@ export class ManagementError extends Error {
   }
 }
 
+export interface ManagementKanbanTarget {
+  id: string;
+  name: string;
+  columns: Array<{
+    id: string;
+    name: string;
+    isDone: boolean;
+  }>;
+}
+
+export async function listManagementKanbanTargets(
+  workspaceId: string,
+): Promise<ManagementKanbanTarget[]> {
+  return db.kanbanBoard.findMany({
+    where: { workspaceId },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      columns: {
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: { id: true, name: true, isDone: true },
+      },
+    },
+  });
+}
+
 const notFound = () =>
   new ManagementError(
     "MANAGEMENT_DECISION_NOT_FOUND",
@@ -528,6 +555,13 @@ interface ClaimedDecision {
   action: ManagementAction;
 }
 
+class ManagementActionTargetNotFoundError extends Error {
+  constructor() {
+    super("Select an existing Kanban board and column.");
+    this.name = "ManagementActionTargetNotFoundError";
+  }
+}
+
 function safeExecutionError(error: unknown): { code: string; message: string } {
   if (error instanceof ManagementError) {
     return { code: error.code, message: error.message.slice(0, 1_000) };
@@ -682,6 +716,11 @@ async function createActionTargetTx(
       };
     }
     case "CREATE_KANBAN_CARD": {
+      const columnExists = await tx.kanbanColumn.findFirst({
+        where: { id: action.payload.columnId, workspaceId },
+        select: { id: true },
+      });
+      if (!columnExists) throw new ManagementActionTargetNotFoundError();
       const card = await createCardTx(
         tx,
         workspaceId,
@@ -885,7 +924,18 @@ async function markActionFailed(
   actor: ManagementActor,
   error: unknown,
 ) {
-  const safe = safeExecutionError(error);
+  const targetNeedsRebind =
+    claim.action.type === "CREATE_KANBAN_CARD" &&
+    error instanceof ManagementActionTargetNotFoundError;
+  const safe = targetNeedsRebind
+    ? {
+        code: "MANAGEMENT_KANBAN_TARGET_NOT_FOUND",
+        message: "Select an existing Kanban board and column.",
+      }
+    : safeExecutionError(error);
+  const executionStatus: DecisionExecutionStatus = targetNeedsRebind
+    ? "NEEDS_REBIND"
+    : "FAILED";
   await db.$transaction(async (tx) => {
     const current = await tx.decision.findFirst({
       where: {
@@ -908,7 +958,7 @@ async function markActionFailed(
     await tx.decision.update({
       where: { id: current.id },
       data: {
-        executionStatus: "FAILED",
+        executionStatus,
         executionLeaseToken: null,
         executionLeaseExpiresAt: null,
         lastExecutionErrorCode: safe.code,
@@ -922,7 +972,7 @@ async function markActionFailed(
       fromStatus: current.status,
       toStatus: current.status,
       fromExecutionStatus: "RUNNING",
-      toExecutionStatus: "FAILED",
+      toExecutionStatus: executionStatus,
       error: safe,
       payloadHash: hashManagementAction(claim.action),
     });

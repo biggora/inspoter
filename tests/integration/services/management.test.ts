@@ -6,6 +6,7 @@ import {
   createManualDecision,
   executeDecisionAction,
   getDecision,
+  listManagementKanbanTargets,
   transitionDecision,
   updateDecision,
 } from "@/lib/services/management";
@@ -151,7 +152,9 @@ describe("executive brief lifecycle", () => {
     expect(
       await db.executiveBriefGeneration.count({ where: { workspaceId } }),
     ).toBe(0);
-    expect(await db.agentRun.count({ where: { workspaceId } })).toBe(runsBefore);
+    expect(await db.agentRun.count({ where: { workspaceId } })).toBe(
+      runsBefore,
+    );
   });
 
   it("repair creates missing system rows without overwriting edited rows", async () => {
@@ -247,7 +250,9 @@ describe("executive brief lifecycle", () => {
       ),
     ).resolves.toBe(false);
     expect(
-      await db.agentRun.count({ where: { workspaceId, scheduleId: schedule.id } }),
+      await db.agentRun.count({
+        where: { workspaceId, scheduleId: schedule.id },
+      }),
     ).toBe(0);
     expect(
       await db.executiveBriefGeneration.count({ where: { workspaceId } }),
@@ -395,6 +400,56 @@ async function noteDecision() {
 }
 
 describe("management decision execution", () => {
+  it("requires rebind when a Kanban column id does not exist", async () => {
+    await createBoard(workspaceId, { name: "Operations" });
+    const decision = await createManualDecision(workspaceId, actor, {
+      title: "Create a follow-up task",
+      priority: "MEDIUM",
+      action: {
+        type: "CREATE_KANBAN_CARD",
+        payload: { columnId: "TODO", title: "Review the incident" },
+      },
+    });
+
+    const result = await approveAndExecuteDecision(
+      workspaceId,
+      decision.id,
+      actor,
+      { transition: "APPROVE", expectedVersion: decision.version },
+    );
+
+    expect(result.executionStatus).toBe("NEEDS_REBIND");
+    expect(result.lastExecutionErrorCode).toBe(
+      "MANAGEMENT_KANBAN_TARGET_NOT_FOUND",
+    );
+    expect(await db.kanbanCard.count({ where: { workspaceId } })).toBe(0);
+    await expect(
+      db.decisionEvent.findFirstOrThrow({
+        where: { decisionId: decision.id, type: "ACTION_FAILED" },
+        select: { toExecutionStatus: true },
+      }),
+    ).resolves.toEqual({ toExecutionStatus: "NEEDS_REBIND" });
+  });
+
+  it("lists only the current workspace Kanban destinations", async () => {
+    const board = await createBoard(workspaceId, { name: "Executive work" });
+    const targets = await listManagementKanbanTargets(workspaceId);
+    const foreignTargets = await listManagementKanbanTargets(otherWorkspaceId);
+
+    expect(targets).toEqual([
+      expect.objectContaining({
+        id: board.id,
+        name: "Executive work",
+        columns: expect.arrayContaining([
+          expect.objectContaining({ id: expect.any(String) }),
+        ]),
+      }),
+    ]);
+    expect(foreignTargets).not.toContainEqual(
+      expect.objectContaining({ id: board.id }),
+    );
+  });
+
   it("keeps an edited failed approved action ready for retry", async () => {
     const decision = await noteDecision();
     const approved = await transitionDecision(workspaceId, decision.id, actor, {
