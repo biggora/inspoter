@@ -50,9 +50,11 @@ interface DecisionSummary {
   actionType?: string;
   actionPayload?: unknown;
   evidenceRefs: string[];
+  resultId?: string;
   resultHref?: string;
   resultLabel?: string;
   targetAvailability?: string;
+  liveTargetId?: string;
   liveTargetHref?: string;
   lastExecutionError?: string;
 }
@@ -222,6 +224,23 @@ function hasValidKanbanTarget(
     findKanbanTarget(targets, stringField(decision.actionPayload, "columnId")),
   );
 }
+
+function decisionResultHref(
+  decision: DecisionSummary,
+  targets: readonly ManagementKanbanTarget[],
+): string | undefined {
+  const storedHref = decision.liveTargetHref ?? decision.resultHref;
+  if (decision.actionType !== "CREATE_KANBAN_CARD") return storedHref;
+  const target = findKanbanTarget(
+    targets,
+    stringField(decision.actionPayload, "columnId"),
+  );
+  const cardId = decision.liveTargetId ?? decision.resultId;
+  return target && cardId
+    ? `/kanban/${target.board.id}?card=${cardId}`
+    : storedHref;
+}
+
 function parseSnapshot(payload: unknown): SnapshotSummary | null {
   const brief = field(payload, "latestBrief") ?? field(payload, "brief");
   const textSource =
@@ -275,9 +294,11 @@ function parseDecisions(payload: unknown): DecisionSummary[] {
               (reference): reference is string => typeof reference === "string",
             )
           : [],
+        resultId: stringField(entry, "resultId"),
         resultHref: stringField(entry, "resultHref"),
         resultLabel: stringField(entry, "resultLabel"),
         targetAvailability: stringField(latestReceipt, "targetAvailability"),
+        liveTargetId: stringField(latestReceipt, "liveTargetId"),
         liveTargetHref: stringField(latestReceipt, "liveTargetHref"),
         lastExecutionError: stringField(entry, "lastExecutionError"),
       },
@@ -602,7 +623,13 @@ export function ManagementView({
         `/api/management/decisions/${decision.id}/${retry ? "retry" : "transition"}`,
         { method: "POST", body: JSON.stringify(body) },
       );
-      await load();
+      await Promise.all([
+        load(),
+        decisionDetail.state === "ready" &&
+        decisionDetail.value?.id === decision.id
+          ? showDecision(decision.id)
+          : Promise.resolve(),
+      ]);
     } catch {
       setMutationError(true);
     } finally {
@@ -1024,6 +1051,7 @@ export function ManagementView({
                   decision,
                   kanbanTargets,
                 );
+                const resultHref = decisionResultHref(decision, kanbanTargets);
                 return (
                   <li
                     key={decision.id}
@@ -1123,19 +1151,11 @@ export function ManagementView({
                         <Badge variant="outline">
                           {t("resultUnavailable")}
                         </Badge>
-                      ) : decision.liveTargetHref || decision.resultHref ? (
+                      ) : resultHref ? (
                         <Button
                           size="sm"
                           variant="link"
-                          render={
-                            <Link
-                              href={
-                                decision.liveTargetHref ??
-                                decision.resultHref ??
-                                "/management"
-                              }
-                            />
-                          }
+                          render={<Link href={resultHref} />}
                         >
                           {t("openResult")}
                         </Button>

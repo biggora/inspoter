@@ -621,7 +621,7 @@ describe("management decision execution", () => {
       },
     ];
 
-    for (const input of inputs) {
+    for (const [index, input] of inputs.entries()) {
       const decision = await createManualDecision(workspaceId, actor, input);
       const result = await approveAndExecuteDecision(
         workspaceId,
@@ -630,6 +630,11 @@ describe("management decision execution", () => {
         { transition: "APPROVE", expectedVersion: decision.version },
       );
       expect(result.executionStatus).toBe("SUCCEEDED");
+      if (index === 0) {
+        expect(result.resultHref).toBe(
+          `/kanban/${board.id}?card=${result.resultId}`,
+        );
+      }
     }
 
     expect(await db.kanbanCard.count({ where: { workspaceId } })).toBe(1);

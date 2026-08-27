@@ -2,6 +2,13 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children?: ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
 
 import { ManagementView } from "@/components/management/management-view";
 import { renderWithIntl } from "../../test-utils";
@@ -141,6 +148,77 @@ describe("ManagementView", () => {
           body: expect.stringContaining('"columnId":"column-todo"'),
         }),
       ),
+    );
+  });
+
+  it("opens a completed Kanban result on its board", async () => {
+    const decision = {
+      id: "decision-completed-kanban",
+      title: "Review the completed task",
+      version: 5,
+      priority: "MEDIUM",
+      status: "APPROVED",
+      executionStatus: "SUCCEEDED",
+      actionType: "CREATE_KANBAN_CARD",
+      actionPayload: {
+        columnId: "column-backlog",
+        title: "Review the incident",
+      },
+      resultId: "card-1",
+      resultHref: "/kanban?card=card-1",
+      evidenceRefs: [],
+      receipts: [
+        {
+          liveTargetId: "card-1",
+          liveTargetHref: "/kanban?card=card-1",
+          targetAvailability: "AVAILABLE",
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [decision] }) };
+        }
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "MISSING",
+              missing: [],
+              edited: [],
+              providerConfigured: false,
+            }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return { ok: true, json: async () => [] };
+        }
+        return {
+          ok: true,
+          json: async () => ({ latestBrief: { headline: "Stable" } }),
+        };
+      }),
+    );
+
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[
+          {
+            id: "board-1",
+            name: "Operations",
+            columns: [{ id: "column-backlog", name: "Backlog", isDone: false }],
+          },
+        ]}
+      />,
+    );
+
+    const openResult = await screen.findByText("Open result");
+    expect(openResult.closest("a")).toHaveAttribute(
+      "href",
+      "/kanban/board-1?card=card-1",
     );
   });
 });

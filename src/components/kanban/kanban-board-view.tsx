@@ -135,6 +135,7 @@ interface KanbanBoardViewProps {
   board: KanbanBoardDetail;
   labels: KanbanLabelListItem[];
   members: { operatorId: string; username: string }[];
+  initialCardId?: string;
 }
 
 // Top-level board orchestrator, modeled on BookmarksBoard. Holds dialog and
@@ -149,6 +150,7 @@ export function KanbanBoardView({
   board,
   labels,
   members,
+  initialCardId,
 }: KanbanBoardViewProps) {
   const t = useTranslations("kanban");
   const router = useRouter();
@@ -163,7 +165,13 @@ export function KanbanBoardView({
   const [columnDialog, setColumnDialog] = useState<ColumnDialogState | null>(
     null,
   );
-  const [cardDialog, setCardDialog] = useState<CardDialogState | null>(null);
+  const [cardDialog, setCardDialog] = useState<CardDialogState | null>(() => {
+    if (!initialCardId) return null;
+    const card = board.columns
+      .flatMap((column) => column.cards)
+      .find((entry) => entry.id === initialCardId);
+    return card ? { mode: "edit", card } : null;
+  });
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [deleteColumn, setDeleteColumn] = useState<{
     id: string;

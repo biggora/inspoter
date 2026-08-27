@@ -766,7 +766,7 @@ async function createActionTargetTx(
         type: "KANBAN_CARD",
         id: card.id,
         label: card.title,
-        href: `/kanban?card=${card.id}`,
+        href: `/kanban/${hydrated.boardId}?card=${card.id}`,
       };
     }
     case "CREATE_REMINDER": {
