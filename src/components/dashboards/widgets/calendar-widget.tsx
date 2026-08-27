@@ -292,7 +292,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
                       new Date(`${day.date}T00:00:00.000Z`),
                     ),
                   })}
-                  className="flex items-baseline gap-1.5 rounded-sm no-underline outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-card)]"
+                  className="-my-1 flex items-baseline gap-1.5 rounded-sm py-1.5 no-underline outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-card)]"
                 >
                   {content}
                   <Icon

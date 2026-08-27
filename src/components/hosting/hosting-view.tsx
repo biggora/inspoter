@@ -424,7 +424,7 @@ function HostingCard({
           </div>
           <div className="min-w-0">
             <CardTitle>
-              <h4 className="truncate">{account.domain}</h4>
+              <h2 className="truncate">{account.domain}</h2>
             </CardTitle>
             <CardDescription className="text-xs">
               {account.user || account.ip || account.plan}

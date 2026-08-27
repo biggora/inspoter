@@ -387,14 +387,14 @@ function ServerCard({
               {/* The name is the way into the server's history — only the
                   title is a link, so the power buttons below stay their own
                   targets. */}
-              <h4 className="truncate">
+              <h2 className="truncate">
                 <Link
                   href={`/servers/${server.localServerId}`}
-                  className="text-inherit no-underline hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+                  className="block py-1.5 text-inherit no-underline hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
                 >
                   {server.name}
                 </Link>
-              </h4>
+              </h2>
             </CardTitle>
             <CardDescription className="text-xs">
               {isProvider ? server.ip : (server.hostname ?? "")}

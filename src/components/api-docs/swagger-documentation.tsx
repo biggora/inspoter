@@ -33,31 +33,57 @@ interface SwaggerDocumentationProps {
 }
 
 // The vendored bundle renders its operations list as <main id="operations">,
-// nesting a second main landmark inside the dashboard layout's own <main>.
-// No bundle option suppresses it, so the element is swapped for a plain div
-// that keeps the id (deep links target it) and every other attribute. The
-// initial render may complete after createSwaggerUI returns, hence the
-// observer; the swap itself is idempotent, and the caller disconnects the
-// observer on re-render and unmount.
-function normalizeOperationsLandmark(
+// nesting a second main landmark inside the dashboard layout's own <main>,
+// and its info header as an <h1 class="title">, which duplicates the page
+// header's own h1 and skips heading levels down to the operation groups'
+// <h3>. No bundle option suppresses either, so both elements are swapped for
+// semantic equivalents that keep every other attribute: a plain div that
+// keeps the id (deep links target it) and an h2 (the info block styles
+// itself through the .title class, so the tag change is purely semantic).
+// The initial render may complete after createSwaggerUI returns, hence the
+// observer; the swaps themselves are idempotent, and the caller disconnects
+// the observer on re-render and unmount.
+function normalizeVendoredSemantics(
   container: HTMLElement,
 ): MutationObserver | null {
-  const replaceMain = (): boolean => {
-    const main = container.querySelector("main#operations");
-    if (!main) return false;
-    const replacement = document.createElement("div");
-    for (const attribute of Array.from(main.attributes)) {
+  const swapElement = (element: Element, tagName: "div" | "h2"): void => {
+    const replacement = document.createElement(tagName);
+    for (const attribute of Array.from(element.attributes)) {
       replacement.setAttribute(attribute.name, attribute.value);
     }
-    replacement.append(...main.childNodes);
-    main.replaceWith(replacement);
-    return true;
+    replacement.append(...element.childNodes);
+    element.replaceWith(replacement);
   };
 
-  if (replaceMain()) return null;
+  // Completion is tracked by the swaps actually performed, not by absence of
+  // the targets: right after createSwaggerUI returns the bundle may not have
+  // rendered anything yet, and "no main, no h1" at that point means "keep
+  // waiting", not "done". If a future specification ever rendered without an
+  // info heading, the observer would simply stay connected until the caller
+  // disconnects it on re-render or unmount.
+  let operationsMainNormalized = false;
+  let infoHeadingNormalized = false;
+
+  const applyNormalizations = (): boolean => {
+    const operationsMain = container.querySelector("main#operations");
+    if (operationsMain) {
+      swapElement(operationsMain, "div");
+      operationsMainNormalized = true;
+    }
+
+    const infoHeading = container.querySelector("h1");
+    if (infoHeading) {
+      swapElement(infoHeading, "h2");
+      infoHeadingNormalized = true;
+    }
+
+    return operationsMainNormalized && infoHeadingNormalized;
+  };
+
+  if (applyNormalizations()) return null;
 
   const observer = new MutationObserver(() => {
-    if (replaceMain()) observer.disconnect();
+    if (applyNormalizations()) observer.disconnect();
   });
   observer.observe(container, { childList: true, subtree: true });
   return observer;
@@ -98,7 +124,7 @@ export function SwaggerDocumentation({
         validatorUrl: null,
         displayRequestDuration: true,
       });
-      operationsObserver.current = normalizeOperationsLandmark(container);
+      operationsObserver.current = normalizeVendoredSemantics(container);
       setRuntimeStatus("ready");
       setErrorMessage(null);
     } catch {

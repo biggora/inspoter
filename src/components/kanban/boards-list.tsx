@@ -75,7 +75,7 @@ export function BoardsList({ boards, canDelete }: BoardsListProps) {
                   <Link
                     href={`/kanban/${board.id}`}
                     aria-label={t("openBoardLabel", { name: board.name })}
-                    className="block truncate text-sm font-medium text-foreground-900 no-underline transition-colors hover:text-primary-600 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+                    className="block truncate py-1.5 text-sm font-medium text-foreground-900 no-underline transition-colors hover:text-primary-600 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
                   >
                     {board.name}
                   </Link>
