@@ -162,13 +162,16 @@ async function resolveOne(
       if (!config) return { error: "MAIL_CONFIG_INVALID" };
       // The mailbox each message landed in is what the tile marks its rows
       // with, so the accounts are read alongside the messages.
-      const [result, accounts] = await Promise.all([
-        mailService.list(workspaceId, {
-          pageSize: config.limit,
-          sort: "desc",
-          ...(config.accountId ? { accountId: config.accountId } : {}),
-          ...(config.unreadOnly ? { unreadOnly: true } : {}),
-        }),
+      const [items, accounts] = await Promise.all([
+        listDistinctMailItems(
+          workspaceId,
+          {
+            sort: "desc",
+            ...(config.accountId ? { accountId: config.accountId } : {}),
+            ...(config.unreadOnly ? { unreadOnly: true } : {}),
+          },
+          config.limit,
+        ),
         mailAccountsService.listAccountIdentities(workspaceId),
       ]);
       const accountsById = new Map(
@@ -177,7 +180,7 @@ async function resolveOne(
       return {
         kind: "MAIL",
         data: {
-          items: result.items.map((item) => {
+          items: items.map((item) => {
             const account = accountsById.get(item.accountId);
             return {
               id: item.id,
@@ -282,6 +285,36 @@ function filterBySelection<T>(
 ): T[] {
   if (selection.length <= 1) return items;
   return items.filter((item) => selection.includes(valueOf(item)));
+}
+
+// Gmail-style accounts store one MailItem row per folder a message landed in
+// (INBOX, [Gmail]/All Mail, [Gmail]/Important, ...) — correct for the
+// per-folder mail list, but the Mail tile aggregates across every folder, so
+// the same message rendered as several identical rows. Over-fetch (same
+// trade-off as overFetchFor above) and collapse by messageId — falling back
+// to id for the webhook-ingested rows that have none — before trimming to
+// `limit`.
+const MAIL_WIDGET_OVERFETCH_FACTOR = 4;
+
+async function listDistinctMailItems(
+  workspaceId: string,
+  params: Omit<mailService.ListMailParams, "cursor" | "pageSize">,
+  limit: number,
+): Promise<mailService.MailListItem[]> {
+  const result = await mailService.list(workspaceId, {
+    ...params,
+    pageSize: limit * MAIL_WIDGET_OVERFETCH_FACTOR,
+  });
+  const seen = new Set<string>();
+  const distinct: mailService.MailListItem[] = [];
+  for (const item of result.items) {
+    const key = item.messageId ?? item.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(item);
+    if (distinct.length >= limit) break;
+  }
+  return distinct;
 }
 
 async function resolveBookmarks(

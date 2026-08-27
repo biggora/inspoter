@@ -9,6 +9,7 @@ import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import { specFor } from "@/lib/dashboards/widget-kinds";
 import { WEATHER_DEFAULT_LOCATION } from "@/lib/validation/dashboards";
 import type {
+  MailPayload,
   MessagesPayload,
   ServerMetricsPayload,
 } from "@/lib/dashboards/widget-payloads";
@@ -681,5 +682,121 @@ describe("resolveWidgetData", () => {
     expect(
       payload.items.some((item) => item.channelName.startsWith("foreign-")),
     ).toBe(false);
+  });
+
+  // Regression coverage for a production bug: a Gmail-style account stores one
+  // MailItem row per folder a message landed in (INBOX, [Gmail]/All Mail,
+  // [Gmail]/Important, ...) sharing the same messageId — correct for the
+  // per-folder mail list, but the Mail tile aggregates across every folder and
+  // rendered the same message as several identical rows.
+  async function createMailAccountWithFolders(prefix: string) {
+    const account = await db.mailAccount.create({
+      data: {
+        workspaceId,
+        kind: "IMAP",
+        mode: "REAL",
+        name: `${prefix} account`,
+        email: `${prefix}@example.com`,
+        isActive: true,
+      },
+    });
+    const folderNames = ["INBOX", "All Mail", "Important"] as const;
+    const folders = [];
+    for (const [index, name] of folderNames.entries()) {
+      folders.push(
+        await db.mailFolder.create({
+          data: {
+            workspaceId,
+            accountId: account.id,
+            accountWorkspaceId: workspaceId,
+            path: `${prefix}-${name}`,
+            name,
+            specialUse: index === 0 ? "INBOX" : "OTHER",
+            position: index,
+          },
+        }),
+      );
+    }
+    return { account, folders };
+  }
+
+  async function resolveMailWidget(config: Prisma.JsonObject) {
+    const data = await resolveWidgetData(workspaceId, [
+      { id: "mail", kind: "MAIL", config },
+    ]);
+    expect(data["mail"]).toMatchObject({ kind: "MAIL" });
+    return (data["mail"] as { data: MailPayload }).data;
+  }
+
+  it("collapses one message replicated across several folders into a single row", async () => {
+    const prefix = `mail-dup-${randomUUID()}`;
+    const { account, folders } = await createMailAccountWithFolders(prefix);
+    const messageId = `<${prefix}@example.com>`;
+
+    for (const folder of folders) {
+      await db.mailItem.create({
+        data: {
+          workspaceId,
+          accountId: account.id,
+          accountWorkspaceId: workspaceId,
+          folderId: folder.id,
+          folderWorkspaceId: workspaceId,
+          messageId,
+          fromAddress: "sender@example.com",
+          subject: `${prefix}-subject`,
+          bodyText: "body",
+          receivedAt: new Date("2026-08-19T08:31:00.000Z"),
+        },
+      });
+    }
+
+    const payload = await resolveMailWidget({
+      accountId: account.id,
+      unreadOnly: false,
+      limit: 5,
+    });
+
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0].subject).toBe(`${prefix}-subject`);
+  });
+
+  it("backfills the limit with distinct messages after collapsing duplicates", async () => {
+    const prefix = `mail-backfill-${randomUUID()}`;
+    const { account, folders } = await createMailAccountWithFolders(prefix);
+
+    // Two distinct messages, each replicated across all three folders — nine
+    // rows in storage, two distinct conversations.
+    for (const messageIndex of [0, 1]) {
+      const receivedAt = new Date(
+        Date.UTC(2026, 7, 20 - messageIndex, 8, 0, 0),
+      );
+      for (const folder of folders) {
+        await db.mailItem.create({
+          data: {
+            workspaceId,
+            accountId: account.id,
+            accountWorkspaceId: workspaceId,
+            folderId: folder.id,
+            folderWorkspaceId: workspaceId,
+            messageId: `<${prefix}-${messageIndex}@example.com>`,
+            fromAddress: "sender@example.com",
+            subject: `${prefix}-subject-${messageIndex}`,
+            bodyText: "body",
+            receivedAt,
+          },
+        });
+      }
+    }
+
+    const payload = await resolveMailWidget({
+      accountId: account.id,
+      unreadOnly: false,
+      limit: 5,
+    });
+
+    expect(payload.items.map((item) => item.subject)).toEqual([
+      `${prefix}-subject-0`,
+      `${prefix}-subject-1`,
+    ]);
   });
 });

@@ -45,6 +45,7 @@ export class MailListResourceNotFoundError extends Error {
 // with list responses (plan §4); the reading pane fetches them via getById.
 const LIST_SELECT = {
   id: true,
+  messageId: true,
   fromAddress: true,
   fromName: true,
   subject: true,
