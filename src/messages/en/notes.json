@@ -70,5 +70,25 @@
   "searchEmptyDescription": "No note matches your search.",
 
   "updatedLabel": "Updated {date}",
-  "pinnedLabel": "Pinned"
+  "pinnedLabel": "Pinned",
+
+  "editorToolbarLabel": "Note formatting",
+  "editorBlockType": "Text style",
+  "editorParagraph": "Paragraph",
+  "editorHeading": "Heading {level}",
+  "editorBold": "Bold",
+  "editorItalic": "Italic",
+  "editorStrike": "Strikethrough",
+  "editorCode": "Inline code",
+  "editorBulletList": "Bulleted list",
+  "editorOrderedList": "Numbered list",
+  "editorBlockquote": "Blockquote",
+  "editorCodeBlock": "Code block",
+  "editorHorizontalRule": "Horizontal rule",
+  "editorLink": "Link",
+  "editorLinkUrl": "Link URL",
+  "editorApplyLink": "Apply",
+  "editorRemoveLink": "Remove link",
+  "editorUndo": "Undo",
+  "editorRedo": "Redo"
 }

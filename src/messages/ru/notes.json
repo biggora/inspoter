@@ -70,5 +70,25 @@
   "searchEmptyDescription": "Нет заметок, соответствующих запросу.",
 
   "updatedLabel": "Обновлено {date}",
-  "pinnedLabel": "Закреплено"
+  "pinnedLabel": "Закреплено",
+
+  "editorToolbarLabel": "Форматирование заметки",
+  "editorBlockType": "Стиль текста",
+  "editorParagraph": "Обычный текст",
+  "editorHeading": "Заголовок {level}",
+  "editorBold": "Жирный",
+  "editorItalic": "Курсив",
+  "editorStrike": "Зачёркивание",
+  "editorCode": "Строчный код",
+  "editorBulletList": "Маркированный список",
+  "editorOrderedList": "Нумерованный список",
+  "editorBlockquote": "Цитата",
+  "editorCodeBlock": "Блок кода",
+  "editorHorizontalRule": "Горизонтальная линия",
+  "editorLink": "Ссылка",
+  "editorLinkUrl": "URL ссылки",
+  "editorApplyLink": "Применить",
+  "editorRemoveLink": "Удалить ссылку",
+  "editorUndo": "Отменить",
+  "editorRedo": "Повторить"
 }

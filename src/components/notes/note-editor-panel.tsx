@@ -9,20 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import type { NoteDetail } from "@/lib/services/notes";
 import { ApiError, notesApi } from "./api";
+import { NoteMarkdownEditor } from "./note-markdown-editor";
 
 interface NoteEditorPanelProps {
   note: NoteDetail;
 }
 
-// Slice 1 editor: a title field and a plain Textarea, an explicit Save
-// button, no autosave. The Markdown editor (TipTap) and its live wiki-link
-// parsing land in a later slice — see the layout comment in
-// src/lib/services/notes.ts's searchNotes for the same "not yet" marker on
-// the search side.
-//
 // Rendered with `key={note.id}` by the [id] page below, so navigating
 // between notes remounts this component instead of needing a
 // reset-on-prop-change effect — the same simplification the mail composer
@@ -34,14 +28,16 @@ export function NoteEditorPanel({ note }: NoteEditorPanelProps) {
 
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
+  const [savedContent, setSavedContent] = useState(note.content);
   const [version, setVersion] = useState(note.version);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [suggestedTitle, setSuggestedTitle] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
-  const dirty = title !== note.title || content !== note.content;
+  const dirty = title !== note.title || content !== savedContent;
   const titleId = `note-${note.id}-title`;
   const contentId = `note-${note.id}-content`;
+  const contentLabelId = `${contentId}-label`;
 
   async function handleSave() {
     setSubmitting(true);
@@ -55,6 +51,8 @@ export function NoteEditorPanel({ note }: NoteEditorPanelProps) {
       });
       setVersion(updated.version);
       setTitle(updated.title);
+      setSavedContent(updated.content);
+      setContent(updated.content);
       toast.success(t("noteSavedToast"));
       router.refresh();
     } catch (err) {
@@ -135,14 +133,35 @@ export function NoteEditorPanel({ note }: NoteEditorPanelProps) {
       </p>
 
       <Field className="min-h-0 flex-1">
-        <FieldLabel htmlFor={contentId} className="sr-only">
+        <FieldLabel id={contentLabelId} htmlFor={contentId} className="sr-only">
           {t("pageTitle")}
         </FieldLabel>
-        <Textarea
+        <NoteMarkdownEditor
           id={contentId}
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          className="h-full min-h-0 flex-1 resize-none font-mono text-sm"
+          labelledBy={contentLabelId}
+          initialMarkdown={note.content}
+          labels={{
+            toolbar: t("editorToolbarLabel"),
+            blockType: t("editorBlockType"),
+            paragraph: t("editorParagraph"),
+            heading: (level) => t("editorHeading", { level }),
+            bold: t("editorBold"),
+            italic: t("editorItalic"),
+            strike: t("editorStrike"),
+            code: t("editorCode"),
+            bulletList: t("editorBulletList"),
+            orderedList: t("editorOrderedList"),
+            blockquote: t("editorBlockquote"),
+            codeBlock: t("editorCodeBlock"),
+            horizontalRule: t("editorHorizontalRule"),
+            link: t("editorLink"),
+            linkUrl: t("editorLinkUrl"),
+            applyLink: t("editorApplyLink"),
+            removeLink: t("editorRemoveLink"),
+            undo: t("editorUndo"),
+            redo: t("editorRedo"),
+          }}
+          onChange={setContent}
         />
       </Field>
     </div>

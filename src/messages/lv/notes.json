@@ -70,5 +70,25 @@
   "searchEmptyDescription": "Nevienai piezīmei neatbilst jūsu meklējums.",
 
   "updatedLabel": "Atjaunināts {date}",
-  "pinnedLabel": "Piesprausta"
+  "pinnedLabel": "Piesprausta",
+
+  "editorToolbarLabel": "Piezīmes formatēšana",
+  "editorBlockType": "Teksta stils",
+  "editorParagraph": "Parasts teksts",
+  "editorHeading": "Virsraksts {level}",
+  "editorBold": "Treknraksts",
+  "editorItalic": "Kursīvs",
+  "editorStrike": "Pārsvītrojums",
+  "editorCode": "Iekļautais kods",
+  "editorBulletList": "Nenumurēts saraksts",
+  "editorOrderedList": "Numurēts saraksts",
+  "editorBlockquote": "Citāts",
+  "editorCodeBlock": "Koda bloks",
+  "editorHorizontalRule": "Horizontāla līnija",
+  "editorLink": "Saite",
+  "editorLinkUrl": "Saites URL",
+  "editorApplyLink": "Piemērot",
+  "editorRemoveLink": "Noņemt saiti",
+  "editorUndo": "Atsaukt",
+  "editorRedo": "Atkārtot"
 }
