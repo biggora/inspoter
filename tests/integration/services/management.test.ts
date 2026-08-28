@@ -71,6 +71,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.executiveBriefGeneration.deleteMany({ where: { workspaceId } });
+  await db.alert.deleteMany({ where: { workspaceId } });
   await db.agentSchedule.deleteMany({ where: { workspaceId } });
   await db.agentSkill.deleteMany({ where: { workspaceId } });
   await db.agent.deleteMany({ where: { workspaceId } });
@@ -357,6 +358,85 @@ describe("executive brief lifecycle", () => {
     ).rejects.toMatchObject({
       code: "EXECUTIVE_BRIEF_EVIDENCE_INVALID",
       status: 422,
+    });
+  });
+
+  it("requires Kanban actions to preserve all cited environments", async () => {
+    const board = await createBoard(workspaceId, { name: "Environment work" });
+    const boardDetail = await getBoard(workspaceId, board.id);
+    const columnId = boardDetail?.columns[0]?.id;
+    if (!columnId) throw new Error("Kanban board did not create a column.");
+    const alert = await db.alert.create({
+      data: {
+        workspaceId,
+        severity: "critical",
+        source: "cenufiltrs.production",
+        message: "503 from /api/v1/search/offers/facets",
+      },
+    });
+    const stageAlert = await db.alert.create({
+      data: {
+        workspaceId,
+        severity: "critical",
+        source: "cenufiltrs.stage",
+        message: "503 from /api/v1/search/offers/facets",
+      },
+    });
+    const fixture = await createBriefRunFixture();
+    const snapshot = await captureExecutiveBriefSnapshotForRun(
+      workspaceId,
+      fixture.lease,
+      "DAILY",
+    );
+    const evidenceRefs = [`alert:${alert.id}`, `alert:${stageAlert.id}`];
+    const action = {
+      type: "CREATE_KANBAN_CARD" as const,
+      payload: {
+        columnId,
+        title: "Investigate CenuFiltrs search API 503",
+        description: "Review the failing search endpoint.",
+      },
+    };
+
+    await expect(
+      publishExecutiveBriefForRun(workspaceId, fixture.lease, {
+        ...publishInput(fixture.generationId, snapshot.snapshotSha256),
+        decisions: [
+          {
+            title: "Review the search API failure",
+            priority: "MEDIUM",
+            evidenceRefs,
+            action,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: "EXECUTIVE_BRIEF_EVIDENCE_INVALID",
+      status: 422,
+      message: expect.stringMatching(/production.*stage/),
+    });
+
+    await expect(
+      publishExecutiveBriefForRun(workspaceId, fixture.lease, {
+        ...publishInput(fixture.generationId, snapshot.snapshotSha256),
+        decisions: [
+          {
+            title: "Review the production and stage search API failures",
+            priority: "MEDIUM",
+            evidenceRefs,
+            action: {
+              ...action,
+              payload: {
+                ...action.payload,
+                title: `[prod/stage] ${action.payload.title}`,
+              },
+            },
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      id: expect.any(String),
+      generationId: fixture.generationId,
     });
   });
 

@@ -24,9 +24,27 @@ export const EXECUTIVE_BRIEF_WEEKLY_SCHEDULE_KEY =
 const BRIEF_INSTRUCTIONS = [
   "Create executive briefs only through the management brief tools.",
   "Read the exact generation snapshot first. Cite only evidence references",
-  "contained in that snapshot. Publish a concise brief and optional proposed",
-  "decisions; never approve, defer, reject, retry, or execute a decision.",
+  "contained in that snapshot. Treat environment, service or component,",
+  "endpoint or host, region, timestamp, status, and error code as",
+  "identity-bearing facts; never summarize them away. For every proposed",
+  "CREATE_KANBAN_CARD action, copy all evidence-known qualifiers into the",
+  "card payload and include each known environment (production/prod,",
+  "stage/staging, development/dev, test/qa) in its title or description.",
+  "If the evidence does not identify an environment, do not infer one.",
+  "Publish a concise brief and optional proposed decisions; never approve,",
+  "defer, reject, retry, or execute a decision.",
 ].join(" ");
+
+const ENVIRONMENT_QUALIFIERS = [
+  { name: "production", pattern: /\bprod(?:uction)?\b/i },
+  { name: "stage", pattern: /\b(?:stage|staging)\b/i },
+  { name: "development", pattern: /\bdev(?:elopment)?\b/i },
+  { name: "test", pattern: /\b(?:test|testing|qa)\b/i },
+] as const;
+
+function environmentQualifiers(text: string) {
+  return ENVIRONMENT_QUALIFIERS.filter(({ pattern }) => pattern.test(text));
+}
 
 export class ExecutiveBriefError extends Error {
   constructor(
@@ -756,10 +774,11 @@ export async function publishExecutiveBriefForRun(
         "The submitted snapshot hash does not match this generation.",
       );
     }
-    const evidence = new Set(
-      Object.values(parsedSnapshot.data.sections).flatMap((items) =>
-        items.map((item) => item.ref),
-      ),
+    const evidenceItems = Object.values(parsedSnapshot.data.sections).flatMap(
+      (items) => items,
+    );
+    const evidence = new Map(
+      evidenceItems.map((item) => [item.ref, item] as const),
     );
     const evidenceBoundItems = [
       ...input.highlights,
@@ -777,6 +796,32 @@ export async function publishExecutiveBriefForRun(
           "EXECUTIVE_BRIEF_EVIDENCE_INVALID",
           422,
           "The brief cites evidence outside this snapshot.",
+        );
+      }
+    }
+    for (const proposal of input.decisions ?? []) {
+      if (proposal.action?.type !== "CREATE_KANBAN_CARD") continue;
+      const citedText = proposal.evidenceRefs
+        .map((reference) => evidence.get(reference))
+        .filter((item) => item !== undefined)
+        .flatMap((item) => [item.label, item.state, item.detail])
+        .filter((value): value is string => value !== undefined)
+        .join(" ");
+      const requiredEnvironments = environmentQualifiers(citedText);
+      const cardText = [
+        proposal.action.payload.title,
+        proposal.action.payload.description,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join(" ");
+      const missingEnvironments = requiredEnvironments.filter(
+        ({ pattern }) => !pattern.test(cardText),
+      );
+      if (missingEnvironments.length > 0) {
+        throw new ExecutiveBriefError(
+          "EXECUTIVE_BRIEF_EVIDENCE_INVALID",
+          422,
+          `Kanban card action must preserve evidence environment qualifier(s): ${missingEnvironments.map(({ name }) => name).join(", ")}.`,
         );
       }
     }
