@@ -53,7 +53,7 @@
       "source": "biggora/claude-plugins-registry",
       "sourceType": "github",
       "skillPath": "src/skills/ui-audit/SKILL.md",
-      "computedHash": "795f9bf122a6c7a92fefa07a08485a6ac3f3becd0611628264e7816994a69b59"
+      "computedHash": "0287ca49cc7ad44559085f8588f2fedf9c9c5cc66b7959424de21821e6b3ab3b"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
@@ -65,7 +65,7 @@
       "source": "biggora/claude-plugins-registry",
       "sourceType": "github",
       "skillPath": "src/skills/web-mcp/SKILL.md",
-      "computedHash": "182744246619c7a326208a3b82404d5f6d883c2e7ad0036d6972ea0ccb125d4f"
+      "computedHash": "cfa4c511ab988871c7c3d214bdee0730b658271e206672933e854f66256a5eef"
     }
   }
 }
