@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { requireAuth } from "@/lib/auth/dal";
+import { SkipToContentLink } from "@/components/shell/skip-to-content-link";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
@@ -35,6 +36,9 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
+      {/* First tab stop (critique 2026-08-29, P1): lets keyboard operators
+          jump past the ~20 nav links and topbar straight to <main>. */}
+      <SkipToContentLink targetId="main-content" />
       <RouteProgressProvider>
         {/* Outside the `{children}` slot on purpose — stays mounted across
             client-side navigation, so its tools survive a route change. */}
@@ -51,7 +55,11 @@ export default async function DashboardLayout({
             unreadCounts={unreadCounts}
             hiddenSections={workspace.hiddenSections}
           />
-          <main className="w-full min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="w-full min-w-0 flex-1 overflow-x-hidden p-4 focus:outline-none sm:p-6"
+          >
             {children}
           </main>
         </SidebarInset>

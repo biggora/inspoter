@@ -52,6 +52,33 @@ test("Shell + Bookmarks screen has one main landmark, one named primary navigati
   await expectNoBlockingAxeViolations(page);
 });
 
+// Critique 2026-08-29 (P1, ~29 Tab stops to content): the skip-to-content
+// link must be the first keyboard stop on dashboard pages, hidden until
+// focused, and move keyboard focus into <main> in one activation.
+test("Skip to content link is the first tab stop and jumps focus into main", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/alerts");
+
+  const skipLink = page.getByRole("link", { name: "Skip to content" });
+  // sr-only leaves a 1px clipped box, which Playwright counts as visible —
+  // assert the collapsed box instead of toBeHidden().
+  expect(await skipLink.boundingBox()).toMatchObject({ width: 1, height: 1 });
+
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+
+  await page.keyboard.press("Enter");
+  const mainFocused = await page.evaluate(
+    () => document.activeElement === document.querySelector("main#main-content"),
+  );
+  expect(mainFocused).toBe(true);
+
+  await expectNoBlockingAxeViolations(page);
+});
+
 test("Messages screen has one main landmark and zero serious or critical accessibility violations", async ({
   page,
 }) => {
