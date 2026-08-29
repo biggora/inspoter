@@ -66,3 +66,4 @@ __pycache__/
 *.py[cod]
 /.playwright-cli/
 /.playwright-mcp/
+/.impeccable/
