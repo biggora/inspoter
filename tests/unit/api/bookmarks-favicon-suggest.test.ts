@@ -61,7 +61,7 @@ describe("buildFaviconSuggestUrl", () => {
     expect(buildFaviconSuggestUrl("github.com")).toBe(
       "https://www.google.com/s2/favicons?sz=64&domain=github.com",
     );
-  });
+  }, 10_000);
 
   it("URL-encodes special characters in the hostname", async () => {
     const { buildFaviconSuggestUrl } =

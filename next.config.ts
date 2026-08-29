@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
+  // Keep the repository-owned AGENTS.md stable across `next dev` runs.
+  agentRules: false,
   experimental: {
     globalNotFound: true,
   },
