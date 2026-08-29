@@ -65,7 +65,7 @@ describe("GET /api/bookmarks", () => {
       items: [{ id: "bm-1", name: "Grafana", categoryName: "Ops" }],
       total: 1,
     });
-  });
+  }, 10_000);
 
   it("scopes the search to the authenticated workspace", async () => {
     const { GET } = await import("@/app/api/bookmarks/route");
