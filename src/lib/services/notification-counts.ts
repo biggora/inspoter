@@ -48,3 +48,37 @@ async function countUnreadInbox(workspaceId: string): Promise<number> {
     },
   });
 }
+
+export interface SidebarHealth {
+  /** Credentials whose last sync succeeded (or that never errored). */
+  providersOk: number;
+  /** Credentials with a recorded lastSyncError — the "errored" provider mode. */
+  providersErrored: number;
+  /** Unread alerts at critical severity. */
+  openCriticalAlerts: number;
+}
+
+/**
+ * The compact provider/alerts health block pinned to the sidebar footer
+ * (design.md §3.2 AppSidebar "system status summary"). Read from the same
+ * columns the provider refresh loop maintains (provider-health.ts), so the
+ * footer never triggers provider calls of its own.
+ */
+export async function getSidebarHealth(
+  workspaceId: string,
+): Promise<SidebarHealth> {
+  const [total, errored, criticals] = await Promise.all([
+    db.providerCredential.count({ where: { workspaceId } }),
+    db.providerCredential.count({
+      where: { workspaceId, lastSyncError: { not: null } },
+    }),
+    db.alert.count({
+      where: { workspaceId, isRead: false, severity: "critical" },
+    }),
+  ]);
+  return {
+    providersOk: total - errored,
+    providersErrored: errored,
+    openCriticalAlerts: criticals,
+  };
+}

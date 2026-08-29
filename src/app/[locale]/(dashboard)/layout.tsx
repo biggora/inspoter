@@ -5,7 +5,10 @@ import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
 import { RouteProgressProvider } from "@/components/shell/route-progress";
 import { WebMcpGlobalTools } from "@/components/shell/web-mcp-global-tools";
-import { getUnreadCounts } from "@/lib/services/notification-counts";
+import {
+  getSidebarHealth,
+  getUnreadCounts,
+} from "@/lib/services/notification-counts";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +29,9 @@ export default async function DashboardLayout({
   // Seeds the topbar badges so they are right on first paint; the client keeps
   // them current from there (notification-indicators.tsx).
   const unreadCounts = await getUnreadCounts(workspace.id);
+  // Sidebar footer status block (design.md §3.2) — same story: correct on
+  // first paint, refreshed by full route loads.
+  const sidebarHealth = await getSidebarHealth(workspace.id);
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
@@ -37,6 +43,7 @@ export default async function DashboardLayout({
           workspaceName={workspace.name}
           workspaceId={workspace.id}
           hiddenSections={workspace.hiddenSections}
+          health={sidebarHealth}
         />
         <SidebarInset>
           <DashboardTopbar

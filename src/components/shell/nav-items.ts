@@ -16,106 +16,140 @@ export const MANAGEMENT_NAV_ITEM: NavItem = {
   icon: "ri-briefcase-4-line",
 };
 
-// AC-SHELL-001: the seven PRD sections plus Services (Uptime Kuma-style
-// monitoring, additive), in design.md §3.2.1 order. `labelKey` resolves
-// against the "shell" i18n namespace (src/messages/ru/shell.json) via
-// `useTranslations("shell")` in the consuming components.
+// AC-SHELL-001 (design.md §3.2): the sidebar groups the hideable sections
+// into labelled clusters so a flat 17-item list never makes the operator
+// scan every label to find one section. Cluster membership is UI-only —
+// Workspace.hiddenSections still works per section key, and the flat order
+// below is exactly the render order.
 //
 // Dashboards stays hideable like every other configurable section — a workspace
 // that does not use boards can switch it off in workspace settings.
-export const SECTION_NAV_ITEMS: NavItem[] = [
+export interface NavGroup {
+  labelKey: string;
+  items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
   {
-    key: "dashboards",
-    href: "/dashboards",
-    labelKey: "navDashboards",
-    icon: "ri-dashboard-line",
+    labelKey: "navGroupWork",
+    items: [
+      {
+        key: "dashboards",
+        href: "/dashboards",
+        labelKey: "navDashboards",
+        icon: "ri-dashboard-line",
+      },
+      {
+        key: "bookmarks",
+        href: "/bookmarks",
+        labelKey: "navBookmarks",
+        icon: "ri-bookmark-line",
+      },
+      {
+        key: "kanban",
+        href: "/kanban",
+        labelKey: "navKanban",
+        icon: "ri-kanban-view",
+      },
+      {
+        key: "calendar",
+        href: "/calendar",
+        labelKey: "navCalendar",
+        icon: "ri-calendar-2-line",
+      },
+      {
+        key: "notes",
+        href: "/notes",
+        labelKey: "navNotes",
+        icon: "ri-booklet-line",
+      },
+      {
+        key: "agents",
+        href: "/agents",
+        labelKey: "navAgents",
+        icon: "ri-robot-2-line",
+      },
+    ],
   },
   {
-    key: "bookmarks",
-    href: "/bookmarks",
-    labelKey: "navBookmarks",
-    icon: "ri-bookmark-line",
+    labelKey: "navGroupInfrastructure",
+    items: [
+      {
+        key: "domains",
+        href: "/domains",
+        labelKey: "navDomains",
+        icon: "ri-global-line",
+      },
+      {
+        key: "servers",
+        href: "/servers",
+        labelKey: "navServers",
+        icon: "ri-server-line",
+      },
+      {
+        key: "hosting",
+        href: "/hosting",
+        labelKey: "navHosting",
+        icon: "ri-cloud-line",
+      },
+      {
+        key: "services",
+        href: "/services",
+        labelKey: "navServices",
+        icon: "ri-pulse-line",
+      },
+    ],
   },
   {
-    key: "kanban",
-    href: "/kanban",
-    labelKey: "navKanban",
-    icon: "ri-kanban-view",
+    labelKey: "navGroupCommunication",
+    items: [
+      { key: "mail", href: "/mail", labelKey: "navMail", icon: "ri-mail-line" },
+      {
+        key: "contacts",
+        href: "/contacts",
+        labelKey: "navContacts",
+        icon: "ri-contacts-book-line",
+      },
+      {
+        key: "messages",
+        href: "/messages",
+        labelKey: "navMessages",
+        icon: "ri-message-2-line",
+      },
+    ],
   },
   {
-    key: "calendar",
-    href: "/calendar",
-    labelKey: "navCalendar",
-    icon: "ri-calendar-2-line",
-  },
-  {
-    key: "notes",
-    href: "/notes",
-    labelKey: "navNotes",
-    icon: "ri-booklet-line",
-  },
-  {
-    key: "agents",
-    href: "/agents",
-    labelKey: "navAgents",
-    icon: "ri-robot-2-line",
-  },
-  {
-    key: "domains",
-    href: "/domains",
-    labelKey: "navDomains",
-    icon: "ri-global-line",
-  },
-  {
-    key: "servers",
-    href: "/servers",
-    labelKey: "navServers",
-    icon: "ri-server-line",
-  },
-  {
-    key: "hosting",
-    href: "/hosting",
-    labelKey: "navHosting",
-    icon: "ri-cloud-line",
-  },
-  {
-    key: "services",
-    href: "/services",
-    labelKey: "navServices",
-    icon: "ri-pulse-line",
-  },
-  { key: "mail", href: "/mail", labelKey: "navMail", icon: "ri-mail-line" },
-  {
-    key: "contacts",
-    href: "/contacts",
-    labelKey: "navContacts",
-    icon: "ri-contacts-book-line",
-  },
-  {
-    key: "messages",
-    href: "/messages",
-    labelKey: "navMessages",
-    icon: "ri-message-2-line",
-  },
-  {
-    key: "activity",
-    href: "/activity",
-    labelKey: "navActivity",
-    icon: "ri-history-line",
-  },
-  {
-    key: "logs",
-    href: "/logs",
-    labelKey: "navLogs",
-    icon: "ri-file-list-3-line",
-  },
-  {
-    key: "alerts",
-    href: "/alerts",
-    labelKey: "navAlerts",
-    icon: "ri-alert-line",
+    labelKey: "navGroupMonitoring",
+    items: [
+      {
+        key: "activity",
+        href: "/activity",
+        labelKey: "navActivity",
+        icon: "ri-history-line",
+      },
+      {
+        key: "logs",
+        href: "/logs",
+        labelKey: "navLogs",
+        icon: "ri-file-list-3-line",
+      },
+      {
+        key: "alerts",
+        href: "/alerts",
+        labelKey: "navAlerts",
+        icon: "ri-alert-line",
+      },
+    ],
   },
 ];
+
+// The flat section list — derived so it can never drift from the grouped
+// order above. Consumers: SECTION_KEYS (workspace visibility validation),
+// the workspace settings visibility form, and the topbar notification
+// indicator definitions.
+export const SECTION_NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap(
+  (group) => group.items,
+);
 
 // Stable keys of the hideable sections — the allowed values for
 // Workspace.hiddenSections. Used for server-side validation
