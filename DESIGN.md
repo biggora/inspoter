@@ -146,6 +146,8 @@ Three specialized font families are loaded via Next.js self-hosted `next/font`:
 | `--text-2xl` | `24px` | `1.2` (`--leading-tight`) | `-0.02em` | Primary metric statistics |
 | `--text-3xl` | `30px` | `1.2` (`--leading-tight`) | `-0.03em` | Rare hero numbers |
 
+Every scale step is available as a Tailwind utility (`text-2xs` … `text-3xl`): the values ride the token `:root` declarations (which win the cascade over Tailwind's layered theme), and `text-2xs` is registered in the `@theme inline` block in `globals.css`. Arbitrary sizes (`text-[11px]`, `text-[0.7rem]`) are forbidden in feature code.
+
 ---
 
 ### 2.4 Spacing & Geometry Scale
@@ -290,6 +292,22 @@ SVG line chart rendered directly with OKLCH theme tokens.
 #### 9. FilterBar (`filter-bar.tsx`)
 Compact horizontal container enforcing `--control-sm` (32px) height across all nested inputs, select triggers, button groups, and search fields.
 
+#### 10. CopyButton (`copy-button.tsx`)
+The single copy-to-clipboard control. Owns the copied flag (icon + label swap, 2s auto-revert), the `navigator.clipboard` call, and the result toasts.
+- **Props:** `value`, optional `labels` / `toasts` overrides for context-specific wording ("Copy URL"), `onCopyFailed` for manual-copy fallbacks (focus + select the source field). Defaults come from the `ui` message namespace.
+- **Recipe:** outline `sm` button, `ri-file-copy-line` → `ri-check-line` swap with `data-icon="inline-start"`.
+
+#### 11. RefreshButton (`refresh-button.tsx`)
+The reload affordance for client-fetched pages: outline button + `ri-refresh-line` + label, disabled while the caller's request is in flight (`loading`).
+- **Props:** `loading`, `label` override (a namespace's "Retry" wording), `variant` (`outline` for toolbars, `default` for error-state retry CTAs). Default label from the `ui` namespace.
+
+#### 12. MetaItem (`meta-item.tsx`)
+One labelled fact tile — the `dt`/`dd` pair of detail-surface summary grids (server detail, service detail). Sibling of `MetricRow` (§3.1.7): same value typography (`font-medium text-foreground-800`), no meter column. Must sit inside a `<dl>`; renders `min-w-0` + truncating `dd` with an em-dash fallback for empty values.
+
+#### 13. EntityCardHeader (`entity-card-header.tsx`)
+The entity-card header shared by hosting accounts, servers, and services: 36px secondary icon tile (`size-9 rounded-lg bg-secondary-100`), truncating `h2` title, one `text-xs` description row, optional right-aligned `action`.
+- **Link strategies:** title-as-link (pass a link in `title`) or whole-block-as-link (`render={<Link … />}`, Base UI render prop).
+
 ---
 
 ### 3.2 Shell Architecture (`src/components/shell/`)
@@ -332,7 +350,13 @@ All irreversible operations (server reboots, service stops, DNS record deletions
 ### 4.4 Dense Filter Bars
 - Implemented via `FilterBar` wrapper.
 - All enclosed controls (`Input`, `Select`, `Button`, `ToggleGroup`) automatically clamp to 32px height.
-- Labels are visually compact with uppercase tracking (`text-[10px] tracking-wide text-foreground-400`).
+- Labels are visually compact with uppercase tracking (`text-2xs tracking-wide text-foreground-400`).
+
+### 4.5 Shared Timestamp & Byte-Size Formats (`src/lib/format/`)
+Timestamps and byte sizes come from the shared formatters, not per-view copies:
+- `datetime.ts` — `formatDate`, `formatDateTime` (locale, 24h, seconds optional), `formatShortDateTime` (`dd.mm hh:mm:ss`, activity rows), `formatClockTime` (`hh:mm:ss.mmm`, log lines). All guard null → "—" and invalid input → raw string. Views needing app-locale-aware dates use next-intl's `format.dateTime` directly instead.
+- `bytes.ts` — `formatByteSize` for single `number` sizes (attachments, localized units) alongside the existing BigInt pair formatters; `relative-time.ts` — bucketed "N minutes ago" wording (callers pass their namespace's `t`).
+
 
 ---
 

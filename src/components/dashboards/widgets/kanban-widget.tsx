@@ -59,7 +59,7 @@ export function KanbanWidget({ data }: { data: KanbanPayload }) {
                 {due && (
                   <span
                     className={cn(
-                      "shrink-0 text-[0.7rem]",
+                      "shrink-0 text-xs",
                       overdue ? "text-destructive" : "text-muted-foreground",
                     )}
                   >
@@ -72,7 +72,7 @@ export function KanbanWidget({ data }: { data: KanbanPayload }) {
         })}
       </ul>
       {hidden > 0 && (
-        <p className="text-[0.7rem] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("kanban.moreCount", { count: hidden })}
         </p>
       )}

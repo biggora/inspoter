@@ -111,7 +111,7 @@ export function LinkPicker({
               onClick={() => add(option)}
             >
               <span className="min-w-0 truncate">{option.label}</span>
-              <span className="ms-auto shrink-0 text-[0.65rem] text-muted-foreground">
+              <span className="ms-auto shrink-0 text-2xs text-muted-foreground">
                 {option.type.replaceAll("_", " ")}
               </span>
             </Button>

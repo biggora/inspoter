@@ -178,7 +178,7 @@ export function KanbanCard({ card, dragDisabled, onOpen }: KanbanCardProps) {
 
         {card.assignee && (
           <span
-            className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary-100 text-[0.65rem] font-semibold text-secondary-700 uppercase"
+            className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary-100 text-2xs font-semibold text-secondary-700 uppercase"
             title={t("cardAssigneeLabel", { name: card.assignee.username })}
           >
             {card.assignee.username.slice(0, 2)}

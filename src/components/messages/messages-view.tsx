@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Icon } from "@/components/ui/icon";
 import {
   Sheet,
   SheetContent,
@@ -338,14 +338,12 @@ function MessagesCoordinator({
             description={categoriesError}
             className="max-w-sm"
             action={
-              <Button type="button" onClick={() => void loadCategories()}>
-                <Icon
-                  name="ri-refresh-line"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                {t("retryButton")}
-              </Button>
+              <RefreshButton
+                type="button"
+                onClick={() => void loadCategories()}
+                label={t("retryButton")}
+                variant="default"
+              />
             }
           />
         </div>

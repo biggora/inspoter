@@ -40,7 +40,7 @@ export function MailWidget({ data }: { data: MailPayload }) {
               <span
                 aria-hidden
                 title={accountLabel}
-                className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-[0.5rem] font-semibold text-background-50"
+                className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-2xs font-semibold text-background-50"
                 style={{
                   backgroundColor: stringToColor(
                     item.accountEmail || item.accountName || item.accountId,
@@ -73,7 +73,7 @@ export function MailWidget({ data }: { data: MailPayload }) {
                   <Icon
                     name="ri-circle-fill"
                     aria-hidden
-                    className="text-[0.5rem] text-primary-500"
+                    className="text-2xs text-primary-500"
                   />
                 )}
               </span>

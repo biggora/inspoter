@@ -133,7 +133,7 @@ export function NotificationIndicators({
             {count > 0 && (
               <Badge
                 aria-hidden
-                className="pointer-events-none absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[0.625rem] tabular-nums"
+                className="pointer-events-none absolute -top-1 -right-1 h-4 min-w-4 px-1 text-2xs tabular-nums"
               >
                 {count > MAX_DISPLAYED_COUNT
                   ? `${MAX_DISPLAYED_COUNT}+`

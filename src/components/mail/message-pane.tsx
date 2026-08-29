@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { LoadingRegion } from "@/components/ui/loading";
@@ -24,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AddToContactsButton } from "@/components/contacts/add-to-contacts-button";
 import { getInitials, stringToColor } from "@/lib/mail/avatar";
+import { formatByteSize } from "@/lib/format/bytes";
 import { MailBody } from "./mail-body";
 import { LabelChip } from "./label-chip";
 import { MessageLabelPicker } from "./message-label-picker";
@@ -36,7 +38,6 @@ import {
 } from "./api";
 
 type Format = ReturnType<typeof useFormatter>;
-type Translate = (key: string) => string;
 
 // The AI summary is a per-message piece of view state, so it is modeled as a
 // union rather than three loose booleans: "loading with a stale summary still
@@ -73,16 +74,6 @@ function formatAddress(address: MailAddressDto): string {
 
 function formatAddressList(addresses: MailAddressDto[]): string {
   return addresses.map(formatAddress).join(", ");
-}
-
-function formatBytes(sizeBytes: number, t: Translate): string {
-  if (sizeBytes >= 1024 * 1024) {
-    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} ${t("byteUnitMb")}`;
-  }
-  if (sizeBytes >= 1024) {
-    return `${Math.round(sizeBytes / 1024)} ${t("byteUnitKb")}`;
-  }
-  return `${sizeBytes} ${t("byteUnitB")}`;
 }
 
 export interface MessagePaneProps {
@@ -218,10 +209,13 @@ export function MessagePane({
           <Alert variant="error">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <Button type="button" size="sm" onClick={onRetry}>
-            <Icon name="ri-refresh-line" aria-hidden data-icon="inline-start" />
-            {t("retryButton")}
-          </Button>
+          <RefreshButton
+            type="button"
+            size="sm"
+            onClick={onRetry}
+            label={t("retryButton")}
+            variant="default"
+          />
         </div>
       </div>
     );
@@ -564,7 +558,7 @@ export function MessagePane({
               )}
               <span className="max-w-48 truncate">{attachment.filename}</span>
               <span className="text-muted-foreground">
-                {formatBytes(attachment.sizeBytes, t)}
+                {formatByteSize(attachment.sizeBytes, t)}
               </span>
             </Button>
           ))}

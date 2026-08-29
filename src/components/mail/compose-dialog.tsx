@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { RecipientAutocomplete } from "@/components/contacts/recipient-autocomplete";
 import { cn } from "@/lib/utils";
+import { formatByteSize } from "@/lib/format/bytes";
 import {
   ApiError,
   deleteMailDraftAttachment,
@@ -103,14 +104,6 @@ function parseAddressList(value: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
-}
-
-function formatBytes(sizeBytes: number): string {
-  if (sizeBytes >= 1024 * 1024) {
-    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  if (sizeBytes >= 1024) return `${Math.round(sizeBytes / 1024)} KB`;
-  return `${sizeBytes} B`;
 }
 
 function DiscardChangesDialog({
@@ -758,7 +751,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(
                       {attachment.filename}
                     </span>
                     <span className="text-muted-foreground">
-                      {formatBytes(attachment.sizeBytes)}
+                      {formatByteSize(attachment.sizeBytes, t)}
                     </span>
                     <Button
                       type="button"

@@ -8,16 +8,9 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { EntityCardHeader } from "@/components/ui/entity-card-header";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import { LabelChip } from "@/components/ui/label-chip";
@@ -326,36 +319,25 @@ function ServiceCard({
 
   return (
     <Card size="sm">
-      <CardHeader className="border-b">
-        <Link
-          href={`/services/${service.id}`}
-          className="flex items-center gap-2.5 min-w-0"
-        >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-            <Icon
-              name={monitorIconClass}
-              aria-hidden
-              className="text-base text-secondary-600"
-            />
-          </div>
-          <div className="min-w-0">
-            <CardTitle>
-              <h2 className="truncate">{service.name}</h2>
-            </CardTitle>
-            <CardDescription className="truncate text-xs">
-              {getMonitorTypeLabel(service.monitorType, t)} ·{" "}
-              {formatTarget(service)}
-            </CardDescription>
-          </div>
-        </Link>
-        <CardAction>
+      <EntityCardHeader
+        icon={monitorIconClass}
+        title={service.name}
+        description={
+          <>
+            {getMonitorTypeLabel(service.monitorType, t)} ·{" "}
+            {formatTarget(service)}
+          </>
+        }
+        descriptionClassName="truncate"
+        render={<Link href={`/services/${service.id}`} />}
+        action={
           <ServiceStatusBadge
             status={service.currentStatus}
             isActive={service.isActive}
             className="shrink-0"
           />
-        </CardAction>
-      </CardHeader>
+        }
+      />
 
       <CardContent className="flex flex-col gap-1.5">
         {service.labels.length > 0 && (

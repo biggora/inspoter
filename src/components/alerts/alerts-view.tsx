@@ -54,6 +54,7 @@ import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { alertMessage, categoryLabel } from "./localize";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
+import { formatDateTime } from "@/lib/format/datetime";
 
 const SEVERITY_KEYS: Record<string, string> = {
   all: "severityAllOption",
@@ -67,20 +68,6 @@ const SORT_KEYS: Record<string, string> = {
   desc: "sortDescOption",
   asc: "sortAscOption",
 };
-
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-}
 
 // Alerts list (design.md §6.6, AC-ALR-001..006). Fetched client-side (same
 // rationale as Logs — filterable/paginated). Category CRUD lives alongside
@@ -528,7 +515,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                     {alertMessage(alert, t)}
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
-                    {formatTimestamp(alert.timestamp)}
+                    {formatDateTime(alert.timestamp, { seconds: true })}
                   </TableCell>
                   <TableCell className="text-right">
                     {/* Files the alert as a kanban task, linked back to it.

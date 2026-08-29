@@ -21,16 +21,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { EntityCardHeader } from "@/components/ui/entity-card-header";
 import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
@@ -219,14 +213,7 @@ export function HostingView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={reload} disabled={loading}>
-                <Icon
-                  name="ri-refresh-line"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                {t("refreshButton")}
-              </Button>
+              <RefreshButton onClick={reload} loading={loading} />
             ) : undefined}
           </>
         }
@@ -245,14 +232,11 @@ export function HostingView() {
           title={t("providerUnavailableTitle")}
           description={t("providerUnavailableDescription")}
           action={
-            <Button onClick={reload}>
-              <Icon
-                name="ri-refresh-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("retryButton")}
-            </Button>
+            <RefreshButton
+              onClick={reload}
+              label={t("retryButton")}
+              variant="default"
+            />
           }
         />
       )}
@@ -413,28 +397,12 @@ function HostingCard({
       tabIndex={-1}
       size="sm"
     >
-      <CardHeader className="border-b">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-            <Icon
-              name="ri-global-line"
-              aria-hidden
-              className="text-base text-secondary-600"
-            />
-          </div>
-          <div className="min-w-0">
-            <CardTitle>
-              <h2 className="truncate">{account.domain}</h2>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {account.user || account.ip || account.plan}
-            </CardDescription>
-          </div>
-        </div>
-        <CardAction>
-          <StatusIndicator status={cardStatus} />
-        </CardAction>
-      </CardHeader>
+      <EntityCardHeader
+        icon="ri-global-line"
+        title={account.domain}
+        description={account.user || account.ip || account.plan}
+        action={<StatusIndicator status={cardStatus} />}
+      />
 
       <CardContent className="flex flex-col gap-1.5">
         <MetricRows>

@@ -217,7 +217,7 @@ export function TimeSeriesChart({
       <div className="flex gap-2">
         <div
           aria-hidden
-          className="flex w-12 shrink-0 flex-col justify-between text-right text-[10px] leading-none text-foreground-400"
+          className="flex w-12 shrink-0 flex-col justify-between text-right text-2xs leading-none text-foreground-400"
           style={{ height }}
         >
           {Array.from({ length: GRID_STEPS + 1 }, (_, step) => (
@@ -313,7 +313,7 @@ export function TimeSeriesChart({
           {hoverIndex !== null && timestamps[hoverIndex] && (
             <div
               className={cn(
-                "pointer-events-none absolute top-1 z-10 min-w-32 rounded-md border border-background-200 bg-background-50 px-2 py-1 text-[11px] leading-tight shadow-sm",
+                "pointer-events-none absolute top-1 z-10 min-w-32 rounded-md border border-background-200 bg-background-50 px-2 py-1 text-xs leading-tight shadow-sm",
                 hoverX > 60 ? "-translate-x-full" : "",
               )}
               style={{ left: `${hoverX}%` }}
@@ -340,7 +340,7 @@ export function TimeSeriesChart({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pl-14 text-[10px] text-foreground-400">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pl-14 text-2xs text-foreground-400">
         <span>{timestamps.length > 0 ? axisTime(timestamps[0]) : ""}</span>
         <span>
           {timestamps.length > 0

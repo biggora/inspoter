@@ -146,7 +146,7 @@ export function MessageTimeline({
             icon="ri-error-warning-line"
             title={t("loadErrorTitle")}
             description={error}
-            className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-200"
+            className="max-w-sm animate-in fade-in-0 zoom-in-95 duration-(--duration-base)"
             action={
               <Button type="button" size="sm" onClick={onRetry}>
                 <Icon
@@ -174,7 +174,7 @@ export function MessageTimeline({
               channelName,
               strong: (chunks) => <strong>{chunks}</strong>,
             })}
-            className="animate-in fade-in-0 zoom-in-95 duration-200"
+            className="animate-in fade-in-0 zoom-in-95 duration-(--duration-base)"
           />
         </div>
       ) : (
@@ -201,7 +201,7 @@ export function MessageTimeline({
                 {shouldShowDateSeparator(messages, index) && (
                   <div className="my-4 flex items-center gap-3 first:mt-0">
                     <div className="h-px flex-1 bg-background-200" />
-                    <span className="text-[11px] font-medium tracking-wide text-foreground-400 uppercase whitespace-nowrap">
+                    <span className="text-xs font-medium tracking-wide text-foreground-400 uppercase whitespace-nowrap">
                       {formatDateSeparator(message.createdAt, t, format)}
                     </span>
                     <div className="h-px flex-1 bg-background-200" />
@@ -235,12 +235,12 @@ export function MessageTimeline({
                       </span>
                       <Badge
                         variant="outline"
-                        className="h-4 px-1.5 text-[10px]"
+                        className="h-4 px-1.5 text-2xs"
                       >
                         {originLabel(message.origin, t)}
                       </Badge>
                       <time
-                        className="text-[11px] text-foreground-400 whitespace-nowrap"
+                        className="text-xs text-foreground-400 whitespace-nowrap"
                         dateTime={message.createdAt}
                         title={formatMessageFull(message.createdAt, format)}
                       >

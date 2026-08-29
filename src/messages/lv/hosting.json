@@ -2,7 +2,6 @@
   "pageTitle": "Hostings",
   "accountsCount": "{count, plural, one {# konts} few {# konti} many {# kontu} other {# kontu}}",
   "addProviderButton": "Pievienot pakalpojumu sniedzēju",
-  "refreshButton": "Atsvaidzināt",
   "retryButton": "Mēģināt vēlreiz",
   "loadError": "Neizdevās ielādēt hostinga kontus",
   "actionError": "Neizdevās veikt darbību",

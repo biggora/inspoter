@@ -161,7 +161,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
       </p>
 
       <TooltipProvider delay={150}>
-        <div className="grid grid-cols-7 gap-0.5 text-center text-[0.7rem]">
+        <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
           {weekdays.map((weekday) => (
             <span key={weekday} className="text-muted-foreground">
               {weekday}
@@ -248,7 +248,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
       </TooltipProvider>
 
       {data.days.length > 0 && (
-        <p className="flex items-start gap-1.5 text-[0.7rem] leading-snug text-muted-foreground">
+        <p className="flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">
           <span
             aria-hidden="true"
             className="mt-0.5 size-2.5 shrink-0 rounded-sm border border-accent-200 bg-accent-100"
@@ -308,7 +308,7 @@ export function CalendarWidget({ data }: { data: CalendarMonthData }) {
       )}
 
       {data.truncated.length > 0 && (
-        <p className="text-[0.7rem] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("calendar.truncatedNote")}
         </p>
       )}

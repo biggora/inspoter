@@ -56,7 +56,7 @@ export function MessagesWidget({ data }: { data: MessagesPayload }) {
                   <Icon
                     name="ri-circle-fill"
                     aria-hidden
-                    className="text-[0.5rem] text-primary-500"
+                    className="text-2xs text-primary-500"
                   />
                 )}
               </span>

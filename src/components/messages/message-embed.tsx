@@ -113,7 +113,7 @@ export function MessageEmbed({ embed }: { embed: MessageEmbedDto }) {
           )}
 
           {(embed.footer?.text || validTimestamp) && (
-            <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-foreground-400">
+            <div className="flex items-center gap-1.5 pt-0.5 text-xs text-foreground-400">
               {isSafeUrl(embed.footer?.icon_url) && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

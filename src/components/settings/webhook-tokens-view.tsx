@@ -8,6 +8,7 @@ import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { McpScope } from "@/lib/mcp/scopes";
+import { formatDate } from "@/lib/format/datetime";
 import { McpScopeFields } from "./mcp-scope-fields";
 import {
   ApiError,
@@ -56,17 +58,6 @@ import {
   type CreatedWebhookTokenDto,
   type WebhookTokenDto,
 } from "./webhook-tokens-api";
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
 
 // Settings > Webhooks — token list + create/revoke (design.md §6.7.1,
 // AC-WH-008/009). Client-fetched (no server-component data hand-off) since
@@ -89,7 +80,6 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
   const [nameError, setNameError] = useState<string | null>(null);
   const [scopes, setScopes] = useState<McpScope[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const [scopesTarget, setScopesTarget] = useState<WebhookTokenDto | null>(
     null,
@@ -145,7 +135,6 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
       setNameError(null);
       setScopes([]);
       setCreatedToken(null);
-      setCopied(false);
       load();
     }
   }
@@ -173,26 +162,6 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
       }
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handleCopy() {
-    if (!createdToken) return;
-    try {
-      await navigator.clipboard.writeText(createdToken.token);
-      setCopied(true);
-      toast.success(t("copiedToClipboardToast"));
-    } catch {
-      toast.error(t("copyFailedError"));
-    }
-  }
-
-  async function handleCopyEndpoint() {
-    try {
-      await navigator.clipboard.writeText(mcpEndpoint);
-      toast.success(t("copiedToClipboardToast"));
-    } catch {
-      toast.error(t("copyFailedError"));
     }
   }
 
@@ -241,7 +210,6 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
       const rotated = await webhookTokensApi.rotate(rotateTarget.id);
       toast.success(t("tokenRotatedToast"));
       setRotateTarget(null);
-      setCopied(false);
       setCreatedToken(rotated);
       setCreateOpen(true);
       load();
@@ -295,19 +263,7 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
           <code className="rounded-md border border-border bg-(--bg-sunken) px-2 py-1 font-mono text-sm break-all text-foreground">
             {mcpEndpoint}
           </code>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopyEndpoint}
-          >
-            <Icon
-              name="ri-file-copy-line"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            {t("copyButton")}
-          </Button>
+          <CopyButton value={mcpEndpoint} />
         </div>
         <p className="text-sm text-muted-foreground">
           {t.rich("mcpAuthHint", {
@@ -482,28 +438,7 @@ export function WebhookTokensView({ origin }: WebhookTokensViewProps) {
                     {createdToken.token}
                   </code>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-fit"
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <Icon
-                      name="ri-check-line"
-                      aria-hidden
-                      className="text-base"
-                    />
-                  ) : (
-                    <Icon
-                      name="ri-file-copy-line"
-                      aria-hidden
-                      className="text-base"
-                    />
-                  )}
-                  {copied ? t("copiedLabel") : t("copyButton")}
-                </Button>
+                <CopyButton value={createdToken.token} className="w-fit" />
               </div>
               <DialogFooter>
                 <DialogClose render={<Button type="button" />}>

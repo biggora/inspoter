@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { fetchLogs, type LogEntryDto } from "./api";
+import { formatClockTime } from "@/lib/format/datetime";
 
 const LEVEL_LABEL_KEYS: Record<string, string> = {
   all: "levelAll",
@@ -68,16 +69,6 @@ function LevelBadge({ level }: { level: string }) {
       className="uppercase"
     />
   );
-}
-
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  const ms = String(date.getMilliseconds()).padStart(3, "0");
-  return `${hh}:${mm}:${ss}.${ms}`;
 }
 
 // Logs list (design.md §6.5, AC-LOG-001..004). Fetched client-side (per the
@@ -314,7 +305,7 @@ export function LogsView() {
                   <Fragment key={entry.id}>
                     <TableRow>
                       <TableCell className="font-mono text-muted-foreground">
-                        {formatTimestamp(entry.timestamp)}
+                        {formatClockTime(entry.timestamp)}
                       </TableCell>
                       <TableCell>
                         <LevelBadge level={entry.level} />

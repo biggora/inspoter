@@ -71,7 +71,7 @@ export function ClockWidget({ config }: { config: ClockConfig }) {
         </p>
       )}
       {config.timeZone && (
-        <p className="text-[0.7rem] text-muted-foreground">{config.timeZone}</p>
+        <p className="text-xs text-muted-foreground">{config.timeZone}</p>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -73,16 +74,7 @@ import {
   FORMAT_LABEL_KEY,
 } from "./outgoing-webhooks-format";
 import { OutgoingWebhookDeliveries } from "./outgoing-webhook-deliveries";
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
+import { formatDate } from "@/lib/format/datetime";
 
 function isValidHttpsUrl(value: string): boolean {
   try {
@@ -127,7 +119,6 @@ export function OutgoingWebhooksView() {
 
   const [createdSecret, setCreatedSecret] =
     useState<CreatedOutgoingWebhookDto | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<OutgoingWebhookDto | null>(
     null,
@@ -181,7 +172,6 @@ export function OutgoingWebhooksView() {
     }
     setErrors({});
     setCreatedSecret(null);
-    setCopied(false);
   }
 
   function toggleEvent(event: OutgoingWebhookEventValue, checked: boolean) {
@@ -268,17 +258,6 @@ export function OutgoingWebhooksView() {
       }
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handleCopy() {
-    if (!createdSecret) return;
-    try {
-      await navigator.clipboard.writeText(createdSecret.secret);
-      setCopied(true);
-      toast.success(t("copiedToClipboardToast"));
-    } catch {
-      toast.error(t("copyFailedError"));
     }
   }
 
@@ -383,7 +362,7 @@ export function OutgoingWebhooksView() {
                       status={webhook.isActive ? "up" : "disabled"}
                     />
                     {!webhook.isActive && webhook.consecutiveFailures > 0 && (
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {t("autoDisabledHint", {
                           count: webhook.consecutiveFailures,
                         })}
@@ -662,20 +641,10 @@ export function OutgoingWebhooksView() {
                     {createdSecret.secret}
                   </code>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <CopyButton
+                  value={createdSecret.secret}
                   className="w-fit"
-                  onClick={handleCopy}
-                >
-                  <Icon
-                    name={copied ? "ri-check-line" : "ri-file-copy-line"}
-                    aria-hidden
-                    className="text-base"
-                  />
-                  {copied ? t("copiedLabel") : t("copyButton")}
-                </Button>
+                />
                 {createdSecret.publicKey && (
                   <div className="flex flex-col gap-2">
                     <p className="text-sm font-medium text-foreground">

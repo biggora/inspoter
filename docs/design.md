@@ -1,6 +1,6 @@
 # Design Specification — inspoter
 
-**Version:** v2.24
+**Version:** v2.25
 **Status:** Latvian added as a third operator-selectable UI locale
 **Owner:** UI/UX Designer
 **Date:** 2026-08-25
@@ -575,6 +575,25 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.25 — 2026-08-29 (design-system extraction pass)
+
+- Extracted four shared primitives from verified 3+-site duplication in
+  feature code: `ui/copy-button.tsx` (six hand-rolled clipboard buttons across
+  settings/messages), `ui/refresh-button.tsx` (the outline refresh/retry
+  button), `ui/meta-item.tsx` (the `dt`/`dd` fact tile used by §5.3/§5.x
+  detail summaries), and `ui/entity-card-header.tsx` (the icon-tile card
+  header shared by hosting/server/service cards). All callers migrated; no
+  visual change beyond the shared recipes themselves.
+- Consolidated datetime copies into `src/lib/format/datetime.ts` (named
+  formats preserving each surface's existing output) and attachment byte
+  formatting into `formatByteSize` (`src/lib/format/bytes.ts`).
+- Typography: registered `text-2xs` as a utility in `globals.css` and replaced
+  the 28 arbitrary sizes in feature code (`text-[0.7rem]`, `text-[11px]`, …)
+  with scale tokens; motion: feature-code `duration-200`/`duration-100`
+  hardcodes now use `--duration-base`/`--duration-fast`.
+- Deleted the dead `ui/pagination.tsx` primitive (zero importers; shell
+  pagination is the live implementation).
 
 ### v2.24 — 2026-08-25 (Latvian added as a third UI locale)
 

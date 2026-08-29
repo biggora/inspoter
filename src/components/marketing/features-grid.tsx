@@ -34,7 +34,7 @@ export async function FeaturesGrid() {
             <div
               key={feature.key}
               className={cn(
-                "group rounded-xl border border-foreground-800/20 bg-background-900/60 p-6 transition-all duration-200 hover:border-primary-500/30 hover:bg-background-900",
+                "group rounded-xl border border-foreground-800/20 bg-background-900/60 p-6 transition-all duration-(--duration-base) hover:border-primary-500/30 hover:bg-background-900",
                 feature.size === "large" &&
                   "md:col-span-2 lg:col-span-1 lg:row-span-2",
               )}

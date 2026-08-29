@@ -91,7 +91,7 @@ export function ChannelSidebar({
                       )}
                       aria-hidden
                     />
-                    <span className="truncate text-[11px] font-semibold tracking-wide text-foreground-500 uppercase">
+                    <span className="truncate text-xs font-semibold tracking-wide text-foreground-500 uppercase">
                       {category.name}
                     </span>
                   </Button>

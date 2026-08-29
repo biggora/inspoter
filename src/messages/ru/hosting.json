@@ -2,7 +2,6 @@
   "pageTitle": "Хостинги",
   "accountsCount": "{count, plural, one {# аккаунт} few {# аккаунта} many {# аккаунтов} other {# аккаунтов}}",
   "addProviderButton": "Добавить провайдера",
-  "refreshButton": "Обновить",
   "retryButton": "Повторить",
   "loadError": "Не удалось загрузить хостинг-аккаунты",
   "actionError": "Не удалось выполнить действие",

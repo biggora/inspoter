@@ -61,7 +61,7 @@ export function BookmarksWidget({ data }: { data: BookmarksPayload }) {
         ))}
       </ul>
       {hidden > 0 && (
-        <p className="text-[0.7rem] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("bookmarks.moreCount", { count: hidden })}
         </p>
       )}

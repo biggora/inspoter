@@ -13,7 +13,7 @@ export function NotificationToast({
     <div
       data-slot="notification-toast"
       className={cn(
-        "animate-in fade-in-0 slide-in-from-right-4 fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium duration-200",
+        "animate-in fade-in-0 slide-in-from-right-4 fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium duration-(--duration-base)",
         variant === "success"
           ? "bg-accent-100/90 text-accent-800"
           : "bg-primary-100/90 text-primary-800",

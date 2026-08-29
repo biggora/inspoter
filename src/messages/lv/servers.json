@@ -2,7 +2,6 @@
   "pageTitle": "Serveri",
   "serversCount": "{count, plural, one {# serveris} few {# serveri} many {# serveri} other {# serveri}}",
   "addProviderButton": "Pievienot pakalpojumu sniedzēju",
-  "refreshButton": "Atsvaidzināt",
   "retryButton": "Mēģināt vēlreiz",
   "loadError": "Neizdevās ielādēt serverus",
   "actionError": "Neizdevās veikt darbību",

@@ -41,7 +41,7 @@ export function ChannelHeader({
         </h2>
       </div>
       {categoryName && (
-        <span className="inline shrink-0 rounded-full bg-background-100 px-2 py-0.5 text-[10px] tracking-wide text-foreground-400 uppercase max-sm:hidden">
+        <span className="inline shrink-0 rounded-full bg-background-100 px-2 py-0.5 text-2xs tracking-wide text-foreground-400 uppercase max-sm:hidden">
           {categoryName}
         </span>
       )}

@@ -2,7 +2,6 @@
   "pageTitle": "Серверы",
   "serversCount": "{count, plural, one {# сервер} few {# сервера} many {# серверов} other {# серверов}}",
   "addProviderButton": "Добавить провайдера",
-  "refreshButton": "Обновить",
   "retryButton": "Повторить",
   "loadError": "Не удалось загрузить серверы",
   "actionError": "Не удалось выполнить действие",

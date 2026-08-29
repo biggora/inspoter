@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { MetaItem } from "@/components/ui/meta-item";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -264,66 +265,34 @@ export function ServiceDetailView({
             ))}
           </div>
         )}
-        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div>
-            <dt className="text-xs text-foreground-500">
-              {t("monitorTypeLabel")}
-            </dt>
-            <dd className="font-medium text-foreground-800">
-              {getMonitorTypeLabel(service.monitorType, t)}
-            </dd>
-          </div>
-          <div className="min-w-0">
-            <dt className="text-xs text-foreground-500">{t("targetLabel")}</dt>
-            <dd className="font-medium text-foreground-800 truncate">
-              {formatTarget(service)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-foreground-500">
-              {t("intervalLabel")}
-            </dt>
-            <dd className="font-medium text-foreground-800">
-              {t("secondsValue", { value: service.intervalSeconds })}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-foreground-500">{t("timeoutLabel")}</dt>
-            <dd className="font-medium text-foreground-800">
-              {t("msValue", { value: service.timeoutMs })}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-foreground-500">{t("retriesLabel")}</dt>
-            <dd className="font-medium text-foreground-800">
-              {service.retries}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-foreground-500">
-              {t("lastCheckedLabel")}
-            </dt>
-            <dd className="font-medium text-foreground-800">
-              {formatRelativeTime(service.lastCheckedAt, t, format)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-foreground-500">
-              {t("responseTimeLabel")}
-            </dt>
-            <dd className="font-medium text-foreground-800">
-              {formatResponseTime(service.lastResponseTimeMs, t)}
-            </dd>
-          </div>
+        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <MetaItem
+            label={t("monitorTypeLabel")}
+            value={getMonitorTypeLabel(service.monitorType, t)}
+          />
+          <MetaItem label={t("targetLabel")} value={formatTarget(service)} />
+          <MetaItem
+            label={t("intervalLabel")}
+            value={t("secondsValue", { value: service.intervalSeconds })}
+          />
+          <MetaItem
+            label={t("timeoutLabel")}
+            value={t("msValue", { value: service.timeoutMs })}
+          />
+          <MetaItem label={t("retriesLabel")} value={service.retries} />
+          <MetaItem
+            label={t("lastCheckedLabel")}
+            value={formatRelativeTime(service.lastCheckedAt, t, format)}
+          />
+          <MetaItem
+            label={t("responseTimeLabel")}
+            value={formatResponseTime(service.lastResponseTimeMs, t)}
+          />
           {service.monitorType === "HTTP" && service.expectedStatusCodes && (
-            <div>
-              <dt className="text-xs text-foreground-500">
-                {t("expectedCodesLabel")}
-              </dt>
-              <dd className="font-medium text-foreground-800">
-                {service.expectedStatusCodes}
-              </dd>
-            </div>
+            <MetaItem
+              label={t("expectedCodesLabel")}
+              value={service.expectedStatusCodes}
+            />
           )}
         </dl>
 

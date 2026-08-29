@@ -5,6 +5,28 @@
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
 
+/** Attachment-size wording keys ("12.4 MB") in the feature namespace that owns them. */
+export type ByteUnitKey = "byteUnitB" | "byteUnitKb" | "byteUnitMb";
+
+/**
+ * Human size for a single `number` of bytes (mail attachments). Callers pass
+ * their namespace's `t` for localized unit labels; without it the units fall
+ * back to their universal abbreviations.
+ */
+export function formatByteSize(
+  sizeBytes: number,
+  t?: (key: ByteUnitKey) => string,
+): string {
+  const unit = (key: ByteUnitKey, fallback: string) => (t ? t(key) : fallback);
+  if (sizeBytes >= 1024 * 1024) {
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} ${unit("byteUnitMb", "MB")}`;
+  }
+  if (sizeBytes >= 1024) {
+    return `${Math.round(sizeBytes / 1024)} ${unit("byteUnitKb", "KB")}`;
+  }
+  return `${sizeBytes} ${unit("byteUnitB", "B")}`;
+}
+
 // Index of the unit a value reads best in, so a used/total pair can be printed
 // in one shared unit instead of "28.0 GB / 74.8 GB".
 export function byteUnitIndex(bytes: bigint): number {

@@ -13,5 +13,10 @@
   "sidebarDescription": "Отображает мобильную боковую панель.",
   "notFoundTitle": "Страница не найдена",
   "notFoundDescription": "Запрошенная страница не существует или была перемещена.",
-  "notFoundDashboardAction": "К панелям"
+  "notFoundDashboardAction": "К панелям",
+  "copyLabel": "Копировать",
+  "copiedLabel": "Скопировано",
+  "copiedToClipboardToast": "Скопировано в буфер обмена.",
+  "copyFailedToast": "Не удалось скопировать в буфер обмена.",
+  "refreshLabel": "Обновить"
 }

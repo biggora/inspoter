@@ -8,9 +8,11 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { LoadingRegion } from "@/components/ui/loading";
+import { MetaItem } from "@/components/ui/meta-item";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
@@ -287,14 +289,11 @@ export function ServerDetailView({
             notFound ? t("notFoundDescription") : (loadError ?? undefined)
           }
           action={
-            <Button onClick={() => void loadServer()}>
-              <Icon
-                name="ri-refresh-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("retryButton")}
-            </Button>
+            <RefreshButton
+              onClick={() => void loadServer()}
+              label={t("retryButton")}
+              variant="default"
+            />
           }
         />
       </PageBody>
@@ -456,22 +455,22 @@ export function ServerDetailView({
           <dl className="grid grid-cols-2 content-start gap-4 text-sm sm:grid-cols-3 lg:grid-cols-2">
             {isProvider && (
               <>
-                <SummaryItem label={t("typeLabel")} value={server.type} />
-                <SummaryItem label={t("osLabel")} value={server.os} />
-                <SummaryItem
+                <MetaItem label={t("typeLabel")} value={server.type} />
+                <MetaItem label={t("osLabel")} value={server.os} />
+                <MetaItem
                   label={t("locationLabel")}
                   value={server.location}
                 />
               </>
             )}
             {metrics.uptimeSeconds && (
-              <SummaryItem
+              <MetaItem
                 label={t("uptimeLabel")}
                 value={formatUptime(BigInt(metrics.uptimeSeconds))}
               />
             )}
             {metrics.receivedAt && (
-              <SummaryItem
+              <MetaItem
                 label={t("lastUpdateLabel")}
                 value={formatRelativeTime(metrics.receivedAt)}
               />
@@ -658,17 +657,6 @@ export function ServerDetailView({
         />
       )}
     </PageBody>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-foreground-500">{label}</dt>
-      <dd className="truncate font-medium text-foreground-800">
-        {value || "—"}
-      </dd>
-    </div>
   );
 }
 

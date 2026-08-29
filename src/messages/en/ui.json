@@ -13,5 +13,10 @@
   "sidebarDescription": "Displays the mobile sidebar.",
   "notFoundTitle": "Page not found",
   "notFoundDescription": "The requested page does not exist or may have moved.",
-  "notFoundDashboardAction": "Back to dashboards"
+  "notFoundDashboardAction": "Back to dashboards",
+  "copyLabel": "Copy",
+  "copiedLabel": "Copied",
+  "copiedToClipboardToast": "Copied to clipboard.",
+  "copyFailedToast": "Failed to copy to clipboard.",
+  "refreshLabel": "Refresh"
 }

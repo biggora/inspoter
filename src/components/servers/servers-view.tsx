@@ -12,16 +12,10 @@ import { Link } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { EntityCardHeader } from "@/components/ui/entity-card-header";
 import { LoadingOverlay, LoadingRegion } from "@/components/ui/loading";
 import { MetricRow, MetricRows } from "@/components/ui/metric-row";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
@@ -223,14 +217,7 @@ export function ServersView() {
               {t("addProviderButton")}
             </Button>
             {pageState !== "loading" ? (
-              <Button variant="outline" onClick={reload} disabled={loading}>
-                <Icon
-                  name="ri-refresh-line"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                {t("refreshButton")}
-              </Button>
+              <RefreshButton onClick={reload} loading={loading} />
             ) : undefined}
           </>
         }
@@ -249,14 +236,11 @@ export function ServersView() {
           title={t("providerUnavailableTitle")}
           description={loadError ?? t("providerUnavailableDescription")}
           action={
-            <Button onClick={reload}>
-              <Icon
-                name="ri-refresh-line"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              {t("retryButton")}
-            </Button>
+            <RefreshButton
+              onClick={reload}
+              label={t("retryButton")}
+              variant="default"
+            />
           }
         />
       )}
@@ -373,35 +357,20 @@ function ServerCard({
       tabIndex={-1}
       size="sm"
     >
-      <CardHeader className="border-b">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-            <Icon
-              name="ri-server-line"
-              aria-hidden
-              className="text-base text-secondary-600"
-            />
-          </div>
-          <div className="min-w-0">
-            <CardTitle>
-              {/* The name is the way into the server's history — only the
-                  title is a link, so the power buttons below stay their own
-                  targets. */}
-              <h2 className="truncate">
-                <Link
-                  href={`/servers/${server.localServerId}`}
-                  className="block py-1.5 text-inherit no-underline hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
-                >
-                  {server.name}
-                </Link>
-              </h2>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {isProvider ? server.ip : (server.hostname ?? "")}
-            </CardDescription>
-          </div>
-        </div>
-        <CardAction>
+      {/* The name is the way into the server's history — only the title is a
+          link, so the power buttons below stay their own targets. */}
+      <EntityCardHeader
+        icon="ri-server-line"
+        title={
+          <Link
+            href={`/servers/${server.localServerId}`}
+            className="block py-1.5 text-inherit no-underline hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+          >
+            {server.name}
+          </Link>
+        }
+        description={isProvider ? server.ip : (server.hostname ?? "")}
+        action={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {cardStatus && <StatusIndicator status={cardStatus} />}
             <StatusIndicator status={metricsStatus} />
@@ -415,8 +384,8 @@ function ServerCard({
               <Badge variant="secondary">{t("providerMissingBadge")}</Badge>
             )}
           </div>
-        </CardAction>
-      </CardHeader>
+        }
+      />
 
       <CardContent className="flex flex-col gap-1.5">
         {!isProvider && (
@@ -481,7 +450,7 @@ function ServerCard({
           </p>
         )}
         {metrics.receivedAt && (
-          <p className="text-[10px] text-foreground-400 text-right">
+          <p className="text-2xs text-foreground-400 text-right">
             {t("lastUpdate", { time: formatRelativeTime(metrics.receivedAt) })}
           </p>
         )}

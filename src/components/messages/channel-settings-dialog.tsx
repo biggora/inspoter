@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import {
   Dialog,
   DialogContent,
@@ -121,7 +122,6 @@ export function ChannelSettingsDialog({
   const [nameError, setNameError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [secret, setSecret] = useState<OneTimeSecret | null>(null);
-  const [copied, setCopied] = useState<"url" | "curl" | "discord" | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<ChannelWebhookDto | null>(
     null,
   );
@@ -165,7 +165,6 @@ export function ChannelSettingsDialog({
   function handleOpenChange(open: boolean) {
     if (!open) {
       setSecret(null);
-      setCopied(null);
       setName("");
       setNameError(null);
       setRevokeTarget(null);
@@ -203,20 +202,9 @@ export function ChannelSettingsDialog({
     }
   }
 
-  async function copyValue(
-    kind: "url" | "curl" | "discord",
-    value: string,
-    target: RefObject<HTMLTextAreaElement | null>,
-  ) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(kind);
-      toast.success(t("copiedToast"));
-    } catch {
-      target.current?.focus();
-      target.current?.select();
-      toast.error(t("copyFailedError"));
-    }
+  function selectForManualCopy(target: RefObject<HTMLTextAreaElement | null>) {
+    target.current?.focus();
+    target.current?.select();
   }
 
   async function handleRevoke() {
@@ -322,21 +310,18 @@ export function ChannelSettingsDialog({
                         rows={2}
                         className="min-h-16 resize-none break-all font-mono text-xs"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyValue("url", secret.url, urlRef)}
-                      >
-                        {copied === "url" ? (
-                          <Icon name="ri-check-line" aria-hidden />
-                        ) : (
-                          <Icon name="ri-file-copy-line" aria-hidden />
-                        )}
-                        {copied === "url"
-                          ? t("urlCopiedButton")
-                          : t("copyUrlButton")}
-                      </Button>
+                      <CopyButton
+                        value={secret.url}
+                        labels={{
+                          idle: t("copyUrlButton"),
+                          copied: t("urlCopiedButton"),
+                        }}
+                        toasts={{
+                          copied: t("copiedToast"),
+                          failed: t("copyFailedError"),
+                        }}
+                        onCopyFailed={() => selectForManualCopy(urlRef)}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor={`${nameId}-curl`} className="font-medium">
@@ -350,21 +335,18 @@ export function ChannelSettingsDialog({
                         rows={4}
                         className="min-h-24 resize-none break-all font-mono text-xs"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyValue("curl", secret.curl, curlRef)}
-                      >
-                        {copied === "curl" ? (
-                          <Icon name="ri-check-line" aria-hidden />
-                        ) : (
-                          <Icon name="ri-file-copy-line" aria-hidden />
-                        )}
-                        {copied === "curl"
-                          ? t("curlCopiedButton")
-                          : t("copyCurlButton")}
-                      </Button>
+                      <CopyButton
+                        value={secret.curl}
+                        labels={{
+                          idle: t("copyCurlButton"),
+                          copied: t("curlCopiedButton"),
+                        }}
+                        toasts={{
+                          copied: t("copiedToast"),
+                          failed: t("copyFailedError"),
+                        }}
+                        onCopyFailed={() => selectForManualCopy(curlRef)}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label
@@ -382,23 +364,18 @@ export function ChannelSettingsDialog({
                         rows={2}
                         className="min-h-16 resize-none break-all font-mono text-xs"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          copyValue("discord", secret.discordUrl, discordRef)
-                        }
-                      >
-                        {copied === "discord" ? (
-                          <Icon name="ri-check-line" aria-hidden />
-                        ) : (
-                          <Icon name="ri-file-copy-line" aria-hidden />
-                        )}
-                        {copied === "discord"
-                          ? t("discordUrlCopiedButton")
-                          : t("copyDiscordUrlButton")}
-                      </Button>
+                      <CopyButton
+                        value={secret.discordUrl}
+                        labels={{
+                          idle: t("copyDiscordUrlButton"),
+                          copied: t("discordUrlCopiedButton"),
+                        }}
+                        toasts={{
+                          copied: t("copiedToast"),
+                          failed: t("copyFailedError"),
+                        }}
+                        onCopyFailed={() => selectForManualCopy(discordRef)}
+                      />
                     </div>
                   </AlertDescription>
                 </Alert>

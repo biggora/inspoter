@@ -2,7 +2,6 @@
   "pageTitle": "Servers",
   "serversCount": "{count, plural, one {# server} few {# servers} many {# servers} other {# servers}}",
   "addProviderButton": "Add provider",
-  "refreshButton": "Refresh",
   "retryButton": "Retry",
   "loadError": "Failed to load servers",
   "actionError": "Failed to perform action",

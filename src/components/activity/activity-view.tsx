@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { fetchActivities, type ActivityDto } from "./api";
+import { formatShortDateTime } from "@/lib/format/datetime";
 
 const ACTION_LABEL_KEYS: Record<string, string> = {
   all: "allActions",
@@ -108,17 +109,6 @@ function ActionBadge({ action }: { action: string }) {
   const labelKey = ACTION_LABEL_KEYS[action];
   const label = labelKey ? t(labelKey) : action;
   return <Badge className={style}>{label}</Badge>;
-}
-
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mo = String(date.getMonth() + 1).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${dd}.${mo} ${hh}:${mm}:${ss}`;
 }
 
 // Activity log list (mirrors LogsView — see design.md §6.5 pattern). Fetched
@@ -393,7 +383,7 @@ export function ActivityView() {
                   <Fragment key={entry.id}>
                     <TableRow>
                       <TableCell className="font-mono text-muted-foreground">
-                        {formatTimestamp(entry.timestamp)}
+                        {formatShortDateTime(entry.timestamp)}
                       </TableCell>
                       <TableCell>{entry.operatorName}</TableCell>
                       <TableCell>

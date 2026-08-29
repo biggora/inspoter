@@ -76,7 +76,7 @@ export function ServiceStatusWidget({ data }: { data: ServiceStatusPayload }) {
         ))}
       </ul>
       {hidden > 0 && (
-        <p className="text-[0.7rem] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("serviceStatus.moreCount", { count: hidden })}
         </p>
       )}

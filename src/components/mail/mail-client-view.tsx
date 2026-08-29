@@ -8,6 +8,7 @@ import { MailAccountDialog } from "@/components/settings/mail-account-dialog";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -1136,17 +1137,12 @@ function MailClientCoordinator({
             description={accountsError}
             className="max-w-sm"
             action={
-              <Button
+              <RefreshButton
                 type="button"
                 onClick={() => setAccountsReload((n) => n + 1)}
-              >
-                <Icon
-                  name="ri-refresh-line"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                {t("retryButton")}
-              </Button>
+                label={t("retryButton")}
+                variant="default"
+              />
             }
           />
         </div>

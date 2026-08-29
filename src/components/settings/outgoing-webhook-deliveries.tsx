@@ -33,19 +33,7 @@ import {
   type WebhookDeliveryStatusValue,
 } from "./outgoing-webhooks-api";
 import { EVENT_LABEL_KEY } from "./outgoing-webhooks-format";
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTime } from "@/lib/format/datetime";
 
 // Delivery states mapped onto the app-wide status vocabulary.
 const DELIVERY_STATE: Record<WebhookDeliveryStatusValue, StatusState> = {

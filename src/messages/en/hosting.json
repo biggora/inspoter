@@ -2,7 +2,6 @@
   "pageTitle": "Hosting",
   "accountsCount": "{count, plural, one {# account} few {# accounts} many {# accounts} other {# accounts}}",
   "addProviderButton": "Add provider",
-  "refreshButton": "Refresh",
   "retryButton": "Retry",
   "loadError": "Failed to load hosting accounts",
   "actionError": "Failed to perform action",

@@ -6,6 +6,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Completes the dense type scale (inspot-tokens.css §Typography): the other
+     steps ride Tailwind's default utility names with values overridden by the
+     unlayered :root tokens, but 2xs has no default utility to override. */
+  --text-2xs: 10px;
   --color-background: var(--background);
   --color-background-50: oklch(var(--background-50));
   --color-background-100: oklch(var(--background-100));

@@ -63,7 +63,7 @@ export function ServerMetricsWidget({ data }: { data: ServerMetricsPayload }) {
               )}
             </div>
             {metrics.state === "not_configured" ? (
-              <p className="text-[0.7rem] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {t("serverMetrics.noMetrics")}
               </p>
             ) : (
@@ -93,7 +93,7 @@ export function ServerMetricsWidget({ data }: { data: ServerMetricsPayload }) {
         );
       })}
       {hidden > 0 && (
-        <p className="text-[0.7rem] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("serverMetrics.moreCount", { count: hidden })}
         </p>
       )}

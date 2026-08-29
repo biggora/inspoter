@@ -97,7 +97,7 @@ export async function MarketingHomePage() {
                         {m.subject}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[10px] text-foreground-500">
+                    <span className="shrink-0 text-2xs text-foreground-500">
                       {m.time}
                     </span>
                   </div>
