@@ -1,14 +1,14 @@
 name: inspoter
 services:
   db:
-    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    image: pgvector/pgvector:0.8.6-pg18-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: inspot
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql
     ports:
       - "3832:5432"
     healthcheck:

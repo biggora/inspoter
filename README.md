@@ -22,7 +22,7 @@ Inspoter — self-hosted панель для управления доменам
 
 - Next.js 16.2.10, React 19 и TypeScript;
 - Tailwind CSS v4 и shadcn/ui;
-- Prisma 7 и PostgreSQL 16;
+- Prisma 7 и PostgreSQL 18;
 - Vitest и Playwright;
 - Python 3.12 (Docker-агент сбора метрик, stdlib only);
 - Node.js 24.x и pnpm 11.12.0;
@@ -276,6 +276,29 @@ env-переменной для ключа нет.
 строки на месте, но делает нечитаемым зашифрованное содержимое — креденшелы
 провайдеров и токены Telegram-ботов. Самих агентов и навыков это не касается:
 их поля не шифруются.
+
+Отдельный случай — смена мажорной версии PostgreSQL (образ `db` переведён с
+16-й на 18-ю). Том, инициализированный старшей мажорной версией, новый образ
+не примет: сервер откажется стартовать на чужом каталоге данных. Поэтому
+мажорное обновление выполняется выгрузкой и восстановлением на остановленном
+приложении:
+
+```bash
+# 1. Бэкап на старой версии (приложение можно оставить работать)
+docker compose -f docker-compose.prod.yml exec -T db pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" > inspot-pre-pg18.dump
+
+# 2. Пересоздание контейнера БД с новым образом и чистым томом
+docker compose -f docker-compose.prod.yml down
+docker volume rm inspoter-prod_db-data
+docker compose -f docker-compose.prod.yml up -d --wait db
+
+# 3. Восстановление и запуск приложения
+docker compose -f docker-compose.prod.yml exec -T db pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB" < inspot-pre-pg18.dump
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Шаг 1 делайте до `down`: пока жив старый контейнер, дамп всегда можно
+пересоздать. Миграции Prisma применит точка входа `app` обычным порядком.
 
 ## Документация публичных webhook
 

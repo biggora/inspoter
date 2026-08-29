@@ -1,7 +1,7 @@
 name: inspoter-test
 services:
   db-test:
-    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    image: pgvector/pgvector:0.8.6-pg18-bookworm
     environment:
       POSTGRES_USER: inspoter_test
       POSTGRES_PASSWORD: local_test_only
@@ -9,7 +9,7 @@ services:
     ports:
       - "127.0.0.1:3833:5432"
     volumes:
-      - test-db-data:/var/lib/postgresql/data
+      - test-db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inspoter_test -d inspoter_e2e_test"]
       interval: 2s
