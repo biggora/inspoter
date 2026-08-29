@@ -154,23 +154,32 @@ describe("ServersView destructive actions", () => {
       initialStatus: "stopped",
       triggerName: "Start",
       action: "start",
+      confirmName: "Confirm",
       pendingName: "Starting…",
     },
     {
       initialStatus: "running",
       triggerName: "Stop",
       action: "stop",
+      confirmName: "Stop server",
       pendingName: "Stopping…",
     },
     {
       initialStatus: "running",
       triggerName: "Restart",
       action: "restart",
+      confirmName: "Confirm",
       pendingName: "Restarting…",
     },
   ] as const)(
     "confirms $action once and leaves a focused card with a disabled pending action",
-    async ({ initialStatus, triggerName, action, pendingName }) => {
+    async ({
+      initialStatus,
+      triggerName,
+      action,
+      confirmName,
+      pendingName,
+    }) => {
       apiMocks.fetchServers.mockResolvedValueOnce({
         servers: [{ ...runningServer, status: initialStatus }],
         providerErrors: [],
@@ -182,7 +191,7 @@ describe("ServersView destructive actions", () => {
       await user.click(
         await screen.findByRole("button", { name: triggerName }),
       );
-      await user.click(screen.getByRole("button", { name: "Confirm" }));
+      await user.click(screen.getByRole("button", { name: confirmName }));
 
       const pendingButton = await screen.findByRole("button", {
         name: pendingName,

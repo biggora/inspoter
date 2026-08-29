@@ -22,6 +22,8 @@
   "restartConfirmTitle": "Pārstartēt \"{name}\"?",
   "startConfirmText": "Serveris tiks startēts. Tas var aizņemt dažas sekundes.",
   "stopConfirmText": "Serveris tiks apturēts un kļūs nepieejams.",
+  "stopConfirmButton": "Apturēt serveri",
+  "stopConfirmBlastRadius": "Uz šī servera mitinātie pakalpojumi, domēni un e-pasts būs nepieejami, līdz serveris tiks atkal startēts.",
   "restartConfirmText": "Serveris tiks pārstartēts un īslaicīgi būs nepieejams.",
   "serverCardLabel": "Serveris \"{name}\"",
   "diskLabel": "Disks",

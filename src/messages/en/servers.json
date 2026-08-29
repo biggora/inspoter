@@ -22,6 +22,8 @@
   "restartConfirmTitle": "Restart \"{name}\"?",
   "startConfirmText": "The server will be started. This may take a few seconds.",
   "stopConfirmText": "The server will be stopped and become unavailable.",
+  "stopConfirmButton": "Stop server",
+  "stopConfirmBlastRadius": "Services, domains, and mail hosted on this server will go offline until it is started again.",
   "restartConfirmText": "The server will restart and be briefly unavailable.",
   "serverCardLabel": "Server \"{name}\"",
   "diskLabel": "Disk",

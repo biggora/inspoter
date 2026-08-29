@@ -35,6 +35,7 @@ interface PowerCardAction {
   labelKey: string;
   confirmTitleKey: string;
   confirmTextKey: string;
+  confirmButtonKey: string;
 }
 
 const PENDING_ACTION_BY_STATUS: Partial<Record<ServerStatus, PowerActionType>> =
@@ -68,18 +69,21 @@ const POWER_ACTION_CONFIG: Record<
     labelKey: "startAction",
     confirmTitleKey: "startConfirmTitle",
     confirmTextKey: "startConfirmText",
+    confirmButtonKey: "confirmButton",
   },
   stop: {
     icon: "ri-stop-circle-line",
     labelKey: "stopAction",
     confirmTitleKey: "stopConfirmTitle",
     confirmTextKey: "stopConfirmText",
+    confirmButtonKey: "stopConfirmButton",
   },
   restart: {
     icon: "ri-restart-line",
     labelKey: "restartAction",
     confirmTitleKey: "restartConfirmTitle",
     confirmTextKey: "restartConfirmText",
+    confirmButtonKey: "confirmButton",
   },
 };
 
@@ -163,7 +167,7 @@ export function ServerPowerActions({
             <AlertDialogTrigger
               render={
                 <Button
-                  variant="outline"
+                  variant={act.action === "stop" ? "destructive" : "outline"}
                   size="sm"
                   disabled={actionBusy}
                   onFocus={(event) => {
@@ -195,6 +199,11 @@ export function ServerPowerActions({
                 <AlertDialogDescription>
                   {t(act.confirmTextKey)}
                 </AlertDialogDescription>
+                {act.action === "stop" && (
+                  <p className="text-sm text-muted-foreground">
+                    {t("stopConfirmBlastRadius")}
+                  </p>
+                )}
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>{t("cancelButton")}</AlertDialogCancel>
@@ -202,7 +211,7 @@ export function ServerPowerActions({
                   variant={act.action === "stop" ? "destructive" : "default"}
                   onClick={() => handleConfirm(act.action)}
                 >
-                  {t("confirmButton")}
+                  {t(act.confirmButtonKey)}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

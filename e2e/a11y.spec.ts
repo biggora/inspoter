@@ -448,8 +448,17 @@ test("Server power AlertDialog has zero serious or critical accessibility violat
   const card = page.getByRole("group", { name: 'Server "a11y-server"' });
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "Stop", exact: true }).click();
+  const stopDialog = page.getByRole("alertdialog", {
+    name: 'Stop "a11y-server"?',
+  });
+  await expect(stopDialog).toBeVisible();
+  // Destructive parity (critique 2026-08-29, P2): the stop confirmation must
+  // state the blast radius and name the destructive action, not "Confirm".
   await expect(
-    page.getByRole("alertdialog", { name: 'Stop "a11y-server"?' }),
+    stopDialog.getByText("Services, domains, and mail hosted on this server"),
+  ).toBeVisible();
+  await expect(
+    stopDialog.getByRole("button", { name: "Stop server", exact: true }),
   ).toBeVisible();
   await expectNoBlockingAxeViolations(
     page,
