@@ -18,5 +18,6 @@
   "copiedLabel": "Copied",
   "copiedToClipboardToast": "Copied to clipboard.",
   "copyFailedToast": "Failed to copy to clipboard.",
-  "refreshLabel": "Refresh"
+  "refreshLabel": "Refresh",
+  "clearFilters": "Clear filters"
 }

@@ -18,5 +18,6 @@
   "copiedLabel": "Скопировано",
   "copiedToClipboardToast": "Скопировано в буфер обмена.",
   "copyFailedToast": "Не удалось скопировать в буфер обмена.",
-  "refreshLabel": "Обновить"
+  "refreshLabel": "Обновить",
+  "clearFilters": "Сбросить фильтры"
 }

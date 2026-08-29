@@ -75,6 +75,7 @@ const SORT_KEYS: Record<string, string> = {
 // category-tree screen.
 export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   const t = useTranslations("alerts");
+  const tUi = useTranslations("ui");
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -426,7 +427,31 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
         </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <EmptyState description={t("noResultsDescription")} />
+          // design.md §4.1: the no-results state preserves the search inputs
+          // (the FilterBar above stays mounted) and offers a one-click way
+          // back to the unfiltered list.
+          <EmptyState
+            description={t("noResultsDescription")}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchInput("");
+                  setQuery("");
+                  setCategoryId("all");
+                  setSeverity("all");
+                  setDate("");
+                }}
+              >
+                <Icon
+                  name="ri-filter-off-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+                {tUi("clearFilters")}
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon="ri-notification-3-line"

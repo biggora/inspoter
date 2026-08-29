@@ -78,6 +78,7 @@ function LevelBadge({ level }: { level: string }) {
 // "Page X of Y" total.
 export function LogsView() {
   const t = useTranslations("logs");
+  const tUi = useTranslations("ui");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("all");
@@ -268,7 +269,29 @@ export function LogsView() {
         </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <EmptyState description={t("emptyFilteredDescription")} />
+          // design.md §4.1: keep the filters mounted and offer the one-click
+          // way back to the unfiltered stream.
+          <EmptyState
+            description={t("emptyFilteredDescription")}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchInput("");
+                  setQuery("");
+                  setLevel("all");
+                  setSource("all");
+                }}
+              >
+                <Icon
+                  name="ri-filter-off-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+                {tUi("clearFilters")}
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon="ri-file-text-line"

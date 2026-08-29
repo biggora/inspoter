@@ -117,6 +117,7 @@ function ActionBadge({ action }: { action: string }) {
 // client-held stack of cursors rather than a "Page X of Y" total.
 export function ActivityView() {
   const t = useTranslations("activity");
+  const tUi = useTranslations("ui");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [action, setAction] = useState("all");
@@ -348,7 +349,30 @@ export function ActivityView() {
         </LoadingRegion>
       ) : items.length === 0 ? (
         hasActiveFilters ? (
-          <EmptyState description={t("emptyFilteredDescription")} />
+          // design.md §4.1: keep the filters mounted and offer the one-click
+          // way back to the unfiltered feed.
+          <EmptyState
+            description={t("emptyFilteredDescription")}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchInput("");
+                  setQuery("");
+                  setAction("all");
+                  setEntityType("all");
+                  setOperator("all");
+                }}
+              >
+                <Icon
+                  name="ri-filter-off-line"
+                  aria-hidden
+                  data-icon="inline-start"
+                />
+                {tUi("clearFilters")}
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon="ri-history-line"

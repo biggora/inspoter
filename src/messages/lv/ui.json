@@ -18,5 +18,6 @@
   "copiedLabel": "Nokopēts",
   "copiedToClipboardToast": "Nokopēts starpliktuvē.",
   "copyFailedToast": "Neizdevās kopēt uz starpliktuvi.",
-  "refreshLabel": "Atsvaidzināt"
+  "refreshLabel": "Atsvaidzināt",
+  "clearFilters": "Notīrīt filtrus"
 }
