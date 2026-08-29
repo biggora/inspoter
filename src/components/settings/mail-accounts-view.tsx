@@ -238,7 +238,7 @@ export function MailAccountsView() {
                           defaultingId === account.id
                             ? "ri-loader-4-line"
                             : account.isDefault
-                              ? "ri-star-fill"
+                              ? "ri-star-line"
                               : "ri-star-line"
                         }
                         aria-hidden

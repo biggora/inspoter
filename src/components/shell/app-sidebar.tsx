@@ -132,7 +132,7 @@ export function AppSidebar({
             className="font-heading text-lg font-bold group-data-[collapsible=icon]:hidden"
           >
             <span className="text-sidebar-foreground">In</span>
-            <span className="text-[#e60000]">Spoter</span>
+            <span className="text-primary-600">Spoter</span>
           </span>
         </div>
         <WorkspaceSwitcher

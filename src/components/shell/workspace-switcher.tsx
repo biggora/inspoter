@@ -202,7 +202,7 @@ export function WorkspaceSwitcher({
                     <Icon
                       name={
                         defaultId === workspace.id
-                          ? "ri-star-fill"
+                          ? "ri-star-line"
                           : "ri-star-line"
                       }
                       aria-hidden

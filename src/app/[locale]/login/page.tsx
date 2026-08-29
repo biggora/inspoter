@@ -19,7 +19,10 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4 py-12">
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="text-2xl font-semibold text-foreground">Inspoter</span>
+        <span className="font-heading text-2xl font-bold">
+          <span className="text-foreground">In</span>
+          <span className="text-primary-600">Spoter</span>
+        </span>
         <p className="text-sm text-muted-foreground">{t("tagline")}</p>
       </div>
       <LoginForm

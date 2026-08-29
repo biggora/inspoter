@@ -13,7 +13,7 @@ export async function MarketingFooter() {
           <InspoterIcon aria-hidden className="size-7 shrink-0" />
           <span className="font-heading text-lg font-bold">
             <span className="text-foreground-100">In</span>
-            <span className="text-[#e60000]">Spoter</span>
+            <span className="text-primary-400">Spoter</span>
           </span>
           <span className="text-xs text-foreground-500">
             {t("footer.tagline")}

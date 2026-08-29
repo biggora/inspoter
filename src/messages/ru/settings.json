@@ -2,7 +2,7 @@
   "settingsTitle": "Настройки",
   "workspaceCardTitle": "Рабочее пространство",
   "workspaceCardDescription": "Управление названием рабочего пространства, участниками и создание новых пространств",
-  "webhookTokensTitle": "API-токены",
+  "webhookTokensTitle": "Webhook- и API-токены",
   "webhookTokensCardDescription": "Управление API-токенами для внешних систем, отправляющих почту, сообщения, логи и оповещения, а также для агента метрик",
   "apiDocsTitle": "Документация API",
   "apiDocsCardDescription": "Просмотр и тестирование публичного webhook API через Swagger UI",

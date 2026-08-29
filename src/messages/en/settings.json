@@ -2,7 +2,7 @@
   "settingsTitle": "Settings",
   "workspaceCardTitle": "Workspace",
   "workspaceCardDescription": "Manage the workspace name, members, and create new workspaces",
-  "webhookTokensTitle": "API Tokens",
+  "webhookTokensTitle": "Webhook & API tokens",
   "webhookTokensCardDescription": "Manage API tokens used by external systems sending mail, messages, logs, and alerts, and by the metrics agent",
   "apiDocsTitle": "API Documentation",
   "apiDocsCardDescription": "Explore and test the public webhook API with Swagger UI",

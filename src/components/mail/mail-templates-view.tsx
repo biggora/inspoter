@@ -330,7 +330,7 @@ export function MailTemplatesView({
                     >
                       <Icon
                         name={
-                          template.starred ? "ri-star-fill" : "ri-star-line"
+                          template.starred ? "ri-star-line" : "ri-star-line"
                         }
                         className={
                           template.starred ? "text-amber-500" : undefined

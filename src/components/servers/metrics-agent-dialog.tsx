@@ -42,7 +42,7 @@ docker compose up -d`;
 
 // Servers > enrollment helper — no longer creates a per-server token
 // (agent tokens are gone; the metrics agent now authenticates with a
-// universal API token managed under Settings > API Tokens). This dialog
+// universal API token managed under Settings > Webhook & API tokens). This dialog
 // is purely informational: install snippet plus a link to the token page.
 export function MetricsAgentDialog({
   open,

@@ -138,7 +138,7 @@ export function KanbanColumn({
               />
             }
           >
-            <Icon name="ri-more-2-fill" aria-hidden />
+            <Icon name="ri-more-2-line" aria-hidden />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>

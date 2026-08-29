@@ -164,7 +164,7 @@ export function ContactsTable({
                       onClick={() => onToggleStar(contact)}
                     >
                       <Icon
-                        name={contact.starred ? "ri-star-fill" : "ri-star-line"}
+                        name={contact.starred ? "ri-star-line" : "ri-star-line"}
                         aria-hidden
                         className={contact.starred ? "text-amber-500" : ""}
                       />

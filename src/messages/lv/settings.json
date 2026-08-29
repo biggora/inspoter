@@ -2,7 +2,7 @@
   "settingsTitle": "Iestatījumi",
   "workspaceCardTitle": "Darbvieta",
   "workspaceCardDescription": "Pārvaldiet darbvietas nosaukumu, dalībniekus un izveidojiet jaunas darbvietas",
-  "webhookTokensTitle": "API pilnvaras",
+  "webhookTokensTitle": "Webhook un API pilnvaras",
   "webhookTokensCardDescription": "Pārvaldiet API pilnvaras, ko izmanto ārējas sistēmas pasta, ziņojumu, žurnālu un brīdinājumu sūtīšanai, kā arī metriku aģents",
   "apiDocsTitle": "API dokumentācija",
   "apiDocsCardDescription": "Izpētiet un testējiet publisko webhook API ar Swagger UI",

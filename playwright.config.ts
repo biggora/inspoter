@@ -34,6 +34,11 @@ const serverEnvironment = {
   ...testEnvironment,
   NODE_ENV: "production",
   PORT: String(appPort),
+  // A full e2e run logs in hundreds of times from one IP and one seeded
+  // operator; the production defaults (30/IP, 10/username per 15 min) kick
+  // in mid-suite and fail every later test at submitLoginForm.
+  LOGIN_RATE_LIMIT_IP: "10000",
+  LOGIN_RATE_LIMIT_USERNAME: "10000",
 };
 
 export default defineConfig({

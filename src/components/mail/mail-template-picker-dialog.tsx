@@ -261,7 +261,7 @@ function TemplatePicker({
                           <Icon
                             name={
                               template.starred
-                                ? "ri-star-fill"
+                                ? "ri-star-line"
                                 : "ri-file-text-line"
                             }
                             className={

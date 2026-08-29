@@ -102,7 +102,7 @@ export function NoteTreeItem({ node, level }: NoteTreeItemProps) {
             <span className="truncate">{node.data.title}</span>
             {node.data.isPinned && (
               <Icon
-                name="ri-pushpin-2-fill"
+                name="ri-pushpin-2-line"
                 aria-hidden={false}
                 aria-label={t("pinnedLabel")}
                 className="ml-auto shrink-0 text-foreground-400"
@@ -123,7 +123,7 @@ export function NoteTreeItem({ node, level }: NoteTreeItemProps) {
               />
             }
           >
-            <Icon name="ri-more-2-fill" aria-hidden />
+            <Icon name="ri-more-2-line" aria-hidden />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {node.kind === "folder" ? (

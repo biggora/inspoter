@@ -87,7 +87,7 @@ export function ContactDetailView({
               <span className="truncate">{name}</span>
               {contact.starred && (
                 <Icon
-                  name="ri-star-fill"
+                  name="ri-star-line"
                   aria-label={t("sidebarStarred")}
                   className="text-amber-500"
                 />

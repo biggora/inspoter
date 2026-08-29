@@ -19,7 +19,7 @@ test("Webhook tokens MCP auth hint renders translated rich text", async ({
   await page.goto("/settings/webhooks");
 
   await expect(
-    page.getByRole("heading", { name: "API Tokens", exact: true }),
+    page.getByRole("heading", { name: "Webhook & API tokens", exact: true }),
   ).toBeVisible();
 
   const hint = page.getByText("Authenticate with", { exact: false });
