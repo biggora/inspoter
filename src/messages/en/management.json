@@ -116,5 +116,17 @@
   "auditExecutionState": "Execution state",
   "auditRevision": "Action revision",
   "auditReceipt": "Receipt",
-  "auditTarget": "Target"
+  "auditTarget": "Target",
+  "aiSummaryDescription": "AI-generated executive briefs run on a schedule. Configuration lives on its own page.",
+  "configureAutomation": "Configure automation",
+  "latestBriefLabel": "Latest brief",
+  "automationPageTitle": "AI briefs",
+  "automationPageDescription": "Executive brief automation: provider, agent, skill, and schedules, plus brief history.",
+  "tileAlerts": "Alerts",
+  "tileServices": "Services",
+  "tileKanban": "Kanban cards",
+  "tileReminders": "Reminders",
+  "tileMail": "Mail",
+  "tileMessages": "Messages",
+  "tileDecisions": "Decisions"
 }

@@ -466,6 +466,39 @@ test("Server power AlertDialog has zero serious or critical accessibility violat
   );
 });
 
+// Critique 2026-08-29 (P2): the management landing is a decision surface —
+// snapshot tiles drill into their sections, zero counts are de-emphasized,
+// and AI-brief configuration lives behind /management/automation.
+test("Management landing links totals into sections and routes AI config to its own page", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/management");
+
+  await expect(
+    page.getByRole("heading", { name: "Management", exact: true }),
+  ).toBeVisible();
+
+  const alertsTile = page.getByRole("link", { name: "Alerts", exact: true });
+  await expect(alertsTile).toHaveAttribute("href", "/alerts");
+
+  const configureAutomation = page.getByRole("link", {
+    name: "Configure automation",
+  });
+  await expect(configureAutomation).toHaveAttribute(
+    "href",
+    "/management/automation",
+  );
+
+  await expectNoBlockingAxeViolations(page, "main#main-content");
+
+  await configureAutomation.click();
+  await expect(
+    page.getByRole("heading", { name: "AI briefs", exact: true }),
+  ).toBeVisible();
+  await expectNoBlockingAxeViolations(page, "main#main-content");
+});
+
 test("Expanded log row has zero serious or critical accessibility violations", async ({
   page,
 }) => {

@@ -116,5 +116,17 @@
   "auditExecutionState": "Izpildes stāvoklis",
   "auditRevision": "Darbības revīzija",
   "auditReceipt": "Kvīts",
-  "auditTarget": "Mērķis"
+  "auditTarget": "Mērķis",
+  "aiSummaryDescription": "AI pārskati tiek ģenerēti pēc grafika. Konfigurācija atrodas atsevišķā lapā.",
+  "configureAutomation": "Konfigurēt automatizāciju",
+  "latestBriefLabel": "Jaunākais pārskats",
+  "automationPageTitle": "AI pārskati",
+  "automationPageDescription": "Pārskatu automatizācija: pakalpojumu sniedzējs, aģents, prasme un grafiki, kā arī pārskatu vēsture.",
+  "tileAlerts": "Brīdinājumi",
+  "tileServices": "Pakalpojumi",
+  "tileKanban": "Kanban kartītes",
+  "tileReminders": "Atgādinājumi",
+  "tileMail": "E-pasts",
+  "tileMessages": "Ziņojumi",
+  "tileDecisions": "Lēmumi"
 }

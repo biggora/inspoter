@@ -11,6 +11,7 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { ManagementView } from "@/components/management/management-view";
+import { ManagementAutomationView } from "@/components/management/management-automation-view";
 import { renderWithIntl } from "../../test-utils";
 
 afterEach(() => {
@@ -18,6 +19,101 @@ afterEach(() => {
 });
 
 describe("ManagementView", () => {
+  it("links snapshot totals into their sections and de-emphasizes zeros", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({ status: "MISSING", missing: [], edited: [] }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return { ok: true, json: async () => [] };
+        }
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            latestBrief: { headline: "Stable" },
+            totals: { alerts: 3, services: 0, mail: 0 },
+          }),
+        };
+      }),
+    );
+
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+
+    const alerts = await screen.findByText("Alerts");
+    expect(alerts.closest("a")).toHaveAttribute("href", "/alerts");
+    expect(screen.getByText("Services").closest("a")).toHaveAttribute(
+      "href",
+      "/services",
+    );
+    // Non-zero counts carry the emphasis; zeros read as muted.
+    const nonZero = screen.getByText("3");
+    const zero = screen.getAllByText("0")[0];
+    expect(nonZero.className).toContain("text-2xl");
+    expect(zero.className).not.toContain("text-2xl");
+
+    // AI configuration moved off the landing behind a single link.
+    expect(
+      screen.getByRole("link", { name: "Configure automation" }),
+    ).toHaveAttribute("href", "/management/automation");
+    expect(screen.queryByText("AI provider")).toBeNull();
+  });
+
+  it("renders the AI summary status line on the landing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "READY",
+              missing: [],
+              edited: [],
+              providerConfigured: true,
+              parts: { agent: null, skill: null, daily: null, weekly: null },
+            }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return {
+            ok: true,
+            json: async () => [
+              {
+                id: "brief-1",
+                headline: "Overnight incident resolved",
+                summary: "All affected services recovered.",
+              },
+            ],
+          };
+        }
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({ latestBrief: { headline: "Stable" } }),
+        };
+      }),
+    );
+
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+
+    expect(await screen.findByText("Brief automation is ready")).toBeVisible();
+    expect(screen.getByText("Overnight incident resolved")).toBeVisible();
+  });
+});
+
+describe("ManagementAutomationView", () => {
   it("renders brief automation as actionable component cards", async () => {
     vi.stubGlobal(
       "fetch",
@@ -83,7 +179,7 @@ describe("ManagementView", () => {
       }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(<ManagementAutomationView />);
 
     expect(await screen.findByText("AI provider")).toBeVisible();
     expect(screen.getByText("Executive brief agent")).toBeVisible();
@@ -169,7 +265,7 @@ describe("ManagementView", () => {
       }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(<ManagementAutomationView />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "View details" }),
@@ -183,7 +279,9 @@ describe("ManagementView", () => {
     ).toHaveAttribute("href", "/alerts?alert=alert-1");
     expect(screen.getByText("No items in this section.")).toBeVisible();
   });
+});
 
+describe("ManagementView", () => {
   it("renders independently loaded snapshot and decision summaries", async () => {
     vi.stubGlobal(
       "fetch",

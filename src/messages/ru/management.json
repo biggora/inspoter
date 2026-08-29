@@ -116,5 +116,17 @@
   "auditExecutionState": "Состояние исполнения",
   "auditRevision": "Ревизия действия",
   "auditReceipt": "Квитанция",
-  "auditTarget": "Целевой объект"
+  "auditTarget": "Целевой объект",
+  "aiSummaryDescription": "ИИ-обзоры формируются по расписанию. Настройка вынесена на отдельную страницу.",
+  "configureAutomation": "Настроить автоматизацию",
+  "latestBriefLabel": "Последний обзор",
+  "automationPageTitle": "ИИ-обзоры",
+  "automationPageDescription": "Автоматизация обзоров: провайдер, агент, навык и расписания, а также история обзоров.",
+  "tileAlerts": "Оповещения",
+  "tileServices": "Сервисы",
+  "tileKanban": "Карточки канбана",
+  "tileReminders": "Напоминания",
+  "tileMail": "Почта",
+  "tileMessages": "Сообщения",
+  "tileDecisions": "Решения"
 }
