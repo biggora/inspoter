@@ -279,6 +279,14 @@ test("runs an agent and shows the model and tool steps it took", async ({
 
     await page.goto("/agents/runs");
     await expect(row(page, agentName)).toContainText("Succeeded");
+
+    // Paging is URL-backed, so a run remembers the list page it came from and
+    // "Runs" returns there rather than to a hardcoded first page.
+    await row(page, agentName).getByRole("button", { name: "Open" }).click();
+    await expect(page).toHaveURL(/\/agents\/runs\/[^/?]+/);
+    await page.getByRole("button", { name: "Runs", exact: true }).click();
+    await expect(page).toHaveURL(/\/agents\/runs$/);
+    await expect(row(page, agentName)).toBeVisible();
   } finally {
     if (credentialId) await deleteCredential(page, credentialId);
   }

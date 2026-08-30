@@ -55,6 +55,9 @@ import { alertMessage, categoryLabel } from "./localize";
 import { ManageCategoriesDialog } from "./manage-categories-dialog";
 import { SeverityBadge } from "./severity-badge";
 import { formatDateTime } from "@/lib/format/datetime";
+import { buildListSearch, listHref } from "@/lib/list-search-params";
+import { alertDateSchema } from "@/lib/validation/alerts";
+import { useRouter } from "@/i18n/navigation";
 
 const SEVERITY_KEYS: Record<string, string> = {
   all: "severityAllOption",
@@ -73,21 +76,59 @@ const SORT_KEYS: Record<string, string> = {
 // rationale as Logs — filterable/paginated). Category CRUD lives alongside
 // the list rather than as a separate page since Alerts has no persistent
 // category-tree screen.
-export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
+export function AlertsView() {
   const t = useTranslations("alerts");
   const tUi = useTranslations("ui");
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [categoryId, setCategoryId] = useState("all");
-  const [severity, setSeverity] = useState("all");
-  const [sort, setSort] = useState<"asc" | "desc">("desc");
-  const [date, setDate] = useState(initialDate);
 
-  const [pageCursors, setPageCursors] = useState<Array<string | undefined>>([
-    undefined,
-  ]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const query = searchParams.get("query")?.trim() ?? "";
+  const categoryId = searchParams.get("categoryId") ?? "all";
+  const severity = searchParams.get("severity") ?? "all";
+  const sort: "asc" | "desc" =
+    searchParams.get("sort") === "asc" ? "asc" : "desc";
+  // A pasted date has to be validated here now that the server page no longer
+  // sees it; an unparsable one reads as no date filter at all.
+  const dateParam = alertDateSchema.safeParse(searchParams.get("date") ?? "");
+  const date = dateParam.success ? dateParam.data : "";
+  const cursors = searchParams.getAll("cursor");
+
+  // Changing any filter drops the cursor stack — the same "a filter change
+  // returns to the first page" rule the other paged lists use.
+  // `highlightAlertId` is deliberately not carried: the first filter change is
+  // exactly when a one-shot highlight should stop following the operator.
+  function href(patch: {
+    query?: string;
+    categoryId?: string;
+    severity?: string;
+    sort?: "asc" | "desc";
+    date?: string;
+    cursors?: string[];
+  }): string {
+    const next = { query, categoryId, severity, sort, date, ...patch };
+    const nextCursors =
+      patch.cursors ?? (Object.keys(patch).length > 0 ? [] : cursors);
+    return listHref(
+      "/alerts",
+      buildListSearch({
+        query: next.query,
+        categoryId: next.categoryId === "all" ? null : next.categoryId,
+        severity: next.severity === "all" ? null : next.severity,
+        sort: next.sort === "desc" ? null : next.sort,
+        date: next.date,
+        cursor: nextCursors,
+      }),
+    );
+  }
+
+  // Local only as the debounce buffer; a change that came from elsewhere (the
+  // back button, a shared link) has to win over whatever is in the box.
+  const [searchInput, setSearchInput] = useState(query);
+  const [lastQuery, setLastQuery] = useState(query);
+  if (lastQuery !== query) {
+    setLastQuery(query);
+    setSearchInput(query);
+  }
 
   const [items, setItems] = useState<AlertDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -159,11 +200,17 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
   }, [searchParams]);
 
   useEffect(() => {
-    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    if (searchInput.trim() === query) return;
+    const handle = setTimeout(
+      () => router.push(href({ query: searchInput.trim() })),
+      300,
+    );
     return () => clearTimeout(handle);
+    // The href builder closes over the filters, which only change with the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  const currentCursor = pageCursors[pageIndex];
+  const currentCursor = cursors[cursors.length - 1];
 
   // Data fetch runs from a locally-defined async function rather than
   // directly in the effect body, so the loading/error resets aren't flagged
@@ -214,44 +261,20 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
     return () => clearTimeout(fadeTimer);
   }, [highlightedAlertId]);
 
-  function resetToFirstPage() {
-    setPageCursors([undefined]);
-    setPageIndex(0);
-  }
-
-  function handleSearchChange(value: string) {
-    setSearchInput(value);
-    resetToFirstPage();
-  }
-
   function handleCategoryChange(value: string) {
-    setCategoryId(value);
-    resetToFirstPage();
+    router.push(href({ categoryId: value }));
   }
 
   function handleSeverityChange(value: string) {
-    setSeverity(value);
-    resetToFirstPage();
+    router.push(href({ severity: value }));
   }
 
   function handleSortChange(value: "asc" | "desc") {
-    setSort(value);
-    resetToFirstPage();
+    router.push(href({ sort: value }));
   }
 
   function handleDateChange(value: string) {
-    setDate(value);
-    resetToFirstPage();
-  }
-
-  function handleNext() {
-    if (!nextCursor) return;
-    setPageCursors((prev) => [...prev.slice(0, pageIndex + 1), nextCursor]);
-    setPageIndex((prev) => prev + 1);
-  }
-
-  function handlePrevious() {
-    setPageIndex((prev) => Math.max(0, prev - 1));
+    router.push(href({ date: value }));
   }
 
   function handleCategorySaved() {
@@ -261,7 +284,9 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
 
   function handleCategoryDeleted() {
     setDeleteTarget(null);
-    if (categoryId === deleteTarget?.id) setCategoryId("all");
+    if (categoryId === deleteTarget?.id) {
+      router.push(href({ categoryId: "all" }));
+    }
     loadCategories();
     setReloadToken((prev) => prev + 1);
   }
@@ -343,7 +368,7 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
         <FilterBar>
           <Input
             value={searchInput}
-            onChange={(event) => handleSearchChange(event.target.value)}
+            onChange={(event) => setSearchInput(event.target.value)}
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchLabel")}
             className="sm:max-w-xs"
@@ -437,10 +462,14 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
                 variant="outline"
                 onClick={() => {
                   setSearchInput("");
-                  setQuery("");
-                  setCategoryId("all");
-                  setSeverity("all");
-                  setDate("");
+                  router.push(
+                    href({
+                      query: "",
+                      categoryId: "all",
+                      severity: "all",
+                      date: "",
+                    }),
+                  );
                 }}
               >
                 <Icon
@@ -579,11 +608,17 @@ export function AlertsView({ initialDate = "" }: { initialDate?: string }) {
       )}
 
       <Pagination
-        page={pageIndex + 1}
-        hasPrevious={pageIndex > 0}
-        hasNext={Boolean(nextCursor)}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
+        page={cursors.length + 1}
+        previous={
+          cursors.length > 0
+            ? { href: href({ cursors: cursors.slice(0, -1) }) }
+            : null
+        }
+        next={
+          nextCursor
+            ? { href: href({ cursors: [...cursors, nextCursor] }) }
+            : null
+        }
         disabled={loading}
       />
 

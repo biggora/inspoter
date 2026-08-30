@@ -174,6 +174,14 @@ test("an alert ingested without a category is filed by the operator and deleted"
   // AC-ALR-008: delete removes it for good.
   await page.getByLabel("Filter by category", { exact: true }).click();
   await page.getByRole("option", { name: categoryName, exact: true }).click();
+
+  // The filter lives in the URL, so it is shareable and survives a reload.
+  await expect(page).toHaveURL(new RegExp(`categoryId=${category.id}`));
+  await page.reload();
+  await expect(
+    page.getByLabel("Filter by category", { exact: true }),
+  ).toContainText(categoryName);
+
   const targetRow = page.getByRole("row").filter({ hasText: message });
   await targetRow.getByRole("button", { name: "Delete alert" }).click();
   await page

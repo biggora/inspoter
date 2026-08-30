@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
 import { PageBody } from "@/components/shell/page-body";
@@ -20,13 +18,15 @@ import {
 } from "@/components/ui/table";
 import type { AgentRunSummary } from "@/lib/services/agent-runs";
 import { AgentSectionActions } from "./agent-section-actions";
-import { agentRunsApi, ApiError } from "./api";
+import { runDetailHref, runsListHref } from "./runs-params";
 import { RunStatusBadge } from "./run-status-badge";
 
 interface RunsViewProps {
   runs: AgentRunSummary[];
   /** Keyset cursor of the page after the one rendered on the server. */
   nextCursor: string | null;
+  /** Cursors walked to reach this page; `[]` is page 1. */
+  cursors: string[];
 }
 
 export function formatDuration(run: AgentRunSummary): string | null {
@@ -44,48 +44,13 @@ export function formatDuration(run: AgentRunSummary): string | null {
     : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
-export function RunsView({
-  runs: initialRuns,
-  nextCursor: initialCursor,
-}: RunsViewProps) {
+// Paging is server-rendered from the URL's cursor stack, so this view holds no
+// state of its own: stepping back drops the last cursor, stepping forward
+// appends the next one. That is also what lets a run's detail page rebuild the
+// page it was opened from.
+export function RunsView({ runs, nextCursor, cursors }: RunsViewProps) {
   const t = useTranslations("agents");
   const format = useFormatter();
-
-  // The first page is server-rendered; the client takes over only once the
-  // operator navigates. `pageCursors[i]` is the cursor that produced page i,
-  // so going back is a re-fetch rather than a cache — the same keyset paging
-  // the Activity and Logs sections use.
-  const [runs, setRuns] = useState(initialRuns);
-  const [nextCursor, setNextCursor] = useState(initialCursor);
-  const [pageCursors, setPageCursors] = useState<Array<string | null>>([null]);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  async function loadPage(index: number, cursor: string | null) {
-    setLoading(true);
-    try {
-      const result = await agentRunsApi.list(cursor ? { cursor } : {});
-      setRuns(result.items);
-      setNextCursor(result.nextCursor);
-      setPageIndex(index);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : t("runError"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleNext() {
-    if (!nextCursor) return;
-    const cursors = [...pageCursors.slice(0, pageIndex + 1), nextCursor];
-    setPageCursors(cursors);
-    void loadPage(pageIndex + 1, nextCursor);
-  }
-
-  function handlePrevious() {
-    if (pageIndex === 0) return;
-    void loadPage(pageIndex - 1, pageCursors[pageIndex - 1] ?? null);
-  }
 
   return (
     <>
@@ -136,7 +101,7 @@ export function RunsView({
                   <TableCell>{run.totalTokens}</TableCell>
                   <TableCell className="text-right">
                     <Button
-                      render={<Link href={`/agents/runs/${run.id}`} />}
+                      render={<Link href={runDetailHref(run.id, cursors)} />}
                       nativeButton={false}
                       variant="ghost"
                       size="sm"
@@ -151,12 +116,15 @@ export function RunsView({
         )}
 
         <Pagination
-          page={pageIndex + 1}
-          hasPrevious={pageIndex > 0}
-          hasNext={Boolean(nextCursor)}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          disabled={loading}
+          page={cursors.length + 1}
+          previous={
+            cursors.length > 0
+              ? { href: runsListHref(cursors.slice(0, -1)) }
+              : null
+          }
+          next={
+            nextCursor ? { href: runsListHref([...cursors, nextCursor]) } : null
+          }
         />
       </PageBody>
     </>

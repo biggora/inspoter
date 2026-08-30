@@ -29,9 +29,11 @@ const POLL_MS = 3_000;
 
 interface RunDetailViewProps {
   run: AgentRunDetail;
+  /** The page of runs this one was opened from, cursor stack intact. */
+  backHref: string;
 }
 
-export function RunDetailView({ run: initial }: RunDetailViewProps) {
+export function RunDetailView({ run: initial, backHref }: RunDetailViewProps) {
   const t = useTranslations("agents");
   const format = useFormatter();
   const [run, setRun] = useState(initial);
@@ -70,7 +72,7 @@ export function RunDetailView({ run: initial }: RunDetailViewProps) {
   return (
     <>
       <PageHeader
-        back={{ href: "/agents/runs", label: t("backToRuns") }}
+        back={{ href: backHref, label: t("backToRuns") }}
         title={run.agentName}
         description={
           run.startedAt

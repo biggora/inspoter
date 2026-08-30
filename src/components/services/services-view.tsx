@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Link } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,6 +23,12 @@ import type { ServiceOverviewItem } from "@/lib/services/services";
 import { servicesApi, type ServiceLabelListItemDto } from "./api";
 import { DeleteServiceDialog } from "./delete-service-dialog";
 import { filterServices } from "./filter";
+import {
+  parseServicesFilters,
+  serviceDetailHref,
+  servicesListSearch,
+  type ServicesFilters,
+} from "./list-params";
 import { ServiceLabelPicker } from "./label-picker";
 import { ManageServiceLabelsDialog } from "./manage-labels-dialog";
 import {
@@ -71,19 +77,44 @@ export function ServicesView({
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [filterLabelIds, setFilterLabelIds] = useState<string[]>([]);
+  // The URL seeds the filters once, on mount: it is the persisted mirror of
+  // this state, not a second source of truth competing with the debounce
+  // buffer below.
+  const initialFilters = parseServicesFilters(useSearchParams());
+  const [searchInput, setSearchInput] = useState(initialFilters.query);
+  const [query, setQuery] = useState(initialFilters.query);
+  const [filterLabelIds, setFilterLabelIds] = useState<string[]>(
+    initialFilters.labelIds,
+  );
 
   useEffect(() => {
     const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
     return () => clearTimeout(handle);
   }, [searchInput]);
 
-  const visibleServices = useMemo(
-    () => filterServices(services, { query, labelIds: filterLabelIds }),
-    [services, query, filterLabelIds],
+  const filters = useMemo<ServicesFilters>(
+    () => ({ query, labelIds: filterLabelIds }),
+    [query, filterLabelIds],
   );
+
+  const visibleServices = useMemo(
+    () => filterServices(services, filters),
+    [services, filters],
+  );
+
+  // Filtering is client-side over an already-loaded list, so the URL is kept
+  // in step without a navigation: a router.push here would re-run
+  // listOverview for a payload that cannot have changed. The path comes from
+  // window.location, which carries the locale prefix that next-intl's
+  // usePathname strips.
+  useEffect(() => {
+    const search = servicesListSearch(filters);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${search ? `?${search}` : ""}`,
+    );
+  }, [filters]);
 
   const hasActiveFilters = query !== "" || filterLabelIds.length > 0;
 
@@ -245,6 +276,7 @@ export function ServicesView({
             <ServiceCard
               key={service.id}
               service={service}
+              filters={filters}
               checking={checkingIds.has(service.id)}
               toggling={togglingIds.has(service.id)}
               error={cardErrors[service.id]}
@@ -293,6 +325,7 @@ export function ServicesView({
 
 function ServiceCard({
   service,
+  filters,
   checking,
   toggling,
   error,
@@ -302,6 +335,8 @@ function ServiceCard({
   onDelete,
 }: {
   service: ServiceOverviewItem;
+  /** The filtered list this card belongs to, carried into its link. */
+  filters: ServicesFilters;
   checking: boolean;
   toggling: boolean;
   error?: string;
@@ -329,7 +364,7 @@ function ServiceCard({
           </>
         }
         descriptionClassName="truncate"
-        render={<Link href={`/services/${service.id}`} />}
+        render={<Link href={serviceDetailHref(service.id, filters)} />}
         action={
           <ServiceStatusBadge
             status={service.currentStatus}

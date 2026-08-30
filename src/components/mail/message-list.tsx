@@ -361,10 +361,8 @@ export function MessageList({
 
       <Pagination
         page={page}
-        hasPrevious={hasPrevious}
-        hasNext={hasNext}
-        onPrevious={onPrevious}
-        onNext={onNext}
+        previous={hasPrevious ? { onClick: onPrevious } : null}
+        next={hasNext ? { onClick: onNext } : null}
         disabled={loading}
         className="shrink-0 border-t border-background-100 px-4 py-2"
       />

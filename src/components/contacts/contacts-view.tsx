@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -26,14 +26,8 @@ import { ExportContactsDialog } from "./export-dialog";
 import { ImportContactsDialog } from "./import-dialog";
 import { ManageContactLabelsDialog } from "./manage-labels-dialog";
 import { ContactsSidebar } from "./contacts-sidebar";
+import { contactsListHref, type ContactsFilters } from "./list-params";
 import { SelectionToolbar } from "./selection-toolbar";
-
-export interface ContactsFilters {
-  query: string;
-  labelId: string | null;
-  starred: boolean;
-  page: number;
-}
 
 interface ContactsViewProps {
   result: ContactListResult;
@@ -111,28 +105,18 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
     }
   }
 
-  function navigate(patch: Partial<ContactsFilters>): void {
-    const next = { ...filters, ...patch };
-    const params = new URLSearchParams();
-    if (next.query) params.set("query", next.query);
-    if (next.labelId) params.set("labelId", next.labelId);
-    if (next.starred) params.set("starred", "true");
-    // Any filter change resets to the first page; an explicit page in the
-    // patch is what a pagination click sends.
-    const page = patch.page ?? 1;
-    if (page > 1) params.set("page", String(page));
-    const search = params.toString();
-    router.push(search.length > 0 ? `/contacts?${search}` : "/contacts");
-  }
-
+  // Everything the operator can click is a real link built by
+  // contactsListHref; only the debounced search box has to push imperatively,
+  // because there is no element to hang the href on.
   useEffect(() => {
     if (searchInput === filters.query) return;
     const handle = setTimeout(
-      () => navigate({ query: searchInput.trim() }),
+      () =>
+        router.push(contactsListHref(filters, { query: searchInput.trim() })),
       300,
     );
     return () => clearTimeout(handle);
-    // navigate closes over `filters`, which only changes with the URL.
+    // The href builder closes over `filters`, which only changes with the URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
@@ -295,6 +279,7 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
             <>
               <ContactsTable
                 contacts={result.contacts}
+                filters={filters}
                 selected={selected}
                 onSelectedChange={setSelected}
                 onToggleStar={toggleStar}
@@ -305,37 +290,65 @@ export function ContactsView({ result, labels, filters }: ContactsViewProps) {
                   aria-label={t("pageTitle")}
                   className="flex items-center justify-between gap-2"
                 >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={result.page <= 1}
-                    onClick={() => navigate({ page: result.page - 1 })}
-                  >
-                    <Icon
-                      name="ri-arrow-left-s-line"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                    {result.page - 1 > 0 ? String(result.page - 1) : ""}
-                  </Button>
+                  {result.page > 1 ? (
+                    <Button
+                      render={
+                        <Link
+                          href={contactsListHref(filters, {
+                            page: result.page - 1,
+                          })}
+                        />
+                      }
+                      nativeButton={false}
+                      variant="ghost"
+                    >
+                      <Icon
+                        name="ri-arrow-left-s-line"
+                        aria-hidden
+                        data-icon="inline-start"
+                      />
+                      {result.page - 1}
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" disabled>
+                      <Icon
+                        name="ri-arrow-left-s-line"
+                        aria-hidden
+                        data-icon="inline-start"
+                      />
+                    </Button>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     {result.page} / {totalPages}
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={result.page >= totalPages}
-                    onClick={() => navigate({ page: result.page + 1 })}
-                  >
-                    {result.page + 1 <= totalPages
-                      ? String(result.page + 1)
-                      : ""}
-                    <Icon
-                      name="ri-arrow-right-s-line"
-                      aria-hidden
-                      data-icon="inline-end"
-                    />
-                  </Button>
+                  {result.page < totalPages ? (
+                    <Button
+                      render={
+                        <Link
+                          href={contactsListHref(filters, {
+                            page: result.page + 1,
+                          })}
+                        />
+                      }
+                      nativeButton={false}
+                      variant="ghost"
+                    >
+                      {result.page + 1}
+                      <Icon
+                        name="ri-arrow-right-s-line"
+                        aria-hidden
+                        data-icon="inline-end"
+                      />
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" disabled>
+                      <Icon
+                        name="ri-arrow-right-s-line"
+                        aria-hidden
+                        data-icon="inline-end"
+                      />
+                    </Button>
+                  )}
                 </nav>
               )}
             </>

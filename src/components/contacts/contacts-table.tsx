@@ -23,10 +23,13 @@ import {
 } from "@/components/ui/table";
 import type { LabelColor } from "@/lib/label-color";
 import { ContactAvatar } from "./contact-avatar";
+import { contactDetailHref, type ContactsFilters } from "./list-params";
 import type { ContactListItem } from "./api";
 
 interface ContactsTableProps {
   contacts: ContactListItem[];
+  /** The list view this table belongs to, carried into every row link. */
+  filters: ContactsFilters;
   selected: Set<string>;
   onSelectedChange: (next: Set<string>) => void;
   onToggleStar: (contact: ContactListItem) => void;
@@ -35,6 +38,7 @@ interface ContactsTableProps {
 
 export function ContactsTable({
   contacts,
+  filters,
   selected,
   onSelectedChange,
   onToggleStar,
@@ -109,7 +113,7 @@ export function ContactsTable({
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/contacts/${contact.id}`}
+                    href={contactDetailHref(contact.id, filters)}
                     className="flex min-w-0 items-center gap-3 hover:underline"
                   >
                     <ContactAvatar
@@ -185,7 +189,11 @@ export function ContactsTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
                           <DropdownMenuItem
-                            render={<Link href={`/contacts/${contact.id}`} />}
+                            render={
+                              <Link
+                                href={contactDetailHref(contact.id, filters)}
+                              />
+                            }
                           >
                             {t("openAction")}
                           </DropdownMenuItem>

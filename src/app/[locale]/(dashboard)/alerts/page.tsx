@@ -1,16 +1,12 @@
 import { requireAuth } from "@/lib/auth/dal";
 import { AlertsView } from "@/components/alerts/alerts-view";
-import { alertDateSchema } from "@/lib/validation/alerts";
 
 export const dynamic = "force-dynamic";
 
-interface AlertsPageProps {
-  searchParams: Promise<{ date?: string }>;
-}
-
-export default async function AlertsPage({ searchParams }: AlertsPageProps) {
+// Filters, the date and the cursor stack all live in the URL and are read by
+// the client view, which is what makes a filtered page reloadable and
+// shareable — there is nothing left for this page to parse.
+export default async function AlertsPage() {
   await requireAuth();
-  const { date } = await searchParams;
-  const parsedDate = alertDateSchema.safeParse(date);
-  return <AlertsView initialDate={parsedDate.success ? parsedDate.data : ""} />;
+  return <AlertsView />;
 }

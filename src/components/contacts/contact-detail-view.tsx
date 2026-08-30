@@ -19,9 +19,12 @@ import type { ContactDetail, ContactLabelSummary } from "./api";
 export function ContactDetailView({
   contact,
   labels,
+  backHref,
 }: {
   contact: ContactDetail;
   labels: ContactLabelSummary[];
+  /** The list view this contact was opened from, filters and page intact. */
+  backHref: string;
 }) {
   const t = useTranslations("contacts");
   const format = useFormatter();
@@ -43,7 +46,7 @@ export function ContactDetailView({
   return (
     <PageBody>
       <PageHeader
-        back={{ href: "/contacts", label: t("backToList") }}
+        back={{ href: backHref, label: t("backToList") }}
         actions={
           <>
             <Button
@@ -213,7 +216,7 @@ export function ContactDetailView({
         }}
         onDeleted={() => {
           setDeleting(false);
-          router.push("/contacts");
+          router.push(backHref);
         }}
       />
     </PageBody>

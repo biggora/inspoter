@@ -56,9 +56,12 @@ const HEARTBEAT_BAR_COUNT = 50;
 export function ServiceDetailView({
   initialService,
   labels,
+  backHref,
 }: {
   initialService: ServiceWithLabels;
   labels: ServiceLabelListItemDto[];
+  /** The filtered list this service was opened from. */
+  backHref: string;
 }) {
   const t = useTranslations("services");
   const tStatus = useTranslations("status");
@@ -192,7 +195,7 @@ export function ServiceDetailView({
   return (
     <PageBody>
       <PageHeader
-        back={{ href: "/services", label: t("backToServices") }}
+        back={{ href: backHref, label: t("backToServices") }}
         title={service.name}
         description={service.description}
         actions={
@@ -441,7 +444,7 @@ export function ServiceDetailView({
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onDeleted={() => {
           setDeleteTarget(null);
-          router.push("/services");
+          router.push(backHref);
         }}
       />
     </PageBody>

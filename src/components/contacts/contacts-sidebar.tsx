@@ -7,7 +7,11 @@ import { Icon } from "@/components/ui/icon";
 import { labelColorToHex, type LabelColor } from "@/lib/label-color";
 import { cn } from "@/lib/utils";
 import type { ContactLabelSummary } from "./api";
-import type { ContactsFilters } from "./contacts-view";
+import {
+  contactDuplicatesHref,
+  contactsListHref,
+  type ContactsFilters,
+} from "./list-params";
 
 // Google Contacts' left rail: the two standing views, the workspace's labels,
 // and the duplicates screen. Every entry is a real link, so the browser can
@@ -32,19 +36,19 @@ export function ContactsSidebar({
         className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0"
       >
         <SidebarLink
-          href="/contacts"
+          href={contactsListHref(filters, { labelId: null, starred: false })}
           icon="ri-contacts-book-line"
           label={t("sidebarAll")}
           active={isAll}
         />
         <SidebarLink
-          href="/contacts?starred=true"
+          href={contactsListHref(filters, { starred: true, labelId: null })}
           icon="ri-star-line"
           label={t("sidebarStarred")}
           active={filters.starred}
         />
         <SidebarLink
-          href="/contacts/duplicates"
+          href={contactDuplicatesHref(filters)}
           icon="ri-git-merge-line"
           label={t("sidebarDuplicates")}
           active={false}
@@ -75,7 +79,10 @@ export function ContactsSidebar({
             {labels.map((label) => (
               <Link
                 key={label.id}
-                href={`/contacts?labelId=${encodeURIComponent(label.id)}`}
+                href={contactsListHref(filters, {
+                  labelId: label.id,
+                  starred: false,
+                })}
                 className={linkClasses(filters.labelId === label.id)}
               >
                 <span

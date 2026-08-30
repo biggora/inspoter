@@ -2,6 +2,9 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+
+import { useRouter } from "@/i18n/navigation";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { buildListSearch, listHref } from "@/lib/list-search-params";
 import { cn } from "@/lib/utils";
 import { fetchActivities, type ActivityDto } from "./api";
 import { formatShortDateTime } from "@/lib/format/datetime";
@@ -111,24 +115,59 @@ function ActionBadge({ action }: { action: string }) {
   return <Badge className={style}>{label}</Badge>;
 }
 
-// Activity log list (mirrors LogsView — see design.md §6.5 pattern). Fetched
-// client-side since it's filterable/paginated. Pagination is keyset
-// (cursor-based) — the API has no total count, so pages are tracked as a
-// client-held stack of cursors rather than a "Page X of Y" total.
+// Activity log list (mirrors LogsView — see design.md §6.5 pattern). Rows are
+// fetched client-side since it's filterable/paginated, but the filters and the
+// page live in the URL, so a filtered view survives a reload and is shareable.
+// Pagination is keyset (cursor-based) — the API has no total count, so the
+// page is the stack of cursors walked to reach it rather than a "Page X of Y"
+// total.
 export function ActivityView() {
   const t = useTranslations("activity");
   const tUi = useTranslations("ui");
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [action, setAction] = useState("all");
-  const [entityType, setEntityType] = useState("all");
-  const [operator, setOperator] = useState("all");
-  const [sort, setSort] = useState<"asc" | "desc">("desc");
+  const router = useRouter();
+  const params = useSearchParams();
 
-  const [pageCursors, setPageCursors] = useState<Array<string | undefined>>([
-    undefined,
-  ]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const query = params.get("query")?.trim() ?? "";
+  const action = params.get("action") ?? "all";
+  const entityType = params.get("entityType") ?? "all";
+  const operator = params.get("operator") ?? "all";
+  const sort: "asc" | "desc" = params.get("sort") === "asc" ? "asc" : "desc";
+  const cursors = params.getAll("cursor");
+
+  // Changing any filter drops the cursor stack — the same "a filter change
+  // returns to the first page" rule the other paged lists use.
+  function href(patch: {
+    query?: string;
+    action?: string;
+    entityType?: string;
+    operator?: string;
+    sort?: "asc" | "desc";
+    cursors?: string[];
+  }): string {
+    const next = { query, action, entityType, operator, sort, ...patch };
+    const nextCursors =
+      patch.cursors ?? (Object.keys(patch).length > 0 ? [] : cursors);
+    return listHref(
+      "/activity",
+      buildListSearch({
+        query: next.query,
+        action: next.action === "all" ? null : next.action,
+        entityType: next.entityType === "all" ? null : next.entityType,
+        operator: next.operator === "all" ? null : next.operator,
+        sort: next.sort === "desc" ? null : next.sort,
+        cursor: nextCursors,
+      }),
+    );
+  }
+
+  // Local only as the debounce buffer; a change that came from elsewhere (the
+  // back button, a shared link) has to win over whatever is in the box.
+  const [searchInput, setSearchInput] = useState(query);
+  const [lastQuery, setLastQuery] = useState(query);
+  if (lastQuery !== query) {
+    setLastQuery(query);
+    setSearchInput(query);
+  }
 
   const [items, setItems] = useState<ActivityDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -139,26 +178,20 @@ export function ActivityView() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Debounce the free-text search 300ms before it drives a fetch.
+  // Debounce the free-text search 300ms before it drives a navigation.
   useEffect(() => {
-    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    if (searchInput.trim() === query) return;
+    const handle = setTimeout(
+      () => router.push(href({ query: searchInput.trim() })),
+      300,
+    );
     return () => clearTimeout(handle);
+    // The href builder closes over the filters, which only change with the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  // Any filter/sort/query change starts the list over at page 1. Reset
-  // during render (React's "adjust state while rendering on prop change"
-  // pattern, react.dev/reference/react/useState — same pattern as
-  // bookmarks/bookmark-dialog.tsx) rather than in an effect, so the
-  // dependent fetch effect below only ever sees the already-reset cursor.
   const filterKey = `${query}|${action}|${entityType}|${operator}|${sort}`;
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (filterKey !== prevFilterKey) {
-    setPrevFilterKey(filterKey);
-    setPageCursors([undefined]);
-    setPageIndex(0);
-  }
-
-  const currentCursor = pageCursors[pageIndex];
+  const currentCursor = cursors[cursors.length - 1];
 
   // Which request the table on screen belongs to. Comparing it with the one
   // the effect below is about to run identifies a refetch (page turn, filter
@@ -212,16 +245,6 @@ export function ActivityView() {
     };
   }, [currentCursor, action, entityType, operator, query, sort, requestKey, t]);
 
-  function handleNext() {
-    if (!nextCursor) return;
-    setPageCursors((prev) => [...prev.slice(0, pageIndex + 1), nextCursor]);
-    setPageIndex((prev) => prev + 1);
-  }
-
-  function handlePrevious() {
-    setPageIndex((prev) => Math.max(0, prev - 1));
-  }
-
   const actionItems: Record<string, string> = Object.fromEntries(
     Object.entries(ACTION_LABEL_KEYS).map(([value, key]) => [value, t(key)]),
   );
@@ -261,7 +284,7 @@ export function ActivityView() {
           />
           <Select
             value={action}
-            onValueChange={(v) => setAction(v as string)}
+            onValueChange={(v) => router.push(href({ action: v as string }))}
             items={actionItems}
           >
             <SelectTrigger size="sm" aria-label={t("actionFilterAriaLabel")}>
@@ -279,7 +302,9 @@ export function ActivityView() {
           </Select>
           <Select
             value={entityType}
-            onValueChange={(v) => setEntityType(v as string)}
+            onValueChange={(v) =>
+              router.push(href({ entityType: v as string }))
+            }
             items={entityTypeItems}
           >
             <SelectTrigger
@@ -300,7 +325,7 @@ export function ActivityView() {
           </Select>
           <Select
             value={operator}
-            onValueChange={(v) => setOperator(v as string)}
+            onValueChange={(v) => router.push(href({ operator: v as string }))}
             items={operatorItems}
           >
             <SelectTrigger size="sm" aria-label={t("operatorFilterAriaLabel")}>
@@ -318,7 +343,9 @@ export function ActivityView() {
           </Select>
           <Select
             value={sort}
-            onValueChange={(v) => setSort(v as "asc" | "desc")}
+            onValueChange={(v) =>
+              router.push(href({ sort: v as "asc" | "desc" }))
+            }
             items={sortItems}
           >
             <SelectTrigger size="sm" aria-label={t("sortAriaLabel")}>
@@ -358,10 +385,14 @@ export function ActivityView() {
                 variant="outline"
                 onClick={() => {
                   setSearchInput("");
-                  setQuery("");
-                  setAction("all");
-                  setEntityType("all");
-                  setOperator("all");
+                  router.push(
+                    href({
+                      query: "",
+                      action: "all",
+                      entityType: "all",
+                      operator: "all",
+                    }),
+                  );
                 }}
               >
                 <Icon
@@ -469,11 +500,17 @@ export function ActivityView() {
       )}
 
       <Pagination
-        page={pageIndex + 1}
-        hasPrevious={pageIndex > 0}
-        hasNext={Boolean(nextCursor)}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
+        page={cursors.length + 1}
+        previous={
+          cursors.length > 0
+            ? { href: href({ cursors: cursors.slice(0, -1) }) }
+            : null
+        }
+        next={
+          nextCursor
+            ? { href: href({ cursors: [...cursors, nextCursor] }) }
+            : null
+        }
         disabled={loading || refreshing}
       />
     </PageBody>

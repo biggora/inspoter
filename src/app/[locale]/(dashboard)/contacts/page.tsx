@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth/dal";
 import { list } from "@/lib/services/contacts";
 import { listLabels } from "@/lib/services/contact-labels";
 import { ContactsView } from "@/components/contacts/contacts-view";
+import { parseContactsFilters } from "@/components/contacts/list-params";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,7 @@ export default async function ContactsPage({
   searchParams,
 }: ContactsPageProps) {
   const { workspace } = await requireAuth();
-  const { query, labelId, starred, page } = await searchParams;
-
-  const filters = {
-    query: query?.trim() ?? "",
-    labelId: labelId ?? null,
-    starred: starred === "true",
-    page: Number.parseInt(page ?? "1", 10) || 1,
-  };
+  const filters = parseContactsFilters(await searchParams);
 
   const [result, labels] = await Promise.all([
     list(workspace.id, {

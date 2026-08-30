@@ -64,7 +64,7 @@ test("creates a contact, finds it by search, and opens its detail page", async (
   ).toBeVisible();
 
   await page.getByRole("link", { name: `Anna ${lastName}` }).click();
-  await expect(page).toHaveURL(/\/contacts\/[^/]+$/);
+  await expect(page).toHaveURL(/\/contacts\/[^/?]+(\?|$)/);
   await expect(
     page.getByRole("heading", { name: `Anna ${lastName}` }),
   ).toBeVisible();
@@ -182,4 +182,59 @@ test("applies a label and filters the list by it", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: `Labeled Person-${RUN}` }),
   ).toBeVisible();
+});
+
+test("returns from a contact to the filtered list it was opened from", async ({
+  page,
+}) => {
+  const lastName = `Returner-${RUN}`;
+  await createContact(page, {
+    firstName: "Clara",
+    lastName,
+    email: `clara.${RUN}@example.com`,
+  });
+
+  await page.getByLabel("Search contacts").fill(lastName);
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
+
+  await page.getByRole("link", { name: `Clara ${lastName}` }).click();
+  // The list's filters ride into the detail URL — that is what makes the back
+  // link reconstructable after a reload or from a shared link.
+  await expect(page).toHaveURL(
+    new RegExp(`/contacts/[^/?]+\\?query=${lastName}`),
+  );
+  await page.reload();
+
+  await page.getByRole("button", { name: "Contacts", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
+  await expect(page.getByLabel("Search contacts")).toHaveValue(lastName);
+  await expect(
+    page.getByRole("link", { name: `Clara ${lastName}` }),
+  ).toBeVisible();
+});
+
+test("keeps the search when the sidebar filters and when a contact is opened", async ({
+  page,
+}) => {
+  const lastName = `Rail-${RUN}`;
+  await createContact(page, {
+    firstName: "Dmitri",
+    lastName,
+    email: `dmitri.${RUN}@example.com`,
+  });
+
+  await page.getByLabel("Search contacts").fill(lastName);
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
+  await page.getByLabel(`Star Dmitri ${lastName}`).click();
+
+  // The rail used to build its hrefs from scratch and drop the search box.
+  await page.getByRole("link", { name: "Starred", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
+  await expect(page).toHaveURL(/starred=true/);
+
+  await page.getByRole("link", { name: `Dmitri ${lastName}` }).click();
+  await expect(page).toHaveURL(/\/contacts\/[^/?]+\?/);
+  await page.getByRole("button", { name: "Contacts", exact: true }).click();
+  await expect(page).toHaveURL(/starred=true/);
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
 });

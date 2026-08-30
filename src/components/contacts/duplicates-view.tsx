@@ -16,7 +16,14 @@ import { contactsApi, type DuplicateGroup } from "./api";
 // Google's "Merge & fix". Each group is shown with the whole set of candidates
 // and one of them chosen as the survivor — the operator decides which record
 // leads, because that choice decides whose name and organization win.
-export function DuplicatesView({ groups }: { groups: DuplicateGroup[] }) {
+export function DuplicatesView({
+  groups,
+  backHref,
+}: {
+  groups: DuplicateGroup[];
+  /** The list view this screen was opened from, filters and page intact. */
+  backHref: string;
+}) {
   const t = useTranslations("contacts");
   const router = useRouter();
   const [primaryByGroup, setPrimaryByGroup] = useState<Record<number, string>>(
@@ -47,7 +54,7 @@ export function DuplicatesView({ groups }: { groups: DuplicateGroup[] }) {
   return (
     <PageBody>
       <PageHeader
-        back={{ href: "/contacts", label: t("backToList") }}
+        back={{ href: backHref, label: t("backToList") }}
         title={t("duplicatesTitle")}
         description={
           groups.length === 0

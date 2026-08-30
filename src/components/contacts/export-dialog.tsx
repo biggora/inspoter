@@ -24,7 +24,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ContactExportFormat } from "@/lib/contacts/formats";
 import { contactsApi } from "./api";
-import type { ContactsFilters } from "./contacts-view";
+import type { ContactsFilters } from "./list-params";
 
 type Scope = "all" | "filtered" | "selected";
 

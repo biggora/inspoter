@@ -154,11 +154,6 @@ export const agentsApi = {
     }),
 };
 
-export interface AgentRunListResult {
-  items: AgentRunSummary[];
-  nextCursor: string | null;
-}
-
 export interface ScheduleInput {
   name: string;
   kind: "INTERVAL" | "DAILY" | "WEEKLY";
@@ -194,17 +189,6 @@ export const agentSchedulesApi = {
 };
 
 export const agentRunsApi = {
-  list: (
-    params: { agentId?: string; conversationId?: string; cursor?: string } = {},
-  ) => {
-    const search = new URLSearchParams();
-    if (params.agentId) search.set("agentId", params.agentId);
-    if (params.conversationId)
-      search.set("conversationId", params.conversationId);
-    if (params.cursor) search.set("cursor", params.cursor);
-    const qs = search.toString();
-    return request<AgentRunListResult>(`/api/agents/runs${qs ? `?${qs}` : ""}`);
-  },
   get: (id: string) => request<AgentRunDetail>(`/api/agents/runs/${id}`),
   cancel: (id: string) =>
     request<AgentRunDetail>(`/api/agents/runs/${id}/cancel`, {

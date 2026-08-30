@@ -440,6 +440,17 @@ test("logs apply filters and reveal detail through the explicit expand button", 
     )
     .toBe(true);
 
+  // The filter lives in the URL, so it is shareable and survives a reload.
+  await expect(page).toHaveURL(/level=error/);
+  requestedQueries.length = 0;
+  await page.reload();
+  await expect(levelFilter).toContainText("Error");
+  await expect
+    .poll(() =>
+      requestedQueries.some((params) => params.get("level") === "error"),
+    )
+    .toBe(true);
+
   const expand = page.locator('button[aria-controls="log-error-detail"]');
   await expect(expand).toHaveAttribute("aria-expanded", "false");
   const detailId = await expand.getAttribute("aria-controls");

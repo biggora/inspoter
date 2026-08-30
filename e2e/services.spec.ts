@@ -534,3 +534,36 @@ test("deleting a service removes it from the list without a full reload", async 
 
   await expect(serviceCard(page, name)).toHaveCount(0);
 });
+
+test("the search filter lives in the URL and survives opening a service", async ({
+  page,
+  testData,
+}) => {
+  const name = testData.name("Filter Persistence Service");
+  const url = testData.localUrl("/login");
+  let id: string | undefined;
+  try {
+    await page.goto("/services");
+    id = await createHttpService(page, { name, url });
+
+    await page.getByLabel("Search services").fill(name);
+    await expect(page).toHaveURL(/\?query=/);
+    await expect(serviceCard(page, name)).toBeVisible();
+
+    // Filtering is client-side, but the URL mirrors it — so a reload restores
+    // both the box and the narrowed list.
+    await page.reload();
+    await expect(page.getByLabel("Search services")).toHaveValue(name);
+    await expect(serviceCard(page, name)).toBeVisible();
+
+    await page.getByRole("heading", { name, exact: true, level: 2 }).click();
+    await expect(page).toHaveURL(new RegExp(`/services/${id}\\?query=`));
+
+    await page.getByRole("button", { name: "Back to services" }).click();
+    await expect(page).toHaveURL(/\/services\?query=/);
+    await expect(page.getByLabel("Search services")).toHaveValue(name);
+    await expect(serviceCard(page, name)).toBeVisible();
+  } finally {
+    if (id) await deleteServiceViaApi(page, id);
+  }
+});
