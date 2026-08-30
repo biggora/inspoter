@@ -383,7 +383,7 @@ Discord-URL — такой же секрет, как обычный: обрат�
 
 ### Инструменты и права
 
-`tools/list` показывает только те инструменты, на которые у токена есть права. Всего 118 инструментов на 20 правах.
+`tools/list` показывает только те инструменты, на которые у токена есть права. Всего 120 инструментов на 20 правах.
 
 | Право             | Инструменты                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -398,7 +398,7 @@ Discord-URL — такой же секрет, как обычный: обрат�
 | `messages:read`   | `message_categories_list`, `message_channel_get`, `messages_list`, `channel_webhooks_list`                                                                                                                                                                                                                                                                                                                                                                        |
 | `messages:write`  | `message_category_create`, `message_category_rename`, `message_channel_create`, `message_channel_rename`, `message_channel_mark_read`, `message_send`, `channel_webhook_create`, `channel_webhook_revoke`                                                                                                                                                                                                                                                         |
 | `contacts:read`   | `contacts_list`, `contacts_get`, `contact_labels_list`, `contacts_duplicates`, `contacts_suggest`, `contacts_export`                                                                                                                                                                                                                                                                                                                                              |
-| `contacts:write`  | `contacts_create`, `contacts_update`, `contacts_delete`, `contacts_bulk`, `contacts_merge`, `contacts_import`, `contact_label_create`, `contact_label_update`, `contact_label_delete`                                                                                                                                                                                                                                                                             |
+| `contacts:write`  | `contacts_create`, `contacts_create_many`, `contact_photo_set`, `contacts_update`, `contacts_delete`, `contacts_bulk`, `contacts_merge`, `contacts_import`, `contact_label_create`, `contact_label_update`, `contact_label_delete`                                                                                                                                                                                                                                |
 | `servers:read`    | `servers_list`, `server_get`                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `services:read`   | `services_list`, `service_get`, `service_checks`, `service_labels_list`                                                                                                                                                                                                                                                                                                                                                                                           |
 | `services:write`  | `service_create`, `service_update`, `service_delete`, `service_set_active`, `service_check_now`, `service_labels_set`, `service_label_create`, `service_label_update`, `service_label_delete`                                                                                                                                                                                                                                                                     |
@@ -439,7 +439,7 @@ Rate limit общий с webhook-эндпоинтами и настраивае�
 | Семейство              | Право         | Что покрывает                                                                                                              |
 | ---------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `/api/v1/bookmarks/**` | `bookmarks:*` | плоский поиск закладок, CRUD закладки, дерево категорий, переупорядочивание, подсказка иконки                              |
-| `/api/v1/contacts/**`  | `contacts:*`  | CRUD контакта, метки, массовые действия, дубликаты и слияние, импорт и экспорт, подсказка адресатов, фотография            |
+| `/api/v1/contacts/**`  | `contacts:*`  | CRUD, пакетное создание JSON, метки, массовые действия, дубликаты и слияние, импорт/экспорт, подсказка, фотография         |
 | `/api/v1/kanban/**`    | `kanban:*`    | доски, колонки, карточки, перемещение, метки, чек-листы, комментарии, цели для связи                                       |
 | `/api/v1/mail/**`      | `mail:*`      | поиск и чтение писем, прочитано/не прочитано, папки, метки, вложения, черновики, отправка, правила фильтров, синхронизация |
 | `/api/v1/messages/**`  | `messages:*`  | категории, каналы, лента, отправка, отметка «прочитано», вебхуки канала                                                    |
@@ -456,9 +456,17 @@ curl -X POST https://dashboard.example.com/api/v1/kanban/cards \
 curl -X PATCH https://dashboard.example.com/api/v1/mail/<id письма> \
   -H "Authorization: Bearer <токен>" -H "Content-Type: application/json" \
   -d '{"isRead":true}'
+
+curl -X POST https://dashboard.example.com/api/v1/contacts/bulk \
+  -H "Authorization: Bearer <токен>" \
+  -H "Idempotency-Key: retailers-2026-08-30-v1" \
+  -H "Content-Type: application/json" \
+  -d '{"contacts":[{"organization":"North Shop"},{"organization":"South Shop"}]}'
 ```
 
-Ошибки приходят в виде `{ "error": { "code", "message" } }`: `401` — токена нет либо он отозван, канальный или без прав MCP; `403` — не хватает нужного права; `404` — объекта нет в рабочем пространстве токена; `400` (`VALIDATION_FAILED`) — тело или строка запроса не прошли проверку, поле `issues` указывает на конкретное поле; `409` — конфликт имени или достигнутый лимит; `413` — загружаемый файл больше допустимого; `429` — превышен общий с webhook rate limit; `502` (`UPSTREAM_FAILED`) — почтовый сервер отказал, локально ничего не изменилось.
+`POST /api/v1/contacts/bulk` создаёт от 1 до 500 контактов атомарно и не ищет дубли по имени, почте или телефону. Поэтому разные магазины с общими реквизитами владельца сохраняются отдельными записями. Ключ `Idempotency-Key` обязателен: повтор тех же данных возвращает исходные id, а изменённые данные с тем же ключом получают `409`. Все `labelIds` проверяются до записи; одна неизвестная метка отклоняет весь пакет. В MCP этому соответствуют `contacts_create_many` и отдельный `contact_photo_set` для JPEG/PNG/GIF/WebP в base64.
+
+Ошибки приходят в виде `{ "error": { "code", "message" } }`: `401` — токена нет либо он отозван, канальный или без прав MCP; `403` — не хватает нужного права; `404` — объекта нет в рабочем пространстве токена; `400` (`VALIDATION_FAILED`) — тело или строка запроса не прошли проверку, поле `issues` указывает на конкретное поле; `409` — конфликт имени, достигнутый лимит или повтор ключа идемпотентности с другими данными; `413` — загружаемый файл больше допустимого; `429` — превышен общий с webhook rate limit; `502` (`UPSTREAM_FAILED`) — почтовый сервер отказал, локально ничего не изменилось.
 
 Сообщения, отправленные по токену (и через REST, и через MCP), сохраняются с признаком `AGENT` и в ленте помечаются как «Агент»; автором становится имя токена, если явный `author` не передан. Изменения, сделанные REST-маршрутами, попадают в журнал действий под именем токена — MCP-инструменты в журнал не пишут.
 

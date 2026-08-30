@@ -261,9 +261,12 @@
     "Atveriet “Apvienot dublikātus”, lai pārskatītu kontaktus, kuriem sakrīt adrese, numurs vai vārds, un apvienotu tos vienā.",
     "Izmantojiet “Eksportēt”, lai izrakstītu pašreizējo filtru, pašreizējo atlasi vai visu grāmatu jebkurā atbalstītajā formātā."
   ],
-  "contactsManagementApiIntro": "Kontaktus var lasīt un rakstīt arī ārēja sistēma vai AI asistents. Piešķiriet tokenam Kontaktu atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>: viens un tas pats tokens darbojas gan ar parastu REST (piemērs zemāk), gan ar MCP, kur tāds asistents kā Claude vai Cursor pieslēdzas /api/mcp un iegūst tās pašas darbības kā rīkus. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
+  "contactsManagementApiIntro": "Kontaktus var lasīt un rakstīt arī ārēja sistēma vai AI asistents. Piešķiriet tokenam Kontaktu atļaujas sadaļā <tokens>Iestatījumi → Webhook</tokens>. Strukturētiem katalogiem zemāk redzamais REST piemērs vienā pieprasījumā izveido līdz 500 JSON kontaktiem; MCP tā pati darbība ir contacts_create_many. Pilns maršrutu saraksts ir sadaļā <apiDocs>Iestatījumi → API dokumentācija</apiDocs>.",
   "contactsManagementApiFields": [
     "contacts:read — uzskaitīt un lasīt kontaktus un etiķetes.",
-    "contacts:write — izveidot, atjaunināt un dzēst kontaktus, un importēt vCard."
+    "contacts:write — izveidot, atjaunināt un dzēst kontaktus, importēt failus un iestatīt fotoattēlus.",
+    "JSON paketei ir obligāts Idempotency-Key. Atkārtojiet tos pašus datus ar to pašu atslēgu, lai saņemtu sākotnējos kontaktu id; mainīti dati ar šo atslēgu tiks noraidīti.",
+    "JSON pakešu izveide ir atomāra un neapvieno vienādas e-pasta adreses, tālruņu numurus vai vārdus. Viens nezināms etiķetes identifikators noraida visu paketi.",
+    "Izmantojiet contacts_import vCard, CSV vai LDIF tekstam, contacts_create_many — strukturētam JSON, bet contact_photo_set — base64 JPEG, PNG, GIF vai WebP fotoattēlam pēc izveides."
   ]
 }

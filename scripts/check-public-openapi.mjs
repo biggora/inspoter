@@ -128,7 +128,7 @@ const expectedMethods = {
   [`${messagesBase}/channels/{channelId}/webhooks`]: ["get", "post"],
   [`${messagesBase}/channels/{channelId}/webhooks/{webhookId}`]: ["delete"],
   [contactsBase]: ["get", "post"],
-  [`${contactsBase}/bulk`]: ["patch"],
+  [`${contactsBase}/bulk`]: ["patch", "post"],
   [`${contactsBase}/duplicates`]: ["get"],
   [`${contactsBase}/export`]: ["get"],
   [`${contactsBase}/import`]: ["post"],

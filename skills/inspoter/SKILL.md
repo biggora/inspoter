@@ -1,13 +1,13 @@
 ---
 name: inspoter
-description: Drive an Inspoter dashboard workspace from an agent — the public MCP server at POST /api/mcp (118 tools) and the equivalent bearer REST API at /api/v1/** (65 paths, 102 operations), with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, notes, activity, domains, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
+description: Drive an Inspoter dashboard workspace from an agent — the public MCP server at POST /api/mcp (120 tools) and the equivalent bearer REST API at /api/v1/** (71 paths, 110 operations), with per-scope permissions. Covers mail, alerts, logs, bookmarks, contacts, messages/channels, kanban, notes, activity, domains, servers and monitored services. Use this skill whenever Inspoter is mentioned, whenever a task means reading or changing something that lives in the dashboard (check what is DOWN, triage alerts, search mail, post to a channel, file a kanban card, look up a contact), whenever a script or an assistant has to be wired to Inspoter, when choosing token scopes, or when debugging a 401/403/404/409/429 from /api/mcp or /api/v1 — even if the user never says "MCP" or "API".
 ---
 
 # Inspoter agent surface
 
 Inspoter is a self-hosted infrastructure dashboard. The public agent surface is exposed twice,
-over the same authorization: **MCP** (`POST /api/mcp`, 118 tools) and **REST**
-(`/api/v1/**`, 65 paths and 102 operations). Both are session-cookie-free — the bearer token
+over the same authorization: **MCP** (`POST /api/mcp`, 120 tools) and **REST**
+(`/api/v1/**`, 71 paths and 110 operations). Both are session-cookie-free — the bearer token
 is the only authority and it carries the workspace, so `X-Inspoter-Workspace` plays no part.
 
 Read `references/mcp-tools.md` for the tool catalogue with arguments, `references/rest-api.md`
@@ -86,9 +86,10 @@ They answer the same questions with the same payloads, so pick by what is alread
 
 - **MCP** when the assistant is the client — the schemas are self-describing and the
   workspace is implicit. Prefer it when you have the tools loaded.
-- **REST** for scripts, cron jobs, curl, or any client that cannot speak MCP. Also the only
-  option for a few things MCP does not model: uploading a contact photo (multipart), batch
-  card reordering, and importing contacts from a file upload rather than from text.
+- **REST** for scripts, cron jobs, curl, or any client that cannot speak MCP. It is also the
+  only option for batch card reordering and importing contacts from a file upload rather
+  than from text. Contact photos are available on both surfaces: multipart over REST and
+  standard base64 through `contact_photo_set` on MCP.
 - **MCP only**: alerts, servers, logs, notes, activity and domains have no `/api/v1` family at
   all. If a task needs `alerts_*`, `servers_*`, `logs_search`, `notes_*`, `activity_search`,
   `domains_list` or `dns_records_list` over plain HTTP, say so — it is not there.
@@ -102,7 +103,7 @@ workspace Activity feed under the token's name; MCP tool calls are not.
 | --------- | ------------------------------------ | --------- | ---------------------- | ------------------------------------------------------------------------------------- |
 | Mail      | `mail:read` / `mail:write`           | 23        | `/api/v1/mail/**`      | search, read, labels, folders, attachments (base64), drafts, send, filter rules, sync |
 | Kanban    | `kanban:read` / `kanban:write`       | 27        | `/api/v1/kanban/**`    | boards, columns, cards, moves, labels, checklists, comments, link targets             |
-| Contacts  | `contacts:read` / `contacts:write`   | 15        | `/api/v1/contacts/**`  | CRUD, labels, bulk actions, duplicates/merge, import/export, recipient suggest        |
+| Contacts  | `contacts:read` / `contacts:write`   | 17        | `/api/v1/contacts/**`  | CRUD, JSON bulk create, photos, labels, bulk actions, import/export, duplicates/merge |
 | Services  | `services:read` / `services:write`   | 13        | `/api/v1/services/**`  | HTTP/TCP/PING monitors, pause, check-now, check history, labels                       |
 | Messages  | `messages:read` / `messages:write`   | 12        | `/api/v1/messages/**`  | categories, channels, feed, post, mark read, channel ingest webhooks                  |
 | Bookmarks | `bookmarks:read` / `bookmarks:write` | 11        | `/api/v1/bookmarks/**` | flat search, CRUD, category tree, reorder, favicon suggest                            |
@@ -124,6 +125,14 @@ indistinguishable from a missing one and answers `404` by design.
 and `labelIds` wholesale, and `kanban_card_labels_set` / `service_labels_set` replace the
 whole set. Read the record first and send the full list you want it to end up with,
 otherwise you will silently drop what you did not repeat.
+
+**Use idempotent JSON creation for contact batches.** `contacts_create_many` creates 1–500
+contacts atomically and requires a stable `idempotencyKey`; REST exposes the same operation
+as `POST /api/v1/contacts/bulk` with an `Idempotency-Key` header. Persist the key with the
+source batch and reuse it after a timeout: the replay returns the original ids. Never reuse
+the key for changed input — that is a `409`. This path performs no duplicate matching, so
+two shops that share an owner email or phone remain two contacts. Resolve every `labelId`
+first because one unknown label rejects the whole batch.
 
 **A few tools are get-or-create.** `alert_category_create`, `message_category_create` and
 `message_channel_create` match names case-insensitively and return the existing row, so a
@@ -169,7 +178,7 @@ Both surfaces answer `{ "error": { "code", "message" } }`:
 | `401 UNAUTHORIZED`      | token missing, revoked, channel-scoped, or carrying no MCP scopes |
 | `403 FORBIDDEN`         | token lacks the specific scope the route needs                    |
 | `404 NOT_FOUND`         | no such row in this token's workspace                             |
-| `409`                   | name conflict or a limit already reached                          |
+| `409`                   | name conflict, reached limit, or idempotency-key payload conflict |
 | `413`                   | uploaded file over the ceiling                                    |
 | `429 RATE_LIMITED`      | shared with the webhook endpoints; honour `Retry-After`           |
 | `502 UPSTREAM_FAILED`   | the mail server refused; nothing changed locally                  |
@@ -183,9 +192,9 @@ to the workspace log instead of leaking a stack.
 
 ## Reference files
 
-- `references/mcp-tools.md` — all 118 tools grouped by scope, with arguments and gotchas.
+- `references/mcp-tools.md` — all 120 tools grouped by scope, with arguments and gotchas.
   Read the section for the domain you are working in.
-- `references/rest-api.md` — the 65 `/api/v1` paths (102 operations) with query/body shapes, plus the places
+- `references/rest-api.md` — the 71 `/api/v1` paths (110 operations) with query/body shapes, plus the places
   REST and MCP differ.
 - `references/recipes.md` — multi-step workflows (morning triage, alert categorization,
   mail → kanban, wiring an external system into a channel, monitor rollout).

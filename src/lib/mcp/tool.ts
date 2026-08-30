@@ -55,6 +55,8 @@ interface ToolConfig<TSchema extends z.ZodObject> {
   inputSchema: TSchema;
   /** false for the three mutating tools, so clients can prompt first. */
   readOnly: boolean;
+  /** True when repeating the same arguments cannot create another effect. */
+  idempotent?: boolean;
   handler: (args: z.output<TSchema>, ctx: McpToolContext) => Promise<unknown>;
 }
 
@@ -98,7 +100,7 @@ export function defineTool<TSchema extends z.ZodObject>(
           annotations: {
             readOnlyHint: config.readOnly,
             destructiveHint: false,
-            idempotentHint: config.readOnly,
+            idempotentHint: config.idempotent ?? config.readOnly,
           },
         },
         // `ToolCallback<TSchema>` is a conditional type over the schema

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma, type ContactFieldKind } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import {
@@ -22,7 +23,10 @@ import {
   duplicateKeys,
   normalizeFieldValue,
 } from "@/lib/contacts/normalize";
-import { resolveLabelIds } from "@/lib/services/contact-labels";
+import {
+  ContactLabelNotFoundError,
+  resolveLabelIds,
+} from "@/lib/services/contact-labels";
 import { requireWorkspaceMember } from "@/lib/services/workspace-auth";
 
 // The only module that knows both the format-neutral ContactRecord
@@ -76,6 +80,15 @@ export class ContactMergeValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ContactMergeValidationError";
+  }
+}
+
+export class ContactIdempotencyConflictError extends Error {
+  readonly code = "IDEMPOTENCY_KEY_CONFLICT";
+
+  constructor() {
+    super("This idempotency key was already used with a different request.");
+    this.name = "ContactIdempotencyConflictError";
   }
 }
 
@@ -147,6 +160,17 @@ export interface ContactInput {
   fields?: ContactFieldInput[];
   addresses?: ContactAddressInput[];
   labelIds?: string[];
+}
+
+export interface ContactCreateResultItem {
+  id: string;
+  displayName: string;
+}
+
+export interface ContactCreateBatchResult {
+  contacts: ContactCreateResultItem[];
+  count: number;
+  replayed: boolean;
 }
 
 export interface ListContactsOptions {
@@ -408,36 +432,7 @@ async function persistContact(
   labelIds: readonly string[],
   photo?: ContactPhotoRecord | null,
 ): Promise<string> {
-  const displayName = buildDisplayName(record);
-  const scalars = {
-    prefix: record.prefix,
-    firstName: record.firstName,
-    middleName: record.middleName,
-    lastName: record.lastName,
-    suffix: record.suffix,
-    phoneticFirst: record.phoneticFirst,
-    phoneticMiddle: record.phoneticMiddle,
-    phoneticLast: record.phoneticLast,
-    nickname: record.nickname,
-    fileAs: record.fileAs,
-    organization: record.organization,
-    jobTitle: record.jobTitle,
-    department: record.department,
-    birthday: record.birthday,
-    notes: record.notes,
-    starred: record.starred,
-    displayName,
-    sortKey: buildSortKey(displayName),
-    searchText: buildSearchText(record),
-    ...(photo === undefined
-      ? {}
-      : photo === null
-        ? { photo: null, photoContentType: null }
-        : {
-            photo: Buffer.from(photo.data),
-            photoContentType: photo.contentType,
-          }),
-  };
+  const scalars = contactScalarData(record, photo);
 
   const id =
     contactId === null
@@ -508,6 +503,42 @@ async function persistContact(
   return id;
 }
 
+function contactScalarData(
+  record: ContactRecord,
+  photo?: ContactPhotoRecord | null,
+) {
+  const displayName = buildDisplayName(record);
+  return {
+    prefix: record.prefix,
+    firstName: record.firstName,
+    middleName: record.middleName,
+    lastName: record.lastName,
+    suffix: record.suffix,
+    phoneticFirst: record.phoneticFirst,
+    phoneticMiddle: record.phoneticMiddle,
+    phoneticLast: record.phoneticLast,
+    nickname: record.nickname,
+    fileAs: record.fileAs,
+    organization: record.organization,
+    jobTitle: record.jobTitle,
+    department: record.department,
+    birthday: record.birthday,
+    notes: record.notes,
+    starred: record.starred,
+    displayName,
+    sortKey: buildSortKey(displayName),
+    searchText: buildSearchText(record),
+    ...(photo === undefined
+      ? {}
+      : photo === null
+        ? { photo: null, photoContentType: null }
+        : {
+            photo: Buffer.from(photo.data),
+            photoContentType: photo.contentType,
+          }),
+  };
+}
+
 async function labelNamesFor(
   tx: Prisma.TransactionClient,
   workspaceId: string,
@@ -538,6 +569,193 @@ export async function createContact(
     return persistContact(tx, workspaceId, null, record, labelIds);
   });
   return (await getContact(workspaceId, id))!;
+}
+
+interface StoredContactCreateResult {
+  contacts: ContactCreateResultItem[];
+}
+
+function contactCreateRequestHash(inputs: readonly ContactInput[]): string {
+  const normalized = inputs.map((input) => ({
+    contact: inputToRecord(input, []),
+    labelIds: [...new Set(input.labelIds ?? [])],
+  }));
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
+function parseStoredContactCreateResult(
+  value: Prisma.JsonValue,
+): ContactCreateResultItem[] {
+  if (value === null || Array.isArray(value) || typeof value !== "object") {
+    throw new Error("Stored contact create result is invalid.");
+  }
+  const contacts = (value as { contacts?: unknown }).contacts;
+  if (
+    !Array.isArray(contacts) ||
+    contacts.some(
+      (contact) =>
+        contact === null ||
+        typeof contact !== "object" ||
+        typeof (contact as { id?: unknown }).id !== "string" ||
+        typeof (contact as { displayName?: unknown }).displayName !== "string",
+    )
+  ) {
+    throw new Error("Stored contact create result is invalid.");
+  }
+  return contacts as ContactCreateResultItem[];
+}
+
+function replayContactCreateRequest(
+  request: { requestHash: string; result: Prisma.JsonValue },
+  requestHash: string,
+): ContactCreateBatchResult {
+  if (request.requestHash !== requestHash) {
+    throw new ContactIdempotencyConflictError();
+  }
+  const contacts = parseStoredContactCreateResult(request.result);
+  return { contacts, count: contacts.length, replayed: true };
+}
+
+/**
+ * Creates one atomic, replayable batch. Duplicate matching is intentionally
+ * absent: two stores that share an owner, phone, or email remain two contacts.
+ */
+export async function createContactsIdempotent(
+  workspaceId: string,
+  operatorId: string | null,
+  callerId: string,
+  key: string,
+  inputs: readonly ContactInput[],
+): Promise<ContactCreateBatchResult> {
+  await requireWriteAccess(workspaceId, operatorId);
+  const requestHash = contactCreateRequestHash(inputs);
+  const uniqueWhere = {
+    workspaceId_callerId_key: { workspaceId, callerId, key },
+  };
+  const existing = await db.contactCreateRequest.findUnique({
+    where: uniqueWhere,
+    select: { requestHash: true, result: true },
+  });
+  if (existing) return replayContactCreateRequest(existing, requestHash);
+
+  try {
+    return await db.$transaction(
+      async (tx) => {
+        const replay = await tx.contactCreateRequest.findUnique({
+          where: uniqueWhere,
+          select: { requestHash: true, result: true },
+        });
+        if (replay) return replayContactCreateRequest(replay, requestHash);
+
+        const requestedLabelIds = [
+          ...new Set(inputs.flatMap((input) => input.labelIds ?? [])),
+        ];
+        const labels =
+          requestedLabelIds.length === 0
+            ? []
+            : await tx.contactLabel.findMany({
+                where: { workspaceId, id: { in: requestedLabelIds } },
+                select: { id: true, name: true },
+              });
+        if (labels.length !== requestedLabelIds.length) {
+          throw new ContactLabelNotFoundError();
+        }
+        const labelNames = new Map(
+          labels.map((label) => [label.id, label.name]),
+        );
+        const prepared = inputs.map((input) => {
+          const labelIds = [...new Set(input.labelIds ?? [])];
+          return {
+            labelIds,
+            record: inputToRecord(
+              input,
+              labelIds.map((labelId) => labelNames.get(labelId)!),
+            ),
+          };
+        });
+
+        const contacts: ContactCreateResultItem[] = [];
+        for (const item of prepared) {
+          contacts.push(
+            await tx.contact.create({
+              data: {
+                workspaceId,
+                ...contactScalarData(item.record),
+              },
+              select: { id: true, displayName: true },
+            }),
+          );
+        }
+
+        const fields = prepared.flatMap((item, index) =>
+          item.record.fields.map((field, position) => ({
+            workspaceId,
+            contactId: contacts[index].id,
+            contactWorkspaceId: workspaceId,
+            kind: field.kind,
+            label: field.label,
+            value: field.value,
+            normalizedValue: normalizeFieldValue(field),
+            isPrimary: field.isPrimary,
+            position,
+          })),
+        );
+        if (fields.length > 0)
+          await tx.contactField.createMany({ data: fields });
+
+        const addresses = prepared.flatMap((item, index) =>
+          item.record.addresses.map((address, position) => ({
+            workspaceId,
+            contactId: contacts[index].id,
+            contactWorkspaceId: workspaceId,
+            ...address,
+            position,
+          })),
+        );
+        if (addresses.length > 0) {
+          await tx.contactAddress.createMany({ data: addresses });
+        }
+
+        const assignments = prepared.flatMap((item, index) =>
+          item.labelIds.map((labelId) => ({
+            workspaceId,
+            contactId: contacts[index].id,
+            contactWorkspaceId: workspaceId,
+            labelId,
+            labelWorkspaceId: workspaceId,
+          })),
+        );
+        if (assignments.length > 0) {
+          await tx.contactLabelAssignment.createMany({ data: assignments });
+        }
+
+        const storedResult: StoredContactCreateResult = { contacts };
+        await tx.contactCreateRequest.create({
+          data: {
+            workspaceId,
+            callerId,
+            key,
+            requestHash,
+            result: storedResult as unknown as Prisma.InputJsonValue,
+          },
+        });
+        return { contacts, count: contacts.length, replayed: false };
+      },
+      { timeout: 60_000 },
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const winner = await db.contactCreateRequest.findUnique({
+        where: uniqueWhere,
+        select: { requestHash: true, result: true },
+      });
+      if (winner) return replayContactCreateRequest(winner, requestHash);
+    }
+    throw error;
+  }
 }
 
 export async function updateContact(

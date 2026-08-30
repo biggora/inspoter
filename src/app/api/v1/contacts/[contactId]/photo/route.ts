@@ -10,16 +10,12 @@ import {
 import { env } from "@/lib/config/env";
 import { mapContactApiError } from "@/app/api/v1/contacts/errors";
 import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
+import { CONTACT_PHOTO_CONTENT_TYPES } from "@/lib/contacts/model";
 
 // Photos are stored as bytes on the contact row, so they are served from here
 // rather than from /public. Only these types are accepted or returned: an SVG
 // would be an XSS vector served same-origin.
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-]);
+const ALLOWED_TYPES = new Set<string>(CONTACT_PHOTO_CONTENT_TYPES);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

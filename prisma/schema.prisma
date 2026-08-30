@@ -113,6 +113,7 @@ model Workspace {
   mailTemplateTags          MailTemplateTag[]
   mailTemplateTagLinks      MailTemplateTagLink[]
   contacts                  Contact[]
+  contactCreateRequests     ContactCreateRequest[]
   contactFields             ContactField[]
   contactAddresses          ContactAddress[]
   contactLabels             ContactLabel[]
@@ -999,6 +1000,23 @@ model Contact {
   @@unique([id, workspaceId])
   @@index([workspaceId, sortKey, id])
   @@index([workspaceId, starred, sortKey, id])
+}
+
+// Completed idempotent contact-creation requests. `callerId` is deliberately
+// not a foreign key: bearer tokens and in-app agents use the same service, and
+// a replay must remain valid after either caller is removed.
+model ContactCreateRequest {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  callerId    String
+  key         String
+  requestHash String
+  result      Json
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, callerId, key])
+  @@index([workspaceId, createdAt])
 }
 
 model ContactField {

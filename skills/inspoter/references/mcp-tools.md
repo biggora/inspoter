@@ -1,6 +1,6 @@
 # MCP tool catalogue
 
-All 118 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
+All 120 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
 presenting token's scopes cover, so a tool you cannot see is a scope you were not granted.
 
 Conventions used below: `arg` required, `arg?` optional, `arg[]` an array, `arg|null` accepts
@@ -15,7 +15,7 @@ id. Read tools are annotated `readOnlyHint: true` to the client; the mutating on
 - [Servers](#servers) — `servers:read` (2)
 - [Services](#services) — `services:read` (4), `services:write` (9)
 - [Kanban](#kanban) — `kanban:read` (8), `kanban:write` (19)
-- [Contacts](#contacts) — `contacts:read` (6), `contacts:write` (9)
+- [Contacts](#contacts) — `contacts:read` (6), `contacts:write` (11)
 - [Messages](#messages) — `messages:read` (4), `messages:write` (8)
 - [Bookmarks](#bookmarks) — `bookmarks:read` (4), `bookmarks:write` (7)
 - [Notes](#notes) — `notes:read` (3), `notes:write` (3)
@@ -252,17 +252,19 @@ comment inside it. Rename and reorder instead, or send the user to the dashboard
 
 ### `contacts:write`
 
-| Tool                   | Arguments                                  | Notes                                                                                                                                                                                                 |
-| ---------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `contacts_create`      | contact shape (below)                      | needs at least a name part, an organization, or one `fields` entry                                                                                                                                    |
-| `contacts_update`      | `contactId` + contact shape                | **`fields`, `addresses` and `labelIds` are written wholesale** — read with `contacts_get` first and send the full list                                                                                |
-| `contacts_delete`      | `contactId`                                | takes everything attached                                                                                                                                                                             |
-| `contacts_bulk`        | `contactIds[]` (1–1000), `action`          | `action` is one of `{type:"delete"}`, `{type:"star",starred}`, `{type:"addLabel",labelId}`, `{type:"removeLabel",labelId}`. Foreign ids are ignored, not rejected; the answer counts what was touched |
-| `contacts_merge`       | `primaryId`, `otherIds[]` (1–50)           | primary's values win, the rest is appended, the others are deleted. **Cannot be undone**                                                                                                              |
-| `contacts_import`      | `content`, `format?`, `duplicateStrategy?` | `content` is the file's _text_; format is auto-detected. Strategy ∈ `skip` (default) \| `update` \| `create`. Caps: 10 000 contacts, 2 MiB per photo                                                  |
-| `contact_label_create` | `name` (≤60), `color`                      |                                                                                                                                                                                                       |
-| `contact_label_update` | `id`, `name?`, `color?`                    |                                                                                                                                                                                                       |
-| `contact_label_delete` | `id`                                       |                                                                                                                                                                                                       |
+| Tool                   | Arguments                                           | Notes                                                                                                                                                                                                 |
+| ---------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contacts_create`      | contact shape (below), `idempotencyKey?`             | needs at least a name part, an organization, or one `fields` entry. Reusing a key with the same normalized contact returns the original contact; changed input is a conflict                           |
+| `contacts_create_many` | `idempotencyKey`, `contacts[]` (1–500)               | creates the JSON contacts atomically with no duplicate matching. A replay returns the original ordered ids; an unknown label rejects the whole batch                                                    |
+| `contact_photo_set`    | `contactId`, `contentType`, `dataBase64`              | sets JPEG, PNG, GIF or WebP bytes from standard base64; decoded data may be at most 2 MiB                                                                                                              |
+| `contacts_update`      | `contactId` + contact shape                           | **`fields`, `addresses` and `labelIds` are written wholesale** — read with `contacts_get` first and send the full list                                                                                |
+| `contacts_delete`      | `contactId`                                           | takes everything attached                                                                                                                                                                             |
+| `contacts_bulk`        | `contactIds[]` (1–1000), `action`                     | `action` is one of `{type:"delete"}`, `{type:"star",starred}`, `{type:"addLabel",labelId}`, `{type:"removeLabel",labelId}`. Foreign ids are ignored, not rejected; the answer counts what was touched |
+| `contacts_merge`       | `primaryId`, `otherIds[]` (1–50)                      | primary's values win, the rest is appended, the others are deleted. **Cannot be undone**                                                                                                              |
+| `contacts_import`      | `content`, `format?`, `duplicateStrategy?`            | `content` is the file's _text_; format is auto-detected. Strategy ∈ `skip` (default) \| `update` \| `create`. Caps: 10 000 contacts, 2 MiB per photo                                                  |
+| `contact_label_create` | `name` (≤60), `color`                                 |                                                                                                                                                                                                       |
+| `contact_label_update` | `id`, `name?`, `color?`                               |                                                                                                                                                                                                       |
+| `contact_label_delete` | `id`                                                  |                                                                                                                                                                                                       |
 
 Contact shape: `prefix`, `firstName`, `middleName`, `lastName`, `suffix`, `nickname`,
 `organization`, `jobTitle`, `department`, `birthday` (ISO date, or `--MM-DD` when the year is
@@ -272,6 +274,11 @@ unknown), `notes`, `starred`, `fields[]`, `addresses[]`, `labelIds[]` — all op
   `EMAIL | PHONE | URL | IM | EVENT | RELATION | CUSTOM`. `label` is free-form
   (`"home"`, `"work"`, `"mobile"`, …).
 - `addresses[]`: `{ label?, street?, extended?, poBox?, city?, region?, postalCode?, country? }`.
+
+`contacts_create_many` is the structured-import path. Unlike `contacts_import`, it does not
+compare email, phone, or name and does not interpret vCard/CSV/LDIF text. Use one stable key
+per source batch and save both that key and the returned ids before uploading photos. Do not
+generate a fresh key merely because the response was lost.
 
 ---
 

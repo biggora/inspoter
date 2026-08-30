@@ -118,6 +118,10 @@ export const contactCreateSchema = contactSchema.refine(
   { error: () => VALIDATION_MESSAGES.contact.emptyContact },
 );
 
+export const contactCreateBatchSchema = z.object({
+  contacts: z.array(contactCreateSchema).min(1).max(500),
+});
+
 export const contactUpdateSchema = contactCreateSchema;
 
 export const contactBulkSchema = z.object({

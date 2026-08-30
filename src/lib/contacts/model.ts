@@ -17,7 +17,16 @@ export const CONTACT_FIELD_KINDS = [
   "CUSTOM",
 ] as const;
 
+export const CONTACT_PHOTO_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+
 export type ContactFieldKind = (typeof CONTACT_FIELD_KINDS)[number];
+export type ContactPhotoContentType =
+  (typeof CONTACT_PHOTO_CONTENT_TYPES)[number];
 
 export interface ContactFieldRecord {
   kind: ContactFieldKind;

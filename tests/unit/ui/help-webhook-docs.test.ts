@@ -146,6 +146,17 @@ describe("help webhook documentation", () => {
     }
   });
 
+  it("documents idempotent JSON contact batches", () => {
+    const contacts = HELP_ARTICLES.find(
+      (article) => article.slug === "contacts",
+    );
+    expect(contacts?.managementApi?.endpoint).toBe(
+      "POST /api/v1/contacts/bulk",
+    );
+    expect(contacts?.managementApi?.curl).toContain("Idempotency-Key:");
+    expect(contacts?.managementApi?.curl).toContain('"contacts"');
+  });
+
   it("keeps the Discord sample on placeholders, since its path is the secret", () => {
     for (const article of withDiscord) {
       const { endpoint, curl = "" } = article.discord!;

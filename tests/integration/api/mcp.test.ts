@@ -956,6 +956,65 @@ describe("contacts tools", () => {
     expect(await db.contact.findUnique({ where: { id } })).toBeNull();
   });
 
+  it("creates an idempotent JSON batch without duplicate matching", async () => {
+    const idempotencyKey = `mcp-bulk-${randomUUID()}`;
+    const args = {
+      idempotencyKey,
+      contacts: [
+        {
+          firstName: "Retailer one",
+          fields: [{ kind: "PHONE", value: "+371 2111 1111", isPrimary: true }],
+        },
+        {
+          firstName: "Retailer two",
+          fields: [{ kind: "PHONE", value: "+371 2111 1111", isPrimary: true }],
+        },
+      ],
+    };
+
+    const created = await callTool(fullToken, "contacts_create_many", args);
+    expect(created.payload).toMatchObject({ count: 2, replayed: false });
+    const ids = (
+      created.payload as { contacts: Array<{ id: string }> }
+    ).contacts.map((contact) => contact.id);
+
+    const replayed = await callTool(fullToken, "contacts_create_many", args);
+    expect(replayed.payload).toMatchObject({
+      contacts: ids.map((id) => ({ id })),
+      count: 2,
+      replayed: true,
+    });
+    expect(await db.contact.count({ where: { id: { in: ids } } })).toBe(2);
+
+    await callTool(fullToken, "contacts_bulk", {
+      contactIds: ids,
+      action: { type: "delete" },
+    });
+  });
+
+  it("sets a contact photo from base64", async () => {
+    const id = await createContact("Photo contact", "photo@example.invalid");
+    const gif = Buffer.from(
+      "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+      "base64",
+    );
+
+    const result = await callTool(fullToken, "contact_photo_set", {
+      contactId: id,
+      contentType: "image/gif",
+      dataBase64: gif.toString("base64"),
+    });
+
+    expect(result.payload).toEqual({ updated: id });
+    const stored = await db.contact.findUnique({
+      where: { id },
+      select: { photo: true, photoContentType: true },
+    });
+    expect(stored?.photoContentType).toBe("image/gif");
+    expect(Buffer.from(stored?.photo ?? []).equals(gif)).toBe(true);
+    await callTool(fullToken, "contacts_delete", { contactId: id });
+  });
+
   it("groups duplicates and merges them into one record", async () => {
     const primary = await createContact("Grace", "grace@example.invalid");
     const duplicate = await createContact("Grace", "grace@example.invalid");

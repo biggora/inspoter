@@ -261,9 +261,12 @@
     "Open \"Merge duplicates\" to review contacts that share an address, a number or a name, and fold them into one.",
     "Use \"Export\" to write the current filter, the current selection, or the whole book out in any supported format."
   ],
-  "contactsManagementApiIntro": "Contacts can also be read and written by an external system or an AI assistant. Grant a token the Contacts permissions under <tokens>Settings → Webhooks</tokens>: the same token works over plain REST (sample below) and over MCP, where an assistant such as Claude or Cursor connects to /api/mcp and gets the same operations as tools. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
+  "contactsManagementApiIntro": "Contacts can also be read and written by an external system or an AI assistant. Grant a token the Contacts permissions under <tokens>Settings → Webhooks</tokens>. For structured catalogues, the REST example below creates up to 500 JSON contacts in one request; MCP exposes the same operation as contacts_create_many. The full route list is in <apiDocs>Settings → API Documentation</apiDocs>.",
   "contactsManagementApiFields": [
     "contacts:read — list and read contacts and labels.",
-    "contacts:write — create, update and delete contacts, and import a vCard."
+    "contacts:write — create, update and delete contacts, import files, and set photos.",
+    "Idempotency-Key is required for a JSON batch. Retry the same data with the same key to receive the original contact ids; changed data with that key is rejected.",
+    "JSON batch creation is atomic and does not merge matching email addresses, phone numbers or names. One unknown label id rejects the whole batch.",
+    "Use contacts_import for vCard, CSV or LDIF text. Use contacts_create_many for structured JSON and contact_photo_set for a base64 JPEG, PNG, GIF or WebP after creation."
   ]
 }

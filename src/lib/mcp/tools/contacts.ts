@@ -3,7 +3,10 @@ import * as contactsService from "@/lib/services/contacts";
 import * as contactLabelsService from "@/lib/services/contact-labels";
 import { defineTool, type McpToolDefinition } from "@/lib/mcp/tool";
 import { McpResourceNotFoundError } from "@/lib/mcp/errors";
-import { CONTACT_FIELD_KINDS } from "@/lib/contacts/model";
+import {
+  CONTACT_FIELD_KINDS,
+  CONTACT_PHOTO_CONTENT_TYPES,
+} from "@/lib/contacts/model";
 import {
   CONTACT_EXPORT_FORMATS,
   CONTACT_IMPORT_FORMATS,
@@ -12,6 +15,12 @@ import {
   contactLabelSchema,
   contactLabelUpdateSchema,
 } from "@/lib/validation/contacts";
+import { idempotencyKeySchema } from "@/lib/validation/webhookTokens";
+
+// The MCP surface takes contacts and photos as text rather than as uploads, so
+// the HTTP import byte ceiling does not apply; row and per-photo caps still do.
+const IMPORT_LIMITS = { maxContacts: 10_000, maxPhotoBytes: 2_097_152 };
+const CREATE_MANY_LIMIT = 500;
 
 // The Contacts half of the agent surface: an assistant can look someone up,
 // keep a record current, and load an address book that arrived as a vCard.
@@ -66,6 +75,15 @@ const contactShape = {
   addresses: z.array(addressSchema).optional(),
   labelIds: z.array(z.string()).optional(),
 };
+
+const base64PhotoSchema = z
+  .string()
+  .min(1)
+  .max(Math.ceil(IMPORT_LIMITS.maxPhotoBytes / 3) * 4)
+  .regex(
+    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u,
+    "Photo data must be standard base64.",
+  );
 
 async function requireContact(
   workspaceId: string,
@@ -175,10 +193,76 @@ export const contactTools: McpToolDefinition[] = [
     title: "Create a contact",
     description:
       "Create a contact. At least one of the name parts, the organization, or one entry in `fields` is required.",
-    inputSchema: z.object(contactShape),
+    inputSchema: z.object({
+      ...contactShape,
+      idempotencyKey: idempotencyKeySchema.optional(),
+    }),
     readOnly: false,
-    handler: (args, ctx) =>
-      contactsService.createContact(ctx.workspaceId, null, toInput(args)),
+    handler: async ({ idempotencyKey, ...args }, ctx) => {
+      const input = toInput(args);
+      if (idempotencyKey === undefined) {
+        return contactsService.createContact(ctx.workspaceId, null, input);
+      }
+      const result = await contactsService.createContactsIdempotent(
+        ctx.workspaceId,
+        null,
+        ctx.tokenId,
+        idempotencyKey,
+        [input],
+      );
+      return requireContact(ctx.workspaceId, result.contacts[0].id);
+    },
+  }),
+
+  defineTool({
+    name: "contacts_create_many",
+    scope: "contacts:write",
+    title: "Create many contacts",
+    description:
+      "Atomically create up to 500 JSON contacts without duplicate matching. idempotencyKey makes retries return the original contact ids instead of creating duplicates. Unknown label ids reject the whole batch.",
+    inputSchema: z.object({
+      idempotencyKey: idempotencyKeySchema,
+      contacts: z.array(z.object(contactShape)).min(1).max(CREATE_MANY_LIMIT),
+    }),
+    readOnly: false,
+    idempotent: true,
+    handler: ({ idempotencyKey, contacts }, ctx) =>
+      contactsService.createContactsIdempotent(
+        ctx.workspaceId,
+        null,
+        ctx.tokenId,
+        idempotencyKey,
+        contacts.map(toInput),
+      ),
+  }),
+
+  defineTool({
+    name: "contact_photo_set",
+    scope: "contacts:write",
+    title: "Set a contact photo",
+    description:
+      "Set one contact's JPEG, PNG, GIF or WebP photo from standard base64 data. The photo may be at most 2 MiB.",
+    inputSchema: z.object({
+      contactId,
+      contentType: z.enum(CONTACT_PHOTO_CONTENT_TYPES),
+      dataBase64: base64PhotoSchema,
+    }),
+    readOnly: false,
+    idempotent: true,
+    handler: async ({ contactId: id, contentType, dataBase64 }, ctx) => {
+      await requireContact(ctx.workspaceId, id);
+      await contactsService.setPhoto(
+        ctx.workspaceId,
+        null,
+        id,
+        {
+          contentType,
+          data: new Uint8Array(Buffer.from(dataBase64, "base64")),
+        },
+        IMPORT_LIMITS.maxPhotoBytes,
+      );
+      return { updated: id };
+    },
   }),
 
   defineTool({
@@ -357,11 +441,6 @@ export const contactTools: McpToolDefinition[] = [
       ),
   }),
 ];
-
-// The MCP surface takes contacts as text rather than as an upload, so the
-// byte-size ceiling the HTTP route enforces does not apply; the row and photo
-// caps still do.
-const IMPORT_LIMITS = { maxContacts: 10_000, maxPhotoBytes: 2_097_152 };
 
 type ContactArgs = {
   [K in keyof typeof contactShape]?: unknown;

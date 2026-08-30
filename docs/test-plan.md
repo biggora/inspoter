@@ -1,14 +1,15 @@
 # Test Plan & Traceability Matrix — inspoter production remediation
 
-**Version:** 1.10
-**Status:** Dashboard messages widget coverage recorded; its unit suites PASS, its database-backed suite remains PENDING until the test database is migrated.
+**Version:** 1.11
+**Status:** Idempotent JSON contact batches and MCP photo writes are integration-verified.
 **Owner:** tester
-**Date:** 2026-08-06
+**Date:** 2026-08-30
 **Scope:** Slice 0/1 evidence + R2.0 revalidation + Q-13 workspace contract (§§2–7) + Q-14 mail client (§8) + channel webhooks/Messages (§9) + public OpenAPI/Swagger UI (§10) + VPS Metrics Agent (§11) + Q-15 Mail labels/filter rules (§12) + Dashboards (§13) + Discord webhook compatibility (§14) + agent-facing Messages management API (§15). This file does not turn discovery, collection, schema inspection, or authored tests into runtime PASS.
-**Normative inputs:** `docs/prd.md` v3.17, `docs/architecture.md` v1.18, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
+**Normative inputs:** `docs/prd.md` v3.23, `docs/architecture.md` v1.28, `docs/remediation-plan.md` v1.1, `docs/design.md` v2.13, `docs/plan.md` v1.7, `specs/mail-label-filtering-plan.md` v0.3, `docs/progress.md`
 
 ## Changelog
 
+- **v1.11 — 2026-08-30:** adds AGT-CNT-007..010 for an exact 416-row structured batch, deliberate preservation of matching email/phone records, whole-batch label rollback, idempotent replay/conflict/concurrency, and MCP photo writes. The targeted REST/MCP suites and the full 922-test integration run pass against the guarded test PostgreSQL database.
 - **v1.10 — 2026-08-06:** records the dashboard messages widget. DSH-UI-001 now covers eleven kinds, DSH-UI-006 adds the tile and its settings form (both PASS under `pnpm test:unit`), and DSH-SVC-008 adds the resolver's channel/category/unread/limit behaviour plus its "deleted target stays empty" rule. DSH-SVC-008 is authored but PENDING: it needs migration `20260806120000_dashboard_messages_widget` applied to the test database, which the `test:db:*` guard still blocks (`ALLOW_TEST_DB_RESET=1 pnpm test:db:prepare && pnpm test:integration`).
 - **v1.9 — 2026-08-05:** added §15 for the agent-facing Messages management API (AC-MSG-015..021): the scope/contract/presentation units, the REST and MCP integration suites asserted separately so the two surfaces cannot drift, and the dated live run against a real server with a real token. Records honestly that both database-backed suites are authored but unexecuted — the test database was never started because the `test:db:*` guard blocked it — and names the exact commands and the migration they need first.
 - **v1.8 — 2026-08-02:** added §14 for Discord webhook compatibility (AC-WH-012..015): the payload/snowflake/error/embed/delivery unit suites, the ingress pipeline suite over a real database, the egress format suite including Ed25519 verification and auto-disable, and the embed-card and published-contract checks. Records that the untouched pre-Discord webhook suites are themselves the backward-compatibility evidence, and that no browser-level spec covers the new route.
@@ -899,6 +900,10 @@ never been brought up in this environment (`pnpm test:db:prepare` requires
 | AGT-CNT-004 | A vCard import reports what it created; the export returns it as text; the suggestion endpoint finds its address.                     | AC-AGT-003 | PENDING |
 | AGT-CNT-005 | Label create, rename and delete; a case-differing duplicate answers 409 `LABEL_NAME_CONFLICT`; a foreign label answers 404 and stays. | AC-AGT-002 | PENDING |
 | AGT-CNT-006 | A photo is stored, served with its content type and cleared; an SVG upload answers 415 and no photo is stored.                        | AC-AGT-003 | PENDING |
+| AGT-CNT-007 | One request creates an exact 416-contact JSON catalogue atomically and keeps records that share an email or phone separate.             | AC-CNT-017 | PASS    |
+| AGT-CNT-008 | Same-key replay returns the original ids; changed input conflicts; concurrent equal calls commit only one contact set.                 | AC-CNT-018 | PASS    |
+| AGT-CNT-009 | One unknown or foreign label rejects the whole structured batch and leaves the contact count unchanged.                               | AC-CNT-019 | PASS    |
+| AGT-CNT-010 | MCP `contact_photo_set` stores allowed base64 image bytes and rejects malformed, unsupported or oversized input without mutation.       | AC-CNT-020 | PASS    |
 
 ### 16.5 Kanban (integration, real database)
 

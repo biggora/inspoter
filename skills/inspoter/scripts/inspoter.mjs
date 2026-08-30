@@ -4,7 +4,8 @@
 //   node inspoter.mjs tools [substring]        list the tools this token may call
 //   node inspoter.mjs schema <tool>            print one tool's JSON Schema
 //   node inspoter.mjs call <tool> ['<json>']   tools/call over POST /api/mcp
-//   node inspoter.mjs rest <METHOD> <path> ['<json>']   plain /api/v1 request
+//   node inspoter.mjs rest <METHOD> <path> ['<json>'] [--idempotency-key <key>]
+//                                                    plain /api/v1 request
 //
 // Environment: INSPOTER_URL (origin, e.g. https://dashboard.example.com)
 //              INSPOTER_TOKEN (workspace API token)
@@ -32,6 +33,35 @@ function parseJsonArg(raw, label) {
   } catch (error) {
     die(`${label} is not valid JSON: ${error.message}`);
   }
+}
+
+function parseRestArgs(args) {
+  const method = (
+    args[0] ??
+    die("Usage: rest <METHOD> <path> ['<json body>'] [--idempotency-key <key>]")
+  ).toUpperCase();
+  const path =
+    args[1] ??
+    die(
+      "Usage: rest <METHOD> <path> ['<json body>'] [--idempotency-key <key>]",
+    );
+  let body;
+  let idempotencyKey;
+
+  for (let index = 2; index < args.length; index += 1) {
+    if (args[index] === "--idempotency-key") {
+      if (idempotencyKey !== undefined)
+        die("--idempotency-key may be supplied only once.");
+      idempotencyKey =
+        args[index + 1] ?? die("--idempotency-key requires a value.");
+      index += 1;
+      continue;
+    }
+    if (body !== undefined) die(`Unexpected REST argument: ${args[index]}`);
+    body = args[index];
+  }
+
+  return { method, path, body, idempotencyKey };
 }
 
 // The handler answers with a plain JSON body or an SSE stream depending on
@@ -122,11 +152,8 @@ switch (command) {
   }
 
   case "rest": {
-    const method = (
-      rest[0] ?? die("Usage: rest <METHOD> <path> ['<json body>']")
-    ).toUpperCase();
-    const path = rest[1] ?? die("Usage: rest <METHOD> <path> ['<json body>']");
-    const hasBody = rest[2] !== undefined;
+    const { method, path, body, idempotencyKey } = parseRestArgs(rest);
+    const hasBody = body !== undefined;
     const response = await fetch(
       `${url}${path.startsWith("/") ? path : `/${path}`}`,
       {
@@ -134,9 +161,10 @@ switch (command) {
         headers: {
           authorization: `Bearer ${token}`,
           ...(hasBody ? { "content-type": "application/json" } : {}),
+          ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
         },
         ...(hasBody
-          ? { body: JSON.stringify(parseJsonArg(rest[2], "Request body")) }
+          ? { body: JSON.stringify(parseJsonArg(body, "Request body")) }
           : {}),
       },
     );
@@ -160,7 +188,7 @@ switch (command) {
         "  inspoter.mjs tools [substring]",
         "  inspoter.mjs schema <tool>",
         "  inspoter.mjs call <tool> ['<json args>']",
-        "  inspoter.mjs rest <METHOD> <path> ['<json body>']",
+        "  inspoter.mjs rest <METHOD> <path> ['<json body>'] [--idempotency-key <key>]",
       ].join("\n"),
     );
 }

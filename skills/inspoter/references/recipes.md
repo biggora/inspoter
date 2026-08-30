@@ -163,6 +163,37 @@ thing. Adding one phone number by sending only that number wipes the rest.
 Bulk labelling is `contacts_bulk` with `{type:"addLabel",labelId}` over up to 1000 ids; ids
 outside the workspace are ignored, and the answer counts what was actually touched.
 
+## Importing a structured contact catalogue safely
+
+Scope: `contacts:write` (add `contacts:read` when resolving existing labels first).
+
+Use this path when the source is already structured JSON. Do not convert it to CSV/vCard and
+call `contacts_import`: file import applies its duplicate strategy to matching emails, phones,
+and names, and file formats cannot carry Inspoter `labelIds`.
+
+```
+contact_labels_list   {}                         # resolve every label id first
+contacts_create_many  { "idempotencyKey": "retailers-2026-08-30-v1",
+                        "contacts": [ ...up to 500 contact shapes... ] }
+contact_photo_set     { "contactId": "<returned id>",
+                        "contentType": "image/png",
+                        "dataBase64": "<standard base64>" }
+```
+
+One `contacts_create_many` call can create a 416-row catalogue. It is atomic, performs no
+duplicate matching, and therefore preserves separate shops that share an owner's phone or
+email. One unknown `labelId` rejects the whole call before any contact is created.
+
+Treat the idempotency key as progress state: derive or assign one stable key per exact source
+batch, persist it with the source checksum, and save the ordered returned ids. If the response
+is lost, retry the same payload with the same key; it returns the same ids. Reusing that key
+with changed normalized input is a conflict. Do not generate a fresh key for a retry.
+
+Photos remain a second pass because they target created ids. Store each source row's returned
+id before calling `contact_photo_set`; retrying that tool with the same bytes is safe. On REST,
+use `POST /api/v1/contacts/bulk` with the key in `Idempotency-Key`, then multipart photo
+uploads. A `429` on either surface still means honour `Retry-After`.
+
 ## When something answers 401/403/404
 
 - `401` — the token is missing, revoked, channel-scoped, or has **no** MCP scopes at all

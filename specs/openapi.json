@@ -1572,6 +1572,11 @@
             "WebhookBearer": []
           }
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContactIdempotencyKey"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1583,6 +1588,21 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of an earlier completed create.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contact"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The created contact.",
             "headers": {
@@ -1607,6 +1627,9 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyConflict"
+          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           },
@@ -1617,6 +1640,84 @@
       }
     },
     "/api/v1/contacts/bulk": {
+      "post": {
+        "operationId": "createContactsBulk",
+        "summary": "Create many contacts atomically",
+        "description": "Requires the contacts:write scope. Creates up to 500 JSON contacts without duplicate matching. Replaying the same Idempotency-Key returns the original ordered ids.",
+        "security": [
+          {
+            "WebhookBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequiredContactIdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactCreateBatchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A replay of an earlier completed batch.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactCreateBatchResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The batch was created.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactCreateBatchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyConflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
       "patch": {
         "operationId": "bulkUpdateContacts",
         "summary": "Act on many contacts at once",
@@ -7316,6 +7417,30 @@
           "pattern": "^[\\x20-\\x7e]+$"
         }
       },
+      "ContactIdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Optional replay key containing 1 to 128 printable ASCII characters.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "RequiredContactIdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "description": "Replay key containing 1 to 128 printable ASCII characters. Reuse it only for the same normalized contact batch.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
       "DiscordWebhookId": {
         "name": "webhookId",
         "in": "path",
@@ -7625,6 +7750,21 @@
       },
       "NotFound": {
         "description": "The path names a resource that does not exist in the token's workspace.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessagesApiError"
+            }
+          }
+        }
+      },
+      "IdempotencyConflict": {
+        "description": "The idempotency key was already used with a different normalized request.",
         "headers": {
           "Cache-Control": {
             "$ref": "#/components/headers/CacheControl"
@@ -10035,6 +10175,52 @@
           "color": {
             "type": "string",
             "description": "A preset name (SLATE, RED, AMBER, GREEN, BLUE, VIOLET) or a #RRGGBB value."
+          }
+        }
+      },
+      "ContactCreateBatchInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contacts"],
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/components/schemas/ContactInput"
+            }
+          }
+        }
+      },
+      "ContactCreateBatchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contacts", "count", "replayed"],
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "displayName"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "replayed": {
+            "type": "boolean"
           }
         }
       },

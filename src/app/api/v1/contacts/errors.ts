@@ -2,6 +2,7 @@ import type { NextResponse } from "next/server";
 import { apiErrorResponse, apiNotFound } from "@/lib/api/token-auth";
 import {
   ContactImportTooLargeError,
+  ContactIdempotencyConflictError,
   ContactMergeValidationError,
   ContactNotFoundError,
   ContactPhotoTooLargeError,
@@ -27,6 +28,9 @@ export function mapContactApiError(error: unknown): NextResponse {
     error instanceof ContactLabelNameConflictError ||
     error instanceof ContactLabelLimitReachedError
   ) {
+    return apiErrorResponse(409, error.code, error.message);
+  }
+  if (error instanceof ContactIdempotencyConflictError) {
     return apiErrorResponse(409, error.code, error.message);
   }
   if (error instanceof ContactMergeValidationError) {

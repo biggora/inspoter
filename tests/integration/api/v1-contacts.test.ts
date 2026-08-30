@@ -17,7 +17,10 @@ import {
   GET as getPhoto,
   POST as setPhoto,
 } from "@/app/api/v1/contacts/[contactId]/photo/route";
-import { PATCH as bulkUpdate } from "@/app/api/v1/contacts/bulk/route";
+import {
+  PATCH as bulkUpdate,
+  POST as bulkCreate,
+} from "@/app/api/v1/contacts/bulk/route";
 import { GET as listDuplicates } from "@/app/api/v1/contacts/duplicates/route";
 import { POST as mergeContacts } from "@/app/api/v1/contacts/merge/route";
 import { GET as exportContacts } from "@/app/api/v1/contacts/export/route";
@@ -55,11 +58,15 @@ function request(
     token?: string | null;
     body?: unknown;
     form?: FormData;
+    headers?: Record<string, string>;
   } = {},
 ): NextRequest {
   const headers = new Headers();
   if (init.token) headers.set("Authorization", `Bearer ${init.token}`);
   if (init.form === undefined) headers.set("Content-Type", "application/json");
+  for (const [name, value] of Object.entries(init.headers ?? {})) {
+    headers.set(name, value);
+  }
   return new NextRequest(`http://localhost${path}`, {
     method: init.method ?? "GET",
     headers,
@@ -161,6 +168,138 @@ describe("error envelope", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+});
+
+describe("bulk creation", () => {
+  function createBatch(key: string | null, contacts: unknown[]) {
+    return bulkCreate(
+      request("/api/v1/contacts/bulk", {
+        method: "POST",
+        token: writeToken,
+        headers: key === null ? {} : { "Idempotency-Key": key },
+        body: { contacts },
+      }),
+    );
+  }
+
+  it("creates every JSON contact in order and replays the original ids", async () => {
+    const marker = `${PREFIX}-create-many`;
+    const contacts = [
+      {
+        firstName: `${marker}-one`,
+        fields: [{ kind: "PHONE", value: "+371 2000 0000" }],
+      },
+      {
+        firstName: `${marker}-two`,
+        fields: [{ kind: "PHONE", value: "+371 2000 0000" }],
+      },
+      { firstName: `${marker}-three` },
+    ];
+
+    const created = await createBatch(`${marker}-key`, contacts);
+    expect(created.status).toBe(201);
+    const first = await body<{
+      contacts: Array<{ id: string; displayName: string }>;
+      count: number;
+      replayed: boolean;
+    }>(created);
+    expect(first).toMatchObject({ count: 3, replayed: false });
+    expect(first.contacts.map((contact) => contact.displayName)).toEqual(
+      contacts.map((contact) => contact.firstName),
+    );
+
+    const replayed = await createBatch(`${marker}-key`, contacts);
+    expect(replayed.status).toBe(200);
+    expect(await body(replayed)).toEqual({ ...first, replayed: true });
+    expect(
+      await db.contact.count({
+        where: { workspaceId, firstName: { startsWith: marker } },
+      }),
+    ).toBe(3);
+  });
+
+  it("creates the 416-contact retailer volume in one request", async () => {
+    const marker = `${PREFIX}-416`;
+    const contacts = Array.from({ length: 416 }, (_, index) => ({
+      firstName: `${marker}-${index}`,
+    }));
+
+    const response = await createBatch(`${marker}-key`, contacts);
+    const result = await body<{
+      contacts: Array<{ id: string }>;
+      count: number;
+      replayed: boolean;
+    }>(response);
+
+    expect(response.status).toBe(201);
+    expect(result).toMatchObject({ count: 416, replayed: false });
+    expect(new Set(result.contacts.map((contact) => contact.id)).size).toBe(
+      416,
+    );
+    expect(
+      await db.contact.count({
+        where: { workspaceId, firstName: { startsWith: marker } },
+      }),
+    ).toBe(416);
+  });
+
+  it("rejects a changed replay and does not create its contacts", async () => {
+    const key = `${PREFIX}-conflict`;
+    await createBatch(key, [{ firstName: `${PREFIX}-original` }]);
+
+    const response = await createBatch(key, [
+      { firstName: `${PREFIX}-changed` },
+    ]);
+
+    expect(response.status).toBe(409);
+    expect(await body<{ error: { code: string } }>(response)).toMatchObject({
+      error: { code: "IDEMPOTENCY_KEY_CONFLICT" },
+    });
+    expect(
+      await db.contact.count({ where: { firstName: `${PREFIX}-changed` } }),
+    ).toBe(0);
+  });
+
+  it("requires a valid key and rolls back the whole batch for an unknown label", async () => {
+    const noKey = await createBatch(null, [
+      { firstName: `${PREFIX}-missing-key` },
+    ]);
+    expect(noKey.status).toBe(400);
+
+    const marker = `${PREFIX}-unknown-label`;
+    const unknownLabel = await createBatch(`${marker}-key`, [
+      { firstName: `${marker}-one` },
+      { firstName: `${marker}-two`, labelIds: ["does-not-exist"] },
+    ]);
+    expect(unknownLabel.status).toBe(404);
+    expect(
+      await db.contact.count({
+        where: { workspaceId, firstName: { startsWith: marker } },
+      }),
+    ).toBe(0);
+  });
+
+  it("commits one batch when the same key arrives concurrently", async () => {
+    const marker = `${PREFIX}-concurrent`;
+    const contacts = [
+      { firstName: `${marker}-one` },
+      { firstName: `${marker}-two` },
+    ];
+
+    const responses = await Promise.all([
+      createBatch(`${marker}-key`, contacts),
+      createBatch(`${marker}-key`, contacts),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      200, 201,
+    ]);
+    expect(
+      await db.contact.count({
+        where: { workspaceId, firstName: { startsWith: marker } },
+      }),
+    ).toBe(2);
   });
 });
 
@@ -513,5 +652,28 @@ describe("list and create still behave", () => {
       params({ contactId: id }),
     );
     expect(await body(removed)).toEqual({ deleted: id });
+  });
+
+  it("replays an idempotent single create without another row", async () => {
+    const key = `${PREFIX}-single-key`;
+    const input = {
+      method: "POST",
+      token: writeToken,
+      headers: { "Idempotency-Key": key },
+      body: { firstName: `${PREFIX}-single-idempotent` },
+    };
+
+    const created = await createContact(request("/api/v1/contacts", input));
+    const first = await body<{ id: string }>(created);
+    const replayed = await createContact(request("/api/v1/contacts", input));
+
+    expect(created.status).toBe(201);
+    expect(replayed.status).toBe(200);
+    expect((await body<{ id: string }>(replayed)).id).toBe(first.id);
+    expect(
+      await db.contact.count({
+        where: { workspaceId, firstName: `${PREFIX}-single-idempotent` },
+      }),
+    ).toBe(1);
   });
 });

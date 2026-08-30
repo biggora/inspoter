@@ -4,7 +4,7 @@ Same capabilities as the MCP tools, over plain HTTP, for clients and scripts tha
 speak MCP. Same bearer token, same scopes, workspace taken from the token. Session cookies
 and `X-Inspoter-Workspace` play no part.
 
-This catalogue contains **65 paths and 102 operations**. It intentionally covers only the
+This catalogue contains **71 paths and 110 operations**. It intentionally covers only the
 public bearer API. The dashboard's session-only APIs are separate:
 
 - `/api/agents/**` — Agents, Skills, schedules, runs and conversations;
@@ -35,7 +35,8 @@ curl -X PATCH "$INSPOTER_URL/api/v1/mail/<mail id>" \
 ## Conventions
 
 - JSON in, JSON out; `Content-Type: application/json` on every request with a body.
-- Creates answer `201`, everything else `200`. Responses are `Cache-Control: no-store`.
+- Creates answer `201`, everything else `200`. An idempotent contact-create replay answers
+  `200` with the original result. Responses are `Cache-Control: no-store`.
 - Errors: `{ "error": { "code", "message" } }`; `400` carries an extra `issues` array
   pointing at the offending field.
 - Scope is checked per route and per method: `GET` needs `<domain>:read`, mutations need
@@ -114,25 +115,35 @@ single column, two for a move between them), so position is under your control. 
 
 ## Contacts — `contacts:read` / `contacts:write`
 
-| Method               | Path                                 | Query / body                                                                        |
-| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
-| GET                  | `/api/v1/contacts`                   | query: `query`, `labelId`, `starred`, `page`, `pageSize`                            |
-| POST                 | `/api/v1/contacts`                   | contact body (see below)                                                            |
-| GET / PATCH / DELETE | `/api/v1/contacts/{contactId}`       | contact body                                                                        |
-| GET / POST / DELETE  | `/api/v1/contacts/{contactId}/photo` | POST is **multipart**, field `photo`                                                |
-| PATCH                | `/api/v1/contacts/bulk`              | body: `contactIds`, `action`                                                        |
-| GET                  | `/api/v1/contacts/duplicates`        | —                                                                                   |
-| POST                 | `/api/v1/contacts/merge`             | body: `primaryId`, `otherIds`                                                       |
-| GET                  | `/api/v1/contacts/suggest`           | query: `query` (required), `limit`                                                  |
-| GET                  | `/api/v1/contacts/export`            | query: `format` (required), `contactId` (repeatable), `labelId`, `query`, `starred` |
-| POST                 | `/api/v1/contacts/import`            | **multipart**, fields `file`, `format`, `duplicateStrategy`                         |
-| GET / POST           | `/api/v1/contacts/labels`            | body: `name`, `color`                                                               |
-| PATCH / DELETE       | `/api/v1/contacts/labels/{labelId}`  | body: `name`, `color`                                                               |
+| Method               | Path                                 | Query / body                                                                                     |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| GET                  | `/api/v1/contacts`                   | query: `query`, `labelId`, `starred`, `page`, `pageSize`                                         |
+| POST                 | `/api/v1/contacts`                   | contact body (see below); optional `Idempotency-Key` header                                       |
+| GET / PATCH / DELETE | `/api/v1/contacts/{contactId}`       | contact body                                                                                     |
+| GET / POST / DELETE  | `/api/v1/contacts/{contactId}/photo` | POST is **multipart**, field `photo`                                                             |
+| POST                 | `/api/v1/contacts/bulk`              | required `Idempotency-Key`; body: `{ "contacts": [contact body, ...] }` (1–500)                  |
+| PATCH                | `/api/v1/contacts/bulk`              | body: `contactIds`, `action`                                                                     |
+| GET                  | `/api/v1/contacts/duplicates`        | —                                                                                                |
+| POST                 | `/api/v1/contacts/merge`             | body: `primaryId`, `otherIds`                                                                    |
+| GET                  | `/api/v1/contacts/suggest`           | query: `query` (required), `limit`                                                               |
+| GET                  | `/api/v1/contacts/export`            | query: `format` (required), `contactId` (repeatable), `labelId`, `query`, `starred`              |
+| POST                 | `/api/v1/contacts/import`            | **multipart**, fields `file`, `format`, `duplicateStrategy`                                      |
+| GET / POST           | `/api/v1/contacts/labels`            | body: `name`, `color`                                                                            |
+| PATCH / DELETE       | `/api/v1/contacts/labels/{labelId}`  | body: `name`, `color`                                                                            |
 
 The REST contact body accepts four fields MCP does not model: `phoneticFirst`,
 `phoneticMiddle`, `phoneticLast`, `fileAs`. Import/export differ too: REST takes a file
-upload and repeatable `contactId` query params, MCP takes and returns plain text. Photos are
-REST-only — `413` when over the ceiling, `415` on an unsupported type.
+upload and repeatable `contactId` query params, MCP takes and returns plain text. A REST
+photo upload answers `413` when over the ceiling and `415` on an unsupported type; MCP's
+`contact_photo_set` accepts the same JPEG/PNG/GIF/WebP data as standard base64.
+
+Bulk JSON creation is atomic and deliberately does **no** duplicate matching: records that
+share an email, phone, or name remain separate. Every `labelId` is validated before a write;
+one unknown label rejects the whole batch. A new key returns `201` and ordered
+`{ contacts: [{ id }], count, replayed: false }`. Replaying the same normalized payload and
+key returns those ids with `200` and `replayed: true`; changing the payload while reusing the
+key returns `409`. Persist the key with the source batch rather than generating a new one
+after a timeout.
 
 ## Services — `services:read` / `services:write`
 

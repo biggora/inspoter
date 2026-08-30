@@ -1,9 +1,9 @@
 # Product Requirements Document — inspoter
 
-**Version:** v3.22
-**Status:** Latvian added as a third operator-selectable UI locale
+**Version:** v3.23
+**Status:** Idempotent structured contact import added to the agent-facing API
 **Owner:** Product Analyst
-**Date:** 2026-08-25
+**Date:** 2026-08-30
 **Source of truth for:** architect, ui-ux-designer, planner, tester
 **Traces to:** `docs/idea.md` (verbatim product brief), `docs/progress.md` (Decisions log through Q-1…Q-13, 2026-07-14), the verbatim Mail-label request recorded in `specs/mail-label-filtering-plan.md` v0.3, `specs/prototype/`, `specs/inspot-design/`, and `specs/ui.md` (normative design inputs per Q-3)
 
@@ -558,11 +558,15 @@ The visible UI defaults to English, with Russian and Latvian fully supported and
 
 **FR-CNT-006: Agent-facing Contacts API**
 
-- Description: The address book is also reachable by an API token rather than a browser session, published twice over one service layer — as MCP tools on `POST /api/mcp` and as the REST family `/api/v1/contacts/**` — under two scopes on the existing workspace token (FR-WH-002): `contacts:read` and `contacts:write`, the latter also covering vCard import because loading a file is the same class of action as creating its contacts one by one.
+- Description: The address book is also reachable by an API token rather than a browser session, published twice over one service layer — as MCP tools on `POST /api/mcp` and as the REST family `/api/v1/contacts/**` — under two scopes on the existing workspace token (FR-WH-002): `contacts:read` and `contacts:write`. The write scope covers file import, structured JSON creation and contact photos. Structured creation accepts up to 500 contacts atomically, never performs duplicate matching, and is idempotent so a caller can retry after losing a response without creating a second copy.
 - Priority: Should Have
 - Acceptance Criteria:
   - **AC-CNT-015**: Given a request to either surface, When it presents no token, an unknown or revoked token, a channel-scoped webhook token, or a token carrying no MCP scope, Then it is rejected with `401` and a bearer challenge; When the token's scopes lack the operation's requirement, Then it is rejected with `403`; and in both cases nothing is read or written.
   - **AC-CNT-016**: Given an identifier belonging to another workspace, When it is used against either surface, Then the response is a non-disclosing `404` (REST) or a tool error (MCP), and no record is read or modified in either workspace.
+  - **AC-CNT-017**: Given 1–500 valid JSON contacts and a new caller-scoped idempotency key, When the batch is created through REST or MCP, Then all contacts are committed in input order in one transaction and the response returns every created id; contacts sharing an email, phone or name remain separate records.
+  - **AC-CNT-018**: Given a completed structured create, When the exact normalized input is retried with the same caller and idempotency key, Then the original ordered ids are returned and no contact is created; When changed input reuses that key, Then the request is rejected as a conflict and no data changes.
+  - **AC-CNT-019**: Given a structured batch containing an unknown or foreign-workspace label id, When it is submitted, Then the whole batch is rejected before any contact is created.
+  - **AC-CNT-020**: Given a created contact and valid JPEG, PNG, GIF or WebP bytes within the configured limit, When an MCP caller invokes `contact_photo_set`, Then the photo is stored with its content type; malformed base64, unsupported content types and oversized decoded data are rejected without changing the stored photo.
 
 **Contacts interaction contract:** The list is a table with a checkbox column; a selection reveals the bulk actions (delete, star, add or remove a label) and hides them again when it is cleared. A row's name opens `/contacts/[id]`; the star toggles in place. The section sidebar holds the two standing views (all, starred), the workspace's labels with their counts, and the duplicates screen. Import shows a summary of what it did rather than closing silently, and points at the duplicates screen when it created records. Photos are shown as an initials tile when a contact has none, using the same deterministic coloring the mail client uses for senders.
 
@@ -1193,6 +1197,10 @@ No active FR or NFR lacks a named source. The v2 English-only semantic of NFR-I1
 ---
 
 ## Appendix C — Changelog
+
+### v3.23 — 2026-08-30 (idempotent structured contact import)
+
+Expanded FR-CNT-006 and added AC-CNT-017..020 for atomic creation of up to 500 JSON contacts, caller-scoped idempotent replay, whole-batch label validation, deliberate preservation of matching email/phone/name records, and MCP contact-photo writes. File import keeps its existing duplicate strategies and remains a distinct path. No existing requirement id was renumbered or reused.
 
 ### v3.22 — 2026-08-25 (Latvian added as a third operator-selectable UI locale)
 

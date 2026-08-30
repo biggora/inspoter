@@ -168,9 +168,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     // No incoming webhook: an address book is filled by import or by hand,
     // not pushed. The agent-facing REST/MCP surface is the API story here.
     managementApi: {
-      endpoint: "GET|POST /api/v1/contacts",
-      curl: `curl "http://your-host/api/v1/contacts?query=anna" \\
-  -H "Authorization: Bearer YOUR_TOKEN"`,
+      endpoint: "POST /api/v1/contacts/bulk",
+      curl: `curl -X POST "http://your-host/api/v1/contacts/bulk" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Idempotency-Key: retailer-import-2026-08-30-v1" \\
+  -H "Content-Type: application/json" \\
+  -d '{"contacts":[{"organization":"North Shop","fields":[{"kind":"PHONE","label":"work","value":"+371 20000000"}]}]}'`,
     },
   },
   {

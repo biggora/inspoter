@@ -7,6 +7,7 @@ import { env } from "@/lib/config/env";
 import * as contactsService from "@/lib/services/contacts";
 import { recordActivity } from "@/lib/services/activity";
 import { MultipartTooLargeError, readMultipart } from "@/lib/http/multipart";
+import { CONTACT_PHOTO_CONTENT_TYPES } from "@/lib/contacts/model";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -15,12 +16,7 @@ interface RouteContext {
 // Photos are stored as bytes on the contact row (like mail attachments), so
 // they are served from here rather than from /public. Only these types are
 // accepted or returned: an SVG would be an XSS vector served same-origin.
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-]);
+const ALLOWED_TYPES = new Set<string>(CONTACT_PHOTO_CONTENT_TYPES);
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const authResult = await requireAuthWithWorkspaceHeader(request).catch(

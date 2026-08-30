@@ -6,8 +6,12 @@ import {
   recordTokenActivity,
   requireApiToken,
 } from "@/lib/api/token-auth";
-import { contactBulkSchema } from "@/lib/validation/contacts";
+import {
+  contactBulkSchema,
+  contactCreateBatchSchema,
+} from "@/lib/validation/contacts";
 import { mapContactApiError } from "@/app/api/v1/contacts/errors";
+import { idempotencyKeySchema } from "@/lib/validation/webhookTokens";
 
 // Static segment, so it wins over /api/v1/contacts/[contactId].
 //
@@ -17,6 +21,41 @@ import { mapContactApiError } from "@/app/api/v1/contacts/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function POST(request: NextRequest) {
+  const auth = await requireApiToken(request, "contacts:write");
+  if (auth instanceof NextResponse) return auth;
+
+  const key = idempotencyKeySchema.safeParse(
+    request.headers.get("idempotency-key"),
+  );
+  if (!key.success) return apiValidationError(key.error.issues);
+
+  const parsed = contactCreateBatchSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) return apiValidationError(parsed.error.issues);
+
+  try {
+    const result = await contactsService.createContactsIdempotent(
+      auth.workspaceId,
+      null,
+      auth.tokenId,
+      key.data,
+      parsed.data.contacts,
+    );
+    if (!result.replayed) {
+      recordTokenActivity(auth, {
+        action: "create",
+        entityType: "contact",
+        entityLabel: `${result.count} contacts`,
+      });
+    }
+    return apiJsonResponse(result, { status: result.replayed ? 200 : 201 });
+  } catch (error) {
+    return mapContactApiError(error);
+  }
+}
 
 export async function PATCH(request: NextRequest) {
   const auth = await requireApiToken(request, "contacts:write");
