@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -23,9 +22,12 @@ import {
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "@/i18n/navigation";
 import type { ManagementKanbanTarget } from "@/lib/services/management";
+import type { SidebarHealth } from "@/lib/services/notification-counts";
+import { CreateDecisionDialog } from "./create-decision-dialog";
 import {
   field,
   LoadError,
@@ -43,10 +45,11 @@ import {
   type SnapshotSummary,
 } from "./management-shared";
 
-// The management landing: the operator's decision surface — snapshot totals
-// as drill-down links into their sections, the decision entry form, and the
-// open decision queue. AI-brief configuration lives behind
-// /management/automation (critique 2026-08-29, P2).
+// The management landing: the operator's reading surface — the operating
+// picture first (snapshot headline, live signal tiles, system health), the
+// decision inbox below. "Record a decision" is a header CTA opening a dialog,
+// not a fold form (critique 2026-08-31, P2). AI-brief configuration lives
+// behind /management/automation (critique 2026-08-29, P2).
 
 interface DecisionSummary {
   id: string;
@@ -359,15 +362,19 @@ function aiStatusKey(setup: SetupSummary | null): string {
 
 export function ManagementView({
   kanbanTargets,
+  health,
 }: {
   kanbanTargets: ManagementKanbanTarget[];
+  health: SidebarHealth;
 }) {
   const t = useTranslations("management");
+  const tShell = useTranslations("shell");
   const searchParams = useSearchParams();
   const [period, setPeriod] = useState<"DAILY" | "WEEKLY">("DAILY");
   const [bucket, setBucket] = useState<"active" | "deferred" | "resolved">(
     "active",
   );
+  const [createOpen, setCreateOpen] = useState(false);
   const [snapshot, setSnapshot] = useState<LoadState<SnapshotSummary | null>>({
     state: "loading",
   });
@@ -385,12 +392,6 @@ export function ManagementView({
   const [kanbanBoardId, setKanbanBoardId] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState(false);
-  const [title, setTitle] = useState("");
-  const [context, setContext] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
-  const titleId = useId();
-  const contextId = useId();
-  const priorityId = useId();
 
   const loadAi = useCallback(async () => {
     const [setupResult, briefsResult] = await Promise.allSettled([
@@ -473,26 +474,6 @@ export function ManagementView({
       cancelled = true;
     };
   }, [kanbanTargets, searchParams]);
-
-  async function createDecision(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!title.trim()) return;
-    setBusyId("create");
-    setMutationError(false);
-    try {
-      await requestJson("/api/management/decisions", {
-        method: "POST",
-        body: JSON.stringify({ title, context: context || null, priority }),
-      });
-      setTitle("");
-      setContext("");
-      await load();
-    } catch {
-      setMutationError(true);
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   async function mutate(
     decision: DecisionSummary,
@@ -581,157 +562,180 @@ export function ManagementView({
     !editorNeedsKanbanTarget || editorKanbanTarget !== null;
   const setupValue = setup.state === "ready" ? setup.value : null;
 
+  // System health — the same two facts the sidebar footer pins (provider
+  // sync, open criticals), restated inside the operating picture so an
+  // all-clear board still answers "is anything wrong?".
+  const providersVariant =
+    health.providersErrored > 0
+      ? "error"
+      : health.providersOk > 0
+        ? "success"
+        : "secondary";
+  const providersLabel =
+    health.providersErrored > 0
+      ? tShell("statusProvidersErrors", { count: health.providersErrored })
+      : health.providersOk > 0
+        ? tShell("statusProvidersOk", { count: health.providersOk })
+        : tShell("statusProvidersNone");
+  const criticalsLabel =
+    health.openCriticalAlerts > 0
+      ? tShell("statusCriticalAlertsOpen", { count: health.openCriticalAlerts })
+      : tShell("statusCriticalAlertsNone");
+
+  // Only totals that carry signal render as tiles; a zero total is the
+  // absence of a signal, not a signal (critique 2026-08-31: "6/8 zero tiles
+  // at equal weight").
+  const signalTotals =
+    snapshot.state === "ready"
+      ? (snapshot.value?.totals ?? []).filter((total) => total.value !== 0)
+      : [];
+
   return (
     <PageBody>
-      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+      <PageHeader
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
+            {t("createTitle")}
+          </Button>
+        }
+      />
       {mutationError ? (
         <LoadError
           title={t("conflictTitle")}
           description={t("conflictDescription")}
         />
       ) : null}
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader className="flex-row items-start justify-between gap-3">
-            <div>
-              <CardTitle>{t("snapshotTitle")}</CardTitle>
-              <CardDescription>{t("snapshotDescription")}</CardDescription>
-            </div>
-            <NativeSelect
-              value={period}
-              aria-label={t("periodLabel")}
-              onChange={(event) =>
-                setPeriod(event.target.value === "WEEKLY" ? "WEEKLY" : "DAILY")
-              }
-            >
-              <NativeSelectOption value="DAILY">
-                {t("periodDaily")}
-              </NativeSelectOption>
-              <NativeSelectOption value="WEEKLY">
-                {t("periodWeekly")}
-              </NativeSelectOption>
-            </NativeSelect>
-          </CardHeader>
-          <CardContent>
-            {snapshot.state === "loading" ? (
-              <Skeleton className="h-24 w-full" />
-            ) : snapshot.state === "error" ? (
-              <LoadError
-                title={t("snapshotErrorTitle")}
-                description={t("snapshotErrorDescription")}
-              />
-            ) : snapshot.value ? (
-              <div className="space-y-3">
-                {snapshot.value.headline ? (
-                  <h2 className="max-w-prose font-heading text-base font-medium">
-                    {snapshot.value.headline}
-                  </h2>
-                ) : null}
-                {snapshot.value.summary ? (
-                  <p className="max-w-prose text-sm text-muted-foreground">
-                    {snapshot.value.summary}
-                  </p>
-                ) : null}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {snapshot.value.totals.slice(0, 8).map((total) => {
+      <Card>
+        <CardHeader className="flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>{t("snapshotTitle")}</CardTitle>
+            <CardDescription>{t("snapshotDescription")}</CardDescription>
+          </div>
+          <NativeSelect
+            value={period}
+            aria-label={t("periodLabel")}
+            onChange={(event) =>
+              setPeriod(event.target.value === "WEEKLY" ? "WEEKLY" : "DAILY")
+            }
+          >
+            <NativeSelectOption value="DAILY">
+              {t("periodDaily")}
+            </NativeSelectOption>
+            <NativeSelectOption value="WEEKLY">
+              {t("periodWeekly")}
+            </NativeSelectOption>
+          </NativeSelect>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {snapshot.state === "loading" ? (
+            <Skeleton className="h-24 w-full" />
+          ) : snapshot.state === "error" ? (
+            <LoadError
+              title={t("snapshotErrorTitle")}
+              description={t("snapshotErrorDescription")}
+            />
+          ) : snapshot.value ? (
+            <>
+              {snapshot.value.headline ? (
+                <h2 className="max-w-prose font-heading text-base font-medium">
+                  {snapshot.value.headline}
+                </h2>
+              ) : null}
+              {snapshot.value.summary ? (
+                <p className="max-w-prose text-sm text-muted-foreground">
+                  {snapshot.value.summary}
+                </p>
+              ) : null}
+              {signalTotals.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {signalTotals.slice(0, 8).map((total) => {
                     const href = SNAPSHOT_TOTAL_ROUTES[total.key];
                     const labelKey = snapshotTotalLabelKey(total.key);
                     const label = labelKey ? t(labelKey) : total.key;
-                    // Zeros are de-emphasized so real signals stand out from
-                    // an all-clear board (critique: "zeros and real signals
-                    // look identical").
-                    const valueClass =
-                      total.value === 0
-                        ? "text-lg font-medium text-foreground-400"
-                        : "text-2xl font-semibold text-foreground tabular-nums";
-                    const tileClass = cnTile(total.value === 0, Boolean(href));
+                    const value = (
+                      <div className="text-2xl font-semibold text-foreground tabular-nums">
+                        {total.value}
+                      </div>
+                    );
+                    const caption = (
+                      <div className="truncate text-xs text-muted-foreground">
+                        {label}
+                      </div>
+                    );
                     return href ? (
-                      <Link key={total.key} href={href} className={tileClass}>
-                        <div className={valueClass}>{total.value}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {label}
-                        </div>
+                      <Link
+                        key={total.key}
+                        href={href}
+                        data-signal-tile
+                        className={cnTile(true)}
+                      >
+                        {value}
+                        {caption}
                       </Link>
                     ) : (
-                      <div key={total.key} className={tileClass}>
-                        <div className={valueClass}>{total.value}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {label}
-                        </div>
+                      <div
+                        key={total.key}
+                        data-signal-tile
+                        className={cnTile(false)}
+                      >
+                        {value}
+                        {caption}
                       </div>
                     );
                   })}
                 </div>
-                {snapshot.value.truncated ? (
-                  <Badge variant="outline">{t("snapshotTruncated")}</Badge>
-                ) : null}
-              </div>
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="ri-file-chart-line"
-                title={t("snapshotEmptyTitle")}
-                description={t("snapshotEmptyDescription")}
-              />
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("createTitle")}</CardTitle>
-            <CardDescription>{t("createDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={createDecision}>
-              <Field>
-                <FieldLabel htmlFor={titleId}>{t("fieldTitle")}</FieldLabel>
-                <Input
-                  id={titleId}
-                  value={title}
-                  maxLength={200}
-                  required
-                  onChange={(event) => setTitle(event.target.value)}
+              ) : (
+                <p className="text-sm text-muted-foreground">{t("allQuiet")}</p>
+              )}
+              {snapshot.value.truncated ? (
+                <Badge variant="outline">{t("snapshotTruncated")}</Badge>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState
+              size="sm"
+              bordered={false}
+              className="py-6"
+              icon="ri-file-chart-line"
+              title={t("snapshotEmptyTitle")}
+              description={t("snapshotEmptyDescription")}
+            />
+          )}
+          <div
+            data-slot="system-health"
+            className="space-y-2 border-t border-[var(--border-subtle)] pt-3"
+          >
+            <div className="text-2xs font-medium uppercase tracking-wide text-foreground-400">
+              {tShell("statusSummaryLabel")}
+            </div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-6">
+              <Link
+                href="/settings/providers"
+                className="-mx-1.5 flex min-h-6 items-center rounded-md px-1.5 hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+              >
+                <StatusIndicator
+                  variant={providersVariant}
+                  label={providersLabel}
                 />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={contextId}>{t("fieldContext")}</FieldLabel>
-                <Textarea
-                  id={contextId}
-                  value={context}
-                  maxLength={4000}
-                  onChange={(event) => setContext(event.target.value)}
+              </Link>
+              <Link
+                href="/alerts"
+                className="-mx-1.5 flex min-h-6 items-center rounded-md px-1.5 hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+              >
+                <StatusIndicator
+                  variant={
+                    health.openCriticalAlerts > 0 ? "critical" : "success"
+                  }
+                  label={criticalsLabel}
                 />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={priorityId}>
-                  {t("fieldPriority")}
-                </FieldLabel>
-                <NativeSelect
-                  id={priorityId}
-                  value={priority}
-                  onChange={(event) => setPriority(event.target.value)}
-                >
-                  <NativeSelectOption value="LOW">
-                    {t("priorityLow")}
-                  </NativeSelectOption>
-                  <NativeSelectOption value="MEDIUM">
-                    {t("priorityMedium")}
-                  </NativeSelectOption>
-                  <NativeSelectOption value="HIGH">
-                    {t("priorityHigh")}
-                  </NativeSelectOption>
-                  <NativeSelectOption value="CRITICAL">
-                    {t("priorityCritical")}
-                  </NativeSelectOption>
-                </NativeSelect>
-              </Field>
-              <Button type="submit" disabled={busyId === "create"}>
-                {busyId === "create" ? t("saving") : t("createAction")}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>{t("aiTitle")}</CardTitle>
@@ -810,12 +814,17 @@ export function ManagementView({
             ) : decisions.value.length === 0 ? (
               <EmptyState
                 size="sm"
+                bordered={false}
+                className="py-6"
                 icon="ri-checkbox-circle-line"
                 title={t("decisionsEmptyTitle")}
                 description={t("decisionsEmptyDescription")}
               />
             ) : (
-              <ul className="space-y-3" aria-label={t("decisionsListLabel")}>
+              <ul
+                className="divide-y divide-[var(--border-subtle)]"
+                aria-label={t("decisionsListLabel")}
+              >
                 {decisions.value.map((decision) => {
                   const targetValid = hasValidKanbanTarget(
                     decision,
@@ -828,7 +837,7 @@ export function ManagementView({
                   return (
                     <li
                       key={decision.id}
-                      className="space-y-3 rounded-lg border p-4"
+                      className="space-y-3 py-4 first:pt-0 last:pb-0"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -947,7 +956,7 @@ export function ManagementView({
                 description={t("decisionDetailErrorDescription")}
               />
             ) : decisionDetail.value ? (
-              <div className="space-y-4 rounded-lg border p-4">
+              <div className="space-y-4 border-t border-[var(--border-subtle)] pt-4">
                 <div>
                   <h3 className="font-heading font-medium">
                     {decisionDetail.value.title}
@@ -1118,9 +1127,12 @@ export function ManagementView({
                 ) : null}
                 <div>
                   <div className="text-sm font-medium">{t("auditTitle")}</div>
-                  <ol className="mt-2 space-y-2">
+                  <ol className="mt-2 divide-y divide-[var(--border-subtle)]">
                     {decisionDetail.value.events.map((event) => (
-                      <li key={event.id} className="rounded border p-2 text-xs">
+                      <li
+                        key={event.id}
+                        className="space-y-1 py-2 text-xs first:pt-0 last:pb-0"
+                      >
                         <span className="font-medium">
                           {event.sequence}. {event.type}
                         </span>
@@ -1171,15 +1183,19 @@ export function ManagementView({
           </CardContent>
         </Card>
       </section>
+      <CreateDecisionDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={load}
+      />
     </PageBody>
   );
 }
 
-function cnTile(isZero: boolean, isLink: boolean): string {
-  const base = "rounded-lg border p-3";
-  const zero = isZero ? "border-[var(--border-subtle)] bg-transparent" : "";
+function cnTile(isLink: boolean): string {
+  const base = "min-w-32 rounded-lg border p-3";
   const link = isLink
     ? "transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
     : "";
-  return [base, zero, link].filter(Boolean).join(" ");
+  return [base, link].filter(Boolean).join(" ");
 }

@@ -72,7 +72,8 @@ test("Skip to content link is the first tab stop and jumps focus into main", asy
 
   await page.keyboard.press("Enter");
   const mainFocused = await page.evaluate(
-    () => document.activeElement === document.querySelector("main#main-content"),
+    () =>
+      document.activeElement === document.querySelector("main#main-content"),
   );
   expect(mainFocused).toBe(true);
 
@@ -479,8 +480,12 @@ test("Management landing links totals into sections and routes AI config to its 
     page.getByRole("heading", { name: "Management", exact: true }),
   ).toBeVisible();
 
-  const alertsTile = page.getByRole("link", { name: "Alerts", exact: true });
-  await expect(alertsTile).toHaveAttribute("href", "/alerts");
+  // The snapshot's system-health row replaces zero tiles (critique
+  // 2026-08-31): its two links must be reachable and named.
+  const health = page.locator("[data-slot='system-health']");
+  await expect(health).toBeVisible();
+  await expect(health.locator("a[href='/settings/providers']")).toBeVisible();
+  await expect(health.locator("a[href='/alerts']")).toBeVisible();
 
   const configureAutomation = page.getByRole("link", {
     name: "Configure automation",

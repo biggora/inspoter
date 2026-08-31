@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("ManagementView", () => {
-  it("links snapshot totals into their sections and de-emphasizes zeros", async () => {
+  it("links non-zero snapshot totals into their sections and never renders zero tiles", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -46,25 +46,75 @@ describe("ManagementView", () => {
       }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[]}
+        health={{ providersOk: 2, providersErrored: 0, openCriticalAlerts: 0 }}
+      />,
+    );
 
     const alerts = await screen.findByText("Alerts");
     expect(alerts.closest("a")).toHaveAttribute("href", "/alerts");
-    expect(screen.getByText("Services").closest("a")).toHaveAttribute(
-      "href",
-      "/services",
-    );
-    // Non-zero counts carry the emphasis; zeros read as muted.
-    const nonZero = screen.getByText("3");
-    const zero = screen.getAllByText("0")[0];
-    expect(nonZero.className).toContain("text-2xl");
-    expect(zero.className).not.toContain("text-2xl");
+    expect(screen.getByText("3").className).toContain("text-2xl");
+    // Zero totals are the absence of a signal, not a tile.
+    expect(screen.queryByText("Services")).toBeNull();
+    expect(screen.queryByText("Mail")).toBeNull();
+    expect(
+      screen.queryByText("All quiet — no signals in this period."),
+    ).toBeNull();
+
+    // The system-health line restates the sidebar footer's two facts.
+    expect(screen.getByText("System status")).toBeVisible();
+    expect(screen.getByText("2 providers connected")).toBeVisible();
+    expect(screen.getByText("No open critical alerts")).toBeVisible();
 
     // AI configuration moved off the landing behind a single link.
     expect(
       screen.getByRole("link", { name: "Configure automation" }),
     ).toHaveAttribute("href", "/management/automation");
     expect(screen.queryByText("AI provider")).toBeNull();
+  });
+
+  it("renders one quiet line and the health row when every total is zero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/management/setup")) {
+          return {
+            ok: true,
+            json: async () => ({ status: "MISSING", missing: [], edited: [] }),
+          };
+        }
+        if (url.includes("/api/management/briefs")) {
+          return { ok: true, json: async () => [] };
+        }
+        if (url.includes("/api/management/decisions")) {
+          return { ok: true, json: async () => ({ items: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            latestBrief: { headline: "Stable" },
+            totals: { alerts: 0, services: 0 },
+          }),
+        };
+      }),
+    );
+
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[]}
+        health={{ providersOk: 1, providersErrored: 1, openCriticalAlerts: 2 }}
+      />,
+    );
+
+    expect(
+      await screen.findByText("All quiet — no signals in this period."),
+    ).toBeVisible();
+    expect(screen.queryByText("Alerts")).toBeNull();
+    expect(screen.getByText("1 provider error")).toBeVisible();
+    expect(screen.getByText("2 open critical alerts")).toBeVisible();
   });
 
   it("renders the AI summary status line on the landing", async () => {
@@ -106,7 +156,12 @@ describe("ManagementView", () => {
       }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[]}
+        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
+      />,
+    );
 
     expect(await screen.findByText("Brief automation is ready")).toBeVisible();
     expect(screen.getByText("Overnight incident resolved")).toBeVisible();
@@ -311,13 +366,20 @@ describe("ManagementView", () => {
         }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[]}
+        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
+      />,
+    );
 
     expect(await screen.findByText("Operations are stable")).toBeVisible();
     expect(
       await screen.findByText("Approve the maintenance window"),
     ).toBeVisible();
-    expect(screen.getAllByText("High")).toHaveLength(2);
+    // "High" appears once in the queue; the create form's priority options
+    // live behind the dialog, unrendered until it opens.
+    expect(screen.getAllByText("High")).toHaveLength(1);
     expect(screen.getByText("Open")).toBeVisible();
   });
 
@@ -330,7 +392,12 @@ describe("ManagementView", () => {
         .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) }),
     );
 
-    renderWithIntl(<ManagementView kanbanTargets={[]} />);
+    renderWithIntl(
+      <ManagementView
+        kanbanTargets={[]}
+        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
+      />,
+    );
 
     expect(await screen.findByText("Snapshot is unavailable")).toBeVisible();
     expect(await screen.findByText("No decisions yet")).toBeVisible();
@@ -383,6 +450,7 @@ describe("ManagementView", () => {
 
     renderWithIntl(
       <ManagementView
+        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
         kanbanTargets={[
           {
             id: "board-1",
@@ -469,6 +537,7 @@ describe("ManagementView", () => {
 
     renderWithIntl(
       <ManagementView
+        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
         kanbanTargets={[
           {
             id: "board-1",
