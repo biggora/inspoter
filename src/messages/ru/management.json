@@ -128,5 +128,8 @@
   "tileReminders": "Напоминания",
   "tileMail": "Почта",
   "tileMessages": "Сообщения",
-  "tileDecisions": "Решения"
+  "tileDecisions": "Решения",
+  "tileErrors": "Ошибки",
+  "tileActivity": "Активность",
+  "tileCalendar": "Календарь"
 }

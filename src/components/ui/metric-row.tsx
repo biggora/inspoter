@@ -32,7 +32,8 @@ export function MetricRows({
 // Renders three grid cells and no wrapper, so the row's columns are the
 // section's columns. The middle cell holds a meter where the row describes a
 // bounded resource, and stays empty otherwise — the value still ends flush
-// right either way.
+// right either way. An empty value renders the em-dash (same recipe as
+// MetaItem), so a label never stands alone over nothing.
 export function MetricRow({
   label,
   value,
@@ -47,7 +48,7 @@ export function MetricRow({
       <span className="text-foreground-500">{label}</span>
       {meter ?? <span />}
       <span className="truncate text-right font-medium text-foreground-800 tabular-nums">
-        {value}
+        {value === "" ? "—" : value}
       </span>
     </>
   );

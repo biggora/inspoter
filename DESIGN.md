@@ -132,6 +132,8 @@ Three specialized font families are loaded via Next.js self-hosted `next/font`:
 - **Headings & Display:** `Plus Jakarta Sans`, `system-ui, sans-serif` (`--font-heading`)
 - **Monospace / Technical Data:** `JetBrains Mono`, `ui-monospace, monospace` (`--font-mono`) — used for IPv4/IPv6, ports, hashes, tokens, JSON snippets, cron expressions, and SQL logs.
 
+**The mono rule (2026-08-31):** JetBrains Mono is reserved for machine identifiers and machine-emitted data — values an operator would copy verbatim or read as raw output. Human-readable prose stays in `Inter` even inside a technical table: localized alert messages, log summaries rewritten for operators, card descriptions, and any translated copy never render `font-mono`. Mono is a content-class signal ("this came from the machine"), not decoration for "technical"; when a column mixes both (e.g. an activity table's entity label vs. raw id), only the machine value takes mono.
+
 #### Type Scale & Sizing Rules
 
 | Token | Size | Line Height | Tracking | Standard Usage |

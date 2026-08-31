@@ -128,5 +128,8 @@
   "tileReminders": "Atgādinājumi",
   "tileMail": "E-pasts",
   "tileMessages": "Ziņojumi",
-  "tileDecisions": "Lēmumi"
+  "tileDecisions": "Lēmumi",
+  "tileErrors": "Kļūdas",
+  "tileActivity": "Aktivitāte",
+  "tileCalendar": "Kalendārs"
 }

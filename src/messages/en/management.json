@@ -128,5 +128,8 @@
   "tileReminders": "Reminders",
   "tileMail": "Mail",
   "tileMessages": "Messages",
-  "tileDecisions": "Decisions"
+  "tileDecisions": "Decisions",
+  "tileErrors": "Errors",
+  "tileActivity": "Activity",
+  "tileCalendar": "Calendar"
 }

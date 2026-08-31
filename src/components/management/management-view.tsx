@@ -323,7 +323,9 @@ function tomorrowIso(): string {
 // Snapshot total tiles are drill-down links into the section that produced
 // the number (critique 2026-08-29, P2: "8 equal-weight stat tiles, not
 // links"). Keys come from src/lib/management/snapshot.ts totals; unknown
-// keys fall back to a plain, non-link tile.
+// keys fall back to a plain, non-link tile. Every key the snapshot can emit
+// also has a localized tile label (critique 2026-08-31: raw keys like
+// "errors" leaked untranslated into ru/lv).
 const SNAPSHOT_TOTAL_ROUTES: Record<string, string> = {
   alerts: "/alerts",
   services: "/services",
@@ -334,8 +336,16 @@ const SNAPSHOT_TOTAL_ROUTES: Record<string, string> = {
   decisions: "/management#decisions",
 };
 
+// The routed keys plus the three totals that render as plain tiles.
+const SNAPSHOT_TOTAL_KEYS = new Set([
+  ...Object.keys(SNAPSHOT_TOTAL_ROUTES),
+  "errors",
+  "activity",
+  "calendar",
+]);
+
 function snapshotTotalLabelKey(key: string): string | null {
-  return key in SNAPSHOT_TOTAL_ROUTES
+  return SNAPSHOT_TOTAL_KEYS.has(key)
     ? `tile${key[0].toUpperCase()}${key.slice(1)}`
     : null;
 }

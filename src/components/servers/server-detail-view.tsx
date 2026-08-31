@@ -301,6 +301,10 @@ export function ServerDetailView({
   }
 
   const isProvider = server.origin === "provider";
+  // The identity line is a machine identifier either way — IP for provider
+  // servers, hostname for agent-managed ones — so it rides JetBrains Mono
+  // (DESIGN.md §2.3).
+  const identity = isProvider ? server.ip : server.hostname;
   const metrics = server.metrics;
   const status = isProvider ? (server.status as ServerStatus) : null;
   const memory = usageFromTotals(
@@ -406,7 +410,9 @@ export function ServerDetailView({
       <PageHeader
         back={{ href: "/servers", label: t("backToServers") }}
         title={server.name}
-        description={isProvider ? server.ip : (server.hostname ?? undefined)}
+        description={
+          identity ? <span className="font-mono">{identity}</span> : undefined
+        }
         actions={
           <>
             {status && (
@@ -457,10 +463,7 @@ export function ServerDetailView({
               <>
                 <MetaItem label={t("typeLabel")} value={server.type} />
                 <MetaItem label={t("osLabel")} value={server.os} />
-                <MetaItem
-                  label={t("locationLabel")}
-                  value={server.location}
-                />
+                <MetaItem label={t("locationLabel")} value={server.location} />
               </>
             )}
             {metrics.uptimeSeconds && (

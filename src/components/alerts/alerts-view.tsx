@@ -565,7 +565,7 @@ export function AlertsView() {
                     )}
                   </TableCell>
                   <TableCell className="font-mono">{alert.source}</TableCell>
-                  <TableCell className="max-w-md truncate font-mono">
+                  <TableCell className="max-w-md truncate">
                     {alertMessage(alert, t)}
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">

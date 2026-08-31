@@ -369,7 +369,11 @@ function ServerCard({
             {server.name}
           </Link>
         }
+        // The identity line is always a machine identifier — IP for provider
+        // servers, hostname for agent-managed ones — so it rides JetBrains
+        // Mono (DESIGN.md §2.3).
         description={isProvider ? server.ip : (server.hostname ?? "")}
+        descriptionClassName="font-mono"
         action={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {cardStatus && <StatusIndicator status={cardStatus} />}
