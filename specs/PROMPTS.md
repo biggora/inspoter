@@ -20,6 +20,6 @@ $test-web-ui Задача: Провести полную проверку/ауд
 
 $impeccable typeset — проблема 1: ввести правило «mono только для машинных идентификаторов»; IP сервера → font-mono (сейчас Inter); снять font-mono с message-колонки alerts (alerts-view.tsx:567–571); ключи секций management-снапшота через management.json всех трёх локалей (сейчас нелокализованные литералы в snapshot.ts); em-dash фолбэк в MetricRow.
 $impeccable polish — проблемы 2, 3, 5 в одном проходе: раздвинуть тёмную --foreground-400/500/600 рампу (ΔL 0.04 → ~0.10) и поднять 10px-подписи до ≥11px; заменить stringToColor в src/lib/mail/avatar.ts на детерминированный выбор из фиксированных токен-пар ≥4.5:1 в обеих темах (закрывает 50 контраст-провалов на /mail); destructive-вариант кнопки → outline + --critical-text/red-700 (принятое red-outline-решение), «+ New category» в alerts из primary-слота в outline; заодно amber 4.49:1 → ≥4.5:1.
-
 $impeccable layout — проблема 4: management-главная — форму «Record a decision» за кнопку/диалог, карточку снапшота по контенту (убрать ~100px мёртвой зоны), нулевые плитки понизить в весе или заменить одной health-строкой (кандидат — перенос «System status»-футера сайдбара), разбор 6 nested-cards.
+
 $impeccable polish — финальный проход: сверка контраста обеих тем, повторный прогон детектора, проверка того, что Plus Jakarta Sans реально применён к заголовкам (детектор показывал 91–98% Inter).
