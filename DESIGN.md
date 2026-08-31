@@ -55,9 +55,9 @@ Stored as raw OKLCH triplets (`L C H`) and consumed via `oklch(var(--token))` or
 | `--foreground-200` | `0.74 0.005 260` | `0.20 0.010 260` | Light ink |
 | `--foreground-300` | `0.62 0.006 260` | `0.28 0.009 260` | Low-emphasis text |
 | `--foreground-400` | `0.50 0.007 260` | `0.58 0.008 260` | Captions, meta, field placeholders |
-| `--foreground-500` | `0.40 0.008 260` | `0.60 0.007 260` | Secondary labels |
-| `--foreground-600` | `0.32 0.009 260` | `0.62 0.006 260` | Active secondary copy |
-| `--foreground-700` | `0.25 0.01 260` | `0.68 0.005 260` | Strong body text |
+| `--foreground-500` | `0.40 0.008 260` | `0.63 0.007 260` | Secondary labels |
+| `--foreground-600` | `0.32 0.009 260` | `0.68 0.006 260` | Active secondary copy |
+| `--foreground-700` | `0.25 0.01 260` | `0.71 0.005 260` | Strong body text |
 | `--foreground-800` | `0.18 0.011 260` | `0.78 0.004 260` | High-contrast numbers, table data |
 | `--foreground-900` | `0.13 0.012 260` | `0.88 0.003 260` | Default body text |
 | `--foreground-950` | `0.09 0.01 260` | `0.95 0.002 260` | Headings, primary emphasis |
@@ -79,7 +79,7 @@ Stored as raw OKLCH triplets (`L C H`) and consumed via `oklch(var(--token))` or
 | `--secondary-400` | `0.62 0.035 85` | `0.42 0.030 85` | Idle/disabled status dot |
 | `--secondary-700` | `0.36 0.03 85` | `0.72 0.028 85` | Secondary icon tile text, info copy |
 | `--amber-500` | `0.77 0.16 70` | `0.77 0.16 70` | Warning status dot |
-| `--amber-700` | `0.55 0.14 58` | `0.84 0.12 80` | Warning text |
+| `--amber-700` | `0.54 0.14 58` | `0.84 0.12 80` | Warning text |
 | `--red-500` | `0.58 0.22 27` | `0.58 0.22 27` | Critical danger border / dot |
 | `--red-700` | `0.44 0.18 27` | `0.80 0.12 27` | Critical danger text |
 
@@ -138,7 +138,7 @@ Three specialized font families are loaded via Next.js self-hosted `next/font`:
 
 | Token | Size | Line Height | Tracking | Standard Usage |
 | :--- | :--- | :--- | :--- | :--- |
-| `--text-2xs` | `10px` | `1.2` (`--leading-tight`) | `0.04em` | Micro metadata, chart axis ticks, status qualifiers |
+| `--text-2xs` | `11px` | `1.2` (`--leading-tight`) | `0.04em` | Micro metadata, chart axis ticks, status qualifiers |
 | `--text-xs` | `11px` | `1.35` (`--leading-snug`)| `0.04em` | Badges, table metadata, timestamp captions |
 | `--text-sm` | `12px` | `1.35` (`--leading-snug`)| `0` | Secondary labels, filter chips, compact buttons |
 | `--text-base`| `14px` | `1.5` (`--leading-normal`)| `0` | **Workhorse body text**, standard controls, form inputs |
@@ -242,7 +242,7 @@ Built on Base UI `@base-ui/react/button` with `class-variance-authority`.
   - `outline`: Border-defined surface (`border-[var(--border-default)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)]`).
   - `secondary`: Sand neutral fill (`bg-[oklch(var(--secondary-100))] text-[var(--text-body)] hover:bg-[oklch(var(--secondary-200))]`).
   - `ghost`: Transparent hover surface (`hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]`).
-  - `destructive`: Soft red fill (`bg-[oklch(var(--primary-100))] text-[oklch(var(--primary-700))] hover:bg-[oklch(var(--primary-200))]`).
+  - `destructive`: Red outline (`border-[var(--critical-border)] bg-[var(--surface-card)] text-[var(--critical-text)] hover:bg-[var(--critical-bg)]`) — the destructive action reads as a bordered red control, never as a filled primary CTA.
   - `link`: Underlined primary text.
 - **Sizes:** `default` (38px), `xs` (32px), `sm` (32px compact), `lg` (42px), `icon` (38x38px), `icon-xs` (32x32px), `icon-sm` (32x32px), `icon-lg` (42x42px).
 

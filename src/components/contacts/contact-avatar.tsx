@@ -1,4 +1,4 @@
-import { getInitials, stringToColor } from "@/lib/mail/avatar";
+import { getInitials, avatarStyle } from "@/lib/mail/avatar";
 import { cn } from "@/lib/utils";
 
 // A contact's photo when it has one, the same deterministic initials tile the
@@ -50,8 +50,8 @@ export function ContactAvatar({
   return (
     <span
       aria-hidden
-      className={cn(classes, "text-white")}
-      style={{ backgroundColor: stringToColor(displayName || contactId) }}
+      className={classes}
+      style={avatarStyle(displayName || contactId)}
     >
       {getInitials(displayName)}
     </span>

@@ -358,7 +358,10 @@ export function AlertsView() {
               />
               {t("manageCategoriesButton")}
             </Button>
-            <Button onClick={() => setCategoryDialog({ mode: "create" })}>
+            <Button
+              variant="outline"
+              onClick={() => setCategoryDialog({ mode: "create" })}
+            >
               <Icon name="ri-add-line" aria-hidden data-icon="inline-start" />
               {t("newCategoryButton")}
             </Button>

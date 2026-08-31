@@ -24,7 +24,7 @@ import { LoadingRegion } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AddToContactsButton } from "@/components/contacts/add-to-contacts-button";
-import { getInitials, stringToColor } from "@/lib/mail/avatar";
+import { getInitials, avatarStyle } from "@/lib/mail/avatar";
 import { formatByteSize } from "@/lib/format/bytes";
 import { MailBody } from "./mail-body";
 import { LabelChip } from "./label-chip";
@@ -285,8 +285,8 @@ export function MessagePane({
         <div className="flex items-start gap-3">
           <span
             aria-hidden
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-background-50"
-            style={{ backgroundColor: stringToColor(displayName) }}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+            style={avatarStyle(displayName)}
           >
             {getInitials(displayName)}
           </span>

@@ -74,7 +74,7 @@
   /* --- Semantic status hues (amber warning, red danger) reused from Tailwind. */
   --amber-500: 0.77 0.16 70; /* @kind color */
   --amber-600: 0.66 0.16 62; /* @kind color */
-  --amber-700: 0.55 0.14 58; /* @kind color */
+  --amber-700: 0.54 0.14 58; /* @kind color */
   --red-500: 0.58 0.22 27; /* @kind color */
   --red-600: 0.51 0.21 27; /* @kind color */
   --red-700: 0.44 0.18 27; /* @kind color */
@@ -160,9 +160,9 @@
   --foreground-200: 0.20 0.010 260; /* @kind color */
   --foreground-300: 0.28 0.009 260; /* @kind color */
   --foreground-400: 0.58 0.008 260; /* @kind color */
-  --foreground-500: 0.60 0.007 260; /* @kind color */
-  --foreground-600: 0.62 0.006 260; /* @kind color */
-  --foreground-700: 0.68 0.005 260; /* @kind color */
+  --foreground-500: 0.63 0.007 260; /* @kind color */
+  --foreground-600: 0.68 0.006 260; /* @kind color */
+  --foreground-700: 0.71 0.005 260; /* @kind color */
   --foreground-800: 0.78 0.004 260; /* @kind color */
   --foreground-900: 0.88 0.003 260; /* @kind color */
   --foreground-950: 0.95 0.002 260; /* @kind color */
@@ -257,7 +257,7 @@
   --font-mono: var(--font-mono-loaded, 'JetBrains Mono'), ui-monospace, 'SF Mono', Menlo, monospace; /* @kind font */
 
   /* Type scale (px). Dashboard-dense: rarely above 24px. */
-  --text-2xs: 10px;   /* micro meta, dot labels */
+  --text-2xs: 11px;   /* micro meta, dot labels — never below 11px (readability floor) */
   --text-xs: 11px;    /* captions, table meta */
   --text-sm: 12px;    /* secondary labels, chips */
   --text-base: 14px;  /* body — the default */

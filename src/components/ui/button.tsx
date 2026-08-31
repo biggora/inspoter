@@ -17,7 +17,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] aria-expanded:bg-[var(--surface-hover)] aria-expanded:text-[var(--text-primary)]",
         destructive:
-          "bg-[oklch(var(--primary-100))] text-[oklch(var(--primary-700))] hover:bg-[oklch(var(--primary-200))]",
+          "border-[var(--critical-border)] bg-[var(--surface-card)] text-[var(--critical-text)] hover:bg-[var(--critical-bg)]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

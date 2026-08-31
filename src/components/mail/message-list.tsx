@@ -21,7 +21,7 @@ import { LoadingRegion } from "@/components/ui/loading";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { StatusDot } from "@/components/ui/status-indicator";
 import { Toggle } from "@/components/ui/toggle";
-import { getInitials, stringToColor } from "@/lib/mail/avatar";
+import { getInitials, avatarStyle } from "@/lib/mail/avatar";
 import { cn } from "@/lib/utils";
 import type { MailListItemDto } from "./api";
 import { LabelChip } from "./label-chip";
@@ -256,8 +256,8 @@ export function MessageList({
                   >
                     <span
                       aria-hidden
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background-50"
-                      style={{ backgroundColor: stringToColor(displayName) }}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                      style={avatarStyle(displayName)}
                     >
                       {getInitials(displayName)}
                     </span>
