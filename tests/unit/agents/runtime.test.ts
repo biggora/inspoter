@@ -48,7 +48,21 @@ const { chat, invoke, runsService } = vi.hoisted(() => ({
   },
 }));
 
+const finalizeExecutiveBriefGenerationForRun = vi.hoisted(() =>
+  vi.fn<
+    (
+      workspaceId: string,
+      sourceRunId: string,
+      outcome: "FAILED" | "CANCELLED" | "UNPUBLISHED",
+    ) => Promise<void>
+  >(),
+);
+
 vi.mock("@/lib/services/llm", () => ({ chat }));
+
+vi.mock("@/lib/services/executive-briefs", () => ({
+  finalizeExecutiveBriefGenerationForRun,
+}));
 
 vi.mock("@/lib/agents/tools", async () => {
   const actual =
@@ -140,6 +154,7 @@ function toolCallStep() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  finalizeExecutiveBriefGenerationForRun.mockResolvedValue(undefined);
   runsService.loadRunState.mockResolvedValue(state());
   runsService.renewAgentRunLease.mockResolvedValue(true);
   runsService.isCancelRequested.mockResolvedValue(false);
@@ -180,6 +195,11 @@ describe("executeAgentRun", () => {
       summary: "Nothing broke.",
       stopReason: "stop",
     });
+    expect(finalizeExecutiveBriefGenerationForRun).toHaveBeenCalledWith(
+      "workspace-1",
+      "run-1",
+      "UNPUBLISHED",
+    );
 
     // Steps are MODEL_CALL, TOOL_CALL, MODEL_CALL, numbered from zero.
     const kinds = runsService.appendStep.mock.calls.map(
@@ -273,6 +293,11 @@ describe("executeAgentRun", () => {
       message: expect.stringContaining("Step limit reached (2)"),
       retryable: false,
     });
+    expect(finalizeExecutiveBriefGenerationForRun).toHaveBeenCalledWith(
+      "workspace-1",
+      "run-1",
+      "FAILED",
+    );
   });
 
   it("fails the run when the token ceiling is reached", async () => {
@@ -293,6 +318,11 @@ describe("executeAgentRun", () => {
       message: expect.stringContaining("Token limit"),
       retryable: false,
     });
+    expect(finalizeExecutiveBriefGenerationForRun).toHaveBeenCalledWith(
+      "workspace-1",
+      "run-1",
+      "FAILED",
+    );
   });
 
   it("retries a rate-limited run instead of failing it outright", async () => {
@@ -313,6 +343,7 @@ describe("executeAgentRun", () => {
       message: expect.stringContaining("rate_limit"),
       retryable: true,
     });
+    expect(finalizeExecutiveBriefGenerationForRun).not.toHaveBeenCalled();
   });
 
   it("does not retry a run whose workspace has no provider", async () => {
@@ -328,6 +359,11 @@ describe("executeAgentRun", () => {
       message: "No AI provider is configured for this workspace.",
       retryable: false,
     });
+    expect(finalizeExecutiveBriefGenerationForRun).toHaveBeenCalledWith(
+      "workspace-1",
+      "run-1",
+      "FAILED",
+    );
   });
 
   it("stops at the step boundary when the operator cancelled it", async () => {
@@ -338,6 +374,11 @@ describe("executeAgentRun", () => {
     expect(outcome.status).toBe("CANCELLED");
     expect(chat).not.toHaveBeenCalled();
     expect(runsService.markCancelled).toHaveBeenCalledWith(CLAIM);
+    expect(finalizeExecutiveBriefGenerationForRun).toHaveBeenCalledWith(
+      "workspace-1",
+      "run-1",
+      "CANCELLED",
+    );
   });
 
   it("aborts when another worker took the lease", async () => {
@@ -345,5 +386,6 @@ describe("executeAgentRun", () => {
 
     await expect(executeAgentRun(CLAIM)).rejects.toThrow("lease lost");
     expect(chat).not.toHaveBeenCalled();
+    expect(finalizeExecutiveBriefGenerationForRun).not.toHaveBeenCalled();
   });
 });
