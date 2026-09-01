@@ -490,7 +490,10 @@ export function AlertsView() {
             title={t("emptyTitle")}
             description={t("emptyDescription")}
             action={
-              <pre className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs">
+              <pre
+                className="mt-2 w-full max-w-xl overflow-x-auto rounded-md bg-background-100 p-4 text-left text-xs"
+                tabIndex={0}
+              >
                 {`curl -X POST http://your-host/api/webhooks/alert \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\

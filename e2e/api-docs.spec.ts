@@ -159,7 +159,11 @@ test("Swagger reference exposes current metadata and accessible controls", async
   await login(page);
   await page.goto(API_DOCS_PATH);
   await expect(page.locator(".swagger-ui")).toBeVisible();
-  await expect(page.locator(".swagger-ui .version")).toContainText("0.5.7");
+  const renderedApiVersion = page
+    .locator(".swagger-ui .version")
+    .filter({ hasText: spec.info.version });
+  await expect(renderedApiVersion).toHaveCount(1);
+  await expect(renderedApiVersion).toHaveText(spec.info.version);
   await expect(page.getByText("UNLICENSED", { exact: true })).toHaveCount(0);
 
   const contrastRatio = async (selector: string) =>

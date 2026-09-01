@@ -12,14 +12,16 @@ import { login } from "./utils/auth";
 // navigation is opened. Opening it here keeps every caller viewport-independent.
 async function getWorkspaceId(page: Page): Promise<string> {
   const wsEl = page.locator("[data-workspace-id]").first();
-  if ((await wsEl.count()) === 0) {
-    await page.getByRole("button", { name: "Toggle navigation" }).click();
-    await expect(wsEl).toBeAttached();
-    const id = (await wsEl.getAttribute("data-workspace-id")) ?? "";
-    await page.keyboard.press("Escape");
-    return id;
-  }
-  return (await wsEl.getAttribute("data-workspace-id")) ?? "";
+  const renderedId = await wsEl.evaluateAll(
+    (elements) => elements[0]?.getAttribute("data-workspace-id") ?? "",
+  );
+  if (renderedId) return renderedId;
+
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(wsEl).toBeAttached();
+  const id = (await wsEl.getAttribute("data-workspace-id")) ?? "";
+  await page.keyboard.press("Escape");
+  return id;
 }
 
 async function createMockLlmCredential(page: Page): Promise<string> {
