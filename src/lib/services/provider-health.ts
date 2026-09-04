@@ -1,3 +1,4 @@
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import { db } from "@/lib/db";
 import { logError, logInfo } from "@/lib/services/logs";
 import type { SystemAlertCategoryKey } from "@/lib/services/alert-catalog";
@@ -68,6 +69,15 @@ export async function updateProviderHealth(
           lastSyncOkAt: new Date(),
         },
   });
+
+  // Only on a real transition. The success path rewrites lastSyncOkAt on every
+  // poll without changing any count, so publishing unconditionally would wake
+  // every open tab on every provider refresh. This is what makes merely
+  // visiting /servers move the sidebar chip, instead of silently writing the
+  // column the chip counts and leaving it stale until a reload.
+  if (transition !== "unchanged") {
+    publishIndicatorChange(workspaceId, "providers", "alerts");
+  }
 
   return transition;
 }

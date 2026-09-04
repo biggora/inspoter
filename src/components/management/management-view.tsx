@@ -22,11 +22,10 @@ import {
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "@/i18n/navigation";
 import type { ManagementKanbanTarget } from "@/lib/services/management";
-import type { SidebarHealth } from "@/lib/services/notification-counts";
+import { SystemHealthChips } from "@/components/shell/system-health-chips";
 import { CreateDecisionDialog } from "./create-decision-dialog";
 import {
   field,
@@ -362,10 +361,8 @@ function aiStatusKey(setup: SetupSummary | null): string {
 
 export function ManagementView({
   kanbanTargets,
-  health,
 }: {
   kanbanTargets: ManagementKanbanTarget[];
-  health: SidebarHealth;
 }) {
   const t = useTranslations("management");
   const tShell = useTranslations("shell");
@@ -562,26 +559,6 @@ export function ManagementView({
     !editorNeedsKanbanTarget || editorKanbanTarget !== null;
   const setupValue = setup.state === "ready" ? setup.value : null;
 
-  // System health — the same two facts the sidebar footer pins (provider
-  // sync, open criticals), restated inside the operating picture so an
-  // all-clear board still answers "is anything wrong?".
-  const providersVariant =
-    health.providersErrored > 0
-      ? "error"
-      : health.providersOk > 0
-        ? "success"
-        : "secondary";
-  const providersLabel =
-    health.providersErrored > 0
-      ? tShell("statusProvidersErrors", { count: health.providersErrored })
-      : health.providersOk > 0
-        ? tShell("statusProvidersOk", { count: health.providersOk })
-        : tShell("statusProvidersNone");
-  const criticalsLabel =
-    health.openCriticalAlerts > 0
-      ? tShell("statusCriticalAlertsOpen", { count: health.openCriticalAlerts })
-      : tShell("statusCriticalAlertsNone");
-
   // Only totals that carry signal render as tiles; a zero total is the
   // absence of a signal, not a signal (critique 2026-08-31: "6/8 zero tiles
   // at equal weight").
@@ -711,28 +688,7 @@ export function ManagementView({
             <div className="text-2xs font-medium uppercase tracking-wide text-foreground-400">
               {tShell("statusSummaryLabel")}
             </div>
-            <div className="flex flex-col gap-1 sm:flex-row sm:gap-6">
-              <Link
-                href="/settings/providers"
-                className="-mx-1.5 flex min-h-6 items-center rounded-md px-1.5 hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
-              >
-                <StatusIndicator
-                  variant={providersVariant}
-                  label={providersLabel}
-                />
-              </Link>
-              <Link
-                href="/alerts"
-                className="-mx-1.5 flex min-h-6 items-center rounded-md px-1.5 hover:bg-[var(--surface-hover)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
-              >
-                <StatusIndicator
-                  variant={
-                    health.openCriticalAlerts > 0 ? "critical" : "success"
-                  }
-                  label={criticalsLabel}
-                />
-              </Link>
-            </div>
+            <SystemHealthChips variant="panel" />
           </div>
         </CardContent>
       </Card>

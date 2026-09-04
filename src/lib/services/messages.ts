@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import { env } from "@/lib/config/env";
 import {
   Prisma,
@@ -131,6 +132,9 @@ export async function markChannelRead(
     where: { workspaceId, channelId, isRead: false },
     data: { isRead: true },
   });
+  // Guarded: opening a channel calls this every time, including when there was
+  // nothing unread in it.
+  if (result.count > 0) publishIndicatorChange(workspaceId, "messages");
   return { updated: result.count };
 }
 
@@ -355,6 +359,7 @@ export async function createMessage(
       origin: input.origin ?? "LEGACY",
     },
   });
+  publishIndicatorChange(workspaceId, "messages");
   await emitWebhookEvent(workspaceId, "MESSAGE_CREATED", {
     messageId: message.id,
     channelId: input.channelId,

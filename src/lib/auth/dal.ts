@@ -157,18 +157,47 @@ export class WorkspaceContextStaleError extends Error {
   }
 }
 
+// One assertion behind both carriers, so the staleness rule cannot drift
+// between the header form and the query-parameter form.
+function assertWorkspaceContext(
+  workspace: Workspace,
+  provided: string | null,
+): void {
+  if (!provided) {
+    throw new WorkspaceContextRequiredError();
+  }
+  if (provided !== workspace.id) {
+    throw new WorkspaceContextStaleError();
+  }
+}
+
 export async function requireAuthWithWorkspaceHeader(
   request: NextRequest,
 ): Promise<AuthContext> {
   const { operator, workspace } = await requireAuth();
+  assertWorkspaceContext(
+    workspace,
+    request.headers.get("x-inspoter-workspace"),
+  );
+  return { operator, workspace };
+}
 
-  const headerValue = request.headers.get("x-inspoter-workspace");
-  if (!headerValue) {
-    throw new WorkspaceContextRequiredError();
-  }
-  if (headerValue !== workspace.id) {
-    throw new WorkspaceContextStaleError();
-  }
-
+/**
+ * The same check for `EventSource`, which cannot set request headers — so the
+ * indicator stream carries the workspace id as a query parameter instead
+ * (src/app/api/indicators/stream/route.ts). The session still rides the
+ * cookie, and requireAuth() above remains the sole authority on which
+ * workspace is active; the parameter only detects a stale tab, exactly as the
+ * header does.
+ */
+export async function requireAuthWithWorkspaceParam(
+  request: NextRequest,
+  paramName = "workspace",
+): Promise<AuthContext> {
+  const { operator, workspace } = await requireAuth();
+  assertWorkspaceContext(
+    workspace,
+    request.nextUrl.searchParams.get(paramName),
+  );
   return { operator, workspace };
 }

@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Icon } from "@/components/ui/icon";
 import { InspoterIcon } from "@/components/ui/inspoter-logo";
-import { StatusIndicator } from "@/components/ui/status-indicator";
-import type { SidebarHealth } from "@/lib/services/notification-counts";
+import { SystemHealthChips } from "./system-health-chips";
 import { NavPending } from "./route-progress";
 import {
   HELP_NAV_ITEM,
@@ -90,12 +89,10 @@ export function AppSidebar({
   workspaceName,
   workspaceId,
   hiddenSections = [],
-  health,
 }: {
   workspaceName: string;
   workspaceId: string;
   hiddenSections?: string[];
-  health: SidebarHealth;
 }) {
   const t = useTranslations("shell");
   const pathname = usePathname();
@@ -108,15 +105,6 @@ export function AppSidebar({
   // during render rather than an effect so it's set before any child's
   // effect (e.g. WorkspaceSwitcher's list-fetch on mount) can fire.
   setActiveWorkspaceId(workspaceId);
-
-  const providersVariant =
-    health.providersErrored > 0 ? "error" : health.providersOk > 0 ? "success" : "secondary";
-  const providersLabel =
-    health.providersErrored > 0
-      ? t("statusProvidersErrors", { count: health.providersErrored })
-      : health.providersOk > 0
-        ? t("statusProvidersOk", { count: health.providersOk })
-        : t("statusProvidersNone");
 
   return (
     <Sidebar collapsible="icon" data-workspace-id={workspaceId}>
@@ -183,40 +171,14 @@ export function AppSidebar({
         </nav>
       </SidebarContent>
       {/* System status summary (design.md §3.2): provider sync health and
-          open critical alerts, server-computed in the dashboard layout from
-          the same columns the refresh loop maintains. Hidden on the collapsed
-          icon rail — a 64px rail has no room for words. */}
+          open critical alerts, read from the shared indicator store so this
+          block tracks the same numbers the management page shows. Hidden on
+          the collapsed icon rail — a 64px rail has no room for words. */}
       <SidebarFooter className="border-t border-[var(--border-subtle)] group-data-[collapsible=icon]:hidden">
         <div className="px-2 pb-1 pt-2 text-2xs font-medium uppercase tracking-wide text-foreground-400">
           {t("statusSummaryLabel")}
         </div>
-        <ul className="flex flex-col gap-1 px-2 pb-2">
-          <li>
-            <Link
-              href="/settings/providers"
-              className="flex min-h-6 items-center rounded-md hover:bg-[var(--surface-hover)]"
-            >
-              <StatusIndicator variant={providersVariant} label={providersLabel} />
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/alerts"
-              className="flex min-h-6 items-center rounded-md hover:bg-[var(--surface-hover)]"
-            >
-              <StatusIndicator
-                variant={health.openCriticalAlerts > 0 ? "critical" : "success"}
-                label={
-                  health.openCriticalAlerts > 0
-                    ? t("statusCriticalAlertsOpen", {
-                        count: health.openCriticalAlerts,
-                      })
-                    : t("statusCriticalAlertsNone")
-                }
-              />
-            </Link>
-          </li>
-        </ul>
+        <SystemHealthChips variant="sidebar" />
       </SidebarFooter>
     </Sidebar>
   );

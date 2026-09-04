@@ -21,10 +21,14 @@ const SECTIONS = [
 // once a workspace has more than one dashboard.
 const MAIN_NAV = { name: "Main navigation" } as const;
 
-test("AC-SHELL-001: navigation starts with Management and lists core sections", async ({ page }) => {
+test("AC-SHELL-001: navigation starts with Management and lists core sections", async ({
+  page,
+}) => {
   await login(page);
   const nav = page.getByRole("navigation", MAIN_NAV);
-  await expect(nav.getByRole("link").first()).toHaveAccessibleName("Management");
+  await expect(nav.getByRole("link").first()).toHaveAccessibleName(
+    "Management",
+  );
   for (const section of SECTIONS) {
     await expect(
       nav.getByRole("link", { name: section, exact: true }),
@@ -184,4 +188,74 @@ test("Settings route renders through the active shell (smoke check, not AC-SHELL
       exact: true,
     }),
   ).toBeVisible();
+});
+
+// The bug this indicator work exists to fix. The sidebar footer used to be
+// server-rendered in the dashboard layout, and App Router does not re-render a
+// layout on client-side navigation — so after a soft nav the footer showed
+// whatever it read on the last full page load while the management page beside
+// it showed freshly computed numbers. Both now read one client store.
+test("sidebar and management health chips agree after a client-side navigation", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/bookmarks");
+
+  // Soft navigation: the path where the layout is NOT re-executed.
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Management", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/management$/);
+
+  const panel = page.locator("[data-slot='system-health']");
+  await expect(panel).toBeVisible();
+
+  const sidebarFooter = page.locator("[data-sidebar='footer']");
+  const providersHref = "a[href$='/settings/providers']";
+  const alertsHref = "a[href$='/alerts']";
+
+  await expect(sidebarFooter.locator(providersHref)).toHaveText(
+    await panel.locator(providersHref).innerText(),
+  );
+  await expect(sidebarFooter.locator(alertsHref)).toHaveText(
+    await panel.locator(alertsHref).innerText(),
+  );
+});
+
+// Entering /alerts marks everything read. The topbar badge always cleared;
+// the sidebar's critical-alert chip did not, because nothing told the layout.
+test("reading alerts clears the topbar badge and the sidebar chip without a reload", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/alerts");
+
+  await expect(
+    page.getByRole("banner").getByLabel(/^Alerts:/),
+  ).toHaveAccessibleName(/no new/i);
+
+  // Navigate away client-side; the sidebar must have kept up on its own.
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Bookmarks", exact: true })
+    .click();
+  await expect(
+    page.locator("[data-sidebar='footer']").locator("a[href$='/alerts']"),
+  ).toHaveText(/No open critical alerts/);
+});
+
+// Proves the live transport is actually connected, not just that the numbers
+// happen to be right.
+test("the dashboard shell opens an indicator event stream", async ({
+  page,
+}) => {
+  const streamed = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/indicators/stream") &&
+      response.status() === 200,
+  );
+  await login(page);
+  const response = await streamed;
+  expect(response.headers()["content-type"]).toContain("text/event-stream");
 });

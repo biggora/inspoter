@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { listRange } from "@/lib/services/calendar";
+import {
+  countUnreadInboxMail,
+  countUnreadMessages,
+  listInboxFolderIds,
+} from "@/lib/services/indicator-counts";
 import type { ExecutiveBriefPeriod } from "@/generated/prisma/client";
 
 const SECTION_LIMIT = 20;
@@ -122,6 +127,12 @@ export async function buildExecutiveSnapshot(
   const lookbackStart = new Date(now.getTime() - lookbackMs);
   const horizonEnd = new Date(now.getTime() + horizonMs);
 
+  // Filter mail by folderId rather than by the `folder: { specialUse }`
+  // relation: that is what lets the [workspaceId, accountId, folderId, isRead]
+  // index serve the query, and it is how the topbar badge counts, so the two
+  // agree by construction rather than by two similar-looking WHERE clauses.
+  const inboxFolderIds = await listInboxFolderIds(workspaceId);
+
   const [
     workspace,
     alerts,
@@ -198,7 +209,7 @@ export async function buildExecutiveSnapshot(
     }),
     listRange(workspaceId, now, horizonEnd),
     db.mailItem.findMany({
-      where: { workspaceId, isRead: false, folder: { specialUse: "INBOX" } },
+      where: { workspaceId, isRead: false, folderId: { in: inboxFolderIds } },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       take: SECTION_LIMIT + 1,
       select: {
@@ -300,10 +311,8 @@ export async function buildExecutiveSnapshot(
           nextTriggerAt: { not: null, lte: horizonEnd },
         },
       }),
-      db.mailItem.count({
-        where: { workspaceId, isRead: false, folder: { specialUse: "INBOX" } },
-      }),
-      db.message.count({ where: { workspaceId, isRead: false } }),
+      countUnreadInboxMail(workspaceId),
+      countUnreadMessages(workspaceId),
       db.decision.count({
         where: { workspaceId, status: { in: ["OPEN", "DEFERRED"] } },
       }),

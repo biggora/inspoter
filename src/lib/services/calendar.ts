@@ -1,3 +1,4 @@
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import {
   CalendarLinkTargetType,
   Prisma,
@@ -859,7 +860,7 @@ export async function actOnOccurrence(
     where: { id, workspaceId },
   });
   if (!occurrence) throw new CalendarResourceNotFoundError();
-  return db.reminderOccurrence.update({
+  const updated = await db.reminderOccurrence.update({
     where: { id },
     data:
       action === "snooze"
@@ -870,6 +871,8 @@ export async function actOnOccurrence(
             resolvedAt: new Date(),
           },
   });
+  publishIndicatorChange(workspaceId, "calendar");
+  return updated;
 }
 
 export async function countDueReminders(workspaceId: string): Promise<number> {
@@ -879,7 +882,11 @@ export async function countDueReminders(workspaceId: string): Promise<number> {
 }
 
 export async function processDueReminders(now = new Date(), batch = 100) {
-  await db.reminderOccurrence.updateMany({
+  // Workspaces whose due count moved during this tick, so the publish below
+  // wakes only the operators actually affected.
+  const touched = new Set<string>();
+
+  const unsnoozed = await db.reminderOccurrence.updateMany({
     where: { status: "SNOOZED", snoozedUntil: { lte: now } },
     data: { status: "DUE", snoozedUntil: null },
   });
@@ -930,6 +937,7 @@ export async function processDueReminders(now = new Date(), batch = 100) {
         data: { nextTriggerAt, isActive: Boolean(nextTriggerAt) },
       });
       if (!claimed.count) return;
+      touched.add(reminder.workspaceId);
       await tx.reminderOccurrence.upsert({
         where: {
           reminderId_scheduledFor: {
@@ -948,7 +956,29 @@ export async function processDueReminders(now = new Date(), batch = 100) {
       });
     });
   }
+
+  // This scheduler is exactly the case the live indicator transport exists
+  // for: a reminder falls due with the operator touching nothing, and the
+  // badge has to move on its own. An unsnooze can span workspaces we did not
+  // otherwise touch, so that path refreshes every affected one.
+  if (unsnoozed.count > 0) {
+    for (const workspaceId of await workspaceIdsWithDueOccurrences()) {
+      touched.add(workspaceId);
+    }
+  }
+  for (const workspaceId of touched) {
+    publishIndicatorChange(workspaceId, "calendar");
+  }
   return due.length;
+}
+
+async function workspaceIdsWithDueOccurrences(): Promise<string[]> {
+  const rows = await db.reminderOccurrence.findMany({
+    where: { status: "DUE" },
+    select: { workspaceId: true },
+    distinct: ["workspaceId"],
+  });
+  return rows.map((row) => row.workspaceId);
 }
 
 export function validateLinkInput(value: unknown) {

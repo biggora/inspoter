@@ -10,9 +10,30 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+import { IndicatorSeedProvider } from "@/components/shell/indicator-store-provider";
 import { ManagementView } from "@/components/management/management-view";
 import { ManagementAutomationView } from "@/components/management/management-automation-view";
 import { renderWithIntl } from "../../test-utils";
+
+// The health chips read the shared indicator store, seeded from the server in
+// the dashboard layout. Tests supply that seed directly so a consumer can be
+// rendered at a known state without opening an EventSource.
+const ZERO_SIGNALS = {
+  mail: 0,
+  alerts: 0,
+  messages: 0,
+  calendar: 0,
+  providersOk: 0,
+  providersErrored: 0,
+  openCriticalAlerts: 0,
+};
+const HEALTHY = { ...ZERO_SIGNALS, providersOk: 2 };
+const DEGRADED = {
+  ...ZERO_SIGNALS,
+  providersOk: 2,
+  providersErrored: 1,
+  openCriticalAlerts: 2,
+};
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -47,17 +68,16 @@ describe("ManagementView", () => {
     );
 
     renderWithIntl(
-      <ManagementView
-        kanbanTargets={[]}
-        health={{ providersOk: 2, providersErrored: 0, openCriticalAlerts: 0 }}
-      />,
+      <IndicatorSeedProvider value={HEALTHY}>
+        <ManagementView kanbanTargets={[]} />
+      </IndicatorSeedProvider>,
     );
 
-    const alerts = await screen.findByText("Alerts");
+    const alerts = await screen.findByText("Alerts received");
     expect(alerts.closest("a")).toHaveAttribute("href", "/alerts");
     expect(screen.getByText("3").className).toContain("text-2xl");
     // Zero totals are the absence of a signal, not a tile.
-    expect(screen.queryByText("Services")).toBeNull();
+    expect(screen.queryByText("Services down")).toBeNull();
     expect(screen.queryByText("Mail")).toBeNull();
     expect(
       screen.queryByText("All quiet — no signals in this period."),
@@ -103,10 +123,9 @@ describe("ManagementView", () => {
     );
 
     renderWithIntl(
-      <ManagementView
-        kanbanTargets={[]}
-        health={{ providersOk: 1, providersErrored: 1, openCriticalAlerts: 2 }}
-      />,
+      <IndicatorSeedProvider value={DEGRADED}>
+        <ManagementView kanbanTargets={[]} />
+      </IndicatorSeedProvider>,
     );
 
     expect(
@@ -156,12 +175,7 @@ describe("ManagementView", () => {
       }),
     );
 
-    renderWithIntl(
-      <ManagementView
-        kanbanTargets={[]}
-        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
-      />,
-    );
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
 
     expect(await screen.findByText("Brief automation is ready")).toBeVisible();
     expect(screen.getByText("Overnight incident resolved")).toBeVisible();
@@ -366,12 +380,7 @@ describe("ManagementView", () => {
         }),
     );
 
-    renderWithIntl(
-      <ManagementView
-        kanbanTargets={[]}
-        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
-      />,
-    );
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
 
     expect(await screen.findByText("Operations are stable")).toBeVisible();
     expect(
@@ -392,12 +401,7 @@ describe("ManagementView", () => {
         .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) }),
     );
 
-    renderWithIntl(
-      <ManagementView
-        kanbanTargets={[]}
-        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
-      />,
-    );
+    renderWithIntl(<ManagementView kanbanTargets={[]} />);
 
     expect(await screen.findByText("Snapshot is unavailable")).toBeVisible();
     expect(await screen.findByText("No decisions yet")).toBeVisible();
@@ -450,7 +454,6 @@ describe("ManagementView", () => {
 
     renderWithIntl(
       <ManagementView
-        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
         kanbanTargets={[
           {
             id: "board-1",
@@ -537,7 +540,6 @@ describe("ManagementView", () => {
 
     renderWithIntl(
       <ManagementView
-        health={{ providersOk: 0, providersErrored: 0, openCriticalAlerts: 0 }}
         kanbanTargets={[
           {
             id: "board-1",

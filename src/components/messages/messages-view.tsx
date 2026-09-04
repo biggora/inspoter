@@ -16,7 +16,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { notifyUnreadCountsStale } from "@/components/shell/notifications-api";
+import { invalidateIndicators } from "@/components/shell/indicator-store";
 import {
   fetchMessages,
   markChannelRead,
@@ -187,7 +187,7 @@ function MessagesCoordinator({
       .then(({ updated }) => {
         if (cancelled || updated === 0) return;
         clearChannelUnread(channelId);
-        notifyUnreadCountsStale();
+        invalidateIndicators();
       })
       .catch(() => {
         // Same reasoning as the alerts section: a missed mark-read only means

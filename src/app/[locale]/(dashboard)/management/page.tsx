@@ -1,18 +1,16 @@
 import { ManagementView } from "@/components/management/management-view";
 import { requireAuth } from "@/lib/auth/dal";
 import { listManagementKanbanTargets } from "@/lib/services/management";
-import { getSidebarHealth } from "@/lib/services/notification-counts";
 
 export const dynamic = "force-dynamic";
 
 export default async function ManagementPage() {
   const { workspace } = await requireAuth();
-  const [kanbanTargets, health] = await Promise.all([
-    listManagementKanbanTargets(workspace.id),
-    // Same two facts the sidebar footer pins, restated in the snapshot's
-    // system-health line (server-computed, no extra provider calls).
-    getSidebarHealth(workspace.id),
-  ]);
+  // System health is no longer fetched here: the snapshot's health line reads
+  // the shared indicator store, the same source the sidebar footer reads. This
+  // page used to run its own getSidebarHealth() in a different render pass
+  // from the layout's, which is how the two blocks ended up disagreeing.
+  const kanbanTargets = await listManagementKanbanTargets(workspace.id);
 
-  return <ManagementView kanbanTargets={kanbanTargets} health={health} />;
+  return <ManagementView kanbanTargets={kanbanTargets} />;
 }

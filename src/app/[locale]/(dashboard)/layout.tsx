@@ -6,10 +6,8 @@ import { AppSidebar } from "@/components/shell/app-sidebar";
 import { DashboardTopbar } from "@/components/shell/dashboard-topbar";
 import { RouteProgressProvider } from "@/components/shell/route-progress";
 import { WebMcpGlobalTools } from "@/components/shell/web-mcp-global-tools";
-import {
-  getSidebarHealth,
-  getUnreadCounts,
-} from "@/lib/services/notification-counts";
+import { IndicatorStoreProvider } from "@/components/shell/indicator-store-provider";
+import { getIndicatorState } from "@/lib/services/indicator-counts";
 
 export const dynamic = "force-dynamic";
 
@@ -27,43 +25,43 @@ export default async function DashboardLayout({
   const { operator, workspace } = await requireAuth();
   const cookieStore = await cookies();
   const sidebarOpen = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value !== "false";
-  // Seeds the topbar badges so they are right on first paint; the client keeps
-  // them current from there (notification-indicators.tsx).
-  const unreadCounts = await getUnreadCounts(workspace.id);
-  // Sidebar footer status block (design.md §3.2) — same story: correct on
-  // first paint, refreshed by full route loads.
-  const sidebarHealth = await getSidebarHealth(workspace.id);
+  // Seeds every indicator — topbar badges and the sidebar footer status block
+  // alike — so they are right on first paint. The client store keeps them
+  // current from there (indicator-store-provider.tsx), which is what the
+  // footer previously lacked: this layout does not re-render on client-side
+  // navigation, so its numbers used to freeze until a full page load.
+  const indicators = await getIndicatorState(workspace.id);
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
-      {/* First tab stop (critique 2026-08-29, P1): lets keyboard operators
+      <IndicatorStoreProvider workspaceId={workspace.id} initial={indicators}>
+        {/* First tab stop (critique 2026-08-29, P1): lets keyboard operators
           jump past the ~20 nav links and topbar straight to <main>. */}
-      <SkipToContentLink targetId="main-content" />
-      <RouteProgressProvider>
-        {/* Outside the `{children}` slot on purpose — stays mounted across
+        <SkipToContentLink targetId="main-content" />
+        <RouteProgressProvider>
+          {/* Outside the `{children}` slot on purpose — stays mounted across
             client-side navigation, so its tools survive a route change. */}
-        <WebMcpGlobalTools />
-        <AppSidebar
-          workspaceName={workspace.name}
-          workspaceId={workspace.id}
-          hiddenSections={workspace.hiddenSections}
-          health={sidebarHealth}
-        />
-        <SidebarInset>
-          <DashboardTopbar
-            username={operator.username}
-            unreadCounts={unreadCounts}
+          <WebMcpGlobalTools />
+          <AppSidebar
+            workspaceName={workspace.name}
+            workspaceId={workspace.id}
             hiddenSections={workspace.hiddenSections}
           />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="w-full min-w-0 flex-1 overflow-x-hidden p-4 focus:outline-none sm:p-6"
-          >
-            {children}
-          </main>
-        </SidebarInset>
-      </RouteProgressProvider>
+          <SidebarInset>
+            <DashboardTopbar
+              username={operator.username}
+              hiddenSections={workspace.hiddenSections}
+            />
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="w-full min-w-0 flex-1 overflow-x-hidden p-4 focus:outline-none sm:p-6"
+            >
+              {children}
+            </main>
+          </SidebarInset>
+        </RouteProgressProvider>
+      </IndicatorStoreProvider>
     </SidebarProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import {
   Prisma,
   type MailSpecialUse,
@@ -159,7 +160,13 @@ export async function persistIncomingMail(
     return item;
   };
 
-  return eligible
-    ? runAccountTransaction(input.accountId, persist)
-    : db.$transaction(persist);
+  const item = eligible
+    ? await runAccountTransaction(input.accountId, persist)
+    : await db.$transaction(persist);
+
+  // The single seam for incoming mail: both the webhook receipt path and the
+  // mail sync scheduler go through here, so one publish covers both and the
+  // topbar badge moves without the operator doing anything.
+  publishIndicatorChange(input.workspaceId, "mail");
+  return item;
 }

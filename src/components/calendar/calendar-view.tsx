@@ -24,7 +24,7 @@ import type {
   CalendarReminderOccurrenceDto,
   SeriesScope,
 } from "@/lib/calendar/types";
-import { notifyUnreadCountsStale } from "@/components/shell/notifications-api";
+import { invalidateIndicators } from "@/components/shell/indicator-store";
 import { calendarApi } from "./api";
 import type { CalendarMoveRequest } from "./calendar-grid";
 import { EventDialog, type NewEventRange } from "./event-dialog";
@@ -108,7 +108,7 @@ export function CalendarView({
     setEventOpen(false);
     setReminderOpen(false);
     void load();
-    notifyUnreadCountsStale();
+    invalidateIndicators();
   }
 
   async function act(
@@ -123,7 +123,7 @@ export function CalendarView({
           : undefined;
       await calendarApi.act(item.occurrenceId, action, snoozeUntil);
       await load();
-      notifyUnreadCountsStale();
+      invalidateIndicators();
     } catch {
       toast.error(t("actionError"));
     }

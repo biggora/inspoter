@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   alertCount: vi.fn(),
   messageCount: vi.fn(),
   reminderOccurrenceCount: vi.fn(),
+  providerCredentialCount: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -15,10 +16,11 @@ vi.mock("@/lib/db", () => ({
     alert: { count: mocks.alertCount },
     message: { count: mocks.messageCount },
     reminderOccurrence: { count: mocks.reminderOccurrenceCount },
+    providerCredential: { count: mocks.providerCredentialCount },
   },
 }));
 
-import { getUnreadCounts } from "@/lib/services/notification-counts";
+import { computeIndicatorState } from "@/lib/services/indicator-counts";
 
 const WORKSPACE_ID = "workspace-1";
 
@@ -32,20 +34,25 @@ beforeEach(() => {
   mocks.alertCount.mockResolvedValue(2);
   mocks.messageCount.mockResolvedValue(7);
   mocks.reminderOccurrenceCount.mockResolvedValue(3);
+  // Two calls behind countProviderHealth: the total, then the errored subset.
+  mocks.providerCredentialCount.mockResolvedValueOnce(9).mockResolvedValue(2);
 });
 
-describe("getUnreadCounts", () => {
-  it("returns one unread total per topbar indicator", async () => {
-    await expect(getUnreadCounts(WORKSPACE_ID)).resolves.toEqual({
+describe("computeIndicatorState", () => {
+  it("returns every indicator the dashboard chrome shows in one payload", async () => {
+    await expect(computeIndicatorState(WORKSPACE_ID)).resolves.toEqual({
       mail: 4,
       alerts: 2,
       messages: 7,
       calendar: 3,
+      providersOk: 7,
+      providersErrored: 2,
+      openCriticalAlerts: 2,
     });
   });
 
   it("counts mail only in the workspace's INBOX folders", async () => {
-    await getUnreadCounts(WORKSPACE_ID);
+    await computeIndicatorState(WORKSPACE_ID);
 
     expect(mocks.mailFolderFindMany).toHaveBeenCalledWith({
       where: { workspaceId: WORKSPACE_ID, specialUse: "INBOX" },
@@ -65,14 +72,14 @@ describe("getUnreadCounts", () => {
   it("reports zero mail without querying items when there is no INBOX", async () => {
     mocks.mailFolderFindMany.mockResolvedValue([]);
 
-    const counts = await getUnreadCounts(WORKSPACE_ID);
+    const counts = await computeIndicatorState(WORKSPACE_ID);
 
     expect(counts.mail).toBe(0);
     expect(mocks.mailItemCount).not.toHaveBeenCalled();
   });
 
   it("scopes alert and message counts to unread rows of the workspace", async () => {
-    await getUnreadCounts(WORKSPACE_ID);
+    await computeIndicatorState(WORKSPACE_ID);
 
     expect(mocks.alertCount).toHaveBeenCalledWith({
       where: { workspaceId: WORKSPACE_ID, isRead: false },
@@ -80,5 +87,22 @@ describe("getUnreadCounts", () => {
     expect(mocks.messageCount).toHaveBeenCalledWith({
       where: { workspaceId: WORKSPACE_ID, isRead: false },
     });
+  });
+
+  it("counts open criticals as the unread subset at critical severity", async () => {
+    await computeIndicatorState(WORKSPACE_ID);
+
+    expect(mocks.alertCount).toHaveBeenCalledWith({
+      where: { workspaceId: WORKSPACE_ID, isRead: false, severity: "critical" },
+    });
+  });
+
+  it("derives providersOk by subtracting the errored credentials", async () => {
+    mocks.providerCredentialCount.mockReset();
+    mocks.providerCredentialCount.mockResolvedValueOnce(4).mockResolvedValue(4);
+
+    const state = await computeIndicatorState(WORKSPACE_ID);
+
+    expect(state).toMatchObject({ providersOk: 0, providersErrored: 4 });
   });
 });

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import { env } from "@/lib/config/env";
 import {
   AlertCategorySource,
@@ -150,6 +151,7 @@ export async function create(
       ...(input.timestamp ? { timestamp: new Date(input.timestamp) } : {}),
     },
   });
+  publishIndicatorChange(workspaceId, "alerts");
   await emitWebhookEvent(workspaceId, "ALERT_CREATED", {
     alertId: entry.id,
     severity: input.severity,
@@ -368,6 +370,9 @@ export async function markAllRead(
     where: { workspaceId, isRead: false },
     data: { isRead: true },
   });
+  // Guarded: entering /alerts calls this on every visit, and an unguarded
+  // publish would wake every connected tab for a write that changed nothing.
+  if (result.count > 0) publishIndicatorChange(workspaceId, "alerts");
   return { updated: result.count };
 }
 
@@ -375,6 +380,7 @@ export async function markAllRead(
 export async function remove(id: string, workspaceId: string): Promise<void> {
   const deleted = await db.alert.deleteMany({ where: { id, workspaceId } });
   if (deleted.count === 0) throw new AlertNotFoundError();
+  publishIndicatorChange(workspaceId, "alerts");
 }
 
 export async function listCategories(

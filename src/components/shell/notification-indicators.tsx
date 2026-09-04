@@ -1,21 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { Link, usePathname } from "@/i18n/navigation";
-import {
-  fetchUnreadCounts,
-  UNREAD_COUNTS_STALE_EVENT,
-  type UnreadCountsDto,
-} from "./notifications-api";
-
-// Same cadence as the dashboard's widget refresh (dashboard-view.tsx): current
-// enough for an operator watching the screen, cheap enough to leave running.
-const REFRESH_INTERVAL_MS = 60_000;
+import { Link } from "@/i18n/navigation";
+import { useIndicators } from "./indicator-store-provider";
+import type { IndicatorStateDto } from "./indicator-store";
 
 // Above this the exact number stops carrying information and starts breaking
 // the layout of a badge sitting on a 28px button.
@@ -23,7 +15,7 @@ const MAX_DISPLAYED_COUNT = 99;
 
 interface IndicatorDefinition {
   /** Matches the Workspace.hiddenSections key in nav-items.ts. */
-  key: keyof UnreadCountsDto;
+  key: keyof IndicatorStateDto;
   href: string;
   icon: string;
   labelKey: string;
@@ -59,56 +51,21 @@ const INDICATORS: IndicatorDefinition[] = [
 ];
 
 export interface NotificationIndicatorsProps {
-  /**
-   * Server-rendered counts from the dashboard layout, so the badges are
-   * correct on first paint instead of popping in after the first poll.
-   */
-  initialCounts: UnreadCountsDto;
   /** Workspace.hiddenSections — a hidden section gets no shortcut. */
   hiddenSections: string[];
 }
 
+// Counts come from the shared indicator store, which owns the one SSE
+// connection and the one safety poll for the whole shell
+// (indicator-store-provider.tsx). This component used to run its own timer,
+// its own navigation refetch and its own window-event listener — none of which
+// the sidebar footer beside it could see, which is how the two ended up
+// disagreeing.
 export function NotificationIndicators({
-  initialCounts,
   hiddenSections,
 }: NotificationIndicatorsProps) {
   const t = useTranslations("shell");
-  const pathname = usePathname();
-  const [counts, setCounts] = useState(initialCounts);
-
-  // Three triggers, one loader:
-  //  - the timer, paused on a backgrounded tab;
-  //  - navigation, so leaving a section reflects what was read inside it
-  //    (mail marks items read from its reading pane, with no explicit signal);
-  //  - the stale event, fired by the sections that mark rows read on entry —
-  //    the navigation refetch alone would race that write and lose.
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    let cancelled = false;
-
-    async function refresh() {
-      try {
-        const next = await fetchUnreadCounts();
-        if (!cancelled) setCounts(next);
-      } catch {
-        // A failed poll keeps the last known numbers; the next tick retries.
-      }
-    }
-
-    void refresh();
-
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void refresh();
-    }, REFRESH_INTERVAL_MS);
-    window.addEventListener(UNREAD_COUNTS_STALE_EVENT, refresh);
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      window.removeEventListener(UNREAD_COUNTS_STALE_EVENT, refresh);
-    };
-  }, [pathname]);
+  const counts = useIndicators();
 
   const visible = INDICATORS.filter(
     (indicator) => !hiddenSections.includes(indicator.key),

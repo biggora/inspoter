@@ -1,3 +1,4 @@
+import { publishIndicatorChange } from "@/lib/services/indicator-events";
 import { db } from "@/lib/db";
 import { env } from "@/lib/config/env";
 import type { Prisma } from "@/generated/prisma/client";
@@ -107,6 +108,11 @@ export async function setRead(
     where: { id, workspaceId },
     data: { isRead },
   });
+  // The only server-side seam for mail read state, so this single publish
+  // covers auto-marking on open, the manual toggle, the WebMCP tool and the
+  // public /api/v1 route alike. The topbar badge used to correct itself only
+  // on the next poll or on leaving the section.
+  publishIndicatorChange(workspaceId, "mail");
 }
 
 export type DeleteItemResult = { status: "trashed" | "deleted" };
@@ -143,6 +149,7 @@ export async function deleteItem(
           uid: destinationUid,
         },
       });
+      publishIndicatorChange(workspaceId, "mail");
       return { status: "trashed" };
     }
   }
@@ -151,6 +158,7 @@ export async function deleteItem(
     driver.deleteMessage(item.folder.path, uid),
   );
   await db.mailItem.deleteMany({ where: { id, workspaceId } });
+  publishIndicatorChange(workspaceId, "mail");
   return { status: "deleted" };
 }
 
@@ -184,6 +192,9 @@ export async function moveItem(
       uid: destinationUid,
     },
   });
+  // Moving in or out of INBOX changes the unread total even though no read
+  // flag was touched.
+  publishIndicatorChange(workspaceId, "mail");
 }
 
 export interface SendMailData {

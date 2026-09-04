@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
 import { Pagination } from "@/components/shell/pagination";
-import { notifyUnreadCountsStale } from "@/components/shell/notifications-api";
+import { invalidateIndicators } from "@/components/shell/indicator-store";
 import {
   Select,
   SelectContent,
@@ -180,7 +180,7 @@ export function AlertsView() {
   useEffect(() => {
     alertsApi
       .markAllRead()
-      .then(notifyUnreadCountsStale)
+      .then(invalidateIndicators)
       .catch(() => {});
   }, []);
 

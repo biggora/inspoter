@@ -14,7 +14,6 @@ import {
   SECTION_NAV_ITEMS,
   SETTINGS_NAV_ITEM,
 } from "./nav-items";
-import type { UnreadCountsDto } from "./notifications-api";
 
 // Module-scope so it isn't recomputed on every render.
 const ALL_NAV_ITEMS = [
@@ -30,11 +29,9 @@ const ALL_NAV_ITEMS = [
 // single control instead of two separate "«" / "≡" affordances).
 export function DashboardTopbar({
   username,
-  unreadCounts,
   hiddenSections = [],
 }: {
   username: string;
-  unreadCounts: UnreadCountsDto;
   hiddenSections?: string[];
 }) {
   const t = useTranslations("shell");
@@ -51,10 +48,7 @@ export function DashboardTopbar({
         {title}
       </span>
       <div className="ml-auto flex shrink-0 items-center gap-1">
-        <NotificationIndicators
-          initialCounts={unreadCounts}
-          hiddenSections={hiddenSections}
-        />
+        <NotificationIndicators hiddenSections={hiddenSections} />
         <LanguageSwitcher />
         <ThemeToggle />
         <OperatorMenu username={username} />
