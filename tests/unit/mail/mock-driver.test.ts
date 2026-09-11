@@ -31,6 +31,22 @@ beforeEach(() => {
 });
 
 describe("MockMailDriver", () => {
+  it("generates byte-preserving UTF-8 RFC822 source", async () => {
+    const driver = new MockMailDriver(KEY);
+    const [message] = await driver.fetchMessages("INBOX", { initialLimit: 1 });
+    const source = await driver.downloadOriginal(
+      "INBOX",
+      message.uid,
+      1n,
+      1_000_000,
+    );
+
+    expect(source.includes(Buffer.from(message.bodyText, "utf8"))).toBe(true);
+    expect(source.toString("utf8")).toContain(
+      "Content-Type: text/plain; charset=utf-8",
+    );
+  });
+
   it("is deterministic: two instances with the same key see the same data", async () => {
     const a = new MockMailDriver(KEY);
     const b = new MockMailDriver(KEY);

@@ -157,6 +157,12 @@ export interface MailDriver {
     uid: bigint,
     partId: string,
   ): Promise<{ content: Buffer; contentType: string }>;
+  downloadOriginal(
+    folderPath: string,
+    uid: bigint,
+    expectedUidValidity: bigint,
+    maxBytes: number,
+  ): Promise<Buffer>;
   send(message: OutgoingMessage): Promise<{ messageId: string; raw: Buffer }>;
   append(folderPath: string, raw: Buffer, flags: string[]): Promise<void>;
   close(): Promise<void>;
@@ -185,5 +191,12 @@ export class WebhookAccountHasNoTransportError extends Error {
   constructor() {
     super("Webhook mail accounts have no IMAP/SMTP transport");
     this.name = "WebhookAccountHasNoTransportError";
+  }
+}
+
+export class MailboxUidValidityChangedError extends Error {
+  constructor() {
+    super("Mailbox identity changed; sync the mail account and try again.");
+    this.name = "MailboxUidValidityChangedError";
   }
 }

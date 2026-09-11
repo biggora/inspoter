@@ -35,7 +35,7 @@ function rfc822(uid: number): string {
     `Subject: Stub message ${uid}`,
     "Content-Type: text/plain; charset=utf-8",
     "",
-    `Body of stub message ${uid}.`,
+    `Body of stub message ${uid}. Čau!`,
     "",
   ].join("\r\n");
 }
@@ -242,8 +242,8 @@ describe("ImapSmtpMailDriver.fetchMessages", () => {
     });
     // The body proves the per-message source fetch ran and was parsed — the
     // step that used to be issued from inside the outer FETCH iteration.
-    expect(messages[0].bodyText.trim()).toBe("Body of stub message 11.");
-    expect(messages[1].bodyText.trim()).toBe("Body of stub message 12.");
+    expect(messages[0].bodyText.trim()).toBe("Body of stub message 11. Čau!");
+    expect(messages[1].bodyText.trim()).toBe("Body of stub message 12. Čau!");
     expect(messages[0].bodyTruncated).toBe(false);
     expect(messages[0].sourceSizeBytes).toBe(
       BigInt(Buffer.byteLength(MESSAGES[0].source)),
@@ -257,5 +257,21 @@ describe("ImapSmtpMailDriver.fetchMessages", () => {
 
     expect(flags.get(11n)?.isRead).toBe(true);
     expect(flags.get(12n)?.isRead).toBe(true);
+  });
+
+  it("downloads exact raw RFC822 bytes under matching UIDVALIDITY", async () => {
+    const source = await withDeadline(
+      driver.downloadOriginal("INBOX", 11n, 42n, 1_000_000),
+    );
+
+    expect(source).toEqual(Buffer.from(MESSAGES[0].source, "utf8"));
+  });
+
+  it("rejects stale UIDs when mailbox UIDVALIDITY changed", async () => {
+    const { MailboxUidValidityChangedError } = await import("@/lib/mail");
+
+    await expect(
+      withDeadline(driver.downloadOriginal("INBOX", 11n, 41n, 1_000_000)),
+    ).rejects.toBeInstanceOf(MailboxUidValidityChangedError);
   });
 });

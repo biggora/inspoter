@@ -77,6 +77,7 @@ export function getMailDriverFromConfig(
 }
 
 export {
+  MailboxUidValidityChangedError,
   MailTransportError,
   WebhookAccountHasNoTransportError,
 } from "@/lib/mail/types";

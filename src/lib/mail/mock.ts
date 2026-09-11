@@ -1,4 +1,5 @@
 import {
+  MailboxUidValidityChangedError,
   MailTransportError,
   type MailAddress,
   type MailDriver,
@@ -287,6 +288,36 @@ export class MockMailDriver implements MailDriver {
       content: Buffer.from(stored.content, "utf8"),
       contentType: stored.contentType,
     };
+  }
+
+  async downloadOriginal(
+    folderPath: string,
+    uid: bigint,
+    expectedUidValidity: bigint,
+    maxBytes: number,
+  ): Promise<Buffer> {
+    const folder = this.folder(folderPath);
+    if (folder.uidValidity !== expectedUidValidity) {
+      throw new MailboxUidValidityChangedError();
+    }
+    const message = this.message(folderPath, uid);
+    const source = Buffer.from(
+      [
+        `Message-ID: ${message.messageId ?? `<mock-${uid}@example.test>`}`,
+        `Date: ${(message.date ?? new Date(0)).toUTCString()}`,
+        `From: ${message.from?.address ?? "mock@example.test"}`,
+        `To: ${message.to.map((entry) => entry.address).join(", ")}`,
+        `Subject: ${message.subject}`,
+        "MIME-Version: 1.0",
+        "Content-Type: text/plain; charset=utf-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        message.bodyText.replace(/\r?\n/g, "\r\n"),
+        "",
+      ].join("\r\n"),
+      "utf8",
+    );
+    return source.subarray(0, maxBytes + 1);
   }
 
   async send(

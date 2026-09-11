@@ -32,6 +32,7 @@ import { MessageLabelPicker } from "./message-label-picker";
 import {
   ApiError,
   downloadAttachment,
+  downloadOriginalMessage,
   type MailAddressDto,
   type MailDetailDto,
   type MailLabelDto,
@@ -165,6 +166,21 @@ export function MessagePane({
   // Attachment chip currently downloading (lazy IMAP fetch can take a
   // moment on first access) — one at a time is enough for chips.
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingOriginal, setDownloadingOriginal] = useState(false);
+
+  async function handleDownloadOriginal(mailId: string) {
+    if (downloadingOriginal) return;
+    setDownloadingOriginal(true);
+    try {
+      await downloadOriginalMessage(mailId, t);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : t("errorDownloadOriginal"),
+      );
+    } finally {
+      setDownloadingOriginal(false);
+    }
+  }
 
   async function handleDownloadAttachment(
     mailId: string,
@@ -368,6 +384,28 @@ export function MessagePane({
                     data-icon="inline-start"
                   />
                   {t("forwardButton")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={downloadingOriginal}
+                  onClick={() => void handleDownloadOriginal(detail.id)}
+                >
+                  {downloadingOriginal ? (
+                    <Spinner aria-hidden data-icon="inline-start" />
+                  ) : (
+                    <Icon
+                      name="ri-download-line"
+                      aria-hidden
+                      data-icon="inline-start"
+                    />
+                  )}
+                  {t(
+                    downloadingOriginal
+                      ? "downloadingOriginalLabel"
+                      : "downloadOriginalButton",
+                  )}
                 </Button>
                 {canArchive && (
                   <Button

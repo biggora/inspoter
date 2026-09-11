@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { createRef } from "react";
-import { screen, within } from "@testing-library/react";
+import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,7 +11,14 @@ import {
   type MessagePaneProps,
 } from "@/components/mail/message-pane";
 import type { MailDetailDto } from "@/components/mail/api";
+import { downloadOriginalMessage } from "@/components/mail/api";
+import { toast } from "sonner";
 import { renderWithIntl } from "../../test-utils";
+
+vi.mock("@/components/mail/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/mail/api")>()),
+  downloadOriginalMessage: vi.fn(),
+}));
 
 // The AI half of the reading pane. MessagePane is purely presentational, so
 // everything here is about what a given MailAiSummaryState renders and which
@@ -89,6 +96,80 @@ const READY: MailAiSummaryState = {
 };
 
 describe("MessagePane AI controls", () => {
+  it("offers original download only for non-draft transport messages", () => {
+    const { unmount } = renderPane();
+    expect(
+      screen.getByRole("button", { name: "Download original (.eml)" }),
+    ).toBeVisible();
+    unmount();
+    const draft = renderPane({ isDraft: true });
+    expect(
+      screen.queryByRole("button", { name: /Download original/ }),
+    ).toBeNull();
+    draft.unmount();
+    renderPane({ detail: { ...detail, accountKind: "WEBHOOK" } });
+    expect(
+      screen.queryByRole("button", { name: /Download original/ }),
+    ).toBeNull();
+  });
+
+  it("downloads the selected message and blocks duplicate clicks while pending", async () => {
+    let finish!: () => void;
+    vi.mocked(downloadOriginalMessage)
+      .mockReset()
+      .mockReturnValue(
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+      );
+    const user = userEvent.setup();
+    renderPane();
+    await user.click(
+      screen.getByRole("button", { name: "Download original (.eml)" }),
+    );
+    const pending = screen.getByRole("button", {
+      name: /Downloading original/,
+    });
+    expect(pending).toBeDisabled();
+    await user.click(pending);
+    expect(downloadOriginalMessage).toHaveBeenCalledExactlyOnceWith(
+      "mail-1",
+      expect.any(Function),
+    );
+    finish();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Download original (.eml)" }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("reports failed original downloads and allows retry", async () => {
+    vi.mocked(downloadOriginalMessage)
+      .mockReset()
+      .mockRejectedValue(new Error("offline"));
+    const errorToast = vi
+      .spyOn(toast, "error")
+      .mockImplementation(() => "toast-id");
+    try {
+      const user = userEvent.setup();
+      renderPane();
+      await user.click(
+        screen.getByRole("button", { name: "Download original (.eml)" }),
+      );
+      await waitFor(() =>
+        expect(errorToast).toHaveBeenCalledWith(
+          "Failed to download original message. Please try again.",
+        ),
+      );
+      expect(
+        screen.getByRole("button", { name: "Download original (.eml)" }),
+      ).toBeEnabled();
+    } finally {
+      errorToast.mockRestore();
+    }
+  });
+
   it("renders no AI controls and no panel when the layer is off", () => {
     const { container } = renderPane({ aiEnabled: false });
 

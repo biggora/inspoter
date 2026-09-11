@@ -434,17 +434,55 @@ export async function downloadAttachment(
   filename: string,
   t: (key: string) => string,
 ): Promise<void> {
-  const res = await fetch(
+  return downloadMailFile(
     `/api/mail/${encodeURIComponent(mailId)}/attachments/${encodeURIComponent(attachmentId)}`,
-    {
-      headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
-    },
+    filename,
+    t("errorDownloadAttachment"),
   );
+}
+
+export async function downloadOriginalMessage(
+  mailId: string,
+  t: (key: string) => string,
+): Promise<void> {
+  return downloadMailFile(
+    `/api/mail/${encodeURIComponent(mailId)}/original`,
+    `message-${mailId.replace(/[^a-zA-Z0-9_-]/g, "_")}.eml`,
+    t("errorDownloadOriginal"),
+    t,
+  );
+}
+
+async function downloadMailFile(
+  path: string,
+  filename: string,
+  fallbackMessage: string,
+  translateError?: (key: string) => string,
+): Promise<void> {
+  const res = await fetch(path, {
+    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+    cache: "no-store",
+  });
   if (!res.ok) {
-    let message = t("errorDownloadAttachment");
+    let message = fallbackMessage;
     try {
-      const body = (await res.json()) as { error?: unknown };
+      const body = (await res.json()) as {
+        error?: unknown;
+        errorKey?: unknown;
+      };
       if (typeof body?.error === "string") message = body.error;
+      if (
+        translateError &&
+        typeof body?.errorKey === "string" &&
+        [
+          "errorOriginalUnavailable",
+          "errorOriginalTooLarge",
+          "errorOriginalMailboxChanged",
+          "errorDownloadOriginal",
+        ].includes(body.errorKey)
+      ) {
+        message = translateError(body.errorKey);
+      }
     } catch {
       // Non-JSON error body — keep the generic message.
     }

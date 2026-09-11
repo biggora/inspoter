@@ -7,6 +7,7 @@ import MailComposer from "nodemailer/lib/mail-composer";
 import type { MailSpecialUse } from "@/generated/prisma/client";
 import { collectAttachments } from "@/lib/mail/attachment-metadata";
 import {
+  MailboxUidValidityChangedError,
   MailTransportError,
   type MailConnectionConfig,
   type MailDriver,
@@ -263,6 +264,7 @@ export class ImapSmtpMailDriver implements MailDriver {
       const client = await this.getClient();
       return await fn(client);
     } catch (error) {
+      if (error instanceof MailboxUidValidityChangedError) throw error;
       if (!this.client?.usable) this.client = null;
       throw new MailTransportError(
         `IMAP ${op} failed: ${errorMessage(error)}`,
@@ -543,6 +545,33 @@ export class ImapSmtpMailDriver implements MailDriver {
         content: Buffer.concat(chunks),
         contentType: download.meta.contentType || "application/octet-stream",
       };
+    });
+  }
+
+  async downloadOriginal(
+    folderPath: string,
+    uid: bigint,
+    expectedUidValidity: bigint,
+    maxBytes: number,
+  ): Promise<Buffer> {
+    return this.withImap("downloadOriginal", async (client) => {
+      const mailbox = await client.mailboxOpen(folderPath, { readOnly: true });
+      if (mailbox.uidValidity !== expectedUidValidity) {
+        throw new MailboxUidValidityChangedError();
+      }
+
+      const download = await client.download(uid.toString(), undefined, {
+        uid: true,
+        maxBytes: maxBytes + 1,
+      });
+      if (!download?.content) {
+        throw new Error(`message source not found for uid ${uid}`);
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of download.content) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
     });
   }
 
