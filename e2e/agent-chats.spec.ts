@@ -37,178 +37,214 @@ async function api<T>(
   ) as Promise<T>;
 }
 
+async function waitForBackfillReady(page: Page, workspace: string) {
+  await expect
+    .poll(
+      async () =>
+        (
+          await api<{ backfillStatus: string }>(
+            page,
+            workspace,
+            "/api/embeddings/status",
+          )
+        ).backfillStatus,
+      { timeout: 20_000 },
+    )
+    .toBe("READY");
+}
+
 test("agent chat uses indexed Notes and falls back without stale chunks", async ({
   page,
+  testData,
 }) => {
+  // Two scheduler-gated waits (the initial backfill and the re-index after
+  // the note edit) each ride a 5s worker tick, on top of three mock chat
+  // round-trips.
+  test.setTimeout(45_000);
+
   await login(page);
   const workspace = await workspaceId(page);
   const suffix = Math.floor(Math.random() * 1_000_000);
-  let credentialId = "";
-  let agentId = "";
-  let noteId = "";
-  let conversationId = "";
 
-  try {
-    const credential = await api<{ id: string }>(
-      page,
-      workspace,
-      "/api/credentials",
-      {
-        method: "POST",
-        body: {
-          provider: "OPENAI_COMPATIBLE",
-          label: `chat-embeddings-${suffix}`,
-          baseUrl: "http://127.0.0.1:9/v1",
-          model: "mock-chat",
-          apiKey: "mock-key",
-          mode: "MOCK",
-        },
-      },
-    );
-    credentialId = credential.id;
-    const agent = await api<{ id: string }>(page, workspace, "/api/agents", {
+  // Cleanup is registered up front instead of a test-body finally: on a test
+  // timeout Playwright closes the page while the body is still unwinding, so
+  // a finally + page.evaluate silently leaks rows into the shared workspace
+  // (a leaked LLM credential once made the mail-ai "no model" scenario answer
+  // with the mock driver). Registration order matters: teardown runs in
+  // reverse, so the profile is disabled before the credential is deleted.
+  const credential = await api<{ id: string }>(
+    page,
+    workspace,
+    "/api/credentials",
+    {
       method: "POST",
       body: {
-        name: `Chat agent ${suffix}`,
-        instructions: "Answer from the available context.",
-        scopes: ["notes:read"],
+        provider: "OPENAI_COMPATIBLE",
+        label: `chat-embeddings-${suffix}`,
+        baseUrl: "http://127.0.0.1:9/v1",
+        model: "mock-chat",
+        apiKey: "mock-key",
+        mode: "MOCK",
       },
-    });
-    agentId = agent.id;
-    const note = await api<{ id: string; version: number }>(
-      page,
-      workspace,
-      "/api/notes",
-      {
-        method: "POST",
-        body: {
-          title: `Deployment runbook ${suffix}`,
-          content: "deployment recovery requires restarting the worker",
-        },
-      },
-    );
-    noteId = note.id;
-    await api(
-      page,
-      workspace,
-      `/api/credentials/${credentialId}/embedding-default`,
-      {
-        method: "PATCH",
-        body: { enabled: true, model: "mock-embedding" },
-      },
-    );
-
-    await expect
-      .poll(
-        async () =>
-          (
-            await api<{ backfillStatus: string }>(
-              page,
-              workspace,
-              "/api/embeddings/status",
-            )
-          ).backfillStatus,
-        { timeout: 20_000 },
-      )
-      .toBe("READY");
-
-    await page.goto("/agents/runs");
-    await expect(
-      page.getByRole("heading", { name: "Runs", exact: true }),
-    ).toBeVisible();
-    await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Chats", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Agents", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Skills", exact: true }),
-    ).toBeVisible();
-
-    await page.goto(`/agents?agentId=${agentId}`);
-    await expect(
-      page.getByRole("heading", { name: "Agent chats", exact: true }),
-    ).toBeVisible();
-    await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Agents", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Runs", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Skills", exact: true }),
-    ).toBeVisible();
-    await page
-      .getByRole("textbox", { name: "Message the agent", exact: true })
-      .fill("deployment recovery");
-    await page.getByRole("button", { name: "Send message" }).click();
-    await page.waitForURL(/\/agents\/chats\/[^/]+$/);
-    conversationId = page.url().split("/").pop() ?? "";
-    await expect(page.getByText("Succeeded")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("Hybrid", { exact: true })).toBeVisible();
-    await expect(
-      page.getByText(`Deployment runbook ${suffix}`, { exact: true }),
-    ).toBeVisible();
-
-    await api(page, workspace, `/api/notes/${noteId}`, {
-      method: "PATCH",
+    },
+  );
+  testData.registerTeardown({
+    description: "mock chat credential",
+    method: "DELETE",
+    url: `/api/credentials/${credential.id}`,
+    workspaceId: workspace,
+  });
+  testData.registerTeardown({
+    description: "workspace embedding profile",
+    method: "PATCH",
+    url: `/api/credentials/${credential.id}/embedding-default`,
+    workspaceId: workspace,
+    body: { enabled: false },
+    expectStatus: 200,
+  });
+  const agent = await api<{ id: string }>(page, workspace, "/api/agents", {
+    method: "POST",
+    body: {
+      name: `Chat agent ${suffix}`,
+      instructions: "Answer from the available context.",
+      scopes: ["notes:read"],
+    },
+  });
+  testData.registerTeardown({
+    description: "chat agent",
+    method: "DELETE",
+    url: `/api/agents/${agent.id}`,
+    workspaceId: workspace,
+  });
+  const note = await api<{ id: string; version: number }>(
+    page,
+    workspace,
+    "/api/notes",
+    {
+      method: "POST",
       body: {
-        version: note.version,
-        content: "rotated emergency key is stored in the operations vault",
+        title: `Deployment runbook ${suffix}`,
+        content: "deployment recovery requires restarting the worker",
       },
-    });
-    await page
-      .getByRole("textbox", { name: "Message the agent", exact: true })
-      .fill("rotated emergency key");
-    await page.getByRole("button", { name: "Send message" }).click();
-    await expect(page.getByText("Full-text only", { exact: true })).toBeVisible(
-      { timeout: 20_000 },
-    );
-    await expect(
-      page.getByText(`Deployment runbook ${suffix}`, { exact: true }).last(),
-    ).toBeVisible();
+    },
+  );
+  testData.registerTeardown({
+    description: "deployment runbook note",
+    method: "DELETE",
+    url: `/api/notes/${note.id}`,
+    workspaceId: workspace,
+  });
+  await api(
+    page,
+    workspace,
+    `/api/credentials/${credential.id}/embedding-default`,
+    {
+      method: "PATCH",
+      body: { enabled: true, model: "mock-embedding" },
+    },
+  );
+  await waitForBackfillReady(page, workspace);
 
-    await page.reload();
-    await expect(
-      page
-        .getByRole("paragraph")
-        .filter({ hasText: "deployment recovery" })
-        .first(),
-    ).toBeVisible();
-  } finally {
-    if (conversationId) {
-      await api(
-        page,
-        workspace,
-        `/api/agents/conversations/${conversationId}`,
-        {
-          method: "DELETE",
-        },
-      ).catch(() => undefined);
-    }
-    if (noteId) {
-      await api(page, workspace, `/api/notes/${noteId}`, {
-        method: "DELETE",
-      }).catch(() => undefined);
-    }
-    if (agentId) {
-      await api(page, workspace, `/api/agents/${agentId}`, {
-        method: "DELETE",
-      }).catch(() => undefined);
-    }
-    if (credentialId) {
-      await api(
-        page,
-        workspace,
-        `/api/credentials/${credentialId}/embedding-default`,
-        { method: "PATCH", body: { enabled: false } },
-      ).catch(() => undefined);
-      await api(page, workspace, `/api/credentials/${credentialId}`, {
-        method: "DELETE",
-      }).catch(() => undefined);
-    }
-  }
+  await page.goto("/agents/runs");
+  await expect(
+    page.getByRole("heading", { name: "Runs", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Chats", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Agents", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Skills", exact: true }),
+  ).toBeVisible();
+
+  await page.goto(`/agents?agentId=${agent.id}`);
+  await expect(
+    page.getByRole("heading", { name: "Agent chats", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-slot="page-header"] > a')).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Agents", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Runs", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Skills", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Message the agent", exact: true })
+    .fill("deployment recovery");
+  await page.getByRole("button", { name: "Send message" }).click();
+  await page.waitForURL(/\/agents\/chats\/[^/]+$/);
+  const conversationId = page.url().split("/").pop() ?? "";
+  testData.registerTeardown({
+    description: "agent conversation",
+    method: "DELETE",
+    url: `/api/agents/conversations/${conversationId}`,
+    workspaceId: workspace,
+  });
+  await expect(page.getByText("Succeeded")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Hybrid", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`Deployment runbook ${suffix}`, { exact: true }),
+  ).toBeVisible();
+
+  // Editing a note makes its indexed chunk stale. Rather than pinning the
+  // transient "indexing" badge — a race against the re-index worker — wait
+  // for the indexer to catch up, then assert the hybrid retrieval answers
+  // from the fresh chunk.
+  await api(page, workspace, `/api/notes/${note.id}`, {
+    method: "PATCH",
+    body: {
+      version: note.version,
+      content: "rotated emergency key is stored in the operations vault",
+    },
+  });
+  await waitForBackfillReady(page, workspace);
+  await page
+    .getByRole("textbox", { name: "Message the agent", exact: true })
+    .fill("rotated emergency key");
+  await page.getByRole("button", { name: "Send message" }).click();
+  const secondRun = page.locator("article").last();
+  await expect(secondRun.getByText("rotated emergency key")).toBeVisible();
+  await expect(secondRun.getByText("Hybrid", { exact: true })).toBeVisible();
+  await expect(
+    secondRun.getByText(`Deployment runbook ${suffix}`, { exact: true }),
+  ).toBeVisible();
+
+  // The fallback badge is only deterministic with no embedding profile at
+  // all: retrieval must then be full-text only, and the note must still
+  // surface through it.
+  await api(
+    page,
+    workspace,
+    `/api/credentials/${credential.id}/embedding-default`,
+    {
+      method: "PATCH",
+      body: { enabled: false },
+    },
+  );
+  await page
+    .getByRole("textbox", { name: "Message the agent", exact: true })
+    .fill("operations vault");
+  await page.getByRole("button", { name: "Send message" }).click();
+  const thirdRun = page.locator("article").last();
+  await expect(thirdRun.getByText("operations vault")).toBeVisible();
+  await expect(
+    thirdRun.getByText("Full-text only", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    thirdRun.getByText(`Deployment runbook ${suffix}`, { exact: true }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page
+      .getByRole("paragraph")
+      .filter({ hasText: "deployment recovery" })
+      .first(),
+  ).toBeVisible();
 });

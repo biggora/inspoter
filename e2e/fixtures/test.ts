@@ -7,10 +7,33 @@ import {
   type TestInfo,
 } from "@playwright/test";
 
+interface TeardownStep {
+  description: string;
+  method: string;
+  url: string;
+  workspaceId: string;
+  body?: unknown;
+  expectStatus?: number;
+}
+
 interface DeterministicTestData {
   suffix: string;
   name: (baseName: string) => string;
   localUrl: (path: string) => string;
+  /**
+   * Register a best-effort cleanup request for rows a test created outside
+   * the category helper (credentials, notes, agents, ...). Steps run in
+   * reverse registration order during fixture teardown — which runs even
+   * when the test body times out, unlike cleanup in a test-body `finally`:
+   * Playwright closes the page while the body is still unwinding, so a
+   * `finally` + page.evaluate silently leaks rows into the shared E2E
+   * database. A step whose response status differs from `expectStatus`
+   * (default 204) fails the test after teardown so leaks surface instead of
+   * poisoning later specs. Register the owning resource first, then any step
+   * that must be undone before its deletion (e.g. disable an embedding
+   * profile before deleting its credential).
+   */
+  registerTeardown: (step: TeardownStep) => void;
   /**
    * Register a **bookmark** category id for teardown. Cleanup goes through
    * DELETE /api/categories/{id} and requires a 204 — a 404 means the id never
@@ -96,6 +119,31 @@ async function messageCategoryIds(
   );
 }
 
+async function runTeardownStep(
+  page: Page,
+  appUrl: URL,
+  step: TeardownStep,
+): Promise<number> {
+  const url = new URL(step.url, appUrl).toString();
+  return page.evaluate(
+    async ([requestUrl, method, wsId, stepBody]) => {
+      const hasBody = stepBody !== null;
+      return (
+        await fetch(requestUrl, {
+          method,
+          redirect: "manual",
+          headers: {
+            "x-inspoter-workspace": wsId,
+            ...(hasBody ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(hasBody ? { body: JSON.stringify(stepBody) } : {}),
+        })
+      ).status;
+    },
+    [url, step.method, step.workspaceId, step.body ?? null] as const,
+  );
+}
+
 async function cleanupFailure(
   page: Page,
   appUrl: URL,
@@ -149,6 +197,7 @@ export const test = base.extend<{ testData: DeterministicTestData }>({
       const categoryIds: string[] = [];
       const deletedByTest = new Set<string>();
       const externalNetworkAttempts: string[] = [];
+      const teardownSteps: TeardownStep[] = [];
       const suffix = suffixFor(testInfo);
 
       await context.route("**/*", async (route) => {
@@ -187,6 +236,9 @@ export const test = base.extend<{ testData: DeterministicTestData }>({
             }
             deletedByTest.add(id);
           },
+          registerTeardown: (step) => {
+            teardownSteps.push(step);
+          },
         });
       } finally {
         await testInfo.attach("external-network-attempts", {
@@ -194,8 +246,18 @@ export const test = base.extend<{ testData: DeterministicTestData }>({
           contentType: "application/json",
         });
 
-        const workspaceId = await workspaceIdFromPage(page);
         const failures: string[] = [];
+        for (const step of teardownSteps.reverse()) {
+          const expectedStatus = step.expectStatus ?? 204;
+          const status = await runTeardownStep(page, appUrl, step);
+          if (status === expectedStatus) continue;
+          failures.push(
+            `Teardown ${step.method} ${step.url} (${step.description}) ` +
+              `returned ${status}, expected ${expectedStatus}.`,
+          );
+        }
+
+        const workspaceId = await workspaceIdFromPage(page);
         for (const id of categoryIds.reverse()) {
           const expectedStatus = deletedByTest.has(id) ? 404 : 204;
           const status = await deleteCategoryStatus(
