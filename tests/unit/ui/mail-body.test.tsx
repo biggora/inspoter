@@ -2,12 +2,85 @@
 
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { simpleParser } from "mailparser";
 import { describe, expect, it } from "vitest";
 
 import { MailBody } from "@/components/mail/mail-body";
 import { renderWithIntl } from "../../test-utils";
 
 describe("MailBody", () => {
+  it("hides legacy C1 controls while preserving Baltic text and line breaks", async () => {
+    // Minimal reproduction of the LMT message's declared charset and bytes.
+    const parsed = await simpleParser(
+      Buffer.from(
+        'Content-Type: text/plain; charset="ISO-8859-13"\r\n' +
+          "Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
+          "Hello!=0A=0A=84LMT elektroniskais r=E7=EDins=94 =96 J=FBsu izv=E7le.",
+      ),
+    );
+    const bodyText = parsed.text ?? "";
+    expect(bodyText).toContain("\u0084");
+    expect(parsed.html).toBe(false);
+    renderWithIntl(<MailBody bodyText={bodyText} bodyHtml={null} />);
+
+    expect(screen.getByRole("region").textContent).toBe(
+      "Hello!\n\nLMT elektroniskais rēķins  Jūsu izvēle.",
+    );
+  });
+
+  it("links plain-text email addresses without swallowing punctuation or markup", () => {
+    const { container } = renderWithIntl(
+      <MailBody
+        bodyText={
+          "Email: reader@example.com.\n<admin+mail@example.co.uk> <img src=x onerror=alert(1)>"
+        }
+        bodyHtml={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "reader@example.com" }),
+    ).toHaveAttribute("href", "mailto:reader@example.com");
+    expect(
+      screen.getByRole("link", { name: "admin+mail@example.co.uk" }),
+    ).toHaveAttribute("href", "mailto:admin+mail@example.co.uk");
+    expect(screen.getByRole("region").textContent).toBe(
+      "Email: reader@example.com.\n<admin+mail@example.co.uk> <img src=x onerror=alert(1)>",
+    );
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("links web addresses and preserves surrounding punctuation", () => {
+    const bodyText =
+      "See (https://example.com/bill?id=42&lang=lv), http://example.org.\nwww.example.com and lmt.lv; ftp://example.com/file.";
+    renderWithIntl(<MailBody bodyText={bodyText} bodyHtml={null} />);
+
+    expect(screen.getByRole("region").textContent).toBe(bodyText);
+    expect(
+      screen.getAllByRole("link").map((link) => link.getAttribute("href")),
+    ).toEqual([
+      "https://example.com/bill?id=42&lang=lv",
+      "http://example.org",
+      "http://www.example.com",
+      "http://lmt.lv",
+      "ftp://example.com/file",
+    ]);
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
+  });
+
+  it("keeps executable schemes inert", () => {
+    renderWithIntl(
+      <MailBody
+        bodyText="javascript:alert(1) data:text/html,<script>alert(1)</script>"
+        bodyHtml={null}
+      />,
+    );
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
   it("preserves authored colors for branded email controls", () => {
     const { container } = renderWithIntl(
       <MailBody

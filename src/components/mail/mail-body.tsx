@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import DOMPurify from "dompurify";
+import LinkifyIt from "linkify-it";
 import { Button } from "@/components/ui/button";
 
 interface MailBodyProps {
@@ -84,6 +86,35 @@ function subscribeNoop() {
   return () => {};
 }
 
+const linkify = new LinkifyIt();
+
+function renderPlainText(value: string) {
+  // Legacy mail may contain C1 controls from a mislabeled charset. Keep the
+  // stored message intact, but do not render nonprinting controls as glyphs.
+  const text = value.replace(/[\u0080-\u009f]/gu, "");
+  const parts = [];
+  let offset = 0;
+  for (const match of linkify.match(text) ?? []) {
+    if (!/^(?:https?:\/\/|ftp:\/\/|mailto:|\/\/)/iu.test(match.url)) continue;
+    parts.push(text.slice(offset, match.index));
+    parts.push(
+      <Link
+        key={match.index}
+        href={match.url}
+        prefetch={false}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary-600 underline underline-offset-2"
+      >
+        {match.text}
+      </Link>,
+    );
+    offset = match.lastIndex;
+  }
+  parts.push(text.slice(offset));
+  return parts;
+}
+
 export function MailBody({ bodyText, bodyHtml }: MailBodyProps) {
   const t = useTranslations("mail");
   const [allowExternal, setAllowExternal] = useState(false);
@@ -136,7 +167,7 @@ export function MailBody({ bodyText, bodyHtml }: MailBodyProps) {
       role="region"
       aria-label={t("bodyLabel")}
     >
-      {bodyText}
+      {renderPlainText(bodyText)}
     </pre>
   );
 }
