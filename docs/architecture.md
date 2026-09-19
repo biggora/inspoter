@@ -106,7 +106,7 @@ flowchart LR
 | CURRENT | Redocly CLI                      | `2.39.0`       | `2.39.0`                            | `package.json`, `pnpm-lock.yaml` |
 | CURRENT | Package manager                  | `pnpm@11.12.0` | lockfile format `9.0`               | `package.json`, `pnpm-lock.yaml` |
 | CURRENT | Application image                | —              | `node:24-slim` in all Docker stages | `Dockerfile`                     |
-| CURRENT | Database image                   | —              | `pgvector/pgvector:0.8.6-pg18-bookworm` | `docker-compose.yml`        |
+| CURRENT | Database image                   | —              | `ghcr.io/biggora/postgres-postgis-pgvector:v1.0.0@sha256:7b23a45f31ef203cba4a27a341327ae1351c6775afbc0a3928c746fcf852f8e3` | `docker-compose.yml`        |
 
 **CURRENT:** A developer workstation may use Node 22, but workstation Node is not a deployment contract. The Docker contract is `node:24-slim`.
 

@@ -1,7 +1,7 @@
 name: inspoter-prod
 services:
   db:
-    image: pgvector/pgvector:0.8.6-pg18-bookworm
+    image: ghcr.io/biggora/postgres-postgis-pgvector:v1.0.0@sha256:7b23a45f31ef203cba4a27a341327ae1351c6775afbc0a3928c746fcf852f8e3
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
