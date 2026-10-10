@@ -369,7 +369,7 @@ export function CardDetailDialog({
 
   return (
     <Dialog open={state !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {card ? card.title : t("cardDialogCreateTitle")}
