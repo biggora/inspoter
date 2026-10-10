@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useFormatter } from "next-intl";
 
 import type { MessageEmbedDto } from "./api";
+import { LinkifiedText } from "./linkified-text";
 
 // Renders a Discord embed card (specs/discord-webhook-compatibility.md §3.1).
 // Everything here is sender-supplied data: only http(s) URLs become links (and
@@ -79,7 +80,7 @@ export function MessageEmbed({ embed }: { embed: MessageEmbedDto }) {
 
           {embed.description && (
             <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-700">
-              {embed.description}
+              <LinkifiedText text={embed.description} />
             </p>
           )}
 
@@ -96,7 +97,7 @@ export function MessageEmbed({ embed }: { embed: MessageEmbedDto }) {
                     {field.name}
                   </p>
                   <p className="text-xs break-words whitespace-pre-wrap text-foreground-700">
-                    {field.value}
+                    <LinkifiedText text={field.value} />
                   </p>
                 </div>
               ))}

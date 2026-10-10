@@ -11,6 +11,7 @@ import { LoadingRegion } from "@/components/ui/loading";
 import { ListSkeleton } from "@/components/ui/skeletons";
 import { formatRelativeTime, type Format } from "@/lib/format/relative-time";
 import type { MessageDto } from "./api";
+import { LinkifiedText } from "./linkified-text";
 import { MessageEmbeds } from "./message-embed";
 
 const AUTHOR_COLOR_PALETTE = [
@@ -249,7 +250,7 @@ export function MessageTimeline({
                     </div>
                     {message.content && (
                       <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground-800">
-                        {message.content}
+                        <LinkifiedText text={message.content} />
                       </p>
                     )}
                     <MessageEmbeds embeds={message.embeds ?? null} />
