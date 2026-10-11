@@ -134,6 +134,15 @@ export function NoteMarkdownEditor({
         class:
           "min-h-full px-4 py-3 text-sm leading-6 text-foreground-900 outline-none",
       },
+      // openOnClick calls window.open without noopener, so open links here.
+      handleClick: (view, _pos, event) => {
+        if (event.button !== 0) return false;
+        const link = (event.target as HTMLElement | null)?.closest("a");
+        const href = link?.getAttribute("href");
+        if (!link || !href || !view.dom.contains(link)) return false;
+        window.open(link.href, "_blank", "noopener,noreferrer");
+        return true;
+      },
     },
     onUpdate: ({ editor: currentEditor }) => {
       onChangeRef.current(currentEditor.getMarkdown());
