@@ -1,11 +1,11 @@
 # Design Specification — inspoter
 
-**Version:** v2.25
-**Status:** Latvian added as a third operator-selectable UI locale
+**Version:** v2.26
+**Status:** The workspace of a tab lives in the URL; the switcher navigates the tab
 **Owner:** UI/UX Designer
-**Date:** 2026-08-25
+**Date:** 2026-10-12
 **Source of truth for:** frontend implementor and test engineer
-**Consumes:** docs/prd.md v3.18, docs/architecture.md v1.19, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
+**Consumes:** docs/prd.md v3.24, docs/architecture.md v1.29, specs/mail-label-filtering-plan.md v0.3, and all three Q-3 inputs: specs/prototype/, specs/inspot-design/, specs/ui.md
 
 ---
 
@@ -15,7 +15,7 @@ This document is the executable visual and interaction contract for remediation 
 
 Precedence, highest first:
 
-1. docs/prd.md v3.2 governs product scope, acceptance criteria, explicit Q decisions, and D-21/Q-13.
+1. docs/prd.md v3.2 governs product scope, acceptance criteria, explicit Q decisions, and D-21/Q-13 and D-24/Q-16.
 2. specs/inspot-design/ governs tokens, fonts, components, icon family, density, and motion.
 3. specs/prototype/ governs demonstrated geometry and composition when it does not conflict with items 1–2.
 4. specs/ui.md governs routes, flows, responsive transformations, and shared states, subject to the exceptions below.
@@ -58,7 +58,7 @@ The precedence above, approved PRD decisions, and §0.1 exceptions still govern.
 
 The seven original product sections are, in this order: Bookmarks, Domains, Servers, Mail, Messages, Logs, Alerts. Later slices added Hosting, Services, and — as of 2026-07-30 — Dashboards, which leads the list.
 
-Settings and Help are separated utility destinations, not product sections. Login and Shell are shared surfaces, not product sections. Management is the product home: successful login and the root protected entry resolve to `/management`. It is the first, non-hideable shell destination for owners and managers. Dashboards remains a hideable product section; `/dashboards` still forwards to the workspace's start dashboard or renders its create prompt.
+Settings and Help are separated utility destinations, not product sections. Login and Shell are shared surfaces, not product sections. Management is the product home: successful login and the root protected entry resolve to `/management`, which redirects to `/w/<slug>/management` of the resolved workspace (PRD AC-WS-014). Every protected route lives under `/w/<slug>`, after any locale prefix. It is the first, non-hideable shell destination for owners and managers. Dashboards remains a hideable product section; `/dashboards` still forwards to the workspace's start dashboard or renders its create prompt.
 
 Desktop navigation places the product sections in the main group with Settings and Help at the bottom. Mobile uses the same order in an off-canvas sheet. Active navigation uses color, text weight, and aria-current; color alone is insufficient.
 
@@ -191,7 +191,9 @@ After success, navigate to /bookmarks. Invalid credentials preserve the username
 
 The shared protected shell contains the 256/64px sidebar, 56px top bar, workspace switcher, seven-section navigation, separated Settings link, page title/context action, operator menu, and Russian logout action. The workspace switcher sits in the sidebar header; the top bar's right side hosts the theme switcher (v2.2, §0.1 Q-2) and the operator menu — an avatar-initial-plus-username trigger opening a dropdown with the operator's username, a fixed "Оператор" label, and the Russian logout action.
 
-Workspace switching updates all seven sections, Settings, webhook tokens, selected detail, local provider-resource bindings, mock state, caches, and cursors without a full-page reload. A switch aborts prior requests, discards late responses, clears the previous workspace's selected binding/detail and client state, remounts the keyed workspace boundary, and refetches destination content. The switcher shows pending, failure/retry, and empty-membership handling. The top bar action belongs to the current page and collapses to a labeled or icon-plus-label mobile control without losing its accessible name.
+Workspace switching navigates the current tab, without a full-page reload, to the root of the same section in the selected workspace (`/w/<slug>/<section>`). All seven sections, Settings, webhook tokens, selected detail, local provider-resource bindings, mock state, caches, and cursors follow. The URL change remounts the keyed workspace boundary, which discards the previous workspace's selected binding/detail and client state; other tabs keep their workspace. Switcher entries are menu items rendered as links, so each can also open in a new tab. A switcher entry is a link, so the switcher shows a link-navigation pending state on the selected entry until the target page renders, and empty-membership handling. The top bar action belongs to the current page and collapses to a labeled or icon-plus-label mobile control without losing its accessible name.
+
+**Workspace not found (AC-WS-013):** a `/w/<slug>/...` request whose slug is unknown or names a workspace the operator is not a member of renders one 404 page for both cases. The page has no shell (no sidebar, top bar, or workspace switcher) and no workspace data. Its heading and text are localized and do not say whether the workspace exists. It offers a link to `/`, which redirects to the last-used workspace. On render, focus moves to the heading.
 
 ### 4.3 Settings utility
 
@@ -199,7 +201,7 @@ Routes: /settings, /settings/workspace, and /settings/webhooks.
 
 /settings remains a compact utility hub with two active cards/links: Workspace → /settings/workspace and Webhooks → /settings/webhooks. Neither card is disabled or a placeholder.
 
-Workspace settings provide complete CRUD and membership management: create, rename, delete, list members, add an existing operator, create an invite-only operator, and remove a member. Workspace deletion sits in a visually separated danger zone, requires explicit confirmation, states that workspace-scoped database content is removed, and states that provider/external resources are not removed. If the active workspace is deleted, the shell resolves another membership or returns to the permitted selection/login flow.
+Workspace settings provide complete CRUD and membership management: create, rename, delete, list members, add an existing operator, create an invite-only operator, and remove a member. Creating a workspace from Settings navigates the tab to `/w/<new slug>/settings/workspace`; creating one from the workspace switcher navigates to `/w/<new slug>/management`. Removing yourself from the workspace shown in the tab navigates to `/`, which redirects to the last-used workspace. The locale prefix is kept in all three cases. Workspace deletion sits in a visually separated danger zone, requires explicit confirmation, states that workspace-scoped database content is removed, and states that provider/external resources are not removed. If the workspace shown in the tab is deleted, the tab navigates to `/`, which redirects to the last-used workspace or, when no membership remains, reaches the permitted selection/login flow.
 
 Workspace-wide webhook-token settings are active, not a placeholder. They retain the legacy null-channel list/create/one-time reveal/copy/revoke flow and never expose channel-scoped credentials. Channel-scoped webhooks are managed inside the owning channel's settings (§5.5). Never reveal a stored secret again. Use Russian labels; token values and API examples are monospace. Both token families follow the active workspace.
 
@@ -566,7 +568,7 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 | Messages no auto-create                         | Q-8; AC-MSG-006, AC-MSG-008 inactive, AC-MSG-013                      |
 | Logs read/filter/sort and observable ingest     | docs/idea.md Logs; specs/ui.md Logs; AC-LOG-001..005                  |
 | Alerts delete, no acknowledge/resolve           | Q-7; AC-ALR-001..008                                                  |
-| All-content workspace switch and isolation      | AC-WS-001..011; D-21/Q-13                                             |
+| All-content workspace switch and isolation      | AC-WS-001..015; D-21/Q-13; D-24/Q-16                                  |
 | Legacy and channel-scoped webhook utilities     | AC-WH-008..009; channel-webhook amendment (2026-07-18)                |
 | Observable ingest without added surface         | AC-WH-003, AC-WH-007; AC-MAIL-006; AC-MSG-005; AC-LOG-005; AC-ALR-007 |
 
@@ -575,6 +577,23 @@ Snapshot basis: repository state reviewed 2026-07-14. Status is conformance agai
 Dark-token values present in specs/inspot-design/tokens/colors.css (the `.dark` block) are activated as of v2.2, per the same-change product decision recorded in the Changelog. They are already mirrored 1:1 in the app's own token file (src/app/inspot-tokens.css), applied via the `.dark` class on `<html>` when the operator selects dark theme from the top-bar switcher (§4.2). No other light-theme decision in this specification changes; the acceptance criteria in §7 continue to bind the light-theme presentation.
 
 ## Changelog
+
+### v2.26 — 2026-10-12 (workspace in the URL)
+
+- §1: login and the root entry still resolve to `/management`, which now
+  redirects to `/w/<slug>/management`. Protected routes live under
+  `/w/<slug>` (PRD v3.24, Q-16, AC-WS-014).
+- §4.2: the workspace switcher navigates the current tab to the same section
+  root of the selected workspace instead of refreshing a session-wide
+  workspace, and tabs are independent (AC-WS-010, AC-WS-012). The switcher's
+  layout is unchanged (`specs/ui.md:15`).
+- §4.2: added the Workspace not found state (AC-WS-013); the switcher shows a
+  link-navigation pending state instead of failure/retry for the old switch
+  API call.
+- §4.3: added the landing URLs after creating a workspace and after removing
+  yourself; the shell no longer resolves another membership when the open
+  workspace is deleted (the tab goes to `/`).
+- §8: traceability row now AC-WS-001..015, D-24/Q-16.
 
 ### v2.25 — 2026-08-29 (design-system extraction pass)
 
