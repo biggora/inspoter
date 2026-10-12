@@ -148,6 +148,7 @@ model Workspace {
   noteTags                  NoteTag[]
   noteTagLinks              NoteTagLink[]
   noteAssets                NoteAsset[]
+  noteImages                NoteImage[]
   noteChunks                NoteChunk[]
   noteIndexJobs             NoteIndexJob[]
   embeddingProfile          WorkspaceEmbeddingProfile?
@@ -1783,6 +1784,7 @@ model Note {
   incomingLinks NoteLink[]     @relation("NoteLinkTarget")
   tags          NoteTagLink[]
   assets        NoteAsset[]
+  images        NoteImage[]
   chunks        NoteChunk[]
   indexJobs     NoteIndexJob[]
 
@@ -1864,6 +1866,30 @@ model NoteAsset {
 
   @@unique([id, workspaceId])
   @@index([workspaceId, noteId, createdAt])
+}
+
+// Images embedded in note content as ![alt](/api/notes/images/<id>). Uploaded
+// before a note references them (noteId stays null until attachNoteImages
+// links them at save time), so noteId is optional, unlike the older, unused
+// NoteAsset above. Orphans (noteId null past a grace period) are swept by
+// note-image-retention-scheduler.
+model NoteImage {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  noteId          String?
+  noteWorkspaceId String?
+  note            Note?     @relation(fields: [noteId, noteWorkspaceId], references: [id, workspaceId], onDelete: Cascade)
+  // Detected from magic bytes, never the declared upload type.
+  contentType     String
+  bytes           Bytes
+  byteSize        Int
+  sha256          String
+  createdAt       DateTime  @default(now())
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, sha256])
+  @@index([noteId, createdAt])
 }
 
 // --- AI Assistant (agents, skills, scheduled runs) ---

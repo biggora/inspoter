@@ -61,5 +61,9 @@ export async function register() {
     const { startNoteIndexScheduler } =
       await import("@/lib/services/note-index-scheduler");
     startNoteIndexScheduler();
+
+    const { startNoteImageRetentionScheduler } =
+      await import("@/lib/services/note-image-retention-scheduler");
+    startNoteImageRetentionScheduler();
   }
 }

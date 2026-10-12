@@ -8,6 +8,7 @@ import type {
   NoteUpdateInput,
 } from "@/lib/validation/notes";
 import { enqueueNoteIndexJob } from "@/lib/services/note-index";
+import { attachNoteImages } from "@/lib/services/note-images";
 
 // Sole Prisma caller for Note (folder/hierarchy concerns live in
 // src/lib/services/note-folders.ts). Modeled on src/lib/services/kanban.ts:
@@ -360,7 +361,7 @@ export async function createNoteTx(
   if (input.folderId != null) {
     await requireFolder(tx, workspaceId, input.folderId);
   }
-  return tx.note.create({
+  const note = await tx.note.create({
     data: {
       ...(preferredId ? { id: preferredId } : {}),
       workspaceId,
@@ -372,6 +373,8 @@ export async function createNoteTx(
       excerpt: buildExcerpt(content),
     },
   });
+  await attachNoteImages(tx, workspaceId, note.id, content);
+  return note;
 }
 
 // Optimistic concurrency via updateMany + a version predicate, not a plain
@@ -402,11 +405,20 @@ export async function updateNote(
     data.excerpt = buildExcerpt(input.content);
   }
 
+  // Same transaction as the write, so an image the new content references is
+  // linked to the note atomically with the save and cannot be swept as an
+  // orphan in between.
   let result: Prisma.BatchPayload;
   try {
-    result = await db.note.updateMany({
-      where: { id, workspaceId, version: input.version },
-      data,
+    result = await db.$transaction(async (tx) => {
+      const updated = await tx.note.updateMany({
+        where: { id, workspaceId, version: input.version },
+        data,
+      });
+      if (updated.count > 0 && input.content !== undefined) {
+        await attachNoteImages(tx, workspaceId, id, input.content);
+      }
+      return updated;
     });
   } catch (error) {
     // P2002 here can only be the normalizedTitle unique constraint, and only
