@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
     back: vi.fn(),
   }),
   usePathname: () => "/",
+  useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
   notFound: () => {
     throw new Error("notFound");

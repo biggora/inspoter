@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import publicApiSpec from "../../../../../../specs/openapi.json";
+import publicApiSpec from "@specs/openapi.json";
 import { SwaggerDocumentation } from "@/components/api-docs/swagger-documentation";
 import { PageBody } from "@/components/shell/page-body";
 import { PageHeader } from "@/components/shell/page-header";
