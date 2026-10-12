@@ -18,7 +18,7 @@ import REPOSITORY_ROOT from "./repository-root.cjs";
 const CI_PROFILE_SCRIPT = realpathSync(
   resolve(REPOSITORY_ROOT, "scripts", "ci-profile.mjs"),
 );
-const PNPM_VERSION = "11.12.0";
+const PNPM_VERSION = "11.28.2";
 const CLEANUP_STEP = "test:db:down";
 const PNPM_VERSION_TIMEOUT_MS = 2_000;
 const PNPM_VERSION_OUTPUT_LIMIT = 64;

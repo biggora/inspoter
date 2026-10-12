@@ -85,7 +85,7 @@ function readProcessTree(pidPath: string) {
 function validLifecycleEnvironment(): NodeJS.ProcessEnv {
   return environmentWithExactKeys({
     npm_execpath: "ignored-by-ci-profile-tests",
-    npm_config_user_agent: "pnpm/11.12.0 npm/? node/test test",
+    npm_config_user_agent: "pnpm/11.28.2 npm/? node/test test",
     ALLOW_TEST_DB_RESET: "1",
     TEST_DATABASE_MARKER: "inspoter-e2e",
     DATABASE_URL: SAFE_DATABASE_URL,
@@ -213,14 +213,14 @@ describe("deterministic CI profile runner", () => {
       "corepack",
       "v1",
       "pnpm",
-      "11.12.0",
+      "11.28.2",
     );
     mkdirSync(ownerDirectory, { recursive: true });
     writeFileSync(
       join(ownerDirectory, "package.json"),
       JSON.stringify({
         name: "pnpm",
-        version: "11.12.0",
+        version: "11.28.2",
         bin: "pnpm.mjs",
       }),
     );
@@ -234,7 +234,7 @@ describe("deterministic CI profile runner", () => {
         'import { writeFileSync } from "node:fs";',
         'if (process.argv[2] === "--version") {',
         `  writeFileSync(${JSON.stringify(probeSentinel)}, "reached");`,
-        '  process.stdout.write("11.12.0\\n");',
+        '  process.stdout.write("11.28.2\\n");',
         '} else if (process.argv[2] === "run") {',
         `  writeFileSync(${JSON.stringify(runSentinel)}, "reached");`,
         "}",
@@ -245,7 +245,7 @@ describe("deterministic CI profile runner", () => {
       cwd: REPOSITORY_ROOT,
       env: environmentWithExactKeys({
         npm_execpath: fakePnpmCli,
-        npm_config_user_agent: "pnpm/11.12.0 npm/? node/test test",
+        npm_config_user_agent: "pnpm/11.28.2 npm/? node/test test",
         ALLOW_TEST_DB_RESET: "0",
         TEST_DATABASE_MARKER: "inspoter-e2e",
         DATABASE_URL: SAFE_DATABASE_URL,

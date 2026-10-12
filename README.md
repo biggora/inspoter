@@ -25,7 +25,7 @@ Inspoter — self-hosted панель для управления доменам
 - Prisma 7 и PostgreSQL 18;
 - Vitest и Playwright;
 - Python 3.12 (Docker-агент сбора метрик, stdlib only);
-- Node.js 24.x и pnpm 11.12.0;
+- Node.js 24.x и pnpm 11.28.2;
 - Docker с Docker Compose для приведённых ниже команд запуска PostgreSQL и всего приложения.
 
 Версия pnpm закреплена в `package.json`. Для её установки через Corepack выполните `corepack enable`.
