@@ -22,12 +22,15 @@ export function legacySectionPage(section: string) {
     searchParams: Promise<LegacySearchParams>;
   }) {
     const { rest = [] } = await params;
-    const path = legacyWorkspacePath([section, ...rest], await searchParams);
+    const segments = [section, ...rest];
+    const path = legacyWorkspacePath(segments, await searchParams);
 
     // Unauthenticated operators are sent to /login by the DAL inside.
-    const slug = await pickLegacyWorkspaceSlug();
+    const slug = await pickLegacyWorkspaceSlug(segments);
     const locale = await getLocale();
-    if (!slug) return redirect({ href: "/no-workspace", locale });
-    redirect({ href: toWorkspacePath(slug, path), locale });
+    redirect({
+      href: slug ? toWorkspacePath(slug, path) : "/no-workspace",
+      locale,
+    });
   };
 }

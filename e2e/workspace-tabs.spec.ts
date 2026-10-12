@@ -473,6 +473,31 @@ test.describe("legacy URLs (AC-WS-014)", () => {
     await expect(page).toHaveURL(atPath(`/w/${a.slug}/notes`));
   });
 
+  test("a deep link goes to the workspace that owns the entity, not to last-used", async ({
+    page,
+    testData,
+  }) => {
+    const home = await signIn(page);
+    const a = await createWorkspace(page, home.id, testData.name("Deep A"));
+    const b = await createWorkspace(page, home.id, testData.name("Deep B"));
+    const note = await createNote(page, b, testData.name("Deep note"));
+
+    // Last-used is A; the note lives in B.
+    await visit(page, `/w/${a.slug}/management`);
+
+    const redirect = await page.request.get(`/notes/${note.id}`, {
+      maxRedirects: 0,
+    });
+    expect(redirect.status()).toBe(307);
+    expect(new URL(redirect.headers()["location"]!, page.url()).pathname).toBe(
+      `/w/${b.slug}/notes/${note.id}`,
+    );
+
+    await page.goto(`/notes/${note.id}`);
+    await expect(page).toHaveURL(atPath(`/w/${b.slug}/notes/${note.id}`));
+    await expectWorkspaceShown(page, { ...b });
+  });
+
   test("a first segment that is not a section keeps the global 404", async ({
     page,
   }) => {

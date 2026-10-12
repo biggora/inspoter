@@ -2,8 +2,10 @@ import { headers } from "next/headers";
 import { routing } from "@/i18n/routing";
 import {
   findMemberWorkspaceBySlug,
+  requireOperator,
   resolveLastUsedWorkspace,
 } from "@/lib/auth/dal";
+import { resolveDeepLinkWorkspaceSlug } from "@/lib/services/legacy-link-resolver";
 
 // Legacy URLs (no `/w/<slug>` prefix) are redirected to the workspace the
 // operator most plausibly meant (workspace-in-url.md §4.5, AC-WS-014). Used by
@@ -68,11 +70,21 @@ function workspaceSlugFromReferer(
  * The slug a legacy URL should be redirected under, or null when the operator
  * has no workspace at all (the caller sends them to /no-workspace).
  *
- * Order: same-origin Referer `/w/<slug>` if the operator is a member of that
- * workspace, otherwise the last-used workspace. The Referer is only a hint and
- * is always membership-checked. Slice 5 (owning-entity lookup) goes first.
+ * Order: the workspace owning the entity of a single-entity deep link, when the
+ * operator is a member of it; else the same-origin Referer `/w/<slug>` if the
+ * operator is a member of that workspace; else the last-used workspace. Every
+ * hint is membership-checked, and an entity the operator cannot see falls
+ * through exactly like a link without an id, so its existence is not disclosed.
+ * `segments` are the legacy route segments, section first (`["notes", "<id>"]`).
  */
-export async function pickLegacyWorkspaceSlug(): Promise<string | null> {
+export async function pickLegacyWorkspaceSlug(
+  segments: string[] = [],
+): Promise<string | null> {
+  const [section = "", ...rest] = segments;
+  const operator = await requireOperator();
+  const owning = await resolveDeepLinkWorkspaceSlug(operator.id, section, rest);
+  if (owning) return owning;
+
   const headerList = await headers();
   const hinted = workspaceSlugFromReferer(
     headerList.get("referer"),
