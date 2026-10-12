@@ -154,6 +154,11 @@ export function NoteEditorPanel({ note }: NoteEditorPanelProps) {
             blockquote: t("editorBlockquote"),
             codeBlock: t("editorCodeBlock"),
             horizontalRule: t("editorHorizontalRule"),
+            image: t("editorImage"),
+            imageUnsupportedType: t("editorImageUnsupportedType"),
+            imageTooLarge: (maxMegabytes) =>
+              t("editorImageTooLarge", { size: maxMegabytes }),
+            imageUploadFailed: t("editorImageUploadFailed"),
             link: t("editorLink"),
             linkUrl: t("editorLinkUrl"),
             applyLink: t("editorApplyLink"),

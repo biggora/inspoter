@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { Markdown } from "@tiptap/markdown";
 import StarterKit from "@tiptap/starter-kit";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
@@ -23,7 +24,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  NOTE_IMAGE_CONTENT_TYPES,
+  NOTE_IMAGE_MAX_BYTES,
+} from "@/lib/notes/images";
 import { cn } from "@/lib/utils";
+import { NoteImage } from "./note-image-extension";
+import {
+  clipboardHasText,
+  imageFilesFrom,
+  insertNoteImages,
+  noteMarkdown,
+  type NoteImageFailure,
+} from "./note-image-upload";
 
 interface NoteMarkdownEditorLabels {
   toolbar: string;
@@ -39,6 +52,10 @@ interface NoteMarkdownEditorLabels {
   blockquote: string;
   codeBlock: string;
   horizontalRule: string;
+  image: string;
+  imageUnsupportedType: string;
+  imageTooLarge: (maxMegabytes: number) => string;
+  imageUploadFailed: string;
   link: string;
   linkUrl: string;
   applyLink: string;
@@ -103,6 +120,12 @@ export function NoteMarkdownEditor({
   const onChangeRef = useRef(onChange);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Paste/drop handlers are created once with the editor, so they reach the
+  // latest upload callback (which needs the editor and labels) through a ref.
+  const uploadImagesRef = useRef<(files: File[], position?: number) => void>(
+    () => {},
+  );
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -121,11 +144,35 @@ export function NoteMarkdownEditor({
           },
         },
       }),
+      NoteImage,
       Markdown,
     ],
     content: initialMarkdown,
     contentType: "markdown",
     editorProps: {
+      handlePaste: (_view, event) => {
+        // Only a pure image copy (screenshot) is uploaded; a copy that also
+        // carries text (Word, Excel, web page) keeps the default paste.
+        const files = imageFilesFrom(event.clipboardData?.files);
+        if (files.length === 0 || clipboardHasText(event.clipboardData)) {
+          return false;
+        }
+        event.preventDefault();
+        uploadImagesRef.current(files);
+        return true;
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        const files = imageFilesFrom(event.dataTransfer?.files);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        const dropPosition = view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        })?.pos;
+        uploadImagesRef.current(files, dropPosition);
+        return true;
+      },
       attributes: {
         id,
         role: "textbox",
@@ -136,9 +183,26 @@ export function NoteMarkdownEditor({
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
-      onChangeRef.current(currentEditor.getMarkdown());
+      onChangeRef.current(noteMarkdown(currentEditor));
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    uploadImagesRef.current = (files, position) => {
+      const messages: Record<NoteImageFailure, string> = {
+        unsupportedType: labels.imageUnsupportedType,
+        tooLarge: labels.imageTooLarge(NOTE_IMAGE_MAX_BYTES / 1024 / 1024),
+        uploadFailed: labels.imageUploadFailed,
+      };
+      void insertNoteImages(
+        editor,
+        files,
+        (failure) => toast.error(messages[failure]),
+        position,
+      );
+    };
+  }, [editor, labels]);
 
   if (!editor) {
     return (
@@ -278,6 +342,24 @@ export function NoteMarkdownEditor({
           icon="ri-separator"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
         />
+        <ToolbarButton
+          label={labels.image}
+          icon="ri-image-add-line"
+          onClick={() => fileInputRef.current?.click()}
+        />
+        <Input
+          ref={fileInputRef}
+          type="file"
+          accept={NOTE_IMAGE_CONTENT_TYPES.join(",")}
+          multiple
+          hidden
+          className="hidden"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            if (files.length > 0) uploadImagesRef.current(files);
+          }}
+        />
         <Popover open={linkOpen} onOpenChange={setLinkOpen}>
           <PopoverTrigger
             render={
@@ -348,7 +430,7 @@ export function NoteMarkdownEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="min-h-0 flex-1 overflow-y-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-[var(--border-strong)] [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_code]:rounded-sm [&_.ProseMirror_code]:bg-[var(--surface-sunken)] [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:font-mono [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-semibold [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h4]:text-base [&_.ProseMirror_h4]:font-semibold [&_.ProseMirror_h5]:text-sm [&_.ProseMirror_h5]:font-semibold [&_.ProseMirror_h6]:text-sm [&_.ProseMirror_h6]:font-semibold [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-[var(--border-default)] [&_.ProseMirror_li]:my-1 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_p]:my-2 [&_.ProseMirror_p:first-child]:mt-0 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_pre]:my-3 [&_.ProseMirror_pre]:overflow-x-auto [&_.ProseMirror_pre]:rounded-md [&_.ProseMirror_pre]:bg-[var(--surface-sunken)] [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_pre]:font-mono [&_.ProseMirror_pre]:text-xs [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6"
+        className="min-h-0 flex-1 overflow-y-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-[var(--border-strong)] [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_code]:rounded-sm [&_.ProseMirror_code]:bg-[var(--surface-sunken)] [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:font-mono [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-semibold [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h4]:text-base [&_.ProseMirror_h4]:font-semibold [&_.ProseMirror_h5]:text-sm [&_.ProseMirror_h5]:font-semibold [&_.ProseMirror_h6]:text-sm [&_.ProseMirror_h6]:font-semibold [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_img]:my-2 [&_.ProseMirror_img]:h-auto [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-md [&_.ProseMirror-selectednode]:outline-2 [&_.ProseMirror-selectednode]:outline-[var(--focus-ring)] [&_.ProseMirror_hr]:border-[var(--border-default)] [&_.ProseMirror_li]:my-1 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_p]:my-2 [&_.ProseMirror_p:first-child]:mt-0 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_pre]:my-3 [&_.ProseMirror_pre]:overflow-x-auto [&_.ProseMirror_pre]:rounded-md [&_.ProseMirror_pre]:bg-[var(--surface-sunken)] [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_pre]:font-mono [&_.ProseMirror_pre]:text-xs [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6"
       />
     </div>
   );

@@ -43,10 +43,12 @@ interface ZodIssueLike {
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  // A multipart body needs the browser's own Content-Type (with boundary).
+  const isMultipart = init?.body instanceof FormData;
   const res = await fetch(url, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isMultipart ? {} : { "Content-Type": "application/json" }),
       [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "",
       ...(init?.headers ?? {}),
     },
@@ -109,6 +111,12 @@ export interface NoteSearchResult {
   nextCursor: string | null;
 }
 
+export interface NoteImageUpload {
+  id: string;
+  url: string;
+  markdown: string;
+}
+
 export interface NoteTreeResponse {
   folders: NoteFolderNode[];
   notes: NoteSummary[];
@@ -149,6 +157,14 @@ export const notesApi = {
       body: JSON.stringify(input),
     }),
   remove: (id: string) => request(`/api/notes/${id}`, { method: "DELETE" }),
+  uploadImage: (file: File) => {
+    const body = new FormData();
+    body.set("file", file);
+    return request<NoteImageUpload>("/api/notes/images", {
+      method: "POST",
+      body,
+    });
+  },
   move: (id: string, folderId: string | null) =>
     request<NoteSummary>(`/api/notes/${id}/move`, {
       method: "PATCH",
