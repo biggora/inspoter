@@ -6,7 +6,7 @@ Inspoter is a Next.js 16, React 19, TypeScript app for self-hosted infrastructur
 
 ## Build, Test, and Development Commands
 
-Use pnpm 11.12.0 via Corepack.
+Use pnpm 11.28.2 via Corepack.
 
 - `pnpm dev`: start the Turbopack dev server on `http://localhost:3800`.
 - `pnpm build`: create a production Next.js build.

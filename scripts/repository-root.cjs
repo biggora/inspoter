@@ -29,7 +29,7 @@ try {
   const packageManifest = JSON.parse(readFileSync(packagePath, "utf8"));
   if (
     packageManifest.name !== "inspoter" ||
-    packageManifest.packageManager !== "pnpm@11.12.0"
+    packageManifest.packageManager !== "pnpm@11.28.2"
   ) {
     failRepositoryIdentity();
   }

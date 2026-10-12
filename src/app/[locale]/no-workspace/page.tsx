@@ -9,8 +9,8 @@ import { logout } from "@/app/[locale]/login/actions";
 
 // Landing page for an authenticated Operator with zero workspace
 // memberships — e.g. a freshly auto-provisioned Authentik account before an
-// owner adds them to a workspace. Uses requireOperator() (not requireAuth()),
-// which does not require any WorkspaceMember row.
+// owner adds them to a workspace. Uses requireOperator() (not
+// requireWorkspaceBySlug()), which does not require any WorkspaceMember row.
 export default async function NoWorkspacePage() {
   const operator = await requireOperator();
 

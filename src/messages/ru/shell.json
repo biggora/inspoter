@@ -13,7 +13,6 @@
   "notificationsCalendarLabel": "Календарь: {count, plural, =0 {нет активных} one {# активное напоминание} few {# активных напоминания} many {# активных напоминаний} other {# активных напоминания}}",
   "workspaceLabel": "Рабочее пространство: {name}",
   "loadWorkspacesError": "Не удалось загрузить рабочие пространства.",
-  "switchWorkspaceError": "Не удалось переключить рабочее пространство. Попробуйте снова.",
   "createWorkspaceNameRequired": "Название рабочего пространства обязательно.",
   "workspaceCreated": "Рабочее пространство создано.",
   "createWorkspaceError": "Не удалось создать рабочее пространство.",

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import {
+  WorkspaceAccessDeniedError,
   WorkspaceContextRequiredError,
-  WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
 import {
   AlertCategoryNotFoundError,
@@ -94,11 +94,12 @@ import { ExecutiveBriefError } from "@/lib/services/executive-briefs";
 //
 // Persistence to the Logs page (feat/logs unexpected-errors): only the
 // genuinely unexpected paths are logged — the final `throw error` and the
-// ServerMetricsError fallthrough to 500. The typed 400/404/409/503
+// ServerMetricsError fallthrough to 500. The typed 400/403/404/409/503
 // branches above are expected client-side rejections (bad input, not
-// found, stale workspace context, ownership) and are deliberately left
-// silent so the Logs page isn't flooded with noise no operator can act
-// on. Logging is best-effort and only fires when a workspaceId is known.
+// found, missing or foreign workspace context, ownership) and are
+// deliberately left silent so the Logs page isn't flooded with noise no
+// operator can act on. Logging is best-effort and only fires when a
+// workspaceId is known.
 
 // Truncate so a single pathological stack trace can't bloat the LogEntry
 // table; enough context survives to identify the failing frame.
@@ -128,10 +129,11 @@ export function toErrorResponse(
       { status: 400 },
     );
   }
-  if (error instanceof WorkspaceContextStaleError) {
+  // 403, identical for an unknown id and a non-member (no workspace probing).
+  if (error instanceof WorkspaceAccessDeniedError) {
     return jsonResponse(
-      { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
-      { status: 409 },
+      { error: "WORKSPACE_ACCESS_DENIED", message: error.message },
+      { status: 403 },
     );
   }
   if (error instanceof ManagementError) {

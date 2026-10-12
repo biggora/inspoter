@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useLinkStatus } from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/generated/prisma/client";
 import { ApiError, workspacesApi } from "@/components/workspace/api";
@@ -40,23 +41,35 @@ interface WorkspaceSwitcherProps {
   currentId: string;
 }
 
+// Rendered inside each workspace link: Next reports the link's navigation as
+// pending until the target page renders, and the whole shell then remounts.
+function SwitchPending() {
+  const { pending } = useLinkStatus();
+  return pending ? <Spinner aria-hidden className="shrink-0" /> : null;
+}
+
 // Sidebar-header workspace switcher: lists every workspace the operator is a
-// member of and lets them switch active workspace, or create a new one, from
-// a single dropdown (task spec: "Workspace Switcher"). Mirrors the Bookmarks
-// dialogs' fetch-then-`router.refresh()` pattern — no client-held list state
-// beyond what this dropdown fetched for itself.
+// member of and links each one to the same section of that workspace
+// (`/w/<slug>/<section>`, design.md §4.2), or creates a new one, from a single
+// dropdown (task spec: "Workspace Switcher"). The workspace lives in the URL,
+// so switching only navigates this tab and entries open in a new tab like any
+// link. No client-held list state beyond what this dropdown fetched for itself.
 export function WorkspaceSwitcher({
   currentName,
   currentId,
 }: WorkspaceSwitcherProps) {
   const t = useTranslations("shell");
   const router = useRouter();
+  // Section root of the page being viewed (`/notes/42` -> `/notes`); the
+  // wrapper's usePathname already strips `/w/<slug>`.
+  const section = usePathname().split("/")[1];
+  const sectionRoot = `/${section || "management"}`;
   const nameId = useId();
   const errorId = useId();
 
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
   const [defaultId, setDefaultId] = useState<string | null>(null);
-  const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +93,21 @@ export function WorkspaceSwitcher({
     };
   }, [t]);
 
-  async function handleToggleDefault(
-    event: React.MouseEvent,
-    workspaceId: string,
-  ) {
-    event.stopPropagation();
-    event.preventDefault();
+  // A plain click on another workspace keeps the menu open so its pending
+  // spinner stays visible until the shell remounts on the new workspace. A
+  // click on the current workspace (no remount) or a modified/middle click
+  // (the browser opens a new tab) leaves this tab where it is, so close.
+  function closeUnlessSwitching(event: React.MouseEvent, workspaceId: string) {
+    const modified =
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey;
+    if (modified || workspaceId === currentId) setMenuOpen(false);
+  }
+
+  async function handleToggleDefault(workspaceId: string) {
     const isDefault = defaultId === workspaceId;
     try {
       if (isDefault) {
@@ -98,19 +120,6 @@ export function WorkspaceSwitcher({
       toast.success(t("defaultWorkspaceSet"));
     } catch {
       toast.error(t("defaultWorkspaceError"));
-    }
-  }
-
-  async function handleSwitch(workspaceId: string) {
-    if (workspaceId === currentId || switchingId) return;
-    setSwitchingId(workspaceId);
-    try {
-      await workspacesApi.switchTo(workspaceId);
-      router.refresh();
-    } catch {
-      toast.error(t("switchWorkspaceError"));
-    } finally {
-      setSwitchingId(null);
     }
   }
 
@@ -134,7 +143,7 @@ export function WorkspaceSwitcher({
       const workspace = await workspacesApi.create(trimmed);
       toast.success(t("workspaceCreated"));
       setCreateOpen(false);
-      await handleSwitch(workspace.id);
+      router.push(`/w/${workspace.slug}/management`);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setError(err.fieldErrors.name);
@@ -150,7 +159,7 @@ export function WorkspaceSwitcher({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           data-workspace-id={currentId}
           aria-label={t("workspaceLabel", { name: currentName })}
@@ -179,42 +188,58 @@ export function WorkspaceSwitcher({
           ) : (
             <DropdownMenuGroup>
               {workspaces.map((workspace) => (
-                <DropdownMenuItem
+                // The default-workspace star is a sibling menu item, not a
+                // child of the link: interactive content must not nest in <a>.
+                <div
                   key={workspace.id}
-                  aria-label={workspace.name}
-                  disabled={switchingId !== null}
-                  onClick={() => handleSwitch(workspace.id)}
+                  role="presentation"
+                  className="flex items-center gap-0.5"
                 >
-                  <span className="min-w-0 flex-1 truncate">
-                    {workspace.name}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => handleToggleDefault(e, workspace.id)}
+                  <DropdownMenuItem
+                    aria-label={workspace.name}
+                    className="min-w-0 flex-1"
+                    closeOnClick={false}
+                    onClick={(event) =>
+                      closeUnlessSwitching(event, workspace.id)
+                    }
+                    // A middle click fires auxclick, not click.
+                    onAuxClick={(event) =>
+                      closeUnlessSwitching(event, workspace.id)
+                    }
+                    render={
+                      <Link
+                        href={`/w/${workspace.slug}${sectionRoot}`}
+                        prefetch={false}
+                      />
+                    }
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {workspace.name}
+                    </span>
+                    {workspace.id === currentId && (
+                      <Icon name="ri-check-line" aria-hidden />
+                    )}
+                    <SwitchPending />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     aria-label={
                       defaultId === workspace.id
                         ? t("removeDefaultWorkspace")
                         : t("setDefaultWorkspace")
                     }
-                    className="h-auto w-auto shrink-0 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                    closeOnClick={false}
+                    onClick={() => handleToggleDefault(workspace.id)}
+                    className="size-7 shrink-0 justify-center p-0 text-muted-foreground"
                   >
                     <Icon
-                      name={
-                        defaultId === workspace.id
-                          ? "ri-star-line"
-                          : "ri-star-line"
-                      }
+                      name="ri-star-line"
                       aria-hidden
                       className={cn(
                         defaultId === workspace.id && "text-amber-500",
                       )}
                     />
-                  </Button>
-                  {workspace.id === currentId && (
-                    <Icon name="ri-check-line" aria-hidden />
-                  )}
-                </DropdownMenuItem>
+                  </DropdownMenuItem>
+                </div>
               ))}
             </DropdownMenuGroup>
           )}

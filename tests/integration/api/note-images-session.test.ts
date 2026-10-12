@@ -31,6 +31,7 @@ const PREFIX = `note-images-session-${randomUUID()}`;
 let operator: Operator;
 let main: Workspace;
 let other: Workspace;
+let lastUsed: Workspace;
 let sessionId: string;
 let imageId: string;
 let foreignImageId: string;
@@ -65,6 +66,13 @@ beforeAll(async () => {
   other = await db.workspace.create({
     data: { name: `${PREFIX}-other`, slug: `${PREFIX}-other` },
   });
+  lastUsed = await db.workspace.create({
+    data: {
+      name: `${PREFIX}-last`,
+      slug: `${PREFIX}-last`,
+      members: { create: { operatorId: operator.id, role: "OWNER" } },
+    },
+  });
   const session = await db.session.create({
     data: {
       id: randomUUID(),
@@ -96,7 +104,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.session.deleteMany({ where: { operatorId: operator.id } });
-  await db.workspace.deleteMany({ where: { id: { in: [main.id, other.id] } } });
+  await db.workspace.deleteMany({
+    where: { id: { in: [main.id, other.id, lastUsed.id] } },
+  });
   await db.operator.deleteMany({ where: { id: operator.id } });
 });
 
@@ -110,6 +120,31 @@ describe("GET /api/notes/images/[id] with the real session auth", () => {
     expect(response.headers.get("Cache-Control")).toBe(
       "private, max-age=31536000, immutable",
     );
+    const served = new Uint8Array(await response.arrayBuffer());
+    expect(Buffer.from(served).equals(Buffer.from(bytes))).toBe(true);
+  });
+
+  it("serves a member of the owning workspace when the session's last-used workspace is another one", async () => {
+    // The multi-tab case: another tab made a different member workspace the
+    // session's last-used one. The image still belongs to `main`.
+    const membership = await db.workspaceMember.findUniqueOrThrow({
+      where: {
+        workspaceId_operatorId: {
+          workspaceId: lastUsed.id,
+          operatorId: operator.id,
+        },
+      },
+    });
+    await db.session.update({
+      where: { id: sessionId },
+      data: {
+        activeWorkspaceId: lastUsed.id,
+        activeWorkspaceOperatorId: membership.operatorId,
+      },
+    });
+    request.sessionId = sessionId;
+    const response = await get(imageId);
+    expect(response.status).toBe(200);
     const served = new Uint8Array(await response.arrayBuffer());
     expect(Buffer.from(served).equals(Buffer.from(bytes))).toBe(true);
   });

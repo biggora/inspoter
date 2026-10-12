@@ -12,6 +12,8 @@ import * as notesService from "@/lib/services/notes";
 
 let workspaceId: string;
 let otherWorkspaceId: string;
+// Member of workspaceId only.
+let memberId: string;
 
 async function makeWorkspace(slugPrefix: string): Promise<string> {
   const workspace = await db.workspace.create({
@@ -58,11 +60,21 @@ async function imageCount(id = workspaceId): Promise<number> {
 beforeAll(async () => {
   workspaceId = await makeWorkspace("note-images");
   otherWorkspaceId = await makeWorkspace("note-images-other");
+  const member = await db.operator.create({
+    data: { username: `note-images-member-${randomUUID()}` },
+  });
+  memberId = member.id;
+  await db.workspaceMember.create({
+    data: { workspaceId, operatorId: memberId, role: "OWNER" },
+  });
 });
 
 afterAll(async () => {
   for (const id of [workspaceId, otherWorkspaceId]) {
     if (id) await db.workspace.delete({ where: { id } }).catch(() => {});
+  }
+  if (memberId) {
+    await db.operator.delete({ where: { id: memberId } }).catch(() => {});
   }
 });
 
@@ -105,7 +117,10 @@ describe("createNoteImage: accepted types", () => {
     const created = await imagesService.createNoteImage(workspaceId, {
       bytes: image(PNG_HEADER, undefined, NOTE_IMAGE_MAX_BYTES),
     });
-    const fetched = await imagesService.getNoteImage(workspaceId, created.id);
+    const fetched = await imagesService.getNoteImageForOperator(
+      memberId,
+      created.id,
+    );
     expect(fetched?.byteSize).toBe(NOTE_IMAGE_MAX_BYTES);
   });
 });
@@ -259,32 +274,35 @@ describe("createNoteImage: idempotency", () => {
   });
 });
 
-describe("getNoteImage", () => {
+describe("getNoteImageForOperator", () => {
   it("returns the stored bytes, detected type and size", async () => {
     const bytes = image(JPEG_HEADER, "jpeg-fetch");
     const created = await imagesService.createNoteImage(workspaceId, {
       bytes,
     });
 
-    const fetched = await imagesService.getNoteImage(workspaceId, created.id);
+    const fetched = await imagesService.getNoteImageForOperator(
+      memberId,
+      created.id,
+    );
     expect(fetched).not.toBeNull();
     expect(fetched?.contentType).toBe("image/jpeg");
     expect(fetched?.byteSize).toBe(bytes.byteLength);
     expect(Buffer.from(fetched!.bytes).equals(Buffer.from(bytes))).toBe(true);
   });
 
-  it("returns null for an image of another workspace", async () => {
-    const created = await imagesService.createNoteImage(workspaceId, {
+  it("returns null for an image of a workspace the operator is not a member of", async () => {
+    const created = await imagesService.createNoteImage(otherWorkspaceId, {
       bytes: png(),
     });
     expect(
-      await imagesService.getNoteImage(otherWorkspaceId, created.id),
+      await imagesService.getNoteImageForOperator(memberId, created.id),
     ).toBeNull();
   });
 
   it("returns null for an unknown id", async () => {
     expect(
-      await imagesService.getNoteImage(workspaceId, "nonexistent-id"),
+      await imagesService.getNoteImageForOperator(memberId, "nonexistent-id"),
     ).toBeNull();
   });
 });
@@ -302,7 +320,7 @@ describe("note lifecycle", () => {
     await notesService.deleteNote(workspaceId, note.id);
 
     expect(
-      await imagesService.getNoteImage(workspaceId, created.id),
+      await imagesService.getNoteImageForOperator(memberId, created.id),
     ).toBeNull();
   });
 

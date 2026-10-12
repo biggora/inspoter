@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -14,12 +13,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useRouter } from "@/i18n/navigation";
 import { ApiError, workspacesApi } from "./api";
 
 // AC scope: Settings > Workspace, "Create new workspace" section (task spec
-// item 4). Creating switches the active workspace to the new one — matching
-// the sidebar WorkspaceSwitcher's create flow — so `router.refresh()` re-
-// renders this same page with the new workspace's (empty) data.
+// item 4). Creating opens the new workspace in this tab, on its own
+// workspace settings page (design.md §4.3); the workspace lives in the URL, so
+// no session-wide switch is needed.
 export function CreateWorkspaceForm() {
   const t = useTranslations("workspace");
   const router = useRouter();
@@ -42,10 +42,9 @@ export function CreateWorkspaceForm() {
     setError(null);
     try {
       const workspace = await workspacesApi.create(trimmed);
-      await workspacesApi.switchTo(workspace.id);
       toast.success(t("createdToast"));
       setName("");
-      router.refresh();
+      router.push(`/w/${workspace.slug}/settings/workspace`);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.name) {
         setError(err.fieldErrors.name);

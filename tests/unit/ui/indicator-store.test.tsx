@@ -7,11 +7,17 @@ import { useEffect } from "react";
 import {
   __resetIndicatorStore,
   applyIndicators,
+  fetchIndicators,
+  refreshIndicators,
   resetIndicators,
   seedIndicators,
   useIndicators,
   type IndicatorStateDto,
 } from "@/components/shell/indicator-store";
+import {
+  setActiveWorkspaceId,
+  WORKSPACE_HEADER_NAME,
+} from "@/lib/client/active-workspace";
 
 const WORKSPACE_A = "workspace-a";
 const WORKSPACE_B = "workspace-b";
@@ -136,20 +142,63 @@ describe("indicator store", () => {
 });
 
 describe("indicator store transport wiring", () => {
-  it("refreshes through the workspace-scoped endpoint", async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ ...SEED, mail: 11 }),
-    }));
+  function stubFetch(mail: number) {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () =>
+        ({
+          ok: true,
+          json: async () => ({ ...SEED, mail }),
+        }) as Response,
+    );
     vi.stubGlobal("fetch", fetchMock);
-    const { fetchIndicators } =
-      await import("@/components/shell/indicator-store");
+    return fetchMock;
+  }
 
-    await expect(fetchIndicators()).resolves.toMatchObject({ mail: 11 });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("refreshes through the workspace-scoped endpoint", async () => {
+    const fetchMock = stubFetch(11);
+
+    await expect(fetchIndicators(WORKSPACE_A)).resolves.toMatchObject({
+      mail: 11,
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/indicators",
-      expect.objectContaining({ headers: expect.any(Object) }),
+      expect.objectContaining({
+        headers: { [WORKSPACE_HEADER_NAME]: WORKSPACE_A },
+      }),
     );
-    vi.unstubAllGlobals();
+  });
+
+  // The per-tab singleton can already name the next workspace while a request
+  // for the previous one is being built; the id the caller passes must win, or
+  // B's numbers would be applied under A's label.
+  it("sends the workspace id it was given, not the per-tab singleton", async () => {
+    const fetchMock = stubFetch(12);
+    setActiveWorkspaceId(WORKSPACE_B);
+
+    await fetchIndicators(WORKSPACE_A);
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({
+      [WORKSPACE_HEADER_NAME]: WORKSPACE_A,
+    });
+  });
+
+  it("refreshIndicators asks for, and labels the answer with, the id it read", async () => {
+    const fetchMock = stubFetch(13);
+    setActiveWorkspaceId(WORKSPACE_A);
+    seedIndicators(WORKSPACE_A, SEED);
+    renderProbe();
+
+    await act(async () => {
+      await refreshIndicators();
+    });
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({
+      [WORKSPACE_HEADER_NAME]: WORKSPACE_A,
+    });
+    expect(screen.getByRole("status").textContent).toBe("13/2");
   });
 });

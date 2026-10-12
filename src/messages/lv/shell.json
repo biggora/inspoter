@@ -9,7 +9,6 @@
   "languageSwitcherLabel": "Mainīt valodu",
   "workspaceLabel": "Darbvieta: {name}",
   "loadWorkspacesError": "Neizdevās ielādēt darbvietas.",
-  "switchWorkspaceError": "Neizdevās pārslēgt darbvietu. Lūdzu, mēģiniet vēlreiz.",
   "createWorkspaceNameRequired": "Jānorāda darbvietas nosaukums.",
   "workspaceCreated": "Darbvieta izveidota.",
   "createWorkspaceError": "Neizdevās izveidot darbvietu.",

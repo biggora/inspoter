@@ -31,6 +31,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
   permanentRedirect: vi.fn(),
   usePathname: () => "/",
+  useParams: () => ({}),
   useRouter: () => ({
     push: mocks.push,
     replace: vi.fn(),

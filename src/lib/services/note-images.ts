@@ -105,8 +105,13 @@ export async function createNoteImage(
   return toRef(created.id, alt);
 }
 
-export async function getNoteImage(
-  workspaceId: string,
+// The stored image URL carries no workspace and ids are globally unique, so the
+// owner workspace is found from the image and the operator must be a member of
+// it. Membership is a condition of the one query, not a second lookup: an
+// unknown id and an image of a workspace the operator does not belong to both
+// answer null, so the caller cannot tell them apart.
+export async function getNoteImageForOperator(
+  operatorId: string,
   id: string,
 ): Promise<{
   bytes: Uint8Array;
@@ -114,7 +119,7 @@ export async function getNoteImage(
   byteSize: number;
 } | null> {
   const image = await db.noteImage.findFirst({
-    where: { id, workspaceId },
+    where: { id, workspace: { members: { some: { operatorId } } } },
     select: { bytes: true, contentType: true, byteSize: true },
   });
   return image

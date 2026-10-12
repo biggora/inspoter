@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh }),
+  useParams: () => ({}),
 }));
 
 vi.mock("@/components/notes/api", () => ({

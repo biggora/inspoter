@@ -41,8 +41,8 @@ jobs:
       - name: Activate pnpm
         run: |
           corepack enable
-          corepack prepare pnpm@11.12.0 --activate
-          test "$(pnpm --version)" = "11.12.0"
+          corepack prepare pnpm@11.28.2 --activate
+          test "$(pnpm --version)" = "11.28.2"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

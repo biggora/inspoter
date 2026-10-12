@@ -5,7 +5,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 RUN corepack enable \
-    && corepack prepare pnpm@11.12.0 --activate \
+    && corepack prepare pnpm@11.28.2 --activate \
     && chmod -R a+rX /corepack
 
 FROM base AS deps

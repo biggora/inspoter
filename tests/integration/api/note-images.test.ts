@@ -28,18 +28,18 @@ vi.mock("@/lib/auth/dal", async (importOriginal) => {
       if (auth.reject) throw auth.reject;
       return auth.context!;
     }),
-    // The GET route authenticates with requireAuth() alone (no workspace
-    // header); the real header-less path is covered by
-    // note-images-session.test.ts.
-    requireAuth: vi.fn(async () => {
+    // The GET route authenticates the operator alone (no workspace header);
+    // the real header-less path is covered by note-images-session.test.ts.
+    requireOperator: vi.fn(async () => {
       if (auth.reject) throw auth.reject;
-      return auth.context!;
+      return auth.context!.operator;
     }),
   };
 });
 
 const PREFIX = `note-images-api-${randomUUID()}`;
 let operator: Operator;
+let stranger: Operator;
 let main: Workspace;
 let other: Workspace;
 
@@ -89,6 +89,9 @@ beforeAll(async () => {
   operator = await db.operator.create({
     data: { username: `${PREFIX}-operator` },
   });
+  stranger = await db.operator.create({
+    data: { username: `${PREFIX}-stranger` },
+  });
   [main, other] = await Promise.all([
     db.workspace.create({
       data: {
@@ -117,7 +120,9 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await db.workspace.deleteMany({ where: { id: { in: [main.id, other.id] } } });
-  await db.operator.deleteMany({ where: { id: operator.id } });
+  await db.operator.deleteMany({
+    where: { id: { in: [operator.id, stranger.id] } },
+  });
 });
 
 describe("POST /api/notes/images", () => {
@@ -255,13 +260,29 @@ describe("GET /api/notes/images/[id]", () => {
     expect((await response.json()).error).toBe("RESOURCE_NOT_FOUND");
   });
 
-  it("returns 404 for an image of another workspace", async () => {
+  it("serves a member of the owning workspace whichever workspace is current", async () => {
     const { id } = await (await upload(pngBytes())).json();
+    // The operator belongs to both workspaces and the current one is not the
+    // owner: the owner workspace decides, not the current one.
     auth.context = { workspace: other, operator };
 
     const response = await fetchImage(id);
-    expect(response.status).toBe(404);
-    expect((await response.json()).error).toBe("RESOURCE_NOT_FOUND");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns the same 404 to a non-member as for an unknown id", async () => {
+    const { id } = await (await upload(pngBytes())).json();
+    auth.context = { workspace: main, operator: stranger };
+
+    const foreign = await fetchImage(id);
+    const unknown = await fetchImage("nonexistent-id");
+    expect(foreign.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(await foreign.json()).toEqual(await unknown.json());
+    expect(foreign.headers.get("Content-Type")).toBe(
+      unknown.headers.get("Content-Type"),
+    );
   });
 
   it("does not reach the service when authentication fails", async () => {
