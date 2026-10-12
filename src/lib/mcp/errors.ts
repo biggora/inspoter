@@ -77,6 +77,11 @@ import {
   ChannelNotFoundError,
   MessageNameConflictError,
 } from "@/lib/services/messages";
+import {
+  NoteImageInvalidError,
+  NoteImageTooLargeError,
+  NoteImageUnsupportedTypeError,
+} from "@/lib/services/note-images";
 import { ChannelWebhookNotFoundError } from "@/lib/services/webhookTokens";
 import { logError } from "@/lib/services/logs";
 
@@ -147,6 +152,9 @@ const EXPECTED_ERRORS = [
   ChannelNotFoundError,
   MessageNameConflictError,
   ChannelWebhookNotFoundError,
+  NoteImageTooLargeError,
+  NoteImageUnsupportedTypeError,
+  NoteImageInvalidError,
 ] as const;
 
 const STACK_TRUNCATE_LENGTH = 1000;

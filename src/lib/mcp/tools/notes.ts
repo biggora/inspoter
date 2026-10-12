@@ -1,14 +1,25 @@
 import { z } from "zod";
 import * as notesService from "@/lib/services/notes";
 import * as noteFoldersService from "@/lib/services/note-folders";
+import * as noteImagesService from "@/lib/services/note-images";
 import { defineTool, type McpToolDefinition } from "@/lib/mcp/tool";
 import { McpResourceNotFoundError } from "@/lib/mcp/errors";
+import { NOTE_IMAGE_MAX_BYTES } from "@/lib/notes/images";
 
 // Notes are the highest-value write target for an agent: "write what you found
 // into the vault" is what turns a run into something an operator reads later.
 //
 // Folders are read-only here for the same reason a kanban board is: deleting
 // one takes every note inside it, and that is content the agent never saw.
+
+const base64ImageSchema = z
+  .string()
+  .min(1)
+  .max(Math.ceil(NOTE_IMAGE_MAX_BYTES / 3) * 4)
+  .regex(
+    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u,
+    "Image data must be standard base64.",
+  );
 
 export const noteTools: McpToolDefinition[] = [
   defineTool({
@@ -101,6 +112,37 @@ export const noteTools: McpToolDefinition[] = [
     handler: (args, ctx) => {
       const { id, ...input } = args;
       return notesService.updateNote(ctx.workspaceId, id, input);
+    },
+  }),
+
+  defineTool({
+    name: "note_image_upload",
+    scope: "notes:write",
+    title: "Upload a note image",
+    description:
+      "Upload one PNG, JPEG or WebP image (at most 2 MiB) from standard base64 data. Returns `markdown`: paste it into the `content` of notes_create or notes_update to embed the image. The image is only kept if a note references it — an unreferenced upload is deleted after 24 hours. notes_get returns the markdown unchanged.",
+    inputSchema: z.object({
+      base64: base64ImageSchema,
+      alt: z.string().max(200).optional().describe("Alt text for the image."),
+      noteId: z
+        .string()
+        .optional()
+        .describe("From notes_search; omit when the note does not exist yet."),
+    }),
+    readOnly: false,
+    handler: async (args, ctx) => {
+      try {
+        return await noteImagesService.createNoteImage(ctx.workspaceId, {
+          bytes: new Uint8Array(Buffer.from(args.base64, "base64")),
+          alt: args.alt,
+          noteId: args.noteId,
+        });
+      } catch (error) {
+        if (error instanceof notesService.NoteNotFoundError) {
+          throw new McpResourceNotFoundError("Note", args.noteId ?? "");
+        }
+        throw error;
+      }
     },
   }),
 

@@ -1,6 +1,6 @@
 # MCP tool catalogue
 
-All 120 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
+All 121 tools of `POST /api/mcp`, grouped by domain. `tools/list` shows only what the
 presenting token's scopes cover, so a tool you cannot see is a scope you were not granted.
 
 Conventions used below: `arg` required, `arg?` optional, `arg[]` an array, `arg|null` accepts
@@ -18,7 +18,7 @@ id. Read tools are annotated `readOnlyHint: true` to the client; the mutating on
 - [Contacts](#contacts) — `contacts:read` (6), `contacts:write` (11)
 - [Messages](#messages) — `messages:read` (4), `messages:write` (8)
 - [Bookmarks](#bookmarks) — `bookmarks:read` (4), `bookmarks:write` (7)
-- [Notes](#notes) — `notes:read` (3), `notes:write` (3)
+- [Notes](#notes) — `notes:read` (3), `notes:write` (4)
 - [Activity](#activity) — `activity:read` (1)
 - [Domains](#domains) — `domains:read` (2)
 - [Shared value types](#shared-value-types)
@@ -113,6 +113,19 @@ resolves — so `notes_create` fails on a collision rather than silently making 
 | write | `notes_create`       | `title`, `content?`, `folderId?`                             | CommonMark, never HTML                                        |
 | write | `notes_update`       | `id`, `title?`, `content?`, `version`                        | `version` from `notes_get`; a mismatch means someone else edited first |
 | write | `notes_delete`       | `id`                                                         | leaf only — there is no folder delete                        |
+| write | `note_image_upload` | `base64`, `alt?`, `noteId?`                                  | PNG/JPEG/WebP ≤ 2 MiB, standard base64; returns `{ id, url, markdown }` — paste `markdown` into `content`; an image no note references is deleted after 24 h; `noteId` from `notes_search`, omit for a note not yet created |
+
+To put an image in a note: upload it, then write the returned `markdown` into the body. The
+image is linked to the note when `notes_create` / `notes_update` saves content that references
+it, and `notes_get` returns that markdown unchanged.
+
+```
+note_image_upload { base64: "iVBORw0KGgo...", alt: "Contact sheet" }
+  → { id: "cm…", url: "/api/notes/images/cm…", markdown: "![Contact sheet](/api/notes/images/cm…)" }
+notes_get         { id: "<note id>" }                      → { content, version: 3, … }
+notes_update      { id: "<note id>", version: 3,
+                    content: "<existing content>\n\n![Contact sheet](/api/notes/images/cm…)" }
+```
 
 ---
 

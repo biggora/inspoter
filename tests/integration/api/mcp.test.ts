@@ -1751,3 +1751,77 @@ describe("mail write tools", () => {
     ).toBe(0);
   });
 });
+
+describe("note image tool", () => {
+  const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  it("uploads an image and links it when a note embeds the markdown", async () => {
+    const base64 = Buffer.from([...PNG_HEADER, 0x01, 0x02, 0x03]).toString(
+      "base64",
+    );
+
+    const uploaded = await callTool(fullToken, "note_image_upload", {
+      base64,
+      alt: "Contact sheet",
+    });
+    const ref = uploaded.payload as {
+      id: string;
+      url: string;
+      markdown: string;
+    };
+    expect(ref.url).toBe(`/api/notes/images/${ref.id}`);
+    expect(ref.markdown).toBe(`![Contact sheet](${ref.url})`);
+    const stored = await db.noteImage.findUnique({ where: { id: ref.id } });
+    expect(stored?.workspaceId).toBe(workspaceId);
+    expect(stored?.noteId).toBeNull();
+
+    const note = await callTool(fullToken, "notes_create", {
+      title: `MCP image note ${randomUUID()}`,
+      content: ref.markdown,
+    });
+    const noteId = (note.payload as { id: string }).id;
+    const linked = await db.noteImage.findUnique({ where: { id: ref.id } });
+    expect(linked?.noteId).toBe(noteId);
+
+    const read = await callTool(fullToken, "notes_get", { id: noteId });
+    expect((read.payload as { content: string }).content).toBe(ref.markdown);
+    await callTool(fullToken, "notes_delete", { id: noteId });
+  });
+
+  it("reports an unsupported type and an unknown note as tool errors", async () => {
+    const svg = await callTool(fullToken, "note_image_upload", {
+      base64: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>").toString(
+        "base64",
+      ),
+    });
+    expect(svg.isError).toBe(true);
+    expect(svg.text).toContain("PNG, JPEG and WebP");
+
+    const missing = await callTool(fullToken, "note_image_upload", {
+      base64: Buffer.from([...PNG_HEADER, 0x04]).toString("base64"),
+      noteId: "no-such-note",
+    });
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toBe("Note not found: no-such-note");
+  });
+
+  it("is absent for a notes:read token and refused when called anyway", async () => {
+    const readOnly = (
+      await webhookTokensService.create(workspaceId, "notes-read", [
+        "notes:read",
+      ])
+    ).token;
+
+    const before = await db.noteImage.count({ where: { workspaceId } });
+
+    expect(await listToolNames(readOnly)).not.toContain("note_image_upload");
+    const body = await rpc(readOnly, "tools/call", {
+      name: "note_image_upload",
+      arguments: {
+        base64: Buffer.from([...PNG_HEADER, 0x05]).toString("base64"),
+      },
+    });
+    expect(body.error ?? body.result?.isError).toBeTruthy();
+    expect(await db.noteImage.count({ where: { workspaceId } })).toBe(before);
+  });
+});
