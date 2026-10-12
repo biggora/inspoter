@@ -2,6 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
+import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import type { Operator, Session, Workspace } from "@/generated/prisma/client";
@@ -106,13 +107,26 @@ async function findLastUsedWorkspace(
   return membership?.workspace ?? null;
 }
 
-// Persist the workspace as the session's last used one, only when it differs.
+// A Next.js router prefetch (`next-router-prefetch: 1`, which every sidebar
+// <Link> sends once hydrated) renders the workspace layout without the operator
+// viewing it, so it must not overwrite last-used (OQ-5: "every render the
+// operator actually views"). Next hides the flight headers from `headers()`
+// (HIDDEN_REQUEST_HEADERS in async-storage/request-store.js) and strips them
+// before the proxy runs, so the one place the render can still learn it is
+// the work store's `isPrefetchRequest`.
+function isRouterPrefetch(): boolean {
+  return workAsyncStorage.getStore()?.isPrefetchRequest === true;
+}
+
+// Persist the workspace as the session's last used one, only when it differs
+// and the request is not a router prefetch.
 async function recordLastUsedWorkspace(
   operator: Operator,
   session: Session,
   workspace: Workspace,
 ): Promise<void> {
   if (workspace.id === session.activeWorkspaceId) return;
+  if (isRouterPrefetch()) return;
   await db.session.update({
     where: { id: session.id },
     data: {
@@ -151,7 +165,8 @@ export async function resolveLastUsedWorkspace(): Promise<Workspace | null> {
  * Page-side resolver for `/w/<slug>/...`: the URL, not the session, selects
  * the workspace. An unknown slug and a slug the operator is not a member of
  * are indistinguishable (`notFound()`). Every call records the workspace as
- * the session's last used one (written only when it changed). Wrapped in
+ * the session's last used one (written only when it changed, and never for a
+ * router prefetch). Wrapped in
  * cache() so a layout and its page share one lookup per request.
  */
 export const requireWorkspaceBySlug = cache(
@@ -169,12 +184,30 @@ export const requireWorkspaceBySlug = cache(
   },
 );
 
-// R2.1c (remediation-plan.md): browser API routes must check the
-// `X-Inspoter-Workspace` header against the session's active workspace.
-// This rejects stale-tab mutations — if the operator switches workspace in
-// tab 1, tab 2 still sends the old workspace id and gets a 409 instead of
-// silently mutating the wrong workspace. The header never selects
-// authority; requireAuth() above remains the sole source of the workspace.
+/**
+ * Non-throwing membership-by-slug lookup for hints that must degrade quietly
+ * (the legacy redirect's Referer slug): the member's workspace, or null for an
+ * unknown slug and a non-member alike. Unlike requireWorkspaceBySlug() it never
+ * calls notFound() and never records last-used.
+ */
+export async function findMemberWorkspaceBySlug(
+  slug: string,
+): Promise<Workspace | null> {
+  const operator = await requireOperator();
+  const membership = await db.workspaceMember.findFirst({
+    where: { operatorId: operator.id, workspace: { slug } },
+    include: { workspace: true },
+  });
+  return membership?.workspace ?? null;
+}
+
+// Browser API routes select their workspace with the `X-Inspoter-Workspace`
+// header (the indicator stream with a query parameter): the id is parsed,
+// checked against the operator's memberships on every request, and only then
+// acts as the workspace. The carrier selects; membership authorizes. A missing
+// or malformed value is a 400, a non-member or unknown id one identical 403,
+// and the Session (last-used) is never written, so a tab choosing its
+// workspace cannot move another tab (workspace-in-url.md §4.3).
 
 export class WorkspaceContextRequiredError extends Error {
   constructor() {
@@ -210,51 +243,26 @@ function parseWorkspaceId(provided: string | null): string {
   return provided;
 }
 
-// One assertion behind both carriers, so the staleness rule cannot drift
-// between the header form and the query-parameter form.
-function assertWorkspaceContext(
-  workspace: Workspace,
-  provided: string | null,
-): void {
-  if (parseWorkspaceId(provided) !== workspace.id) {
-    throw new WorkspaceContextStaleError();
-  }
-}
-
+// The names ~170 route handlers already call; they delegate to the selectors
+// below and return the same `{ operator, workspace }` shape.
 export async function requireAuthWithWorkspaceHeader(
   request: NextRequest,
 ): Promise<AuthContext> {
-  const { operator, workspace } = await requireAuth();
-  assertWorkspaceContext(
-    workspace,
-    request.headers.get("x-inspoter-workspace"),
-  );
-  return { operator, workspace };
+  return requireWorkspaceFromHeader(request);
 }
 
 /**
- * The same check for `EventSource`, which cannot set request headers — so the
- * indicator stream carries the workspace id as a query parameter instead
- * (src/app/api/indicators/stream/route.ts). The session still rides the
- * cookie, and requireAuth() above remains the sole authority on which
- * workspace is active; the parameter only detects a stale tab, exactly as the
- * header does.
+ * The same selector for `EventSource`, which cannot set request headers — so
+ * the indicator stream carries the workspace id as a query parameter instead
+ * (src/app/api/indicators/stream/route.ts).
  */
 export async function requireAuthWithWorkspaceParam(
   request: NextRequest,
   paramName = "workspace",
 ): Promise<AuthContext> {
-  const { operator, workspace } = await requireAuth();
-  assertWorkspaceContext(
-    workspace,
-    request.nextUrl.searchParams.get(paramName),
-  );
-  return { operator, workspace };
+  return requireWorkspaceFromParam(request, paramName);
 }
 
-// Selector form (not used by any live route yet): the carrier picks the
-// workspace, after a membership check on every request. The Session is never
-// written — a tab choosing its own workspace must not move any other tab.
 async function requireMemberWorkspace(
   provided: string | null,
 ): Promise<AuthContext> {

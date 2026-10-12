@@ -484,15 +484,17 @@ test("Management landing links totals into sections and routes AI config to its 
   // 2026-08-31): its two links must be reachable and named.
   const health = page.locator("[data-slot='system-health']");
   await expect(health).toBeVisible();
-  await expect(health.locator("a[href='/settings/providers']")).toBeVisible();
-  await expect(health.locator("a[href='/alerts']")).toBeVisible();
+  await expect(
+    health.locator("a[href^='/w/'][href$='/settings/providers']"),
+  ).toBeVisible();
+  await expect(health.locator("a[href^='/w/'][href$='/alerts']")).toBeVisible();
 
   const configureAutomation = page.getByRole("link", {
     name: "Configure automation",
   });
   await expect(configureAutomation).toHaveAttribute(
     "href",
-    "/management/automation",
+    /^\/w\/[^/]+\/management\/automation$/,
   );
 
   await expectNoBlockingAxeViolations(page, "main#main-content");

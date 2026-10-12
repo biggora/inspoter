@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -17,11 +16,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useRouter } from "@/i18n/navigation";
 import type { MemberWithOperator } from "@/lib/services/workspaces";
 import { workspacesApi } from "./api";
 
 interface MembersSectionProps {
   workspaceId: string;
+  currentOperatorId: string;
   members: MemberWithOperator[];
 }
 
@@ -30,7 +31,11 @@ interface MembersSectionProps {
 // pattern (src/components/bookmarks/delete-bookmark-dialog.tsx) rather than
 // a full Dialog, since removing a member is a single, low-cost destructive
 // action.
-export function MembersSection({ workspaceId, members }: MembersSectionProps) {
+export function MembersSection({
+  workspaceId,
+  currentOperatorId,
+  members,
+}: MembersSectionProps) {
   const t = useTranslations("workspace");
   const router = useRouter();
   const [removeTarget, setRemoveTarget] = useState<MemberWithOperator | null>(
@@ -45,7 +50,13 @@ export function MembersSection({ workspaceId, members }: MembersSectionProps) {
       await workspacesApi.removeMember(workspaceId, removeTarget.id);
       toast.success(t("memberRemovedToast"));
       setRemoveTarget(null);
-      router.refresh();
+      if (removeTarget.operator.id === currentOperatorId) {
+        // The operator just left the workspace this tab shows, so the URL no
+        // longer names a workspace they can open. `/` lands on the last-used one.
+        router.push("/");
+      } else {
+        router.refresh();
+      }
     } catch {
       toast.error(t("removeMemberError"));
     } finally {

@@ -9,7 +9,6 @@
   "languageSwitcherLabel": "Switch language",
   "workspaceLabel": "Workspace: {name}",
   "loadWorkspacesError": "Failed to load workspaces.",
-  "switchWorkspaceError": "Failed to switch workspace. Please try again.",
   "createWorkspaceNameRequired": "Workspace name is required.",
   "workspaceCreated": "Workspace created.",
   "createWorkspaceError": "Failed to create workspace.",

@@ -11,6 +11,8 @@ const SECTIONS_ROOT = path.join(
   "app",
   "[locale]",
   "(dashboard)",
+  "w",
+  "[workspace]",
 );
 
 describe("WORKSPACE_SECTIONS", () => {

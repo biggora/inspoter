@@ -53,12 +53,18 @@ test("management distillation invariants", async ({ browser }) => {
     // The system-health row links both sidebar-footer facts.
     const health = page.locator("[data-slot='system-health']");
     await expect(health).toBeVisible();
-    await expect(health.locator("a[href='/settings/providers']")).toBeVisible();
-    await expect(health.locator("a[href='/alerts']")).toBeVisible();
+    await expect(
+      health.locator("a[href^='/w/'][href$='/settings/providers']"),
+    ).toBeVisible();
+    await expect(
+      health.locator("a[href^='/w/'][href$='/alerts']"),
+    ).toBeVisible();
 
     // AI config is a single compact card with one link, no part grid.
     expect(
-      await page.locator("main a[href='/management/automation']").count(),
+      await page
+        .locator("main a[href^='/w/'][href$='/management/automation']")
+        .count(),
     ).toBe(1);
     expect(await page.getByText("AI provider", { exact: true }).count()).toBe(
       0,

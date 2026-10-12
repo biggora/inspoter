@@ -5,10 +5,10 @@ import { db } from "@/lib/db";
 import { toErrorResponse } from "@/lib/api/errors";
 import type { AuthContext } from "@/lib/auth/dal";
 
-// Slice 1 of docs/plans/workspace-in-url.md: the header / query parameter as a
-// workspace *selector* (requireWorkspaceFrom*), next to the live stale-tab
-// guard (requireAuthWith*) whose 409 semantics stay as they are. Pattern of
-// session-contract.test.ts: a real Session row behind a mocked cookie jar.
+// docs/plans/workspace-in-url.md: the header / query parameter as a workspace
+// *selector* (requireWorkspaceFrom*), and the live guards (requireAuthWith*),
+// which delegate to it since Slice 3. Pattern of session-contract.test.ts: a
+// real Session row behind a mocked cookie jar.
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -159,7 +159,7 @@ describe("requireWorkspaceFromHeader / requireWorkspaceFromParam (selector)", ()
   });
 });
 
-describe("requireAuthWithWorkspaceHeader (live stale-tab guard)", () => {
+describe("requireAuthWithWorkspaceHeader / ...Param (live guards select the workspace)", () => {
   it.each([
     ["an empty", ""],
     ["a non-ASCII", "wörkspace"],
@@ -180,25 +180,61 @@ describe("requireAuthWithWorkspaceHeader (live stale-tab guard)", () => {
     },
   );
 
-  it("answers the matching workspace id with 200", async () => {
+  it("answers a missing header with 400 WORKSPACE_CONTEXT_REQUIRED", async () => {
     const { requireAuthWithWorkspaceHeader } = await import("@/lib/auth/dal");
 
     const result = await outcome(
-      requireAuthWithWorkspaceHeader(headerRequest(workspaceA.id)),
+      requireAuthWithWorkspaceHeader(headerRequest(null)),
     );
 
-    expect(result).toEqual({ status: 200, workspaceId: workspaceA.id });
+    expect(result.status).toBe(400);
+    expect(result.body).toMatchObject({ error: "WORKSPACE_CONTEXT_REQUIRED" });
   });
 
-  it("still answers a mismatching workspace id with 409 WORKSPACE_CONTEXT_STALE", async () => {
+  it("acts in workspace A or B by header on one session, never moving the session", async () => {
     const { requireAuthWithWorkspaceHeader } = await import("@/lib/auth/dal");
 
-    const result = await outcome(
+    const a = await outcome(
+      requireAuthWithWorkspaceHeader(headerRequest(workspaceA.id)),
+    );
+    const b = await outcome(
       requireAuthWithWorkspaceHeader(headerRequest(workspaceB.id)),
     );
 
-    expect(result.status).toBe(409);
-    expect(result.body).toMatchObject({ error: "WORKSPACE_CONTEXT_STALE" });
+    expect(a).toEqual({ status: 200, workspaceId: workspaceA.id });
+    expect(b).toEqual({ status: 200, workspaceId: workspaceB.id });
+    expect(await sessionActiveWorkspaceId()).toBe(workspaceA.id);
+  });
+
+  it("acts in workspace B by query parameter while the session says A", async () => {
+    const { requireAuthWithWorkspaceParam } = await import("@/lib/auth/dal");
+
+    const result = await outcome(
+      requireAuthWithWorkspaceParam(paramRequest(workspaceB.id)),
+    );
+
+    expect(result).toEqual({ status: 200, workspaceId: workspaceB.id });
+    expect(await sessionActiveWorkspaceId()).toBe(workspaceA.id);
+  });
+
+  it("answers a non-member workspace id and an unknown id with the identical 403 (no 409)", async () => {
+    const { requireAuthWithWorkspaceHeader, requireAuthWithWorkspaceParam } =
+      await import("@/lib/auth/dal");
+
+    const nonMember = await outcome(
+      requireAuthWithWorkspaceHeader(headerRequest(foreignWorkspace.id)),
+    );
+    const unknown = await outcome(
+      requireAuthWithWorkspaceHeader(headerRequest(`missing-${randomUUID()}`)),
+    );
+    const nonMemberParam = await outcome(
+      requireAuthWithWorkspaceParam(paramRequest(foreignWorkspace.id)),
+    );
+
+    expect(nonMember.status).toBe(403);
+    expect(nonMember.body).toMatchObject({ error: "WORKSPACE_ACCESS_DENIED" });
+    expect(unknown).toEqual(nonMember);
+    expect(nonMemberParam).toEqual(nonMember);
     expect(await sessionActiveWorkspaceId()).toBe(workspaceA.id);
   });
 });

@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Header / query-parameter validation shared by the live stale-tab guard
-// (requireAuthWith*) and the selector (requireWorkspaceFrom*), with the
-// session and Prisma layers stubbed. The real-database behavior is covered in
+// Header / query-parameter validation shared by the live guards
+// (requireAuthWith*, which delegate to the selector) and the selector itself
+// (requireWorkspaceFrom*), with the session and Prisma layers stubbed. The real-database behavior is covered in
 // tests/integration/auth/workspace-selector.test.ts.
 
 const mocks = vi.hoisted(() => ({
@@ -34,7 +34,6 @@ import {
   requireWorkspaceFromParam,
   WorkspaceAccessDeniedError,
   WorkspaceContextRequiredError,
-  WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
 
 const WORKSPACE = { id: "ws-a", name: "A", slug: "a" };
@@ -102,21 +101,15 @@ describe.each(carriers)("%s", (name, guard, build) => {
       await expect(guard(build(value))).rejects.toBeInstanceOf(
         WorkspaceContextRequiredError,
       );
-      // The selector must refuse before it ever looks at memberships.
-      if (name.startsWith("requireWorkspaceFrom")) {
-        expect(mocks.memberFindUnique).not.toHaveBeenCalled();
-      }
+      // Every carrier must refuse before it ever looks at memberships.
+      expect(mocks.memberFindUnique).not.toHaveBeenCalled();
     },
   );
 
   it("accepts the 128-byte boundary (fails later, on the workspace itself)", async () => {
     const error = await guard(build("a".repeat(128))).catch((e: unknown) => e);
     expect(error).not.toBeInstanceOf(WorkspaceContextRequiredError);
-    expect(error).toBeInstanceOf(
-      name.startsWith("requireAuth")
-        ? WorkspaceContextStaleError
-        : WorkspaceAccessDeniedError,
-    );
+    expect(error).toBeInstanceOf(WorkspaceAccessDeniedError);
   });
 
   it("resolves the matching workspace", async () => {
@@ -150,10 +143,34 @@ describe("selector purity", () => {
   });
 });
 
-describe("live guard keeps its stale-tab semantics", () => {
-  it("answers WorkspaceContextStaleError when the id differs from the session workspace", async () => {
-    await expect(
-      requireAuthWithWorkspaceHeader(headerRequest("ws-other")),
-    ).rejects.toBeInstanceOf(WorkspaceContextStaleError);
-  });
+describe("live guards are the selector", () => {
+  it.each([
+    [
+      "requireAuthWithWorkspaceHeader",
+      requireAuthWithWorkspaceHeader,
+      headerRequest,
+    ],
+    [
+      "requireAuthWithWorkspaceParam",
+      requireAuthWithWorkspaceParam,
+      paramRequest,
+    ],
+  ] as const)(
+    "%s acts in the carried workspace and never writes the Session",
+    async (_name, guard, build) => {
+      mocks.memberFindUnique.mockImplementation(
+        async ({
+          where,
+        }: {
+          where: { workspaceId_operatorId: { workspaceId: string } };
+        }) => ({
+          workspace: { id: where.workspaceId_operatorId.workspaceId },
+        }),
+      );
+      // The session says ws-a; the carrier says ws-other: the carrier wins.
+      const { workspace } = await guard(build("ws-other"));
+      expect(workspace.id).toBe("ws-other");
+      expect(mocks.sessionUpdate).not.toHaveBeenCalled();
+    },
+  );
 });

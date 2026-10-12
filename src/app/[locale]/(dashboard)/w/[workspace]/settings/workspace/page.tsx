@@ -1,0 +1,126 @@
+import { getTranslations } from "next-intl/server";
+
+import { requireWorkspaceBySlug } from "@/lib/auth/dal";
+import * as workspacesService from "@/lib/services/workspaces";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { PageBody } from "@/components/shell/page-body";
+import { PageHeader } from "@/components/shell/page-header";
+import { AddMemberForm } from "@/components/workspace/add-member-form";
+import { AutoRefreshForm } from "@/components/workspace/auto-refresh-form";
+import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
+import { MembersSection } from "@/components/workspace/members-section";
+import { RenameWorkspaceForm } from "@/components/workspace/rename-workspace-form";
+import { SectionVisibilityForm } from "@/components/workspace/section-visibility-form";
+import { TimeZoneForm } from "@/components/workspace/time-zone-form";
+
+export const dynamic = "force-dynamic";
+
+// Settings > Workspace management page (task spec: rename, members, add
+// member, create new workspace). Server Component fetches its data directly
+// through the service layer (the sole sanctioned pattern outside API routes,
+// src/lib/auth/dal.ts) and hands it to Client Components for the interactive
+// parts, mirroring src/app/(dashboard)/bookmarks/page.tsx.
+export default async function WorkspaceSettingsPage({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { operator, workspace } = await requireWorkspaceBySlug(
+    (await params).workspace,
+  );
+  const members = await workspacesService.listMembers(workspace.id);
+  const t = await getTranslations("workspace");
+  const tSettings = await getTranslations("settings");
+
+  return (
+    <PageBody>
+      <PageHeader
+        back={{ href: "/settings", label: tSettings("backToSettings") }}
+        title={t("pageTitle")}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("renameCardTitle")}</CardTitle>
+          <CardDescription>{t("renameCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RenameWorkspaceForm
+            workspaceId={workspace.id}
+            currentName={workspace.name}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("timeZoneCardTitle")}</CardTitle>
+          <CardDescription>{t("timeZoneCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TimeZoneForm
+            workspaceId={workspace.id}
+            currentTimeZone={workspace.timeZone}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("sectionsCardTitle")}</CardTitle>
+          <CardDescription>{t("sectionsCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SectionVisibilityForm
+            workspaceId={workspace.id}
+            hiddenSections={workspace.hiddenSections}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("autoRefreshCardTitle")}</CardTitle>
+          <CardDescription>{t("autoRefreshCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AutoRefreshForm
+            workspaceId={workspace.id}
+            disabledKinds={workspace.autoRefreshDisabledKinds}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("membersCardTitle")}</CardTitle>
+          <CardDescription>{t("membersCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <MembersSection
+            workspaceId={workspace.id}
+            currentOperatorId={operator.id}
+            members={members}
+          />
+          <AddMemberForm workspaceId={workspace.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("createCardTitle")}</CardTitle>
+          <CardDescription>{t("createCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreateWorkspaceForm />
+        </CardContent>
+      </Card>
+    </PageBody>
+  );
+}

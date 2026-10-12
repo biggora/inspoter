@@ -347,6 +347,18 @@ Guard 409 ловит именно это расхождение.
 
 ### 4.5 Legacy URL
 
+> **Реализация (К-1 сработала, Срез 3).** Единый catch-all
+> `[locale]/[...legacy]/page.tsx` не использован: он перехватывал бы мусорные
+> URL, которые раньше получали глобальный 404. Вместо него — 19 маршрутов
+> `src/app/[locale]/(legacy)/<section>/[[...rest]]/page.tsx` с общим helper
+> `legacy-section-page.tsx`. URL, чей первый сегмент не секция, не совпадает ни
+> с одним маршрутом и сохраняет прежний 404; `src/app/[locale]/not-found.tsx`
+> не создавался и не нужен. Шаг 1 ниже («`legacy[0]` не в `WORKSPACE_SECTIONS` →
+> `notFound()`») выполняется самой структурой маршрутов. Шаг 5 тоже изменён:
+> `params` приходят в Next уже percent-encoded, поэтому сегменты склеиваются
+> как есть, без `encodeURIComponent` (повторное кодирование превращало `%20` в
+> `%2520`). Это проверяет e2e `workspace-tabs.spec.ts:392-422`.
+
 `src/app/[locale]/[...legacy]/page.tsx` (proxy остаётся без DB):
 
 1. `legacy[0]` не в `WORKSPACE_SECTIONS` → `notFound()`.
@@ -644,6 +656,13 @@ acceptance-тестов; свежего вывода `pnpm lint`, `pnpm typechec
     с общим helper, плюс `src/app/[locale]/not-found.tsx`. Либо вариант E.
   - Проверка: те же e2e.
   - Возврат: до merge Среза 3.
+  - **Статус: сработала в Срезе 3.** Единый catch-all отклонён, принят
+    fallback: 19 `(legacy)/<section>/[[...rest]]` маршрутов с общим helper.
+    Отдельного `src/app/[locale]/not-found.tsx` нет: мусорный URL не совпадает
+    ни с одним маршрутом и получает прежний глобальный 404
+    (`e2e/ui-audit-regressions.spec.ts`). Побочное наблюдение: `params`
+    приходят уже percent-encoded и повторно не кодируются (см. §4.5; e2e
+    `workspace-tabs.spec.ts:392-422`).
 - **К-2: Задача 0 не даёт рабочий pnpm.**
   - Триггер: команды падают через corepack.
   - Fallback: оператор решает по OQ-10 (сменить `packageManager` или
@@ -658,6 +677,7 @@ acceptance-тестов; свежего вывода `pnpm lint`, `pnpm typechec
 | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Stale tab пишет в чужой workspace при раннем selector                                             | Устранён порядком: flip только в Срезе 3 (§4.3)                                                |
 | Обработчик старого дерева после `await` читает новый id singleton                                 | **Принят**; окно сужают Срез 4 и keyed remount; тест на commit-фазу; последствие — 404 по чужому id или запись в B |
+| RSC-prefetch перезаписывал last-used (найдено в Срезе 3) | **Исправлено**: `recordLastUsedWorkspace` пропускает запись при `workAsyncStorage.getStore()?.isPrefetchRequest` (внутренний API Next 16.3.3; заголовки prefetch скрыты от `headers()`). При обновлении Next перепроверить; регрессию ловят `mail-label-filtering.spec.ts:989` и тест last-used в `workspace-tabs.spec.ts` |
 | SSE после удаления membership отдаёт счётчики до разрыва                                          | **Принят** (только числа; ≤60 с в фоне, до reconnect на активной вкладке)                       |
 | Массовый rename конфликтует с параллельными ветками                                               | «Тихое» окно; rename отдельным коммитом (целые каталоги)                                       |
 | Запись last-used при чередовании вкладок                                                          | Только при отличии (`dal.ts:126`); принят                                                      |

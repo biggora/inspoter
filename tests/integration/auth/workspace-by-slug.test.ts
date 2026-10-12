@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external";
+import type { WorkStore } from "next/dist/server/app-render/work-async-storage.external";
 import { db } from "@/lib/db";
 
 // Slice 1 of docs/plans/workspace-in-url.md: requireWorkspaceBySlug() and
@@ -128,6 +138,57 @@ describe("requireWorkspaceBySlug", () => {
       requireWorkspaceBySlug(`missing-${randomUUID()}`),
     ).rejects.toThrow("notFound");
     expect(await sessionActiveWorkspaceId()).toBe(before);
+  });
+});
+
+// Next hides the prefetch headers from headers(); a render learns it is a router
+// prefetch (next-router-prefetch: 1) only from the work store's
+// isPrefetchRequest, which these tests set the way Next's renderer does.
+describe("requireWorkspaceBySlug and router prefetches", () => {
+  // Outside a Next render the store is a stub that cannot run(); stand in for
+  // the store Next's renderer would have provided.
+  function inRender<T>(isPrefetchRequest: boolean, run: () => Promise<T>) {
+    const getStore = vi
+      .spyOn(workAsyncStorage, "getStore")
+      .mockReturnValue({ isPrefetchRequest } as WorkStore);
+    return run().finally(() => getStore.mockRestore());
+  }
+
+  beforeEach(async () => {
+    await db.session.update({
+      where: { id: seededSessionId },
+      data: {
+        activeWorkspaceId: workspaceA.id,
+        activeWorkspaceOperatorId: operatorId,
+      },
+    });
+  });
+
+  it("returns the workspace but leaves last-used alone for a prefetch render", async () => {
+    const { requireWorkspaceBySlug } = await import("@/lib/auth/dal");
+
+    const { workspace } = await inRender(true, () =>
+      requireWorkspaceBySlug(workspaceB.slug),
+    );
+
+    expect(workspace.id).toBe(workspaceB.id);
+    expect(await sessionActiveWorkspaceId()).toBe(workspaceA.id);
+  });
+
+  it("still answers notFound() for a prefetch of a foreign workspace", async () => {
+    const { requireWorkspaceBySlug } = await import("@/lib/auth/dal");
+
+    await expect(
+      inRender(true, () => requireWorkspaceBySlug(foreignWorkspace.slug)),
+    ).rejects.toThrow("notFound");
+  });
+
+  it("records last-used for a real navigation render", async () => {
+    const { requireWorkspaceBySlug } = await import("@/lib/auth/dal");
+
+    await inRender(false, () => requireWorkspaceBySlug(workspaceB.slug));
+
+    expect(await sessionActiveWorkspaceId()).toBe(workspaceB.id);
   });
 });
 
