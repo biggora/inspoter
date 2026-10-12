@@ -1,10 +1,15 @@
+"use client";
+
+import { useWorkspace } from "@/components/shell/workspace-provider";
 import { getInitials, avatarStyle } from "@/lib/mail/avatar";
 import { cn } from "@/lib/utils";
 
 // A contact's photo when it has one, the same deterministic initials tile the
 // mail client draws when it does not. The photo is served from
 // /api/contacts/[id]/photo, which is workspace-scoped and revalidated by ETag,
-// so listing 50 contacts costs 50 conditional requests at most once.
+// so listing 50 contacts costs 50 conditional requests at most once. An <img>
+// cannot send the X-Inspoter-Workspace header, so the URL carries the
+// workspace as `?workspace=` (rendered inside <WorkspaceProvider> only).
 
 const SIZES = {
   sm: "size-8 text-xs",
@@ -27,6 +32,7 @@ export function ContactAvatar({
   size = "md",
   className,
 }: ContactAvatarProps) {
+  const { id: workspaceId } = useWorkspace();
   const classes = cn(
     "flex shrink-0 items-center justify-center rounded-full font-medium",
     SIZES[size],
@@ -40,7 +46,7 @@ export function ContactAvatar({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/api/contacts/${contactId}/photo`}
+        src={`/api/contacts/${contactId}/photo?workspace=${encodeURIComponent(workspaceId)}`}
         alt=""
         className={cn(classes, "object-cover")}
       />

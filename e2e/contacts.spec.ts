@@ -238,3 +238,71 @@ test("keeps the search when the sidebar filters and when a contact is opened", a
   await expect(page).toHaveURL(/starred=true/);
   await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
 });
+
+// A 1x1 PNG: small, but a real image, so `naturalWidth` is only above zero when
+// the browser actually decoded the bytes the photo route served.
+const PHOTO_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+test("a contact photo loads on the workspace contacts page (AC-CNT-004)", async ({
+  page,
+  testData,
+}) => {
+  const lastName = `Photo-${RUN}`;
+  await createContact(page, {
+    firstName: "Pia",
+    lastName,
+    email: `pia.${RUN}@example.com`,
+  });
+  await expect(page).toHaveURL(/\/w\/[^/]+\/contacts/);
+
+  const workspaceId =
+    (await page
+      .locator("[data-workspace-id]")
+      .first()
+      .getAttribute("data-workspace-id")) ?? "";
+  const href = await page
+    .getByRole("link", { name: `Pia ${lastName}` })
+    .getAttribute("href");
+  const contactId = /\/contacts\/([^/?]+)/.exec(href ?? "")?.[1] ?? "";
+  expect(workspaceId).not.toBe("");
+  expect(contactId).not.toBe("");
+  testData.registerTeardown({
+    description: "delete the photo contact",
+    method: "DELETE",
+    url: `/api/contacts/${contactId}`,
+    workspaceId,
+  });
+
+  const uploadStatus = await page.evaluate(
+    async ([id, wsId, base64]) => {
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const form = new FormData();
+      form.set("photo", new File([bytes], "photo.png", { type: "image/png" }));
+      const response = await fetch(`/api/contacts/${id}/photo`, {
+        method: "POST",
+        headers: { "x-inspoter-workspace": wsId },
+        body: form,
+      });
+      return response.status;
+    },
+    [contactId, workspaceId, PHOTO_PNG_BASE64] as const,
+  );
+  expect(uploadStatus).toBe(204);
+
+  // Filter to the new contact so it is on the first page, then reload so the
+  // list is rendered with `hasPhoto` set.
+  await page.getByLabel("Search contacts").fill(lastName);
+  await expect(page).toHaveURL(new RegExp(`query=${lastName}`));
+  await page.reload();
+
+  // An <img> cannot send the workspace header, so the avatar names the
+  // workspace in the query string.
+  const avatar = page.locator(
+    `img[src="/api/contacts/${contactId}/photo?workspace=${encodeURIComponent(workspaceId)}"]`,
+  );
+  await expect(avatar).toBeVisible();
+  await expect
+    .poll(() => avatar.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+});

@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuthWithWorkspaceHeader } from "@/lib/auth/dal";
+import {
+  requireAuthWithWorkspaceHeader,
+  requireAuthWithWorkspaceParam,
+} from "@/lib/auth/dal";
 import { toErrorResponse } from "@/lib/api/errors";
 import { emptyResponse, jsonResponse } from "@/lib/api/response";
 import { mapContactError } from "@/app/api/contacts/errors";
@@ -18,8 +21,13 @@ interface RouteContext {
 // accepted or returned: an SVG would be an XSS vector served same-origin.
 const ALLOWED_TYPES = new Set<string>(CONTACT_PHOTO_CONTENT_TYPES);
 
+// GET is the one method an `<img>` issues, and an `<img>` cannot set the
+// X-Inspoter-Workspace header, so it names its workspace in `?workspace=`
+// instead — the same membership-checked selector (NFR-SEC-004). Read-only, so
+// the missing preflight protection costs nothing: a cross-origin page cannot
+// read the response.
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const authResult = await requireAuthWithWorkspaceHeader(request).catch(
+  const authResult = await requireAuthWithWorkspaceParam(request).catch(
     (error) => toErrorResponse(error),
   );
   if (authResult instanceof NextResponse) return authResult;

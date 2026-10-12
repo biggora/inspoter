@@ -18,7 +18,9 @@ async function restrictedImportMessages(code: string, filePath: string) {
 
 const COMPONENT = "src/components/shell/lint-fixture.tsx";
 
-describe("navigation import restrictions", () => {
+// The first lintText loads the flat config and the TypeScript parser, which
+// outlasts the 5s default when the machine is busy.
+describe("navigation import restrictions", { timeout: 30_000 }, () => {
   it.each([
     ["useRouter", 'import { useRouter } from "next/navigation";'],
     ["usePathname", 'import { usePathname } from "next/navigation";'],

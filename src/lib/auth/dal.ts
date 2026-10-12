@@ -11,38 +11,43 @@ import { getValidSession, readSessionCookie } from "@/lib/auth/session";
 // Auth Data Access Layer (architecture.md §5.3, ADR-012) — the authoritative
 // auth gate (as opposed to proxy.ts's optimistic cookie-presence check).
 // Validates the `session` cookie against the DB (exists + not expired) and
-// returns the associated Operator, or redirects to /login. Called by
-// `(dashboard)/layout.tsx` and every non-webhook API route handler
-// (NFR-SEC-001). The sole sanctioned Prisma caller outside the service layer.
+// returns the associated Operator, or redirects to /login. Called by the
+// `w/[workspace]` layout and pages (requireWorkspaceBySlug) and every
+// non-webhook API route handler (NFR-SEC-001). The sole sanctioned Prisma
+// caller outside the service layer.
 
 // Shared by every entry point below: cookie -> live Session -> Operator, or a
-// redirect to /login.
-async function requireSessionOperator(): Promise<{
-  session: Session;
-  operator: Operator;
-}> {
-  const sessionId = await readSessionCookie();
-  if (!sessionId) {
-    redirect({ href: "/login", locale: await getLocale() });
-    throw new Error("unreachable");
-  }
+// redirect to /login. Wrapped in cache() (like requireWorkspaceBySlug) so the
+// several DAL calls one render makes share a single cookie -> session ->
+// operator lookup; React scopes the cache to the request.
+const requireSessionOperator = cache(
+  async (): Promise<{
+    session: Session;
+    operator: Operator;
+  }> => {
+    const sessionId = await readSessionCookie();
+    if (!sessionId) {
+      redirect({ href: "/login", locale: await getLocale() });
+      throw new Error("unreachable");
+    }
 
-  const session = await getValidSession(sessionId);
-  if (!session) {
-    redirect({ href: "/login", locale: await getLocale() });
-    throw new Error("unreachable");
-  }
+    const session = await getValidSession(sessionId);
+    if (!session) {
+      redirect({ href: "/login", locale: await getLocale() });
+      throw new Error("unreachable");
+    }
 
-  const operator = await db.operator.findUnique({
-    where: { id: session.operatorId },
-  });
-  if (!operator) {
-    redirect({ href: "/login", locale: await getLocale() });
-    throw new Error("unreachable");
-  }
+    const operator = await db.operator.findUnique({
+      where: { id: session.operatorId },
+    });
+    if (!operator) {
+      redirect({ href: "/login", locale: await getLocale() });
+      throw new Error("unreachable");
+    }
 
-  return { session, operator };
-}
+    return { session, operator };
+  },
+);
 
 export async function requireOperator(): Promise<Operator> {
   const { operator } = await requireSessionOperator();
@@ -136,25 +141,11 @@ async function recordLastUsedWorkspace(
   });
 }
 
-export async function requireAuth(): Promise<AuthContext> {
-  const { session, operator } = await requireSessionOperator();
-
-  const workspace = await findLastUsedWorkspace(operator, session);
-  if (!workspace) {
-    redirect({ href: "/login", locale: await getLocale() });
-    throw new Error("unreachable");
-  }
-
-  // Persist for next request (covers both default and joinedAt fallback)
-  await recordLastUsedWorkspace(operator, session, workspace);
-
-  return { operator, workspace };
-}
-
 /**
  * The workspace a URL without a `/w/<slug>` prefix should land on (legacy
- * redirect): the same session -> default -> first-membership order as
- * requireAuth(), but read-only. Null when the operator has no membership.
+ * redirect): session -> operator default -> first membership, each step
+ * re-checking membership, and read-only. Null when the operator has no
+ * membership.
  */
 export async function resolveLastUsedWorkspace(): Promise<Workspace | null> {
   const { session, operator } = await requireSessionOperator();
@@ -213,13 +204,6 @@ export class WorkspaceContextRequiredError extends Error {
   constructor() {
     super("X-Inspoter-Workspace header is required");
     this.name = "WorkspaceContextRequiredError";
-  }
-}
-
-export class WorkspaceContextStaleError extends Error {
-  constructor() {
-    super("Workspace context is stale — please refresh");
-    this.name = "WorkspaceContextStaleError";
   }
 }
 

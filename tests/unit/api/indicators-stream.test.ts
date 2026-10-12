@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   subscribeToIndicatorSnapshots: vi.fn(),
 }));
 
-// Spread the real module: toErrorResponse maps the WorkspaceContext* classes
+// Spread the real module: toErrorResponse maps the Workspace* error classes
 // by identity, so stubbing them away would break the refusal path.
 vi.mock("@/lib/auth/dal", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/dal")>()),
@@ -20,7 +20,7 @@ vi.mock("@/lib/services/indicator-broadcaster", () => ({
 }));
 
 import { NextRequest } from "next/server";
-import { WorkspaceContextStaleError } from "@/lib/auth/dal";
+import { WorkspaceAccessDeniedError } from "@/lib/auth/dal";
 import { GET } from "@/app/api/indicators/stream/route";
 
 const WORKSPACE = "workspace-a";
@@ -176,15 +176,18 @@ describe("GET /api/indicators/stream", () => {
 
   // EventSource cannot read a status code, which is why the client fetches
   // before it connects; the route must still refuse rather than stream to a
-  // tab pointed at a workspace the session has left.
-  it("refuses a stale workspace instead of streaming to it", async () => {
+  // tab whose operator is not a member of the workspace it names.
+  it("refuses a workspace the operator is not a member of instead of streaming to it", async () => {
     mocks.requireAuthWithWorkspaceParam.mockRejectedValue(
-      new WorkspaceContextStaleError(),
+      new WorkspaceAccessDeniedError(),
     );
 
     const response = await GET(request());
 
-    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: "WORKSPACE_ACCESS_DENIED",
+    });
     expect(mocks.subscribeToIndicatorSnapshots).not.toHaveBeenCalled();
   });
 });

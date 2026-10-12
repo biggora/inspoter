@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  type ReactNode,
+} from "react";
 
 import {
   applyIndicators,
@@ -26,10 +33,20 @@ const ZERO: IndicatorStateDto = {
   openCriticalAlerts: 0,
 };
 
+interface IndicatorSeed {
+  indicators: IndicatorStateDto;
+  // The workspace the seed belongs to. The store only answers for the
+  // workspace it is labelled with, so a tree rendered for another one keeps
+  // showing its own seed until the store has been relabelled on commit.
+  workspaceId?: string;
+}
+
 // Carries the immutable server-rendered seed. Live values never travel through
 // context — they come from the module store — so a change wakes only the
 // components that read the store, not the whole subtree.
-const IndicatorSeedContext = createContext<IndicatorStateDto>(ZERO);
+const IndicatorSeedContext = createContext<IndicatorSeed>({
+  indicators: ZERO,
+});
 
 /**
  * The seed alone, with no transport. IndicatorStoreProvider wraps this; tests
@@ -38,13 +55,19 @@ const IndicatorSeedContext = createContext<IndicatorStateDto>(ZERO);
  */
 export function IndicatorSeedProvider({
   value,
+  workspaceId,
   children,
 }: {
   value: IndicatorStateDto;
+  workspaceId?: string;
   children: ReactNode;
 }) {
+  const seed = useMemo(
+    () => ({ indicators: value, workspaceId }),
+    [value, workspaceId],
+  );
   return (
-    <IndicatorSeedContext.Provider value={value}>
+    <IndicatorSeedContext.Provider value={seed}>
       {children}
     </IndicatorSeedContext.Provider>
   );
@@ -52,7 +75,8 @@ export function IndicatorSeedProvider({
 
 /** Every consumer reads through this: store first, server seed until it fills. */
 export function useIndicators(): IndicatorStateDto {
-  return useIndicatorsWithSeed(useContext(IndicatorSeedContext));
+  const { indicators, workspaceId } = useContext(IndicatorSeedContext);
+  return useIndicatorsWithSeed(indicators, workspaceId);
 }
 
 // Safety net, not the primary transport. It covers a dropped stream, an event
@@ -76,10 +100,17 @@ export function IndicatorStoreProvider({
   initial: IndicatorStateDto;
   children: ReactNode;
 }) {
-  // During render, not in an effect, mirroring setActiveWorkspaceId in
-  // app-sidebar.tsx: the store must hold the server's numbers before any
-  // child's first snapshot read, or the badges would flash zero.
-  seedIndicators(workspaceId, initial);
+  // Label the store with this workspace and its server numbers on commit, not
+  // during render: a render React may never commit (or one that precedes the
+  // unmount of the previous workspace's tree) must not change what the tree
+  // still on screen reads, nor notify its subscribers mid-render. Until then
+  // consumers show `initial` through the seed context, so the first paint
+  // already has the server's numbers and the badges never flash zero.
+  useLayoutEffect(() => {
+    seedIndicators(workspaceId, initial);
+    // `initial` is a fresh object on every layout render; see the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId]);
 
   useEffect(() => {
     resetIndicators(workspaceId, initial);
@@ -92,7 +123,7 @@ export function IndicatorStoreProvider({
 
     async function pull(): Promise<boolean> {
       try {
-        const next = await fetchIndicators();
+        const next = await fetchIndicators(workspaceId);
         if (!disposed) applyIndicators(workspaceId, next);
         return true;
       } catch {
@@ -165,10 +196,10 @@ export function IndicatorStoreProvider({
       void pull();
     }
 
-    // Fetch before connecting. EventSource cannot read a status code, so a
-    // stale tab whose workspace changed would retry a 409 every five seconds
-    // forever. A plain fetch surfaces that, and we simply do not open the
-    // stream — the next render reseeds this effect with the right workspace.
+    // Fetch before connecting. EventSource cannot read a status code, so a tab
+    // whose operator is no longer a member of this workspace would retry a 403
+    // every five seconds forever. A plain fetch surfaces that, and we simply
+    // do not open the stream.
     void pull().then((ok) => {
       if (disposed) return;
       startPoll();
@@ -194,6 +225,8 @@ export function IndicatorStoreProvider({
   }, [workspaceId]);
 
   return (
-    <IndicatorSeedProvider value={initial}>{children}</IndicatorSeedProvider>
+    <IndicatorSeedProvider value={initial} workspaceId={workspaceId}>
+      {children}
+    </IndicatorSeedProvider>
   );
 }

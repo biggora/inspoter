@@ -93,10 +93,11 @@ export function applyIndicators(
 }
 
 /**
- * Seed from the server-rendered values. Called during render (guarded, like
- * setActiveWorkspaceId in app-sidebar.tsx) so the first client snapshot equals
- * what the server painted — that is what keeps the badges correct on first
- * paint instead of popping in after hydration.
+ * Label the store with a workspace and its server-rendered values. Called from
+ * a layout effect, never during render (it notifies subscribers, which React
+ * forbids mid-render). Until it runs, `useIndicators` falls back to the seed
+ * the caller passes, which is what keeps the badges correct on first paint
+ * instead of popping in after hydration.
  */
 export function seedIndicators(
   workspaceId: string,
@@ -115,9 +116,17 @@ export function resetIndicators(workspaceId: string, seed: IndicatorStateDto) {
   emit();
 }
 
-export async function fetchIndicators(): Promise<IndicatorStateDto> {
+/**
+ * Fetch the numbers of `workspaceId`. The id is explicit, not read from the
+ * per-tab singleton: the caller labels the answer with the same id when it
+ * applies it, and a singleton that moved while the request was being built
+ * would let one workspace's numbers be applied under another's label.
+ */
+export async function fetchIndicators(
+  workspaceId: string,
+): Promise<IndicatorStateDto> {
   const res = await fetch("/api/indicators", {
-    headers: { [WORKSPACE_HEADER_NAME]: getActiveWorkspaceId() ?? "" },
+    headers: { [WORKSPACE_HEADER_NAME]: workspaceId },
   });
   if (!res.ok) throw new Error(`Indicator request failed: ${res.status}`);
   return (await res.json()) as IndicatorStateDto;
@@ -134,7 +143,7 @@ export async function refreshIndicators(): Promise<void> {
   const workspaceId = getActiveWorkspaceId();
   if (!workspaceId) return;
   try {
-    applyIndicators(workspaceId, await fetchIndicators());
+    applyIndicators(workspaceId, await fetchIndicators(workspaceId));
   } catch {
     // A failed refresh keeps the last known numbers; the stream or the next
     // safety poll corrects them.
@@ -150,13 +159,22 @@ export function invalidateIndicators(): void {
  * Read the current indicators. Falls back to the server-rendered seed until
  * the store is populated, which is what makes the first paint correct.
  */
-export function useIndicators(seed: IndicatorStateDto): IndicatorStateDto {
+export function useIndicators(
+  seed: IndicatorStateDto,
+  workspaceId?: string,
+): IndicatorStateDto {
   const snapshot = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
-  return snapshot?.indicators ?? seed;
+  // A store labelled with another workspace (the previous tab content, until
+  // the new tree commits) must not answer for this one.
+  if (!snapshot) return seed;
+  if (workspaceId !== undefined && snapshot.workspaceId !== workspaceId) {
+    return seed;
+  }
+  return snapshot.indicators;
 }
 
 /** Test-only. Never called from application code. */

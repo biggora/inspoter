@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 import { cn } from "@/lib/utils";
-import { setActiveWorkspaceId } from "@/lib/client/active-workspace";
 import {
   Sidebar,
   SidebarContent,
@@ -98,13 +97,6 @@ export function AppSidebar({
   const pathname = usePathname();
   const isSectionActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`);
-
-  // Sync the per-tab active workspace id (read by every api.ts fetch
-  // wrapper's X-Inspoter-Workspace header) on every render, including the
-  // re-render `router.refresh()` triggers after a workspace switch. Runs
-  // during render rather than an effect so it's set before any child's
-  // effect (e.g. WorkspaceSwitcher's list-fetch on mount) can fire.
-  setActiveWorkspaceId(workspaceId);
 
   return (
     <Sidebar collapsible="icon" data-workspace-id={workspaceId}>

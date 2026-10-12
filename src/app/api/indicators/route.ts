@@ -6,8 +6,9 @@ import { jsonResponse } from "@/lib/api/response";
 
 // Every number the dashboard chrome shows, in one payload. The live transport
 // is the SSE sibling at ./stream; this endpoint is what seeds a reconnect, what
-// the safety poll hits, and what runs before the stream opens so a stale tab
-// learns it is stale from a real 409 (EventSource cannot read a status code).
+// the safety poll hits, and what runs before the stream opens so a tab the
+// server refuses (403: the operator is not a member of its workspace) learns it
+// from a real status code (EventSource cannot read one).
 //
 // Uncached compute: a route handler is not a React render, so the cache()
 // wrapper in indicator-counts.ts would memoize nothing here.
