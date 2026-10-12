@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import {
+  WorkspaceAccessDeniedError,
   WorkspaceContextRequiredError,
   WorkspaceContextStaleError,
 } from "@/lib/auth/dal";
@@ -132,6 +133,13 @@ export function toErrorResponse(
     return jsonResponse(
       { error: "WORKSPACE_CONTEXT_STALE", message: error.message },
       { status: 409 },
+    );
+  }
+  // 403, identical for an unknown id and a non-member (no workspace probing).
+  if (error instanceof WorkspaceAccessDeniedError) {
+    return jsonResponse(
+      { error: "WORKSPACE_ACCESS_DENIED", message: error.message },
+      { status: 403 },
     );
   }
   if (error instanceof ManagementError) {

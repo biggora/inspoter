@@ -144,9 +144,9 @@ export const requireWorkspaceBySlug: (slug: string) => Promise<AuthContext>;
 // → нет строки: notFound()
 // → ws.id !== session.activeWorkspaceId: записать last-used (как L126-134)
 
-export async function resolveLastUsedWorkspace(
-  operator: Operator, session: Session,
-): Promise<Workspace | null>; // цепочка L75-123 без записи
+export async function resolveLastUsedWorkspace(): Promise<Workspace | null>;
+// без аргументов: сама разрешает session и operator (как requireOperator);
+// цепочка L75-123 без записи
 
 export async function requireWorkspaceFromHeader(request: NextRequest): Promise<AuthContext>;
 export async function requireWorkspaceFromParam(request: NextRequest, name?: string): Promise<AuthContext>;
