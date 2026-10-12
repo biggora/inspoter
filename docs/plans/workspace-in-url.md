@@ -1,6 +1,6 @@
 # Workspace в URL: независимые вкладки
 
-Статус: ПЛАН v3 (не реализован). Дата: 2026-10-12. Решение оператора: вариант 1
+Статус: ПЛАН v3 (реализован, см. «Статус реализации»). Дата: 2026-10-12. Решение оператора: вариант 1
 (workspace в пути URL). v2 отвечает на 12 замечаний adversarial-ревью, v3 — на
 2 замечания перепроверки (§12).
 
@@ -710,6 +710,21 @@ acceptance-тестов; свежего вывода `pnpm lint`, `pnpm typechec
 - **OQ-10:** pnpm чинится сменой `packageManager` (и закреплений в CI и
   Dockerfile) на `pnpm@11.28.2` (тег `latest-11`: тот же major, lockfile v9).
 - **OQ-11:** Help и api-docs остаются внутри `/w`.
+
+## Статус реализации
+
+Срезы 0–5 реализованы на ветке `feat/workspace-in-url`. Результаты прогонов
+записаны в `docs/test-plan.md`. Отклонения от плана, уже записанные выше:
+
+- **К-1 (legacy-маршруты).** Единый catch-all `[...legacy]` заменён 19
+  маршрутами `src/app/[locale]/(legacy)/<section>/[[...rest]]/page.tsx` с
+  общим `legacy-section-page.tsx` (§4.5). URL, которые не являются секцией,
+  сохраняют глобальный 404.
+- **Prefetch.** `recordLastUsedWorkspace` пропускает запись для RSC-prefetch
+  по внутреннему флагу `isPrefetchRequest` из `workAsyncStorage` Next 16
+  (§9). При обновлении Next перепроверить.
+- **pnpm.** `packageManager` закреплён на `pnpm@11.28.2` (OQ-10, Задача 0):
+  `pnpm@11.12.0` падает с `ERR_PNPM_BROKEN_PNPM_RELEASE`.
 
 ## 12. Изменения v2 и v3
 
