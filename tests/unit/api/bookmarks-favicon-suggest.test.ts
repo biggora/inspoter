@@ -21,6 +21,13 @@ vi.mock("@/lib/auth/dal", async (importOriginal) => {
   };
 });
 
+// Static, so the route's heavy import graph loads at collection time rather
+// than inside the first test's timeout.
+import {
+  GET,
+  buildFaviconSuggestUrl,
+} from "@/app/api/bookmarks/favicon-suggest/route";
+
 function imageResponse(status = 200): Response {
   return new Response(null, {
     status,
@@ -56,16 +63,12 @@ afterEach(() => {
 
 describe("buildFaviconSuggestUrl", () => {
   it("builds the fixed Google favicon-inference URL for a plain hostname", async () => {
-    const { buildFaviconSuggestUrl } =
-      await import("@/app/api/bookmarks/favicon-suggest/route");
     expect(buildFaviconSuggestUrl("github.com")).toBe(
       "https://www.google.com/s2/favicons?sz=64&domain=github.com",
     );
-  }, 10_000);
+  });
 
   it("URL-encodes special characters in the hostname", async () => {
-    const { buildFaviconSuggestUrl } =
-      await import("@/app/api/bookmarks/favicon-suggest/route");
     const hostname = "münchen.example.com";
     expect(buildFaviconSuggestUrl(hostname)).toBe(
       `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`,
@@ -76,25 +79,21 @@ describe("buildFaviconSuggestUrl", () => {
 
 describe("GET /api/bookmarks/favicon-suggest", () => {
   it("returns 400 when the url param is missing", async () => {
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(makeRequest(null));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when the url param is empty", async () => {
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(makeRequest(""));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 for a non-http(s) url", async () => {
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(makeRequest(encodeURIComponent("ftp://example.com")));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 for a malformed url", async () => {
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(makeRequest(encodeURIComponent("not a url")));
     expect(res.status).toBe(400);
   });
@@ -103,8 +102,6 @@ describe("GET /api/bookmarks/favicon-suggest", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(imageResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { GET, buildFaviconSuggestUrl } =
-      await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(
       makeRequest(encodeURIComponent("https://github.com/some/path")),
     );
@@ -125,7 +122,6 @@ describe("GET /api/bookmarks/favicon-suggest", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(imageResponse(404));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(
       makeRequest(encodeURIComponent("https://example.com")),
     );
@@ -138,7 +134,6 @@ describe("GET /api/bookmarks/favicon-suggest", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(htmlResponse(200));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(
       makeRequest(encodeURIComponent("https://example.com")),
     );
@@ -153,7 +148,6 @@ describe("GET /api/bookmarks/favicon-suggest", () => {
       .mockRejectedValueOnce(new TypeError("fetch failed"));
     vi.stubGlobal("fetch", fetchMock);
 
-    const { GET } = await import("@/app/api/bookmarks/favicon-suggest/route");
     const res = await GET(
       makeRequest(encodeURIComponent("https://example.com")),
     );
