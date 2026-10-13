@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   readSessionCookie: vi.fn(),
   getValidSession: vi.fn(),
   operatorFindUnique: vi.fn(),
-  memberFindUnique: vi.fn(),
+  workspaceFindFirst: vi.fn(),
   sessionUpdate: vi.fn(),
 }));
 
@@ -22,7 +22,7 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/db", () => ({
   db: {
     operator: { findUnique: mocks.operatorFindUnique },
-    workspaceMember: { findUnique: mocks.memberFindUnique },
+    workspace: { findFirst: mocks.workspaceFindFirst },
     session: { update: mocks.sessionUpdate },
   },
 }));
@@ -77,15 +77,9 @@ beforeEach(() => {
     id: "op-1",
     defaultWorkspaceId: null,
   });
-  mocks.memberFindUnique.mockImplementation(
-    async ({
-      where,
-    }: {
-      where: { workspaceId_operatorId: { workspaceId: string } };
-    }) =>
-      where.workspaceId_operatorId.workspaceId === WORKSPACE.id
-        ? { workspace: WORKSPACE }
-        : null,
+  mocks.workspaceFindFirst.mockImplementation(
+    async ({ where }: { where: { id: string } }) =>
+      where.id === WORKSPACE.id ? WORKSPACE : null,
   );
 });
 
@@ -102,7 +96,7 @@ describe.each(carriers)("%s", (name, guard, build) => {
         WorkspaceContextRequiredError,
       );
       // Every carrier must refuse before it ever looks at memberships.
-      expect(mocks.memberFindUnique).not.toHaveBeenCalled();
+      expect(mocks.workspaceFindFirst).not.toHaveBeenCalled();
     },
   );
 
@@ -127,14 +121,8 @@ describe("selector purity", () => {
   });
 
   it("uses the carrier, not the session, to pick the workspace", async () => {
-    mocks.memberFindUnique.mockImplementation(
-      async ({
-        where,
-      }: {
-        where: { workspaceId_operatorId: { workspaceId: string } };
-      }) => ({
-        workspace: { id: where.workspaceId_operatorId.workspaceId },
-      }),
+    mocks.workspaceFindFirst.mockImplementation(
+      async ({ where }: { where: { id: string } }) => ({ id: where.id }),
     );
     const { workspace } = await requireWorkspaceFromHeader(
       headerRequest("ws-other"),
@@ -158,14 +146,8 @@ describe("live guards are the selector", () => {
   ] as const)(
     "%s acts in the carried workspace and never writes the Session",
     async (_name, guard, build) => {
-      mocks.memberFindUnique.mockImplementation(
-        async ({
-          where,
-        }: {
-          where: { workspaceId_operatorId: { workspaceId: string } };
-        }) => ({
-          workspace: { id: where.workspaceId_operatorId.workspaceId },
-        }),
+      mocks.workspaceFindFirst.mockImplementation(
+        async ({ where }: { where: { id: string } }) => ({ id: where.id }),
       );
       // The session says ws-a; the carrier says ws-other: the carrier wins.
       const { workspace } = await guard(build("ws-other"));

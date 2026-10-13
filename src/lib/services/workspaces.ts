@@ -222,7 +222,10 @@ export async function listForOperator(
     include: { workspace: true },
     orderBy: { joinedAt: "asc" },
   });
-  return memberships.map((m) => m.workspace);
+  // The include is a second query: a workspace deleted between the two reads
+  // comes back as null despite the type, so drop it rather than hand the
+  // switcher a null entry.
+  return memberships.flatMap((m) => (m.workspace ? [m.workspace] : []));
 }
 
 export async function updateWorkspace(
