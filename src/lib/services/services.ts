@@ -74,11 +74,14 @@ const LABEL_INCLUDE = {
   },
 } satisfies Prisma.ServiceInclude;
 
+// The label include is a second query: a label deleted between the assignment
+// read and the label read comes back as null despite the type, so skip it
+// rather than crash the whole list.
 function toLabelSummaries(
-  rows: Array<{ label: { id: string; name: string; color: string } }>,
+  rows: Array<{ label: { id: string; name: string; color: string } | null }>,
 ): ServiceLabelSummary[] {
   return rows
-    .map((row) => toSummary(row.label))
+    .flatMap((row) => (row.label ? [toSummary(row.label)] : []))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -384,17 +387,23 @@ export async function applyCheckResult(
 
   const now = new Date();
 
-  await db.serviceCheck.create({
-    data: {
-      workspaceId: service.workspaceId,
-      serviceId: service.id,
-      serviceWorkspaceId: service.workspaceId,
-      status: outcome.ok ? ServiceStatus.UP : ServiceStatus.DOWN,
-      responseTimeMs: outcome.responseTimeMs,
-      message: outcome.message ?? null,
-      checkedAt: now,
-    },
-  });
+  // A service deleted while its check ran fails the check row's foreign key
+  // (P2003) or the status update (P2025); both mean "not found", not a fault.
+  await db.serviceCheck
+    .create({
+      data: {
+        workspaceId: service.workspaceId,
+        serviceId: service.id,
+        serviceWorkspaceId: service.workspaceId,
+        status: outcome.ok ? ServiceStatus.UP : ServiceStatus.DOWN,
+        responseTimeMs: outcome.responseTimeMs,
+        message: outcome.message ?? null,
+        checkedAt: now,
+      },
+    })
+    .catch((error: unknown) => {
+      throw vanishedServiceError(error, service.id);
+    });
 
   // The Alert is written before the new status is persisted: the scheduler
   // only logs a failed check, so a flip committed ahead of its Alert would
@@ -435,19 +444,30 @@ export async function applyCheckResult(
     });
   }
 
-  const updated = await db.service.update({
-    where: { id: service.id, workspaceId: service.workspaceId },
-    data: {
-      currentStatus: result.status,
-      consecutiveFailures: result.consecutiveFailures,
-      lastCheckedAt: now,
-      lastResponseTimeMs: outcome.responseTimeMs,
-      lastMessage: outcome.message ?? null,
-      nextCheckAt: new Date(now.getTime() + service.intervalSeconds * 1000),
-    },
-  });
+  const updated = await db.service
+    .update({
+      where: { id: service.id, workspaceId: service.workspaceId },
+      data: {
+        currentStatus: result.status,
+        consecutiveFailures: result.consecutiveFailures,
+        lastCheckedAt: now,
+        lastResponseTimeMs: outcome.responseTimeMs,
+        lastMessage: outcome.message ?? null,
+        nextCheckAt: new Date(now.getTime() + service.intervalSeconds * 1000),
+      },
+    })
+    .catch((error: unknown) => {
+      throw vanishedServiceError(error, service.id);
+    });
 
   return updated;
+}
+
+function vanishedServiceError(error: unknown, id: string): unknown {
+  return error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2003" || error.code === "P2025")
+    ? new ServiceNotFoundError(id)
+    : error;
 }
 
 export async function checkNow(

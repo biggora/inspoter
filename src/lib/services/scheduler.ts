@@ -1,7 +1,11 @@
 import { env } from "@/lib/config/env";
 import type { Service } from "@/generated/prisma/client";
 import { runCheck } from "./monitor-checks";
-import { listDueForCheck, applyCheckResult } from "./services";
+import {
+  listDueForCheck,
+  applyCheckResult,
+  ServiceNotFoundError,
+} from "./services";
 import { logError } from "@/lib/services/logs";
 
 // In-process scheduler for Services checks (plan.md "check scheduler").
@@ -41,6 +45,8 @@ async function checkOneService(service: Service): Promise<void> {
     const outcome = await runCheck(service);
     await applyCheckResult(service, outcome);
   } catch (error) {
+    // Deleted while its check ran: nothing left to record.
+    if (error instanceof ServiceNotFoundError) return;
     // A single bad check must never kill the interval or block the others
     // in its chunk.
     console.error(
