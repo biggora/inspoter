@@ -189,11 +189,10 @@ export function NotesWorkspaceView({
         onSaved={(note) => {
           const wasCreate = noteDialog?.mode === "create";
           setNoteDialog(null);
-          if (wasCreate) {
-            router.push(`/notes/${note.id}`);
-          } else {
-            router.refresh();
-          }
+          if (wasCreate) router.push(`/notes/${note.id}`);
+          // The tree's data comes from the section layout, which a soft
+          // navigation between /notes routes does not refetch.
+          router.refresh();
         }}
       />
       <FolderFormDialog
