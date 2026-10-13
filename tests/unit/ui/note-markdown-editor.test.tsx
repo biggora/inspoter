@@ -2,7 +2,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NoteMarkdownEditor } from "@/components/notes/note-markdown-editor";
 
@@ -81,6 +81,10 @@ function renderEditor(
 }
 
 describe("NoteMarkdownEditor", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders CommonMark as formatted editor content", async () => {
     renderEditor(
       "# Title\n\n**bold** and *italic*\n\n- item\n- another\n\n> quote\n\n```ts\nconst answer = 42;\n```",
@@ -124,5 +128,42 @@ describe("NoteMarkdownEditor", () => {
     await user.keyboard("{Control>}b{/Control}");
 
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith("**Title**"));
+  });
+
+  // jsdom has no layout, so ProseMirror cannot map pointer coordinates to a
+  // node. Pointing elementFromPoint at the anchor lets the real mousedown and
+  // mouseup events reach ProseMirror's own click handling.
+  async function clickLink(markdown: string) {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const { onChange } = renderEditor(markdown);
+    const anchor = (await screen.findByRole("textbox")).querySelector("a");
+    expect(anchor).not.toBeNull();
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(anchor);
+
+    await user.click(anchor as HTMLAnchorElement);
+
+    return { anchor: anchor as HTMLAnchorElement, onChange, open };
+  }
+
+  it("opens links in a new tab without exposing window.opener", async () => {
+    const { anchor, onChange, open } = await clickLink(
+      "See [author](https://example.com/author)",
+    );
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(
+      "https://example.com/author",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(anchor).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not open links with a disallowed protocol", async () => {
+    const { open } = await clickLink("[x](javascript:alert(1))");
+
+    expect(open).not.toHaveBeenCalled();
   });
 });
