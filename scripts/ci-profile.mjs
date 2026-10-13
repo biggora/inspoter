@@ -20,7 +20,8 @@ const CI_PROFILE_SCRIPT = realpathSync(
 );
 const PNPM_VERSION = "11.28.2";
 const CLEANUP_STEP = "test:db:down";
-const PNPM_VERSION_TIMEOUT_MS = 2_000;
+// The real Corepack probe takes ~0.4 s idle but over 3 s on a loaded machine.
+const PNPM_VERSION_TIMEOUT_MS = 10_000;
 const PNPM_VERSION_OUTPUT_LIMIT = 64;
 const PROCESS_TREE_TERMINATION_TIMEOUT_MS = 1_000;
 const PNPM_VERSION_ENVIRONMENT_KEYS = [
@@ -91,6 +92,12 @@ export class CiProfileError extends Error {
 function usageError() {
   return new CiProfileError(
     "Usage: pnpm run <test:ci|test:e2e> (profiles: full or e2e).",
+  );
+}
+
+function probeTimeoutError(timeoutMs) {
+  return new CiProfileError(
+    "pnpm --version probe timed out after " + String(timeoutMs) + " ms.",
   );
 }
 
@@ -363,7 +370,11 @@ async function terminateProcessTree(child) {
   safeKillDirectChild(child);
 }
 
-async function probePnpmVersionWithLauncher(pnpmLauncher, environment) {
+async function probePnpmVersionWithLauncher(
+  pnpmLauncher,
+  environment,
+  timeoutMs = PNPM_VERSION_TIMEOUT_MS,
+) {
   await new Promise((resolvePromise, rejectPromise) => {
     let stdout = "";
     let settled = false;
@@ -385,12 +396,12 @@ async function probePnpmVersionWithLauncher(pnpmLauncher, environment) {
       child.stdout.destroy();
     };
 
-    const rejectProbe = async () => {
+    const rejectProbe = async (error = usageError()) => {
       if (settled) return;
       settled = true;
       cleanup();
       await terminateProcessTree(child);
-      rejectPromise(usageError());
+      rejectPromise(error);
     };
 
     const onStdout = (chunk) => {
@@ -422,7 +433,10 @@ async function probePnpmVersionWithLauncher(pnpmLauncher, environment) {
     child.once("error", onError);
     child.once("close", onClose);
     if (!settled) {
-      deadline = setTimeout(() => void rejectProbe(), PNPM_VERSION_TIMEOUT_MS);
+      deadline = setTimeout(
+        () => void rejectProbe(probeTimeoutError(timeoutMs)),
+        timeoutMs,
+      );
     }
   });
 }
@@ -431,8 +445,12 @@ async function probeTrustedPnpmVersion(pnpmLauncher, environment) {
   await probePnpmVersionWithLauncher(pnpmLauncher, environment);
 }
 
-export async function probePnpmVersionForTest(pnpmLauncher, environment) {
-  await probePnpmVersionWithLauncher(pnpmLauncher, environment);
+export async function probePnpmVersionForTest(
+  pnpmLauncher,
+  environment,
+  timeoutMs,
+) {
+  await probePnpmVersionWithLauncher(pnpmLauncher, environment, timeoutMs);
 }
 
 async function runPnpmStep(pnpmCli, step, environment) {

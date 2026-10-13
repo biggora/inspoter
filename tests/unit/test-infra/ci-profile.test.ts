@@ -33,6 +33,14 @@ const SAFE_DATABASE_URL =
   "postgresql://test_user:test_password@127.0.0.1:3833/inspoter_e2e_test?schema=public";
 const TEMPORARY_DIRECTORIES: string[] = [];
 const CHILD_PIDS = new Set<number>();
+// Tests that run the real Corepack probe allow for its 10 s production timeout.
+const REAL_PROBE_TEST_TIMEOUT_MS = 20_000;
+const REAL_PROBE_SUITE_OPTIONS = { timeout: REAL_PROBE_TEST_TIMEOUT_MS };
+// Hang tests shorten the probe timeout so they stay fast; the probe child
+// still needs time to start and write its PID file on a loaded machine.
+const HANG_PROBE_TIMEOUT_MS = 2_000;
+// The flooding probe must be killed well before the 10 s production timeout.
+const FLOOD_REJECTION_BOUND_MS = 5_000;
 
 function createTemporaryDirectory(prefix: string) {
   const directory = mkdtempSync(join(tmpdir(), prefix));
@@ -118,7 +126,7 @@ afterAll(() => {
   }
 });
 
-describe("deterministic CI profile runner", () => {
+describe("deterministic CI profile runner", REAL_PROBE_SUITE_OPTIONS, () => {
   it("attests the real lifecycle pnpm, executes the full profile, and cleans once", async () => {
     const calls: string[] = [];
 
@@ -251,7 +259,7 @@ describe("deterministic CI profile runner", () => {
         DATABASE_URL: SAFE_DATABASE_URL,
       }),
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: REAL_PROBE_TEST_TIMEOUT_MS,
     });
 
     expect(result.status, result.stderr).toBe(1);
@@ -284,7 +292,11 @@ describe("deterministic CI profile runner", () => {
     let pid: number | undefined;
 
     try {
-      await probePnpmVersionForTest(candidate, validLifecycleEnvironment());
+      await probePnpmVersionForTest(
+        candidate,
+        validLifecycleEnvironment(),
+        HANG_PROBE_TIMEOUT_MS,
+      );
     } catch (error) {
       probeError = error;
     } finally {
@@ -293,7 +305,7 @@ describe("deterministic CI profile runner", () => {
     }
 
     expect(probeError).toBeInstanceOf(Error);
-    expect(String(probeError)).toContain("Usage:");
+    expect(String(probeError)).toContain("timed out after 2000 ms");
     expect(String(probeError)).not.toContain(candidate);
     expect(Date.now() - startedAt).toBeLessThan(3_500);
     expect(pid).toBeDefined();
@@ -332,7 +344,7 @@ describe("deterministic CI profile runner", () => {
     expect(probeError).toBeInstanceOf(Error);
     expect(String(probeError)).toContain("Usage:");
     expect(String(probeError)).not.toContain(candidate);
-    expect(Date.now() - startedAt).toBeLessThan(1_800);
+    expect(Date.now() - startedAt).toBeLessThan(FLOOD_REJECTION_BOUND_MS);
     expect(pid).toBeDefined();
     expect(existsSync(sentinel)).toBe(false);
     expect(await waitForProcessExit(pid!)).toBe(true);
@@ -360,8 +372,12 @@ describe("deterministic CI profile runner", () => {
     );
 
     await expect(
-      probePnpmVersionForTest(candidate, validLifecycleEnvironment()),
-    ).rejects.toThrow(/Usage:/);
+      probePnpmVersionForTest(
+        candidate,
+        validLifecycleEnvironment(),
+        HANG_PROBE_TIMEOUT_MS,
+      ),
+    ).rejects.toThrow(/timed out after 2000 ms/);
 
     const pids = readProcessTree(pidPath);
     for (const pid of pids) CHILD_PIDS.add(pid);
@@ -402,7 +418,7 @@ describe("deterministic CI profile runner", () => {
 
     const pids = readProcessTree(pidPath);
     for (const pid of pids) CHILD_PIDS.add(pid);
-    expect(Date.now() - startedAt).toBeLessThan(1_800);
+    expect(Date.now() - startedAt).toBeLessThan(FLOOD_REJECTION_BOUND_MS);
     expect(pids).toHaveLength(2);
     expect(existsSync(sentinel)).toBe(false);
     expect(await Promise.all(pids.map(waitForProcessExit))).toEqual([
