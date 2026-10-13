@@ -33,6 +33,12 @@ vi.mock("@/lib/services/bookmarks", async (importOriginal) => {
   return { ...actual, search: searchMock, list: listMock };
 });
 
+// Static, so the route's heavy import graph loads at collection time rather
+// than inside the first test's timeout.
+import { GET as getBookmarks } from "@/app/api/bookmarks/route";
+import { GET as getCategories } from "@/app/api/categories/route";
+import { WorkspaceContextRequiredError } from "@/lib/auth/dal";
+
 function makeRequest(path: string): NextRequest {
   return new NextRequest(`http://localhost${path}`);
 }
@@ -57,26 +63,23 @@ describe("GET /api/bookmarks", () => {
       total: 1,
     });
 
-    const { GET } = await import("@/app/api/bookmarks/route");
-    const res = await GET(makeRequest("/api/bookmarks"));
+    const res = await getBookmarks(makeRequest("/api/bookmarks"));
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       items: [{ id: "bm-1", name: "Grafana", categoryName: "Ops" }],
       total: 1,
     });
-  }, 10_000);
+  });
 
   it("scopes the search to the authenticated workspace", async () => {
-    const { GET } = await import("@/app/api/bookmarks/route");
-    await GET(makeRequest("/api/bookmarks"));
+    await getBookmarks(makeRequest("/api/bookmarks"));
 
     expect(searchMock).toHaveBeenCalledWith("test-workspace", {});
   });
 
   it("passes query, categoryId and a coerced numeric limit through", async () => {
-    const { GET } = await import("@/app/api/bookmarks/route");
-    await GET(
+    await getBookmarks(
       makeRequest("/api/bookmarks?query=graf&categoryId=cat-1&limit=25"),
     );
 
@@ -88,29 +91,27 @@ describe("GET /api/bookmarks", () => {
   });
 
   it("returns 400 for a non-numeric limit, without touching the service", async () => {
-    const { GET } = await import("@/app/api/bookmarks/route");
-    const res = await GET(makeRequest("/api/bookmarks?limit=all"));
+    const res = await getBookmarks(makeRequest("/api/bookmarks?limit=all"));
 
     expect(res.status).toBe(400);
     expect(searchMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 for an unknown search param", async () => {
-    const { GET } = await import("@/app/api/bookmarks/route");
-    const res = await GET(makeRequest("/api/bookmarks?workspaceId=other"));
+    const res = await getBookmarks(
+      makeRequest("/api/bookmarks?workspaceId=other"),
+    );
 
     expect(res.status).toBe(400);
     expect(searchMock).not.toHaveBeenCalled();
   });
 
   it("refuses the read when the workspace header is missing", async () => {
-    const { WorkspaceContextRequiredError } = await import("@/lib/auth/dal");
     requireAuthWithWorkspaceHeaderMock.mockRejectedValueOnce(
       new WorkspaceContextRequiredError(),
     );
 
-    const { GET } = await import("@/app/api/bookmarks/route");
-    const res = await GET(makeRequest("/api/bookmarks"));
+    const res = await getBookmarks(makeRequest("/api/bookmarks"));
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toMatchObject({
@@ -126,8 +127,7 @@ describe("GET /api/categories", () => {
       { id: "cat-1", name: "Ops", bookmarks: [], childCategories: [] },
     ]);
 
-    const { GET } = await import("@/app/api/categories/route");
-    const res = await GET(makeRequest("/api/categories"));
+    const res = await getCategories(makeRequest("/api/categories"));
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual([
@@ -137,13 +137,11 @@ describe("GET /api/categories", () => {
   });
 
   it("refuses the read when the workspace header is missing", async () => {
-    const { WorkspaceContextRequiredError } = await import("@/lib/auth/dal");
     requireAuthWithWorkspaceHeaderMock.mockRejectedValueOnce(
       new WorkspaceContextRequiredError(),
     );
 
-    const { GET } = await import("@/app/api/categories/route");
-    const res = await GET(makeRequest("/api/categories"));
+    const res = await getCategories(makeRequest("/api/categories"));
 
     expect(res.status).toBe(400);
     expect(listMock).not.toHaveBeenCalled();
