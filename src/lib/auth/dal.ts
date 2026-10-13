@@ -69,6 +69,20 @@ export interface AuthContext {
   workspace: Workspace;
 }
 
+// A workspace the operator is a member of, or null. Asked of the Workspace
+// table in one statement on purpose: a membership read with
+// `include: { workspace: true }` loads the workspace with a second query, so a
+// workspace deleted in between came back as a membership whose workspace is
+// null.
+function findMemberWorkspace(
+  operatorId: string,
+  where: { id: string } | { slug: string },
+): Promise<Workspace | null> {
+  return db.workspace.findFirst({
+    where: { ...where, members: { some: { operatorId } } },
+  });
+}
+
 // The "last used" workspace: session -> operator default -> first membership
 // (each step re-checks membership). Never writes the Session.
 async function findLastUsedWorkspace(
@@ -76,40 +90,28 @@ async function findLastUsedWorkspace(
   session: Session,
 ): Promise<Workspace | null> {
   if (session.activeWorkspaceId) {
-    // Verify membership exists for this workspace
-    const membership = await db.workspaceMember.findUnique({
-      where: {
-        workspaceId_operatorId: {
-          workspaceId: session.activeWorkspaceId,
-          operatorId: operator.id,
-        },
-      },
-      include: { workspace: true },
+    const workspace = await findMemberWorkspace(operator.id, {
+      id: session.activeWorkspaceId,
     });
-    if (membership) return membership.workspace;
+    if (workspace) return workspace;
   }
 
   // Fallback: default workspace, if set and membership is valid
   if (operator.defaultWorkspaceId) {
-    const defaultMembership = await db.workspaceMember.findUnique({
-      where: {
-        workspaceId_operatorId: {
-          workspaceId: operator.defaultWorkspaceId,
-          operatorId: operator.id,
-        },
-      },
-      include: { workspace: true },
+    const workspace = await findMemberWorkspace(operator.id, {
+      id: operator.defaultWorkspaceId,
     });
-    if (defaultMembership) return defaultMembership.workspace;
+    if (workspace) return workspace;
   }
 
-  // Fallback: first workspace the user belongs to
-  const membership = await db.workspaceMember.findFirst({
+  // Fallback: first workspace the user belongs to. The include is a second
+  // query, so a workspace deleted in between reads as null: skip it.
+  const memberships = await db.workspaceMember.findMany({
     where: { operatorId: operator.id },
     include: { workspace: true },
     orderBy: { joinedAt: "asc" },
   });
-  return membership?.workspace ?? null;
+  return memberships.find((m) => m.workspace)?.workspace ?? null;
 }
 
 // A Next.js router prefetch (`next-router-prefetch: 1`, which every sidebar
@@ -163,15 +165,12 @@ export async function resolveLastUsedWorkspace(): Promise<Workspace | null> {
 export const requireWorkspaceBySlug = cache(
   async (slug: string): Promise<AuthContext> => {
     const { session, operator } = await requireSessionOperator();
-    const membership = await db.workspaceMember.findFirst({
-      where: { operatorId: operator.id, workspace: { slug } },
-      include: { workspace: true },
-    });
-    if (!membership) {
+    const workspace = await findMemberWorkspace(operator.id, { slug });
+    if (!workspace) {
       notFound();
     }
-    await recordLastUsedWorkspace(operator, session, membership.workspace);
-    return { operator, workspace: membership.workspace };
+    await recordLastUsedWorkspace(operator, session, workspace);
+    return { operator, workspace };
   },
 );
 
@@ -185,11 +184,7 @@ export async function findMemberWorkspaceBySlug(
   slug: string,
 ): Promise<Workspace | null> {
   const operator = await requireOperator();
-  const membership = await db.workspaceMember.findFirst({
-    where: { operatorId: operator.id, workspace: { slug } },
-    include: { workspace: true },
-  });
-  return membership?.workspace ?? null;
+  return findMemberWorkspace(operator.id, { slug });
 }
 
 // Browser API routes select their workspace with the `X-Inspoter-Workspace`
@@ -252,14 +247,11 @@ async function requireMemberWorkspace(
 ): Promise<AuthContext> {
   const operator = await requireOperator();
   const workspaceId = parseWorkspaceId(provided);
-  const membership = await db.workspaceMember.findUnique({
-    where: { workspaceId_operatorId: { workspaceId, operatorId: operator.id } },
-    include: { workspace: true },
-  });
-  if (!membership) {
+  const workspace = await findMemberWorkspace(operator.id, { id: workspaceId });
+  if (!workspace) {
     throw new WorkspaceAccessDeniedError();
   }
-  return { operator, workspace: membership.workspace };
+  return { operator, workspace };
 }
 
 export async function requireWorkspaceFromHeader(
