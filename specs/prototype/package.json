@@ -41,5 +41,8 @@
     "unplugin-auto-import": "^19.3.0",
     "source-map": "^0.7.6",
     "jiti": "^2.6.1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6"
   }
 }
