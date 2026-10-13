@@ -24,10 +24,20 @@ RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:3833/inspoter
     OPERATOR_USERNAME=build-operator \
     OPERATOR_PASSWORD=build-only-password \
     pnpm exec prisma generate
+# next/font/google under Turbopack fails intermittently when Google Fonts
+# answers with extensionless /l/font?kit=...&skey=... URLs (vercel/next.js
+# #99114, still open; checked in 16.3.3, 16.3.8 and 16.5 canary), so a
+# version pin does not help. Retry the build, but only when the log points at
+# the fonts, so real build errors still fail on the first attempt.
 RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:3833/inspoter_e2e_test?schema=public" \
     OPERATOR_USERNAME=build-operator \
     OPERATOR_PASSWORD=build-only-password \
-    pnpm run build
+    sh -c 'for attempt in 1 2 3; do \
+        pnpm run build > /tmp/build.log 2>&1 && { cat /tmp/build.log; exit 0; }; \
+        cat /tmp/build.log; \
+        grep -qE "font/google|Google Fonts" /tmp/build.log || exit 1; \
+        echo "Google Fonts request failed (attempt $attempt of 3)"; sleep 10; \
+    done; exit 1'
 
 FROM base AS runtime
 ENV NODE_ENV=production \
