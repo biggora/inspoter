@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -8,23 +8,28 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Self-hosted rather than next/font/google: Turbopack fails the build when
+// Google Fonts answers with extensionless font URLs (vercel/next.js#99114).
+// Each file is the variable font Google serves, merged across the latin,
+// latin-ext, cyrillic and cyrillic-ext subsets; scripts/build-fonts.py
+// rebuilds them.
+const inter = localFont({
+  src: "../fonts/Inter-Variable.woff2",
+  weight: "400 700",
   variable: "--font-sans-loaded",
   display: "swap",
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+const plusJakartaSans = localFont({
+  src: "../fonts/PlusJakartaSans-Variable.woff2",
+  weight: "500 800",
   variable: "--font-heading-loaded",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const jetbrainsMono = localFont({
+  src: "../fonts/JetBrainsMono-Variable.woff2",
+  weight: "400 500",
   variable: "--font-mono-loaded",
   display: "swap",
 });
