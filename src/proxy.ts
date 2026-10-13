@@ -51,6 +51,33 @@ import { routing } from "@/i18n/routing";
 const SESSION_COOKIE_NAME = "session";
 const handleI18nRouting = createMiddleware(routing);
 
+/**
+ * next-intl's middleware re-syncs the locale cookie to the locale of whatever
+ * URL it is asked for. That is right for a page load but wrong for a fetch()
+ * (a <Link> prefetch, a soft navigation, a refresh), which can be a stale
+ * request for the page being left. The language switcher writes the new locale
+ * to the cookie client-side, then navigates; prefetches of the old locale's
+ * pages are still in flight, and their `/ru/...` responses landed mid-
+ * navigation, set the cookie back to "ru", and the redirect chain for the
+ * unprefixed default-locale URL (the only form whose locale comes from the
+ * cookie) bounced to `/ru/...`.
+ *
+ * Next.js strips its own RSC/prefetch headers and the `_rsc` param before the
+ * proxy runs, so the one signal left is the browser's `Sec-Fetch-Dest`:
+ * "empty" for fetch(), "document" for a page load. The fetch still resolves its
+ * locale from the cookie as before; it just can't write it. Soft locale
+ * changes already write the cookie on the client (next-intl's
+ * `syncLocaleCookie`), and a page load still writes it here.
+ *
+ * The locale cookie is the only cookie next-intl's middleware writes, and
+ * Next.js carries a response cookie in both `set-cookie` and its internal
+ * `x-middleware-set-cookie` header, so both are dropped.
+ */
+function dropLocaleCookieWrite(response: NextResponse): void {
+  response.headers.delete("set-cookie");
+  response.headers.delete("x-middleware-set-cookie");
+}
+
 function stripLocalePrefix(pathname: string): string {
   for (const locale of routing.locales) {
     if (pathname === `/${locale}`) return "/";
@@ -82,6 +109,9 @@ export function proxy(request: NextRequest) {
   const response = isApiRoute
     ? NextResponse.next()
     : handleI18nRouting(request);
+  if (request.headers.get("sec-fetch-dest") === "empty") {
+    dropLocaleCookieWrite(response);
+  }
 
   const localizedPathname = stripLocalePrefix(pathname);
   const isAuthExempt =
