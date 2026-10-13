@@ -2,11 +2,13 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures/test";
 import { login } from "./utils/auth";
 
+type TestData = Parameters<Parameters<typeof test>[2]>[0]["testData"];
+
 // Services section (plan.md "the 'Services' section" — not part of the
 // original 7-section PRD, so these tests trace to plan.md's user flows
 // rather than prd.md AC-* ids), mirroring bookmarks.spec.ts's structure:
 // login -> create/edit/delete via the form dialogs -> API response
-// assertions via page.waitForResponse -> cleanup.
+// assertions via page.waitForResponse -> cleanup via testData.registerTeardown.
 //
 // The HTTP monitor in every test targets testData.localUrl("/login") — the
 // app's own public login page — so the server-side checkHttp() fetch is a
@@ -44,7 +46,9 @@ async function expectInsideHorizontally(container: Locator, target: Locator) {
 
 async function createHttpService(
   page: Page,
+  testData: TestData,
   fields: { name: string; url: string },
+  options: { deletedByTest?: boolean } = {},
 ) {
   await page.getByRole("button", { name: "New service", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill(fields.name);
@@ -73,52 +77,28 @@ async function createHttpService(
     );
   }
 
+  const workspaceId = await response
+    .request()
+    .headerValue("x-inspoter-workspace");
+  if (!workspaceId) {
+    throw new Error(
+      "Service POST request carried no x-inspoter-workspace header.",
+    );
+  }
+  testData.registerTeardown({
+    description: `service ${body.id}`,
+    method: "DELETE",
+    url: `/api/services/${encodeURIComponent(body.id)}`,
+    workspaceId,
+    ...(options.deletedByTest ? { expectStatus: 404 } : {}),
+  });
+
   await expect(serviceCard(page, fields.name)).toBeVisible();
   return body.id;
 }
 
-async function deleteViaApi(page: Page, path: string, what: string) {
-  const wsEl = page.locator("[data-workspace-id]").first();
-  const wsId =
-    (await wsEl.count()) > 0
-      ? ((await wsEl.getAttribute("data-workspace-id")) ?? "")
-      : "";
-  const status = await page.evaluate(
-    async ([url, workspaceId]) =>
-      (
-        await fetch(url, {
-          method: "DELETE",
-          redirect: "manual",
-          headers: { "x-inspoter-workspace": workspaceId },
-        })
-      ).status,
-    [path, wsId] as const,
-  );
-  if (status !== 204 && status !== 404) {
-    throw new Error(
-      `${what} cleanup failed: expected 204/404, received ${status}.`,
-    );
-  }
-}
-
-async function deleteServiceViaApi(page: Page, id: string) {
-  await deleteViaApi(
-    page,
-    `/api/services/${encodeURIComponent(id)}`,
-    `Service ${id}`,
-  );
-}
-
-async function deleteServiceLabelViaApi(page: Page, id: string) {
-  await deleteViaApi(
-    page,
-    `/api/services/labels/${encodeURIComponent(id)}`,
-    `Service label ${id}`,
-  );
-}
-
 // Creates a label through the "Manage labels" dialog and returns its id.
-async function createLabel(page: Page, name: string) {
+async function createLabel(page: Page, testData: TestData, name: string) {
   await page
     .getByRole("button", { name: "Manage labels", exact: true })
     .click();
@@ -151,6 +131,21 @@ async function createLabel(page: Page, name: string) {
     throw new Error("Label POST response must contain a string id.");
   }
 
+  const workspaceId = await response
+    .request()
+    .headerValue("x-inspoter-workspace");
+  if (!workspaceId) {
+    throw new Error(
+      "Label POST request carried no x-inspoter-workspace header.",
+    );
+  }
+  testData.registerTeardown({
+    description: `service label ${body.id}`,
+    method: "DELETE",
+    url: `/api/services/labels/${encodeURIComponent(body.id)}`,
+    workspaceId,
+  });
+
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   return body.id;
@@ -168,17 +163,12 @@ test("creating an HTTP service persists it and it appears in the list without a 
 }) => {
   const name = testData.name("Uptime Probe");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name, url });
+  await page.goto("/services");
+  await createHttpService(page, testData, { name, url });
 
-    const card = serviceCard(page, name);
-    await expect(card).toBeVisible();
-    await expect(card.getByText("HTTP(S)", { exact: false })).toBeVisible();
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
-  }
+  const card = serviceCard(page, name);
+  await expect(card).toBeVisible();
+  await expect(card.getByText("HTTP(S)", { exact: false })).toBeVisible();
 });
 
 test("service cards preserve actions and heading hierarchy across tablet and desktop widths", async ({
@@ -190,75 +180,68 @@ test("service cards preserve actions and heading hierarchy across tablet and des
     testData.name("Layout Service B"),
     testData.name("Layout Service C"),
   ];
-  const ids: string[] = [];
 
-  try {
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await page.goto("/services");
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/services");
 
-    for (const name of names) {
-      ids.push(
-        await createHttpService(page, {
-          name,
-          url: testData.localUrl("/login"),
-        }),
-      );
-    }
-
-    await expect(
-      page.getByRole("heading", { name: "Services", exact: true, level: 1 }),
-    ).toBeVisible();
-
-    for (const name of names) {
-      const card = serviceCard(page, name);
-      const cardBox = await card.boundingBox();
-      if (!cardBox) throw new Error(`Service card "${name}" is not visible.`);
-      expect(cardBox.width).toBeGreaterThanOrEqual(288);
-      await expect(
-        card.getByRole("heading", { name, exact: true, level: 2 }),
-      ).toBeVisible();
-      await expect(
-        card.getByText("Check history", { exact: true }),
-      ).toBeVisible();
-      await expectInsideHorizontally(
-        card,
-        card.getByRole("button", { name: "Check now", exact: true }),
-      );
-      await expectInsideHorizontally(
-        card,
-        card.getByRole("button", { name: "Pause", exact: true }),
-      );
-      await expectInsideHorizontally(
-        card,
-        card.getByRole("button", {
-          name: `Edit "${name}"`,
-          exact: true,
-        }),
-      );
-      await expectInsideHorizontally(
-        card,
-        card.getByRole("button", {
-          name: `Delete "${name}"`,
-          exact: true,
-        }),
-      );
-    }
-
-    await page.setViewportSize({ width: 1440, height: 900 });
-    const grid = serviceCard(page, names[0]).locator("..");
-    await expect
-      .poll(() =>
-        grid.evaluate(
-          (element) =>
-            getComputedStyle(element)
-              .gridTemplateColumns.split(/\s+/)
-              .filter(Boolean).length,
-        ),
-      )
-      .toBe(3);
-  } finally {
-    for (const id of ids) await deleteServiceViaApi(page, id);
+  for (const name of names) {
+    await createHttpService(page, testData, {
+      name,
+      url: testData.localUrl("/login"),
+    });
   }
+
+  await expect(
+    page.getByRole("heading", { name: "Services", exact: true, level: 1 }),
+  ).toBeVisible();
+
+  for (const name of names) {
+    const card = serviceCard(page, name);
+    const cardBox = await card.boundingBox();
+    if (!cardBox) throw new Error(`Service card "${name}" is not visible.`);
+    expect(cardBox.width).toBeGreaterThanOrEqual(288);
+    await expect(
+      card.getByRole("heading", { name, exact: true, level: 2 }),
+    ).toBeVisible();
+    await expect(
+      card.getByText("Check history", { exact: true }),
+    ).toBeVisible();
+    await expectInsideHorizontally(
+      card,
+      card.getByRole("button", { name: "Check now", exact: true }),
+    );
+    await expectInsideHorizontally(
+      card,
+      card.getByRole("button", { name: "Pause", exact: true }),
+    );
+    await expectInsideHorizontally(
+      card,
+      card.getByRole("button", {
+        name: `Edit "${name}"`,
+        exact: true,
+      }),
+    );
+    await expectInsideHorizontally(
+      card,
+      card.getByRole("button", {
+        name: `Delete "${name}"`,
+        exact: true,
+      }),
+    );
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const grid = serviceCard(page, names[0]).locator("..");
+  await expect
+    .poll(() =>
+      grid.evaluate(
+        (element) =>
+          getComputedStyle(element)
+            .gridTemplateColumns.split(/\s+/)
+            .filter(Boolean).length,
+      ),
+    )
+    .toBe(3);
 });
 
 test("submitting the create form without a URL shows a validation error and creates nothing", async ({
@@ -280,37 +263,33 @@ test("editing a service persists field changes", async ({ page, testData }) => {
   const originalName = testData.name("Editable Service");
   const editedName = testData.name("Editable Service Renamed");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name: originalName, url });
+  await page.goto("/services");
+  const id = await createHttpService(page, testData, {
+    name: originalName,
+    url,
+  });
 
-    await serviceCard(page, originalName)
-      .getByRole("button", {
-        name: `Edit "${originalName}"`,
-        exact: true,
-      })
-      .click();
-    await page.getByLabel("Name", { exact: true }).fill(editedName);
+  await serviceCard(page, originalName)
+    .getByRole("button", {
+      name: `Edit "${originalName}"`,
+      exact: true,
+    })
+    .click();
+  await page.getByLabel("Name", { exact: true }).fill(editedName);
 
-    const responsePromise = page.waitForResponse((response) => {
-      const respUrl = new URL(response.url());
-      return (
-        respUrl.pathname === `/api/services/${id}` &&
-        response.request().method() === "PATCH"
-      );
-    });
-    await page
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    const response = await responsePromise;
-    expect(response.status()).toBe(200);
+  const responsePromise = page.waitForResponse((response) => {
+    const respUrl = new URL(response.url());
+    return (
+      respUrl.pathname === `/api/services/${id}` &&
+      response.request().method() === "PATCH"
+    );
+  });
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
 
-    await expect(serviceCard(page, editedName)).toBeVisible();
-    await expect(serviceCard(page, originalName)).toHaveCount(0);
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
-  }
+  await expect(serviceCard(page, editedName)).toBeVisible();
+  await expect(serviceCard(page, originalName)).toHaveCount(0);
 });
 
 test("the detail page renders the service configuration", async ({
@@ -319,20 +298,13 @@ test("the detail page renders the service configuration", async ({
 }) => {
   const name = testData.name("Detail View Service");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name, url });
+  await page.goto("/services");
+  const id = await createHttpService(page, testData, { name, url });
 
-    await page.goto(`/services/${id}`);
-    await expect(
-      page.getByRole("heading", { name, exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("HTTP(S)", { exact: true })).toBeVisible();
-    await expect(page.getByText(url, { exact: true })).toBeVisible();
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
-  }
+  await page.goto(`/services/${id}`);
+  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  await expect(page.getByText("HTTP(S)", { exact: true })).toBeVisible();
+  await expect(page.getByText(url, { exact: true })).toBeVisible();
 });
 
 test("'Check now' on the detail page triggers the check-now API call and updates lastCheckedAt", async ({
@@ -341,37 +313,28 @@ test("'Check now' on the detail page triggers the check-now API call and updates
 }) => {
   const name = testData.name("Check Now Service");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name, url });
+  await page.goto("/services");
+  const id = await createHttpService(page, testData, { name, url });
 
-    await page.goto(`/services/${id}`);
+  await page.goto(`/services/${id}`);
 
-    const responsePromise = page.waitForResponse((response) => {
-      const respUrl = new URL(response.url());
-      return (
-        respUrl.pathname === `/api/services/${id}/check-now` &&
-        response.request().method() === "POST"
-      );
-    });
-    await page.getByRole("button", { name: "Check now", exact: true }).click();
-    const response = await responsePromise;
-    expect(response.status()).toBe(200);
+  const responsePromise = page.waitForResponse((response) => {
+    const respUrl = new URL(response.url());
+    return (
+      respUrl.pathname === `/api/services/${id}/check-now` &&
+      response.request().method() === "POST"
+    );
+  });
+  await page.getByRole("button", { name: "Check now", exact: true }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
 
-    const body: unknown = await response.json();
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      !("lastCheckedAt" in body)
-    ) {
-      throw new Error("check-now response must include lastCheckedAt.");
-    }
-    expect(body.lastCheckedAt).not.toBeNull();
-    expect(typeof body.lastCheckedAt).toBe("string");
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
+  const body: unknown = await response.json();
+  if (typeof body !== "object" || body === null || !("lastCheckedAt" in body)) {
+    throw new Error("check-now response must include lastCheckedAt.");
   }
+  expect(body.lastCheckedAt).not.toBeNull();
+  expect(typeof body.lastCheckedAt).toBe("string");
 });
 
 test("labels can be created, assigned in the form, and used to filter the list", async ({
@@ -382,68 +345,64 @@ test("labels can be created, assigned in the form, and used to filter the list",
   const labeledName = testData.name("Labeled Service");
   const plainName = testData.name("Plain Service");
   const url = testData.localUrl("/login");
-  const serviceIds: string[] = [];
-  let labelId: string | undefined;
 
-  try {
-    await page.goto("/services");
-    serviceIds.push(await createHttpService(page, { name: labeledName, url }));
-    serviceIds.push(await createHttpService(page, { name: plainName, url }));
+  await page.goto("/services");
+  const labeledId = await createHttpService(page, testData, {
+    name: labeledName,
+    url,
+  });
+  await createHttpService(page, testData, { name: plainName, url });
 
-    labelId = await createLabel(page, labelName);
+  await createLabel(page, testData, labelName);
 
-    // Assign the label through the service edit form.
-    await serviceCard(page, labeledName)
-      .getByRole("button", {
-        name: `Edit "${labeledName}"`,
-        exact: true,
-      })
-      .click();
-    const formDialog = page.getByRole("dialog");
-    await formDialog
-      .getByRole("button", { name: "Pick labels", exact: true })
-      .click();
-    await toggleLabelOption(page, labelName);
+  // Assign the label through the service edit form.
+  await serviceCard(page, labeledName)
+    .getByRole("button", {
+      name: `Edit "${labeledName}"`,
+      exact: true,
+    })
+    .click();
+  const formDialog = page.getByRole("dialog");
+  await formDialog
+    .getByRole("button", { name: "Pick labels", exact: true })
+    .click();
+  await toggleLabelOption(page, labelName);
 
-    const patchPromise = page.waitForResponse((response) => {
-      const respUrl = new URL(response.url());
-      return (
-        respUrl.pathname === `/api/services/${serviceIds[0]}` &&
-        response.request().method() === "PATCH"
-      );
-    });
-    await formDialog
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    expect((await patchPromise).status()).toBe(200);
+  const patchPromise = page.waitForResponse((response) => {
+    const respUrl = new URL(response.url());
+    return (
+      respUrl.pathname === `/api/services/${labeledId}` &&
+      response.request().method() === "PATCH"
+    );
+  });
+  await formDialog
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  expect((await patchPromise).status()).toBe(200);
 
-    // The chip shows up on the card once the list re-renders.
-    const labeledCard = serviceCard(page, labeledName);
-    await expect(labeledCard.getByTitle(labelName)).toBeVisible();
-    await expect(
-      serviceCard(page, plainName).getByTitle(labelName),
-    ).toHaveCount(0);
+  // The chip shows up on the card once the list re-renders.
+  const labeledCard = serviceCard(page, labeledName);
+  await expect(labeledCard.getByTitle(labelName)).toBeVisible();
+  await expect(serviceCard(page, plainName).getByTitle(labelName)).toHaveCount(
+    0,
+  );
 
-    // Filtering by that label keeps the labeled service and drops the other.
-    await page.getByRole("button", { name: "Labels", exact: true }).click();
-    await toggleLabelOption(page, labelName);
-    await expect(labeledCard).toBeVisible();
-    await expect(serviceCard(page, plainName)).toHaveCount(0);
+  // Filtering by that label keeps the labeled service and drops the other.
+  await page.getByRole("button", { name: "Labels", exact: true }).click();
+  await toggleLabelOption(page, labelName);
+  await expect(labeledCard).toBeVisible();
+  await expect(serviceCard(page, plainName)).toHaveCount(0);
 
-    await page
-      .getByRole("button", { name: "Reset filters", exact: true })
-      .first()
-      .click();
-    await expect(serviceCard(page, plainName)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Reset filters", exact: true })
+    .first()
+    .click();
+  await expect(serviceCard(page, plainName)).toBeVisible();
 
-    // Text search narrows the list down to a single card.
-    await page.getByLabel("Search services", { exact: true }).fill(plainName);
-    await expect(serviceCard(page, plainName)).toBeVisible();
-    await expect(labeledCard).toHaveCount(0);
-  } finally {
-    if (labelId) await deleteServiceLabelViaApi(page, labelId);
-    for (const id of serviceIds) await deleteServiceViaApi(page, id);
-  }
+  // Text search narrows the list down to a single card.
+  await page.getByLabel("Search services", { exact: true }).fill(plainName);
+  await expect(serviceCard(page, plainName)).toBeVisible();
+  await expect(labeledCard).toHaveCount(0);
 });
 
 test("pausing a service from its card stops the scheduled checks and reports it as suspended", async ({
@@ -452,57 +411,52 @@ test("pausing a service from its card stops the scheduled checks and reports it 
 }) => {
   const name = testData.name("Pausable Service");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name, url });
-    const card = serviceCard(page, name);
+  await page.goto("/services");
+  const id = await createHttpService(page, testData, { name, url });
+  const card = serviceCard(page, name);
 
-    const pausePromise = page.waitForResponse((response) => {
-      const respUrl = new URL(response.url());
-      return (
-        respUrl.pathname === `/api/services/${id}` &&
-        response.request().method() === "PATCH"
-      );
-    });
-    await card.getByRole("button", { name: "Pause", exact: true }).click();
-    const pauseResponse = await pausePromise;
-    expect(pauseResponse.status()).toBe(200);
+  const pausePromise = page.waitForResponse((response) => {
+    const respUrl = new URL(response.url());
+    return (
+      respUrl.pathname === `/api/services/${id}` &&
+      response.request().method() === "PATCH"
+    );
+  });
+  await card.getByRole("button", { name: "Pause", exact: true }).click();
+  const pauseResponse = await pausePromise;
+  expect(pauseResponse.status()).toBe(200);
 
-    const paused: unknown = await pauseResponse.json();
-    if (
-      typeof paused !== "object" ||
-      paused === null ||
-      !("isActive" in paused)
-    ) {
-      throw new Error("PATCH response must include isActive.");
-    }
-    expect(paused.isActive).toBe(false);
-
-    // The card must stop claiming the last known result once nothing is
-    // refreshing it.
-    await expect(card.getByText("Suspended", { exact: true })).toBeVisible();
-    await expect(
-      card.getByRole("button", { name: "Resume", exact: true }),
-    ).toBeVisible();
-
-    const resumePromise = page.waitForResponse((response) => {
-      const respUrl = new URL(response.url());
-      return (
-        respUrl.pathname === `/api/services/${id}` &&
-        response.request().method() === "PATCH"
-      );
-    });
-    await card.getByRole("button", { name: "Resume", exact: true }).click();
-    expect((await resumePromise).status()).toBe(200);
-
-    await expect(
-      card.getByRole("button", { name: "Pause", exact: true }),
-    ).toBeVisible();
-    await expect(card.getByText("Suspended", { exact: true })).toHaveCount(0);
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
+  const paused: unknown = await pauseResponse.json();
+  if (
+    typeof paused !== "object" ||
+    paused === null ||
+    !("isActive" in paused)
+  ) {
+    throw new Error("PATCH response must include isActive.");
   }
+  expect(paused.isActive).toBe(false);
+
+  // The card must stop claiming the last known result once nothing is
+  // refreshing it.
+  await expect(card.getByText("Suspended", { exact: true })).toBeVisible();
+  await expect(
+    card.getByRole("button", { name: "Resume", exact: true }),
+  ).toBeVisible();
+
+  const resumePromise = page.waitForResponse((response) => {
+    const respUrl = new URL(response.url());
+    return (
+      respUrl.pathname === `/api/services/${id}` &&
+      response.request().method() === "PATCH"
+    );
+  });
+  await card.getByRole("button", { name: "Resume", exact: true }).click();
+  expect((await resumePromise).status()).toBe(200);
+
+  await expect(
+    card.getByRole("button", { name: "Pause", exact: true }),
+  ).toBeVisible();
+  await expect(card.getByText("Suspended", { exact: true })).toHaveCount(0);
 });
 
 test("deleting a service removes it from the list without a full reload", async ({
@@ -512,7 +466,12 @@ test("deleting a service removes it from the list without a full reload", async 
   const name = testData.name("Deletable Service");
   const url = testData.localUrl("/login");
   await page.goto("/services");
-  const id = await createHttpService(page, { name, url });
+  const id = await createHttpService(
+    page,
+    testData,
+    { name, url },
+    { deletedByTest: true },
+  );
 
   await serviceCard(page, name)
     .getByRole("button", { name: `Delete "${name}"`, exact: true })
@@ -541,29 +500,24 @@ test("the search filter lives in the URL and survives opening a service", async 
 }) => {
   const name = testData.name("Filter Persistence Service");
   const url = testData.localUrl("/login");
-  let id: string | undefined;
-  try {
-    await page.goto("/services");
-    id = await createHttpService(page, { name, url });
+  await page.goto("/services");
+  const id = await createHttpService(page, testData, { name, url });
 
-    await page.getByLabel("Search services").fill(name);
-    await expect(page).toHaveURL(/\?query=/);
-    await expect(serviceCard(page, name)).toBeVisible();
+  await page.getByLabel("Search services").fill(name);
+  await expect(page).toHaveURL(/\?query=/);
+  await expect(serviceCard(page, name)).toBeVisible();
 
-    // Filtering is client-side, but the URL mirrors it — so a reload restores
-    // both the box and the narrowed list.
-    await page.reload();
-    await expect(page.getByLabel("Search services")).toHaveValue(name);
-    await expect(serviceCard(page, name)).toBeVisible();
+  // Filtering is client-side, but the URL mirrors it — so a reload restores
+  // both the box and the narrowed list.
+  await page.reload();
+  await expect(page.getByLabel("Search services")).toHaveValue(name);
+  await expect(serviceCard(page, name)).toBeVisible();
 
-    await page.getByRole("heading", { name, exact: true, level: 2 }).click();
-    await expect(page).toHaveURL(new RegExp(`/services/${id}\\?query=`));
+  await page.getByRole("heading", { name, exact: true, level: 2 }).click();
+  await expect(page).toHaveURL(new RegExp(`/services/${id}\\?query=`));
 
-    await page.getByRole("button", { name: "Back to services" }).click();
-    await expect(page).toHaveURL(/\/services\?query=/);
-    await expect(page.getByLabel("Search services")).toHaveValue(name);
-    await expect(serviceCard(page, name)).toBeVisible();
-  } finally {
-    if (id) await deleteServiceViaApi(page, id);
-  }
+  await page.getByRole("button", { name: "Back to services" }).click();
+  await expect(page).toHaveURL(/\/services\?query=/);
+  await expect(page.getByLabel("Search services")).toHaveValue(name);
+  await expect(serviceCard(page, name)).toBeVisible();
 });
