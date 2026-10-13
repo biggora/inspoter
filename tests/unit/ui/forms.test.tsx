@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "../../test-utils";
@@ -107,7 +107,18 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-describe("standardized form contracts", () => {
+// Enters a text value in one input event. Typing key by key re-renders the
+// whole dialog per character, which pushed these tests to the 5s timeout on
+// loaded parallel workers; keep `user.type` where the keystrokes themselves
+// are under test (e.g. Enter submitting the login form).
+async function fill(user: UserEvent, field: HTMLElement, value: string) {
+  await user.click(field);
+  await user.paste(value);
+}
+
+// Each test drives a real dialog through jsdom (select popups, focus, submit),
+// which takes 2-4s on a busy machine even without per-key typing.
+describe("standardized form contracts", { timeout: 15_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.login.mockResolvedValue({
@@ -213,8 +224,8 @@ describe("standardized form contracts", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Name"), "Documentation");
-    await user.type(screen.getByLabelText("URL"), "https://example.com/docs");
+    await fill(user, screen.getByLabelText("Name"), "Documentation");
+    await fill(user, screen.getByLabelText("URL"), "https://example.com/docs");
     const category = screen.getByRole("combobox", { name: "Category" });
     expect(category).toHaveValue("category-a");
     await user.selectOptions(category, "category-b");
@@ -264,7 +275,7 @@ describe("standardized form contracts", () => {
       name: "Parent Category",
     });
     expect(parent).toHaveValue("");
-    await user.type(screen.getByLabelText("Name"), "New root");
+    await fill(user, screen.getByLabelText("Name"), "New root");
     await user.click(screen.getByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(mocks.categoriesCreate).toHaveBeenCalledTimes(1),
@@ -326,8 +337,12 @@ describe("standardized form contracts", () => {
     await user.click(screen.getByText("Active (check on schedule)"));
     expect(checkbox).not.toBeChecked();
 
-    await user.type(screen.getByLabelText("Name"), "Status page");
-    await user.type(screen.getByLabelText("URL"), "https://example.com/health");
+    await fill(user, screen.getByLabelText("Name"), "Status page");
+    await fill(
+      user,
+      screen.getByLabelText("URL"),
+      "https://example.com/health",
+    );
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(mocks.servicesCreate).toHaveBeenCalledTimes(1));
@@ -374,7 +389,7 @@ describe("standardized form contracts", () => {
     expect(label).toHaveAccessibleDescription("Name is required.");
     expect(provider).not.toHaveAttribute("aria-invalid", "true");
 
-    await user.type(label, "Primary account");
+    await fill(user, label, "Primary account");
     await user.click(submit);
     const secret = screen.getByLabelText("API token");
     expect(secret).toHaveAttribute("aria-invalid", "true");
@@ -455,16 +470,17 @@ describe("standardized form contracts", () => {
       await screen.findByRole("option", { name: "OpenAI-compatible (LLM)" }),
     );
 
-    await user.type(screen.getByLabelText("Name"), "Local model");
-    await user.type(
+    await fill(user, screen.getByLabelText("Name"), "Local model");
+    await fill(
+      user,
       screen.getByLabelText("API base URL"),
       "http://127.0.0.1:11434/v1",
     );
-    await user.type(screen.getByLabelText("Model"), "llama3.1");
+    await fill(user, screen.getByLabelText("Model"), "llama3.1");
     // The key is the only secret field of the three.
     const apiKey = screen.getByLabelText("API key");
     expect(apiKey).toHaveAttribute("type", "password");
-    await user.type(apiKey, "llm-key-value");
+    await fill(user, apiKey, "llm-key-value");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.credentialsCreate).toHaveBeenCalledWith({
@@ -496,15 +512,16 @@ describe("standardized form contracts", () => {
 
     // The transport is the only difference between the two LLM entries, so an
     // operator types the same three fields either way.
-    await user.type(screen.getByLabelText("Name"), "GLM");
-    await user.type(
+    await fill(user, screen.getByLabelText("Name"), "GLM");
+    await fill(
+      user,
       screen.getByLabelText("API base URL"),
       "https://api.z.ai/api/anthropic",
     );
-    await user.type(screen.getByLabelText("Model"), "glm-4.6");
+    await fill(user, screen.getByLabelText("Model"), "glm-4.6");
     const apiKey = screen.getByLabelText("API key");
     expect(apiKey).toHaveAttribute("type", "password");
-    await user.type(apiKey, "zai-key-value");
+    await fill(user, apiKey, "zai-key-value");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.credentialsCreate).toHaveBeenCalledWith({
@@ -539,8 +556,8 @@ describe("standardized form contracts", () => {
     );
     const label = screen.getByLabelText("Name");
     const secret = screen.getByLabelText("API token");
-    await user.type(label, "Primary account");
-    await user.type(secret, "token-value");
+    await fill(user, label, "Primary account");
+    await fill(user, secret, "token-value");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(
