@@ -318,3 +318,109 @@ describe("layoutSchema", () => {
     ).toBe(true);
   });
 });
+
+describe("RSS widget config", () => {
+  it("defaults to no feed, five items and no summaries", () => {
+    const parsed = parseWidgetConfig("RSS", {});
+    expect(parsed.success && parsed.data).toEqual({
+      url: "",
+      limit: 5,
+      showSummary: false,
+    });
+  });
+
+  it("accepts http and https feed URLs and trims them", () => {
+    const https = parseWidgetConfig("RSS", {
+      url: "  https://example.com/feed.xml  ",
+    });
+    expect(https.success && https.data.url).toBe(
+      "https://example.com/feed.xml",
+    );
+    expect(
+      parseWidgetConfig("RSS", { url: "http://192.168.1.10:5678/feed" })
+        .success,
+    ).toBe(true);
+  });
+
+  it.each([
+    "example.com/feed.xml",
+    "ftp://example.com/feed.xml",
+    "javascript:alert(1)",
+    "file:///etc/passwd",
+    "not a url",
+    `https://example.com/${"a".repeat(2048)}`,
+  ])("rejects the feed URL %j", (url) => {
+    const parsed = parseWidgetConfig("RSS", { url });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("explains an invalid URL in the base language", () => {
+    const parsed = parseWidgetConfig("RSS", { url: "nope" });
+    expect(!parsed.success && parsed.error.issues[0].message).toBe(
+      "Enter an http or https feed URL.",
+    );
+  });
+
+  it("bounds the item count and strips unknown keys", () => {
+    expect(parseWidgetConfig("RSS", { limit: 0 }).success).toBe(false);
+    expect(parseWidgetConfig("RSS", { limit: 21 }).success).toBe(false);
+    const parsed = parseWidgetConfig("RSS", { showSummary: true, extra: 1 });
+    expect(parsed.success && parsed.data).toEqual({
+      url: "",
+      limit: 5,
+      showSummary: true,
+    });
+  });
+});
+
+describe("YouTube widget config", () => {
+  it("defaults to no channel, five items and thumbnails on", () => {
+    const parsed = parseWidgetConfig("YOUTUBE", {});
+    expect(parsed.success && parsed.data).toEqual({
+      channel: "",
+      limit: 5,
+      showThumbnails: true,
+    });
+  });
+
+  it.each([
+    "UCabcdefghijklmnopqrstuv",
+    "@someone",
+    "https://www.youtube.com/@someone",
+    "youtube.com/channel/UCabcdefghijklmnopqrstuv/videos",
+    "https://www.youtube.com/c/SomeName",
+  ])("accepts the channel %j", (channel) => {
+    expect(parseWidgetConfig("YOUTUBE", { channel }).success).toBe(true);
+  });
+
+  it.each([
+    "someone",
+    "@ab",
+    "https://evil.com/@someone",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "x".repeat(201),
+  ])("rejects the channel %j", (channel) => {
+    expect(parseWidgetConfig("YOUTUBE", { channel }).success).toBe(false);
+  });
+
+  it("explains an invalid channel in the base language", () => {
+    const parsed = parseWidgetConfig("YOUTUBE", { channel: "nope" });
+    expect(!parsed.success && parsed.error.issues[0].message).toBe(
+      "Enter a YouTube channel link, @handle or channel ID.",
+    );
+  });
+
+  it("keeps the channel text as typed (trimmed) for the server to resolve", () => {
+    const parsed = parseWidgetConfig("YOUTUBE", { channel: "  @someone " });
+    expect(parsed.success && parsed.data.channel).toBe("@someone");
+  });
+
+  it("falls back to defaults for a stored config that no longer parses", () => {
+    expect(
+      parseWidgetConfigOrDefaults("YOUTUBE", { channel: "https://evil.com/x" }),
+    ).toEqual({ channel: "", limit: 5, showThumbnails: true });
+    expect(
+      parseWidgetConfigOrDefaults("RSS", { url: "ftp://example.com" }),
+    ).toEqual({ url: "", limit: 5, showSummary: false });
+  });
+});

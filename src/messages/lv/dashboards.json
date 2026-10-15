@@ -102,6 +102,14 @@
     "LOGS": {
       "title": "Žurnāli",
       "description": "Jaunākie žurnāla ieraksti, filtrēti pēc līmeņa."
+    },
+    "RSS": {
+      "title": "RSS plūsma",
+      "description": "Jaunākie ieraksti no RSS vai Atom plūsmas."
+    },
+    "YOUTUBE": {
+      "title": "YouTube kanāls",
+      "description": "Jaunākie video no YouTube kanāla."
     }
   },
 
@@ -247,6 +255,28 @@
     "levelsLabel": "Līmeņi",
     "allLevelsHint": "Nekas nav izvēlēts — tiek rādīti visi līmeņi.",
     "empty": "Vēl nav žurnāla ierakstu."
+  },
+
+  "rss": {
+    "urlLabel": "Plūsmas adrese",
+    "urlPlaceholder": "https://example.com/feed.xml",
+    "urlHint": "RSS vai Atom plūsmas adrese. Der arī vietējā tīkla adreses, piemēram, pašmitināts n8n.",
+    "showSummaryLabel": "Rādīt īsu aprakstu zem virsraksta",
+    "notConfigured": "Norādiet plūsmas adresi logrīka iestatījumos.",
+    "empty": "Šajā plūsmā nav ierakstu.",
+    "moreCount": "un vēl {count}",
+    "openFeed": "Atvērt vietni"
+  },
+
+  "youtube": {
+    "channelLabel": "Kanāls",
+    "channelPlaceholder": "https://www.youtube.com/@channel",
+    "channelHint": "Ielīmējiet kanāla saiti, @handle vai kanāla ID (UC…).",
+    "showThumbnailsLabel": "Rādīt video sīktēlus",
+    "notConfigured": "Norādiet kanālu logrīka iestatījumos.",
+    "empty": "Šajā kanālā nav video.",
+    "moreCount": "un vēl {count}",
+    "openChannel": "Atvērt kanālu"
   },
 
   "createError": "Neizdevās izveidot paneli.",

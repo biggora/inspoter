@@ -63,7 +63,9 @@
     "sourcesRequired": "Select at least one event source",
     "limitOutOfRange": "Item count must be between 1 and 20",
     "layoutRequired": "Layout cannot be empty",
-    "layoutCellInvalid": "Invalid widget coordinates"
+    "layoutCellInvalid": "Invalid widget coordinates",
+    "rssUrlInvalid": "Enter an http or https feed URL.",
+    "youtubeChannelInvalid": "Enter a YouTube channel link, @handle or channel ID."
   },
   "dns": {
     "nameRequired": "Record name is required",

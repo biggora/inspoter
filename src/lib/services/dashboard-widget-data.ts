@@ -9,6 +9,11 @@ import * as messagesService from "@/lib/services/messages";
 import * as serversService from "@/lib/services/servers";
 import * as servicesService from "@/lib/services/services";
 import { getMonthEvents } from "@/lib/services/dashboard-calendar";
+import { getRssFeed } from "@/lib/dashboards/feeds/rss";
+import {
+  getYoutubeVideos,
+  parseYoutubeChannelInput,
+} from "@/lib/dashboards/feeds/youtube";
 import { getWeather } from "@/lib/dashboards/weather";
 import {
   parseWidgetConfigOrDefaults,
@@ -92,6 +97,41 @@ async function resolveOne(
       return {
         kind: "WEATHER",
         data: await getWeather({ ...config, latitude, longitude }),
+      };
+    }
+    case "RSS": {
+      const config = parseWidgetConfigOrDefaults("RSS", widget.config);
+      if (!config) return { error: "RSS_CONFIG_INVALID" };
+      // No feed URL yet: the tile asks for one instead of fetching.
+      if (!config.url) return { kind: "RSS", data: null };
+      const feed = await getRssFeed(config.url);
+      return {
+        kind: "RSS",
+        data: {
+          ...feed,
+          // The snapshot is shared between widgets, so the per-widget cut is
+          // made here; `totalCount` keeps the whole feed for "and N more".
+          items: feed.items
+            .slice(0, config.limit)
+            .map((item) =>
+              config.showSummary ? item : { ...item, summary: null },
+            ),
+        },
+      };
+    }
+    case "YOUTUBE": {
+      const config = parseWidgetConfigOrDefaults("YOUTUBE", widget.config);
+      if (!config) return { error: "YOUTUBE_CONFIG_INVALID" };
+      const ref = parseYoutubeChannelInput(config.channel);
+      if (!ref) return { kind: "YOUTUBE", data: null };
+      const channel = await getYoutubeVideos(ref);
+      return {
+        kind: "YOUTUBE",
+        data: {
+          ...channel,
+          videos: channel.videos.slice(0, config.limit),
+          showThumbnails: config.showThumbnails,
+        },
       };
     }
     case "CALENDAR": {

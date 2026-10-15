@@ -1072,20 +1072,37 @@ Domains are deliberately absent: a DNS zone
 (`src/lib/providers/dns/types.ts`) carries no expiry date, so there is nothing
 dated to plot.
 
-### 7E.4 Outbound calls and the weather widget
+### 7E.4 Outbound calls: the weather, RSS, and YouTube widgets
 
-`src/lib/dashboards/weather.ts` is the **only** outbound call the Dashboards
-section makes: a server-side `fetch` to `https://api.open-meteo.com/v1/forecast`
-(no API key, no account) with a 5 s `AbortSignal.timeout`, results cached
-in-process for 10 minutes keyed by rounded coordinates and unit.
+`src/lib/dashboards/weather.ts` is the outbound call of the weather widget: a
+server-side `fetch` to `https://api.open-meteo.com/v1/forecast` (no API key, no
+account) with a 5 s `AbortSignal.timeout`, results cached in-process for 10
+minutes keyed by rounded coordinates and unit.
 
 The endpoint is a constant and the only caller-controlled parts are two numbers
 already range-checked by `weatherConfigSchema` (-90..90 / -180..180), so no
 operator input reaches the URL as text — there is no SSRF surface. An operator
-who wants zero third-party traffic simply does not add the widget; the other
-nine read only local data. The e2e suites exclude this widget for the same
-reason (`fixtures/test.ts` blocks cross-origin browser requests, but a
-server-side fetch would still leave the machine).
+who wants zero third-party traffic simply does not add the widget. The e2e
+suites exclude this widget for the same reason (`fixtures/test.ts` blocks
+cross-origin browser requests, but a server-side fetch would still leave the
+machine).
+
+The `RSS` and `YOUTUBE` widgets are the other two widgets that leave the
+machine, and unlike the weather widget they fetch an operator-supplied URL:
+
+- **RSS** fetches the feed address the operator typed. Only `http` and `https`
+  are accepted; each request has an 8 s timeout, a 2 MB body cap, and at most 3
+  redirects, each re-checked. Link-local and cloud-metadata addresses are always
+  blocked; private (LAN) addresses are allowed — a self-hosted n8n is a
+  legitimate feed source — and are blocked only when
+  `DASHBOARD_FEEDS_BLOCK_PRIVATE=1`. Only the parsed fields are returned to the
+  browser (title, link, date, plain-text summary), never the raw response, and
+  results are cached in-process for 15 minutes.
+- **YOUTUBE** fetches the channel page on `www.youtube.com` to resolve a
+  `@handle` or channel URL, then the channel's `feeds/videos.xml`, under the
+  same limits and cache. Thumbnails are not proxied: the browser loads them
+  directly from `i.ytimg.com`, which is why the widget has a `showThumbnails`
+  switch.
 
 ### 7E.5 Landing page and section visibility
 
@@ -1123,7 +1140,7 @@ The post-login landing moved from `/bookmarks` to `/dashboards` in one place —
 
 `tests/unit/dashboards/{grid,weather,calendar}.test.ts` (engine, cache and
 failure mapping, day bucketing), `tests/unit/validation/dashboards.test.ts`
-(per-kind config schemas), `tests/unit/ui/dashboard-widgets.test.tsx` (all eleven
+(per-kind config schemas), `tests/unit/ui/dashboard-widgets.test.tsx` (all thirteen
 tiles plus empty and error states), `tests/unit/ui/dashboard-widget-config.test.tsx`
 (the selection-style settings forms), `tests/integration/services/dashboards.test.ts`
 and `tests/integration/api/dashboards.test.ts` (CRUD, layout rejection, workspace
@@ -1265,8 +1282,8 @@ pattern, like every other background task here.
 ### 7F.4 Outbound calls
 
 This is the **second** outbound destination in the application, after the
-weather widget's `api.open-meteo.com` (§7E.4) — and the first one that leaves
-with workspace content in the request body. It is operator-configured: nothing
+dashboard widgets' calls (§7E.4: Open-Meteo, feeds, YouTube) — and the first
+one that leaves with workspace content in the request body. It is operator-configured: nothing
 leaves the machine until someone adds the credential, and the recommended
 deployment is a local model (`http://127.0.0.1:11434/v1` for Ollama), which
 keeps that content on the host. A cloud endpoint is equally supported and equally

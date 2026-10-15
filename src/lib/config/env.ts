@@ -143,6 +143,14 @@ const envSchema = z
       .int()
       .positive()
       .default(3_600_000), // hourly
+    // --- Dashboard feed widgets (src/lib/net/feed-fetch.ts) ---
+    // Private and loopback feed hosts are allowed by default — a self-hosted
+    // install reads feeds from its own LAN. Link-local (cloud metadata),
+    // unspecified, multicast and reserved addresses are always refused.
+    DASHBOARD_FEEDS_BLOCK_PRIVATE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     // --- Provider listing cache (provider-snapshots.ts) ---
     // How long a cached listing is served without a refresh. The scheduler
     // ticks more often than the TTL so a snapshot is never much older than

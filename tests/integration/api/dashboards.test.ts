@@ -260,9 +260,114 @@ describe("POST /api/dashboards/[id]/widgets", () => {
       "DASHBOARD_WIDGET_CONFIG_INVALID",
     );
   });
+
+  it("adds RSS and YOUTUBE widgets with no config at their defaults", async () => {
+    const dashboard = await createDashboard();
+
+    const rss = await addWidget(dashboard.id, "RSS");
+    const youtube = await addWidget(dashboard.id, "YOUTUBE");
+
+    expect(rss.status).toBe(201);
+    expect(await rss.json()).toMatchObject({
+      kind: "RSS",
+      config: { url: "", limit: 5, showSummary: false },
+    });
+    expect(youtube.status).toBe(201);
+    expect(await youtube.json()).toMatchObject({
+      kind: "YOUTUBE",
+      config: { channel: "", limit: 5, showThumbnails: true },
+    });
+  });
 });
 
 describe("PATCH /api/dashboards/[id]/widgets/[widgetId]", () => {
+  async function patchWidgetConfig(
+    dashboardId: string,
+    widgetId: string,
+    config: unknown,
+  ) {
+    const { PATCH } =
+      await import("@/app/api/dashboards/[id]/widgets/[widgetId]/route");
+    return PATCH(
+      jsonRequest(
+        `/api/dashboards/${dashboardId}/widgets/${widgetId}`,
+        "PATCH",
+        { config },
+      ),
+      { params: Promise.resolve({ id: dashboardId, widgetId }) },
+    );
+  }
+
+  it("rejects an RSS url that is not http(s)", async () => {
+    const dashboard = await createDashboard();
+    const widget = (await (await addWidget(dashboard.id, "RSS")).json()) as {
+      id: string;
+    };
+
+    const response = await patchWidgetConfig(dashboard.id, widget.id, {
+      url: "ftp://example.com/feed",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe(
+      "DASHBOARD_WIDGET_CONFIG_INVALID",
+    );
+  });
+
+  it("persists a valid RSS config", async () => {
+    const dashboard = await createDashboard();
+    const widget = (await (await addWidget(dashboard.id, "RSS")).json()) as {
+      id: string;
+    };
+    const config = {
+      url: "https://example.com/feed.xml",
+      limit: 3,
+      showSummary: true,
+    };
+
+    const response = await patchWidgetConfig(dashboard.id, widget.id, config);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).config).toEqual(config);
+    const stored = await db.dashboardWidget.findUniqueOrThrow({
+      where: { id: widget.id },
+    });
+    expect(stored.config).toEqual(config);
+  });
+
+  it("rejects a YOUTUBE channel on a foreign host", async () => {
+    const dashboard = await createDashboard();
+    const widget = (await (
+      await addWidget(dashboard.id, "YOUTUBE")
+    ).json()) as { id: string };
+
+    const response = await patchWidgetConfig(dashboard.id, widget.id, {
+      channel: "https://evil.example/@x",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe(
+      "DASHBOARD_WIDGET_CONFIG_INVALID",
+    );
+  });
+
+  it("persists a YOUTUBE channel given as a handle", async () => {
+    const dashboard = await createDashboard();
+    const widget = (await (
+      await addWidget(dashboard.id, "YOUTUBE")
+    ).json()) as { id: string };
+
+    const response = await patchWidgetConfig(dashboard.id, widget.id, {
+      channel: "@GoogleDevelopers",
+    });
+
+    expect(response.status).toBe(200);
+    const stored = await db.dashboardWidget.findUniqueOrThrow({
+      where: { id: widget.id },
+    });
+    expect(stored.config).toMatchObject({ channel: "@GoogleDevelopers" });
+  });
+
   it("updates a widget config", async () => {
     const dashboard = await createDashboard();
     const widget = (await (await addWidget(dashboard.id, "NOTE")).json()) as {
@@ -402,6 +507,32 @@ describe("GET /api/dashboards/[id]/data", () => {
     };
     expect(body.widgetData[clock.id]).toEqual({ kind: "CLOCK" });
     expect(body.widgetData[logs.id]).toMatchObject({ kind: "LOGS" });
+  });
+
+  it("returns no data for unconfigured RSS and YOUTUBE widgets", async () => {
+    const dashboard = await createDashboard();
+    const rss = (await (await addWidget(dashboard.id, "RSS")).json()) as {
+      id: string;
+    };
+    const youtube = (await (
+      await addWidget(dashboard.id, "YOUTUBE")
+    ).json()) as { id: string };
+
+    const { GET } = await import("@/app/api/dashboards/[id]/data/route");
+    const response = await GET(
+      jsonRequest(`/api/dashboards/${dashboard.id}/data`, "GET"),
+      { params: Promise.resolve({ id: dashboard.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      widgetData: Record<string, unknown>;
+    };
+    expect(body.widgetData[rss.id]).toEqual({ kind: "RSS", data: null });
+    expect(body.widgetData[youtube.id]).toEqual({
+      kind: "YOUTUBE",
+      data: null,
+    });
   });
 
   it("returns 404 for another workspace's dashboard", async () => {

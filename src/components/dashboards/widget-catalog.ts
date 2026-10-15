@@ -31,6 +31,8 @@ const ICONS: Record<DashboardWidgetKind, string> = {
   MESSAGES: "ri-message-2-line",
   ALERTS: "ri-alert-line",
   LOGS: "ri-file-list-3-line",
+  RSS: "ri-rss-line",
+  YOUTUBE: "ri-youtube-line",
 };
 
 export const WIDGET_CATALOG: WidgetCatalogEntry[] = WIDGET_KIND_ORDER.map(

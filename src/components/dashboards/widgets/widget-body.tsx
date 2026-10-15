@@ -16,9 +16,11 @@ import { LogsWidget } from "./logs-widget";
 import { MailWidget } from "./mail-widget";
 import { MessagesWidget } from "./messages-widget";
 import { NoteWidget } from "./note-widget";
+import { RssWidget } from "./rss-widget";
 import { ServerMetricsWidget } from "./server-metrics-widget";
 import { ServiceStatusWidget } from "./service-status-widget";
 import { WeatherWidget } from "./weather-widget";
+import { YoutubeWidget } from "./youtube-widget";
 
 // Dispatches a widget row plus its resolved payload to the component for its
 // kind. Two things are handled once, here, instead of in ten widgets: a payload
@@ -85,6 +87,12 @@ export function WidgetBody({
     case "LOGS":
       return payload?.kind === "LOGS" ? (
         <LogsWidget data={payload.data} />
+      ) : null;
+    case "RSS":
+      return payload?.kind === "RSS" ? <RssWidget data={payload.data} /> : null;
+    case "YOUTUBE":
+      return payload?.kind === "YOUTUBE" ? (
+        <YoutubeWidget data={payload.data} />
       ) : null;
   }
 }
