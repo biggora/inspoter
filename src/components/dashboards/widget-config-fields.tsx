@@ -217,6 +217,10 @@ export function WidgetConfigFields({
   const showDateId = useId();
   const unreadOnlyId = useId();
   const messagesUnreadOnlyId = useId();
+  const rssUrlId = useId();
+  const rssShowSummaryId = useId();
+  const youtubeChannelId = useId();
+  const youtubeShowThumbnailsId = useId();
 
   const title = (
     <TitleField
@@ -672,5 +676,82 @@ export function WidgetConfigFields({
         </FieldGroup>
       );
     }
+
+    case "RSS":
+      return (
+        <FieldGroup>
+          {title}
+          <Field>
+            <FieldLabel htmlFor={rssUrlId}>{t("rss.urlLabel")}</FieldLabel>
+            <Input
+              id={rssUrlId}
+              type="url"
+              value={str(config.url)}
+              placeholder={t("rss.urlPlaceholder")}
+              onChange={(event) => onChange({ url: event.target.value })}
+            />
+            <FieldDescription>{t("rss.urlHint")}</FieldDescription>
+          </Field>
+          <LimitField
+            value={config.limit}
+            onChange={(limit) => onChange({ limit })}
+          />
+          <Field orientation="horizontal">
+            <Checkbox
+              id={rssShowSummaryId}
+              checked={bool(config.showSummary)}
+              onCheckedChange={(checked) =>
+                onChange({ showSummary: checked === true })
+              }
+            />
+            <FieldLabel
+              htmlFor={rssShowSummaryId}
+              className="cursor-pointer font-normal"
+            >
+              {t("rss.showSummaryLabel")}
+            </FieldLabel>
+          </Field>
+        </FieldGroup>
+      );
+
+    case "YOUTUBE":
+      return (
+        <FieldGroup>
+          {title}
+          <Field>
+            <FieldLabel htmlFor={youtubeChannelId}>
+              {t("youtube.channelLabel")}
+            </FieldLabel>
+            <Input
+              id={youtubeChannelId}
+              value={str(config.channel)}
+              placeholder={t("youtube.channelPlaceholder")}
+              onChange={(event) => onChange({ channel: event.target.value })}
+            />
+            <FieldDescription>{t("youtube.channelHint")}</FieldDescription>
+          </Field>
+          <LimitField
+            value={config.limit}
+            onChange={(limit) => onChange({ limit })}
+          />
+          {/* Thumbnails default on: a widget whose stored config predates the
+              field, or is empty, must open with the box ticked. */}
+          <Field orientation="horizontal">
+            <Checkbox
+              id={youtubeShowThumbnailsId}
+              checked={config.showThumbnails !== false}
+              onCheckedChange={(checked) =>
+                onChange({ showThumbnails: checked === true })
+              }
+            />
+            <FieldLabel
+              htmlFor={youtubeShowThumbnailsId}
+              className="cursor-pointer font-normal"
+            >
+              {t("youtube.showThumbnailsLabel")}
+            </FieldLabel>
+          </Field>
+        </FieldGroup>
+      );
   }
 }

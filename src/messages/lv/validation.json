@@ -63,7 +63,9 @@
     "sourcesRequired": "Izvēlieties vismaz vienu notikumu avotu",
     "limitOutOfRange": "Vienumu skaitam jābūt no 1 līdz 20",
     "layoutRequired": "Izkārtojums nedrīkst būt tukšs",
-    "layoutCellInvalid": "Nederīgas logrīka koordinātas"
+    "layoutCellInvalid": "Nederīgas logrīka koordinātas",
+    "rssUrlInvalid": "Ievadiet plūsmas adresi ar http vai https.",
+    "youtubeChannelInvalid": "Ievadiet YouTube kanāla saiti, @handle vai kanāla ID."
   },
   "dns": {
     "nameRequired": "Jānorāda ieraksta nosaukums",

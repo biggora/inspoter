@@ -102,6 +102,14 @@
     "LOGS": {
       "title": "Логи",
       "description": "Последние записи журнала с фильтром по уровню."
+    },
+    "RSS": {
+      "title": "RSS-лента",
+      "description": "Последние записи из ленты RSS или Atom."
+    },
+    "YOUTUBE": {
+      "title": "Канал YouTube",
+      "description": "Последние видео с канала YouTube."
     }
   },
 
@@ -247,6 +255,28 @@
     "levelsLabel": "Уровни",
     "allLevelsHint": "Ничего не выбрано — показываются все уровни.",
     "empty": "Записей в журнале пока нет."
+  },
+
+  "rss": {
+    "urlLabel": "Адрес ленты",
+    "urlPlaceholder": "https://example.com/feed.xml",
+    "urlHint": "Адрес RSS- или Atom-ленты. Адреса из локальной сети тоже подходят, например self-hosted n8n.",
+    "showSummaryLabel": "Показывать краткое описание под заголовком",
+    "notConfigured": "Укажите адрес ленты в настройках виджета.",
+    "empty": "В этой ленте нет записей.",
+    "moreCount": "и ещё {count}",
+    "openFeed": "Открыть сайт"
+  },
+
+  "youtube": {
+    "channelLabel": "Канал",
+    "channelPlaceholder": "https://www.youtube.com/@channel",
+    "channelHint": "Вставьте ссылку на канал, @handle или идентификатор канала (UC…).",
+    "showThumbnailsLabel": "Показывать превью видео",
+    "notConfigured": "Укажите канал в настройках виджета.",
+    "empty": "На этом канале нет видео.",
+    "moreCount": "и ещё {count}",
+    "openChannel": "Открыть канал"
   },
 
   "createError": "Не удалось создать дашборд.",

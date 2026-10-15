@@ -102,6 +102,14 @@
     "LOGS": {
       "title": "Logs",
       "description": "The most recent log entries, filtered by level."
+    },
+    "RSS": {
+      "title": "RSS feed",
+      "description": "Latest items from an RSS or Atom feed."
+    },
+    "YOUTUBE": {
+      "title": "YouTube channel",
+      "description": "Latest videos from a YouTube channel."
     }
   },
 
@@ -247,6 +255,28 @@
     "levelsLabel": "Levels",
     "allLevelsHint": "Nothing selected — every level is shown.",
     "empty": "No log entries yet."
+  },
+
+  "rss": {
+    "urlLabel": "Feed URL",
+    "urlPlaceholder": "https://example.com/feed.xml",
+    "urlHint": "An RSS or Atom address. Addresses on your local network work too, for example a self-hosted n8n.",
+    "showSummaryLabel": "Show a short summary under each title",
+    "notConfigured": "Enter the feed address in the widget settings.",
+    "empty": "This feed has no items.",
+    "moreCount": "and {count} more",
+    "openFeed": "Open the site"
+  },
+
+  "youtube": {
+    "channelLabel": "Channel",
+    "channelPlaceholder": "https://www.youtube.com/@channel",
+    "channelHint": "Paste a channel link, @handle or channel ID (UC…).",
+    "showThumbnailsLabel": "Show video thumbnails",
+    "notConfigured": "Enter the channel in the widget settings.",
+    "empty": "This channel has no videos.",
+    "moreCount": "and {count} more",
+    "openChannel": "Open the channel"
   },
 
   "createError": "Could not create the dashboard.",

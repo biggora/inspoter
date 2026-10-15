@@ -245,6 +245,8 @@ enum DashboardWidgetKind {
   ALERTS
   LOGS
   KANBAN
+  RSS
+  YOUTUBE
 }
 
 model Dashboard {

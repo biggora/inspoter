@@ -1,18 +1,40 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import * as dashboardsService from "@/lib/services/dashboards";
 import * as messagesService from "@/lib/services/messages";
 import { resolveWidgetData } from "@/lib/services/dashboard-widget-data";
+import { getRssFeed } from "@/lib/dashboards/feeds/rss";
+import { getYoutubeVideos } from "@/lib/dashboards/feeds/youtube";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import { specFor } from "@/lib/dashboards/widget-kinds";
 import { WEATHER_DEFAULT_LOCATION } from "@/lib/validation/dashboards";
+import { FeedUnavailableError } from "@/lib/net/feed-fetch";
 import type {
   MailPayload,
   MessagesPayload,
+  RssFeedSnapshot,
   ServerMetricsPayload,
+  YoutubeChannelSnapshot,
 } from "@/lib/dashboards/widget-payloads";
+
+// The feed widgets would otherwise reach the network. Only the fetchers are
+// replaced; the channel-input parser the resolver also imports stays real.
+vi.mock("@/lib/dashboards/feeds/rss", () => ({ getRssFeed: vi.fn() }));
+vi.mock("@/lib/dashboards/feeds/youtube", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/dashboards/feeds/youtube")>();
+  return { ...actual, getYoutubeVideos: vi.fn() };
+});
 
 let workspaceId: string;
 let otherWorkspaceId: string;
@@ -509,6 +531,11 @@ describe("saveLayout", () => {
 });
 
 describe("resolveWidgetData", () => {
+  beforeEach(() => {
+    vi.mocked(getRssFeed).mockReset();
+    vi.mocked(getYoutubeVideos).mockReset();
+  });
+
   it("resolves a weather widget without coordinates to no reading", async () => {
     const data = await resolveWidgetData(workspaceId, [
       {
@@ -573,6 +600,119 @@ describe("resolveWidgetData", () => {
     expect(serverMetrics.servers.map((s) => s.localServerId)).toEqual([
       servers[1].id,
     ]);
+  });
+
+  it("resolves an unconfigured RSS or YOUTUBE widget to no data without fetching", async () => {
+    const data = await resolveWidgetData(workspaceId, [
+      { id: "rss-empty", kind: "RSS", config: { url: "" } },
+      { id: "yt-empty", kind: "YOUTUBE", config: { channel: "" } },
+    ]);
+
+    expect(data["rss-empty"]).toEqual({ kind: "RSS", data: null });
+    expect(data["yt-empty"]).toEqual({ kind: "YOUTUBE", data: null });
+    expect(getRssFeed).not.toHaveBeenCalled();
+    expect(getYoutubeVideos).not.toHaveBeenCalled();
+  });
+
+  it("cuts an RSS feed to the limit, keeps the full count and drops summaries", async () => {
+    vi.mocked(getRssFeed).mockResolvedValueOnce({
+      feedTitle: "Example feed",
+      siteUrl: "https://example.com",
+      items: [1, 2, 3].map((n) => ({
+        title: `Item ${n}`,
+        url: `https://example.com/${n}`,
+        publishedAt: null,
+        summary: `Summary ${n}`,
+      })),
+      totalCount: 3,
+      fetchedAt: "2026-10-15T00:00:00.000Z",
+    } satisfies RssFeedSnapshot);
+
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "rss",
+        kind: "RSS",
+        config: {
+          url: "https://example.com/feed.xml",
+          limit: 2,
+          showSummary: false,
+        },
+      },
+    ]);
+
+    expect(getRssFeed).toHaveBeenLastCalledWith("https://example.com/feed.xml");
+    const payload = data["rss"] as { kind: "RSS"; data: RssFeedSnapshot };
+    expect(payload.kind).toBe("RSS");
+    expect(payload.data.items.map((item) => item.title)).toEqual([
+      "Item 1",
+      "Item 2",
+    ]);
+    expect(payload.data.totalCount).toBe(3);
+    expect(payload.data.items.every((item) => item.summary === null)).toBe(
+      true,
+    );
+  });
+
+  it("cuts a YouTube channel to the limit and carries showThumbnails", async () => {
+    vi.mocked(getYoutubeVideos).mockResolvedValueOnce({
+      channelTitle: "Google for Developers",
+      channelUrl: "https://www.youtube.com/@GoogleDevelopers",
+      videos: [1, 2, 3].map((n) => ({
+        id: `video-${n}`,
+        title: `Video ${n}`,
+        url: `https://www.youtube.com/watch?v=video-${n}`,
+        publishedAt: null,
+        thumbnailUrl: `https://i.ytimg.com/vi/video-${n}/mqdefault.jpg`,
+      })),
+      totalCount: 3,
+      fetchedAt: "2026-10-15T00:00:00.000Z",
+    });
+
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "yt",
+        kind: "YOUTUBE",
+        config: {
+          channel: "@GoogleDevelopers",
+          limit: 2,
+          showThumbnails: false,
+        },
+      },
+    ]);
+
+    expect(getYoutubeVideos).toHaveBeenLastCalledWith({
+      type: "handle",
+      handle: "GoogleDevelopers",
+    });
+    const payload = data["yt"] as {
+      kind: "YOUTUBE";
+      data: YoutubeChannelSnapshot;
+    };
+    expect(payload.kind).toBe("YOUTUBE");
+    expect(payload.data.showThumbnails).toBe(false);
+    expect(payload.data.videos.map((video) => video.id)).toEqual([
+      "video-1",
+      "video-2",
+    ]);
+    expect(payload.data.totalCount).toBe(3);
+  });
+
+  it("turns an unavailable feed into that widget's error and keeps its siblings", async () => {
+    vi.mocked(getRssFeed).mockRejectedValueOnce(
+      new FeedUnavailableError("Feed responded with 404", 404),
+    );
+
+    const data = await resolveWidgetData(workspaceId, [
+      {
+        id: "rss-broken",
+        kind: "RSS",
+        config: { url: "https://example.com/missing.xml" },
+      },
+      { id: "clock-sibling", kind: "CLOCK", config: {} },
+    ]);
+
+    expect(data["rss-broken"]).toEqual({ error: "Feed responded with 404" });
+    expect(data["clock-sibling"]).toEqual({ kind: "CLOCK" });
   });
 
   async function resolveMessagesWidget(config: Prisma.JsonObject) {

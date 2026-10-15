@@ -63,7 +63,9 @@
     "sourcesRequired": "Выберите хотя бы один источник событий",
     "limitOutOfRange": "Количество записей должно быть в диапазоне 1–20",
     "layoutRequired": "Раскладка не может быть пустой",
-    "layoutCellInvalid": "Некорректные координаты виджета"
+    "layoutCellInvalid": "Некорректные координаты виджета",
+    "rssUrlInvalid": "Введите адрес ленты с http или https.",
+    "youtubeChannelInvalid": "Введите ссылку на канал YouTube, @handle или ID канала."
   },
   "dns": {
     "nameRequired": "Укажите имя записи",

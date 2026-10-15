@@ -194,3 +194,95 @@ describe("WidgetConfigFields — MESSAGES", () => {
     expect(onChange).toHaveBeenCalledWith({ unreadOnly: true });
   });
 });
+
+function renderFeedFields(
+  kind: "RSS" | "YOUTUBE",
+  config: Record<string, unknown>,
+) {
+  const onChange = vi.fn();
+  renderWithIntl(
+    <WidgetConfigFields
+      kind={kind}
+      config={config}
+      onChange={onChange}
+      targets={targets}
+    />,
+  );
+  return onChange;
+}
+
+describe("WidgetConfigFields — RSS", () => {
+  it("shows the stored address and hints that local addresses work", () => {
+    renderFeedFields("RSS", { url: "https://example.com/feed.xml" });
+
+    expect(screen.getByLabelText(enDashboards.rss.urlLabel)).toHaveValue(
+      "https://example.com/feed.xml",
+    );
+    expect(screen.getByText(enDashboards.rss.urlHint)).toBeInTheDocument();
+  });
+
+  it("reports the feed address as it is typed", async () => {
+    const onChange = renderFeedFields("RSS", {});
+
+    await userEvent.type(screen.getByLabelText(enDashboards.rss.urlLabel), "h");
+
+    expect(onChange).toHaveBeenCalledWith({ url: "h" });
+  });
+
+  it("toggles the summary, off by default", async () => {
+    const onChange = renderFeedFields("RSS", {});
+    const checkbox = screen.getByRole("checkbox", {
+      name: enDashboards.rss.showSummaryLabel,
+    });
+    expect(checkbox).not.toBeChecked();
+
+    await userEvent.click(checkbox);
+
+    expect(onChange).toHaveBeenCalledWith({ showSummary: true });
+  });
+});
+
+describe("WidgetConfigFields — YOUTUBE", () => {
+  it("reports the channel as it is typed", async () => {
+    const onChange = renderFeedFields("YOUTUBE", {});
+
+    await userEvent.type(
+      screen.getByLabelText(enDashboards.youtube.channelLabel),
+      "@",
+    );
+
+    expect(onChange).toHaveBeenCalledWith({ channel: "@" });
+  });
+
+  it("opens with thumbnails ticked when the stored config is silent", () => {
+    renderFeedFields("YOUTUBE", {});
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: enDashboards.youtube.showThumbnailsLabel,
+      }),
+    ).toBeChecked();
+  });
+
+  it("turns thumbnails off", async () => {
+    const onChange = renderFeedFields("YOUTUBE", {});
+
+    await userEvent.click(
+      screen.getByRole("checkbox", {
+        name: enDashboards.youtube.showThumbnailsLabel,
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({ showThumbnails: false });
+  });
+
+  it("shows an unticked box for showThumbnails: false", () => {
+    renderFeedFields("YOUTUBE", { showThumbnails: false });
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: enDashboards.youtube.showThumbnailsLabel,
+      }),
+    ).not.toBeChecked();
+  });
+});

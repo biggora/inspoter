@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { act, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "../../test-utils";
@@ -13,9 +13,11 @@ import { LogsWidget } from "@/components/dashboards/widgets/logs-widget";
 import { MailWidget } from "@/components/dashboards/widgets/mail-widget";
 import { MessagesWidget } from "@/components/dashboards/widgets/messages-widget";
 import { NoteWidget } from "@/components/dashboards/widgets/note-widget";
+import { RssWidget } from "@/components/dashboards/widgets/rss-widget";
 import { ServerMetricsWidget } from "@/components/dashboards/widgets/server-metrics-widget";
 import { ServiceStatusWidget } from "@/components/dashboards/widgets/service-status-widget";
 import { WeatherWidget } from "@/components/dashboards/widgets/weather-widget";
+import { YoutubeWidget } from "@/components/dashboards/widgets/youtube-widget";
 import { DashboardWidgetError } from "@/components/dashboards/dashboard-widget-frame";
 import enDashboards from "@/messages/en/dashboards.json";
 
@@ -640,6 +642,198 @@ describe("LogsWidget", () => {
     renderWithIntl(<LogsWidget data={{ items: [] }} />);
 
     expect(screen.getByText(enDashboards.logs.empty)).toBeInTheDocument();
+  });
+});
+
+describe("RssWidget", () => {
+  const snapshot = {
+    feedTitle: "Example Blog",
+    siteUrl: "https://blog.example.com",
+    items: [
+      {
+        title: "Release 2.0 is out",
+        url: "https://blog.example.com/release-2",
+        publishedAt: new Date().toISOString(),
+        summary: "What changed in the new major version.",
+      },
+      {
+        title: "An item without a link",
+        url: null,
+        publishedAt: null,
+        summary: null,
+      },
+    ],
+    totalCount: 2,
+    fetchedAt: new Date().toISOString(),
+  };
+
+  it("hints at the settings when no feed is configured", () => {
+    renderWithIntl(<RssWidget data={null} />);
+
+    expect(
+      screen.getByText(enDashboards.rss.notConfigured),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the empty state for a feed with no items", () => {
+    renderWithIntl(
+      <RssWidget data={{ ...snapshot, items: [], totalCount: 0 }} />,
+    );
+
+    expect(screen.getByText(enDashboards.rss.empty)).toBeInTheDocument();
+  });
+
+  it("opens an item in a new tab and shows its summary", () => {
+    renderWithIntl(<RssWidget data={snapshot} />);
+
+    const link = screen.getByRole("link", { name: /Release 2.0 is out/ });
+    expect(link).toHaveAttribute("href", "https://blog.example.com/release-2");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(
+      screen.getByText("What changed in the new major version."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an item without a url as plain text", () => {
+    renderWithIntl(<RssWidget data={snapshot} />);
+
+    expect(screen.getByText("An item without a link")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /An item without a link/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("links to the site by feed title and counts the hidden rest", () => {
+    renderWithIntl(<RssWidget data={{ ...snapshot, totalCount: 7 }} />);
+
+    expect(screen.getByText(/and 5 more/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Example Blog" })).toHaveAttribute(
+      "href",
+      "https://blog.example.com",
+    );
+  });
+
+  it("falls back to a generic label when the feed has no title", () => {
+    renderWithIntl(<RssWidget data={{ ...snapshot, feedTitle: null }} />);
+
+    expect(
+      screen.getByRole("link", { name: enDashboards.rss.openFeed }),
+    ).toBeInTheDocument();
+  });
+
+  it("never renders feed text as markup", () => {
+    const { container } = renderWithIntl(
+      <RssWidget
+        data={{
+          ...snapshot,
+          items: [
+            {
+              title: "<b>bold</b>",
+              url: null,
+              publishedAt: null,
+              summary: null,
+            },
+          ],
+          totalCount: 1,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("<b>bold</b>")).toBeInTheDocument();
+    expect(container.querySelector("b")).toBeNull();
+  });
+});
+
+describe("YoutubeWidget", () => {
+  const snapshot = {
+    channelTitle: "Example Channel",
+    channelUrl: "https://www.youtube.com/@example",
+    videos: [
+      {
+        id: "vid1",
+        title: "First video",
+        url: "https://www.youtube.com/watch?v=vid1",
+        publishedAt: new Date().toISOString(),
+        thumbnailUrl: "https://i.ytimg.com/vi/vid1/hqdefault.jpg",
+      },
+      {
+        id: "vid2",
+        title: "Second video",
+        url: "https://www.youtube.com/watch?v=vid2",
+        publishedAt: null,
+        thumbnailUrl: "https://i.ytimg.com/vi/vid2/hqdefault.jpg",
+      },
+    ],
+    totalCount: 2,
+    showThumbnails: true,
+    fetchedAt: new Date().toISOString(),
+  };
+
+  it("hints at the settings when no channel is configured", () => {
+    renderWithIntl(<YoutubeWidget data={null} />);
+
+    expect(
+      screen.getByText(enDashboards.youtube.notConfigured),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the empty state for a channel with no videos", () => {
+    renderWithIntl(
+      <YoutubeWidget data={{ ...snapshot, videos: [], totalCount: 0 }} />,
+    );
+
+    expect(screen.getByText(enDashboards.youtube.empty)).toBeInTheDocument();
+  });
+
+  it("renders each video as a new-tab link with its thumbnail", () => {
+    const { container } = renderWithIntl(<YoutubeWidget data={snapshot} />);
+
+    const link = screen.getByRole("link", { name: /First video/ });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.youtube.com/watch?v=vid1",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+    const images = container.querySelectorAll("img");
+    expect(images).toHaveLength(2);
+    expect(images[0]).toHaveAttribute(
+      "src",
+      "https://i.ytimg.com/vi/vid1/hqdefault.jpg",
+    );
+    expect(images[0]).toHaveAttribute("alt", "");
+    expect(images[0]).toHaveAttribute("loading", "lazy");
+  });
+
+  it("loads no image when thumbnails are turned off", () => {
+    const { container } = renderWithIntl(
+      <YoutubeWidget data={{ ...snapshot, showThumbnails: false }} />,
+    );
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByRole("link", { name: /Second video/ })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+  });
+
+  it("swaps a thumbnail that fails to load for a placeholder", () => {
+    const { container } = renderWithIntl(<YoutubeWidget data={snapshot} />);
+
+    fireEvent.error(container.querySelectorAll("img")[0]);
+
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("links to the channel by title and counts the hidden rest", () => {
+    renderWithIntl(<YoutubeWidget data={{ ...snapshot, totalCount: 5 }} />);
+
+    expect(screen.getByText(/and 3 more/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Example Channel" }),
+    ).toHaveAttribute("href", "https://www.youtube.com/@example");
   });
 });
 

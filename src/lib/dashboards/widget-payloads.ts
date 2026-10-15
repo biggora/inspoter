@@ -198,6 +198,38 @@ export interface LogsPayload {
   items: LogEntryDto[];
 }
 
+export interface FeedItemTile {
+  title: string;
+  url: string | null;
+  publishedAt: string | null; // ISO
+  summary: string | null; // plain text, null when showSummary is off
+}
+
+export interface RssFeedSnapshot {
+  feedTitle: string | null;
+  siteUrl: string | null;
+  items: FeedItemTile[];
+  totalCount: number;
+  fetchedAt: string; // ISO
+}
+
+export interface YoutubeVideoTile {
+  id: string;
+  title: string;
+  url: string;
+  publishedAt: string | null;
+  thumbnailUrl: string;
+}
+
+export interface YoutubeChannelSnapshot {
+  channelTitle: string | null;
+  channelUrl: string | null;
+  videos: YoutubeVideoTile[];
+  totalCount: number;
+  showThumbnails: boolean;
+  fetchedAt: string;
+}
+
 export type WidgetPayload =
   | { kind: "CLOCK" }
   | { kind: "NOTE" }
@@ -213,6 +245,9 @@ export type WidgetPayload =
   | { kind: "MESSAGES"; data: MessagesPayload }
   | { kind: "ALERTS"; data: AlertsPayload }
   | { kind: "LOGS"; data: LogsPayload }
+  // `data: null` is a feed widget with no URL / channel yet (not configured).
+  | { kind: "RSS"; data: RssFeedSnapshot | null }
+  | { kind: "YOUTUBE"; data: YoutubeChannelSnapshot | null }
   | WidgetError;
 
 /** Widget id → its payload. */

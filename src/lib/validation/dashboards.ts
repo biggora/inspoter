@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { DashboardWidgetKind } from "@/generated/prisma/client";
 import { VALIDATION_MESSAGES } from "@/lib/validation/error-map";
+import { parseYoutubeChannelInput } from "@/lib/dashboards/feeds/youtube-input";
 import { GRID_COLUMNS } from "@/lib/dashboards/grid";
 import {
   GRID_MAX_WIDGET_ROWS,
@@ -294,6 +295,52 @@ const kanbanConfigSchema = z.object({
   limit: listLimitField,
 });
 
+const FEED_URL_MAX = 2048;
+const YOUTUBE_CHANNEL_MAX = 200;
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+// An empty `url` is "not configured yet" — the tile asks for a feed instead of
+// fetching — so the widget can be added from the picker in one click like every
+// other kind. Whether the host may be reached is decided at fetch time
+// (src/lib/net/feed-fetch.ts), not here.
+const rssConfigSchema = z.object({
+  title: titleField,
+  url: z
+    .string()
+    .trim()
+    .max(FEED_URL_MAX)
+    .refine((value) => value === "" || isHttpUrl(value), {
+      error: () => VALIDATION_MESSAGES.dashboard.rssUrlInvalid,
+    })
+    .default(""),
+  limit: listLimitField,
+  showSummary: z.boolean().default(false),
+});
+
+// Same "empty = not configured yet" rule; the channel may be a link, an @handle
+// or a channel ID, and the server turns it into an ID when it fetches.
+const youtubeConfigSchema = z.object({
+  title: titleField,
+  channel: z
+    .string()
+    .trim()
+    .max(YOUTUBE_CHANNEL_MAX)
+    .refine((value) => value === "" || parseYoutubeChannelInput(value), {
+      error: () => VALIDATION_MESSAGES.dashboard.youtubeChannelInvalid,
+    })
+    .default(""),
+  limit: listLimitField,
+  showThumbnails: z.boolean().default(true),
+});
+
 export const WIDGET_CONFIG_SCHEMAS = {
   CLOCK: clockConfigSchema,
   WEATHER: weatherConfigSchema,
@@ -307,6 +354,8 @@ export const WIDGET_CONFIG_SCHEMAS = {
   MESSAGES: messagesConfigSchema,
   ALERTS: alertsConfigSchema,
   LOGS: logsConfigSchema,
+  RSS: rssConfigSchema,
+  YOUTUBE: youtubeConfigSchema,
 } as const satisfies Record<DashboardWidgetKind, z.ZodType>;
 
 export type WidgetConfig = {
@@ -325,6 +374,8 @@ export type MailConfig = WidgetConfig["MAIL"];
 export type MessagesConfig = WidgetConfig["MESSAGES"];
 export type AlertsConfig = WidgetConfig["ALERTS"];
 export type LogsConfig = WidgetConfig["LOGS"];
+export type RssConfig = WidgetConfig["RSS"];
+export type YoutubeConfig = WidgetConfig["YOUTUBE"];
 
 export const widgetKindSchema = z.enum(
   WIDGET_KIND_ORDER as [DashboardWidgetKind, ...DashboardWidgetKind[]],
