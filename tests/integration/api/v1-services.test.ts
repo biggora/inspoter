@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import * as webhookTokensService from "@/lib/services/webhookTokens";
 import * as servicesService from "@/lib/services/services";
@@ -241,18 +241,21 @@ describe("services", () => {
 
     // Writes are journalled under the token's own name, so the Activity page
     // shows agent-made edits next to operator-made ones.
-    const activity = await db.activity.findMany({
-      where: { workspaceId, entityType: "service", entityId: id },
-      select: { action: true, operatorName: true },
+    // recordActivity is fire-and-forget, so the rows land after the response.
+    await vi.waitFor(async () => {
+      const activity = await db.activity.findMany({
+        where: { workspaceId, entityType: "service", entityId: id },
+        select: { action: true, operatorName: true },
+      });
+      expect(activity.map((entry) => entry.action).sort()).toEqual([
+        "create",
+        "delete",
+        "update",
+      ]);
+      expect(new Set(activity.map((entry) => entry.operatorName))).toEqual(
+        new Set(["agent"]),
+      );
     });
-    expect(activity.map((entry) => entry.action).sort()).toEqual([
-      "create",
-      "delete",
-      "update",
-    ]);
-    expect(new Set(activity.map((entry) => entry.operatorName))).toEqual(
-      new Set(["agent"]),
-    );
   });
 
   it("rejects a monitor missing its type-specific target", async () => {

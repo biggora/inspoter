@@ -101,10 +101,13 @@ describe("POST /api/dashboards", () => {
     expect(
       await db.dashboard.findUnique({ where: { id: dashboard.id } }),
     ).not.toBeNull();
-    const activity = await db.activity.findFirst({
-      where: { workspaceId, entityType: "dashboard", entityId: dashboard.id },
+    // recordActivity is fire-and-forget, so the row lands after the response.
+    await vi.waitFor(async () => {
+      const activity = await db.activity.findFirst({
+        where: { workspaceId, entityType: "dashboard", entityId: dashboard.id },
+      });
+      expect(activity?.action).toBe("create");
     });
-    expect(activity?.action).toBe("create");
   });
 
   it("rejects an empty name with a field-level error", async () => {
